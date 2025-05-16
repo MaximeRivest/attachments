@@ -14,11 +14,12 @@ from .exceptions import DetectionError, ParsingError
 
 class Attachments:
     """Core class for handling attachments."""
-    def __init__(self, *paths):
+    def __init__(self, *paths, verbose=False):
         self.detector = Detector()
         self.parser_registry = ParserRegistry()
         self.renderer_registry = RendererRegistry()
         self._register_default_components()
+        self.verbose = verbose
 
         self.attachments_data = []
         # Store the original path specifications for __repr__
@@ -99,13 +100,20 @@ class Attachments:
 
             if is_url:
                 try:
-                    print(f"Attempting to download content from URL: {file_path}")
-                    response = requests.get(file_path, stream=True, timeout=10)
+                    if self.verbose:
+                        print(f"Attempting to download content from URL: {file_path}")
+                    
+                    # Define a User-Agent header
+                    headers = {
+                        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                    }
+                    response = requests.get(file_path, stream=True, timeout=10, headers=headers) # Add headers
                     response.raise_for_status()
 
                     # Get Content-Type header
                     content_type_header = response.headers.get('Content-Type')
-                    print(f"URL {file_path} has Content-Type: {content_type_header}")
+                    if self.verbose:
+                        print(f"URL {file_path} has Content-Type: {content_type_header}")
 
                     url_path_for_ext = parsed_url.path
                     _, potential_ext = os.path.splitext(url_path_for_ext)
@@ -115,7 +123,8 @@ class Attachments:
                             tmp_file.write(chunk)
                         temp_file_path_for_parsing = tmp_file.name
                     
-                    print(f"Successfully downloaded URL {file_path} to temporary file: {temp_file_path_for_parsing}")
+                    if self.verbose:
+                        print(f"Successfully downloaded URL {file_path} to temporary file: {temp_file_path_for_parsing}")
                     path_for_detector_and_parser = temp_file_path_for_parsing
                 
                 except requests.exceptions.RequestException as e_req:
@@ -168,7 +177,8 @@ class Attachments:
                 if is_url and temp_file_path_for_parsing and os.path.exists(temp_file_path_for_parsing):
                     try:
                         os.remove(temp_file_path_for_parsing)
-                        print(f"Cleaned up temporary file: {temp_file_path_for_parsing}")
+                        if self.verbose:
+                            print(f"Cleaned up temporary file: {temp_file_path_for_parsing}")
                     except Exception as e_clean:
                         print(f"Warning: Could not clean up temporary file {temp_file_path_for_parsing}: {e_clean}")
     
@@ -244,7 +254,10 @@ class Attachments:
             return "Attachments()"
         # Use repr() for each path string to correctly escape quotes if they are part of the path
         path_reprs = [repr(p) for p in self.original_paths_with_indices]
-        return f"Attachments({', '.join(path_reprs)})"
+        if self.verbose:
+            return f"Attachments({', '.join(path_reprs)}, verbose=True)"
+        else:
+            return f"Attachments({', '.join(path_reprs)})"
 
     def __getitem__(self, index):
         """Allows indexing into the Attachments object to get a new Attachments object
@@ -253,13 +266,15 @@ class Attachments:
             # Get the single path string for the given index
             selected_path = self.original_paths_with_indices[index]
             # Return a new Attachments object initialized with this single path
-            return Attachments(selected_path)
+            # Propagate the verbose setting to the new instance
+            return Attachments(selected_path, verbose=self.verbose)
         elif isinstance(index, slice):
             # Get the list of path strings for the given slice
             selected_paths_list = self.original_paths_with_indices[index]
             # Return a new Attachments object initialized with this list of paths
             # The Attachments constructor handles a list if it's the first arg.
-            return Attachments(selected_paths_list) 
+            # Propagate the verbose setting to the new instance
+            return Attachments(selected_paths_list, verbose=self.verbose) 
         else:
             raise TypeError(f"Attachments indices must be integers or slices, not {type(index).__name__}")
 
