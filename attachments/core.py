@@ -5,10 +5,11 @@ import requests                   # Added for downloading URLs
 import tempfile                   # Added for temporary file handling
 import io                         # For in-memory byte streams (image base64 encoding)
 import base64                     # For base64 encoding
+from PIL import Image
 
 from .detectors import Detector
 from .parsers import ParserRegistry, PDFParser, PPTXParser, HTMLParser, ImageParser
-from .renderers import RendererRegistry, DefaultXMLRenderer
+from .renderers import RendererRegistry, DefaultXMLRenderer, PlainTextRenderer
 from .exceptions import DetectionError, ParsingError
 
 class Attachments:
@@ -45,7 +46,9 @@ class Attachments:
         self.parser_registry.register('webp', image_parser)
         self.parser_registry.register('tiff', image_parser)
         
-        self.renderer_registry.register('default_xml', DefaultXMLRenderer(), default=True)
+        # Register renderers
+        self.renderer_registry.register('xml', DefaultXMLRenderer(), default=True) # Make DefaultXMLRenderer the default
+        self.renderer_registry.register('text', PlainTextRenderer()) 
 
     def _parse_path_string(self, path_str):
         """Parses a path string which might include slicing indices.
@@ -230,8 +233,8 @@ class Attachments:
         return renderer.render(self.attachments_data)
 
     def __str__(self):
-        """String representation uses the default renderer."""
-        return self.render()
+        """String representation uses the default renderer (now DefaultXMLRenderer)."""
+        return self.render() 
 
     def __repr__(self):
         """Return an unambiguous string representation of the Attachments object."""
@@ -242,36 +245,86 @@ class Attachments:
         return f"Attachments({', '.join(path_reprs)})"
 
     def _repr_markdown_(self):
-        """Return a Markdown representation for IPython/Jupyter."""
+        """Return a Markdown representation for IPython/Jupyter.
+        Displays images and provides summaries for other file types.
+        """
         if not self.attachments_data:
             return "_No attachments processed._"
 
         md_parts = ["### Attachments Summary"]
-        for item in self.attachments_data:
-            md_parts.append(f"- **ID:** `{item.get('id', 'N/A')}`")
-            md_parts.append(f"  - **Type:** `{item.get('type', 'N/A')}`")
-            md_parts.append(f"  - **Original Input:** `{item.get('original_path_str', 'N/A')}`")
-            md_parts.append(f"  - **Processed File Path:** `{item.get('file_path', 'N/A')}`")
+        image_item_types = ['jpeg', 'png', 'gif', 'bmp', 'webp', 'tiff']
+
+        # Pre-generate base64 for all images in one go if needed, or do it one by one
+        # For simplicity here, let's iterate and generate/retrieve as needed.
+        # We could map item IDs or original_path_str to their base64 from self.images if that property always reflects the latest state.
+        # However, self.images applies default conversions. For _repr_markdown_ we might want a small standard thumbnail.
+        # Let's refine this: generate a small thumbnail for display.
+
+        for i, item in enumerate(self.attachments_data):
+            item_id = item.get('id', f'item{i+1}')
+            item_type = item.get('type', 'N/A')
+            original_path_str = item.get('original_path_str', 'N/A')
+            processed_file_path = item.get('file_path', 'N/A') # This is original_file_path_or_url
             
-            total_pages_or_slides = item.get('num_pages') or item.get('num_slides')
-            indices_processed = item.get('indices_processed')
-            
-            if total_pages_or_slides is not None:
-                item_label = "Pages" if 'num_pages' in item else "Slides"
-                if indices_processed and len(indices_processed) != total_pages_or_slides:
-                    md_parts.append(f"  - **Processed {item_label}:** `{', '.join(map(str, indices_processed))}` (Total in file: {total_pages_or_slides})")
-                else:
-                    md_parts.append(f"  - **Total {item_label} in File:** `{total_pages_or_slides}` (All processed)")
-            else: # Should not happen if parser works correctly
-                 md_parts.append(f"  - **Pages/Slides:** _Data not available_")
-            
-            # Add a small snippet of text content if available
-            text_snippet = item.get('text', '')[:100].replace('\n', ' ') # First 100 chars, newlines to spaces
-            if text_snippet:
-                # Construct the quoted snippet part separately to avoid f-string quote confusion
-                quoted_snippet_with_ellipsis = f'"{text_snippet}..."'
-                md_parts.append(f"  - **Content Snippet:** `{quoted_snippet_with_ellipsis}`")
-            md_parts.append("") # Add a blank line for spacing between entries
+            md_parts.append(f"**ID:** `{item_id}` (`{item_type}` from `{original_path_str}`)")
+
+            if item_type in image_item_types and 'image_object' in item:
+                img_obj = item['image_object'] # This is the (potentially transformed by user ops) image
+                temp_img_for_display = img_obj.copy() # Work on a copy for thumbnailing
+                
+                # Create a thumbnail for display, e.g., max width 200px
+                # This uses the same resampling as resize, but could be a simpler one for speed.
+                max_thumb_width = 200 
+                current_w, current_h = temp_img_for_display.size
+                if current_w > max_thumb_width:
+                    aspect_ratio = current_h / current_w
+                    thumb_h = int(max_thumb_width * aspect_ratio)
+                    temp_img_for_display.thumbnail((max_thumb_width, thumb_h), Image.Resampling.LANCZOS)
+                
+                # Determine a suitable format for embedding (PNG for alpha, otherwise JPEG)
+                thumb_output_format = 'png' if temp_img_for_display.mode == 'RGBA' else 'jpeg'
+                pillow_save_format = thumb_output_format.upper()
+                
+                save_img_for_display = temp_img_for_display
+                if pillow_save_format == 'JPEG' and save_img_for_display.mode == 'RGBA':
+                    save_img_for_display = save_img_for_display.convert('RGB')
+                elif pillow_save_format == 'PNG' and save_img_for_display.mode not in ['RGB', 'RGBA', 'L', 'P']:
+                    save_img_for_display = save_img_for_display.convert('RGBA')
+
+                try:
+                    buffered = io.BytesIO()
+                    save_params_thumb = {'optimize': True}
+                    if pillow_save_format == 'JPEG': save_params_thumb['quality'] = 75 # Slightly lower for thumbs
+                    
+                    save_img_for_display.save(buffered, format=pillow_save_format, **save_params_thumb)
+                    img_base64 = base64.b64encode(buffered.getvalue()).decode('utf-8')
+                    mime_type = f"image/{thumb_output_format}"
+                    alt_text = os.path.basename(processed_file_path)
+                    md_parts.append(f"![{alt_text}](data:{mime_type};base64,{img_base64})")
+                    md_parts.append(f"  *Original Dimensions: {item.get('width')}x{item.get('height')} {item.get('original_format', '')} {item.get('original_mode', '')}*"+
+                                      (f", Operations: `{item.get('applied_operations')}`" if item.get('applied_operations') else "") + 
+                                      f", Output as: `{item.get('output_format')}`")
+
+                except Exception as e_repr_md_img:
+                    md_parts.append(f"  *Error generating image preview: {e_repr_md_img}*")
+            else:
+                # Textual summary for non-image types or images without objects
+                md_parts.append(f"  - **Processed File Path:** `{processed_file_path}`")
+                total_pages_or_slides = item.get('num_pages') or item.get('num_slides')
+                indices_processed = item.get('indices_processed')
+                
+                if total_pages_or_slides is not None:
+                    item_label = "Pages" if 'num_pages' in item else "Slides"
+                    if indices_processed and len(indices_processed) != total_pages_or_slides:
+                        md_parts.append(f"  - **Processed {item_label}:** `{', '.join(map(str, indices_processed))}` (Total: {total_pages_or_slides})")
+                    else:
+                        md_parts.append(f"  - **Total {item_label}:** `{total_pages_or_slides}` (All processed)")
+                
+                text_snippet = item.get('text', '')[:150].replace('\n', ' ') 
+                if text_snippet:
+                    quoted_snippet_with_ellipsis = f'"{text_snippet}..."'
+                    md_parts.append(f"  - **Content Snippet:** `{quoted_snippet_with_ellipsis}`")
+            md_parts.append("---") # Separator
 
         return "\n".join(md_parts)
     

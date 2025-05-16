@@ -236,6 +236,8 @@ class ImageParser(BaseParser):
         try:
             img = Image.open(file_path)
             img.load() 
+            original_format_val = img.format # Capture before any img reassignment
+            original_mode_val = img.mode   # Capture before any img reassignment
 
             # Apply operations
             if 'rotate' in operations:
@@ -288,9 +290,10 @@ class ImageParser(BaseParser):
             
             output_quality = operations.get('quality', 90) # Default quality
 
-            text_representation = f"[Image: {os.path.basename(file_path)} (original: {img.format} {img.mode}) -> processed to {img.width}x{img.height} for output as {output_format}]"
-            if indices:
-                 text_representation = f"[Image: {os.path.basename(file_path)} (original: {img.format} {img.mode}, ops: \"{indices}\") -> processed to {img.width}x{img.height} for output as {output_format}]"
+            # Use the captured original_format_val and original_mode_val for the text representation
+            text_representation = f"[Image: {os.path.basename(file_path)} (original: {original_format_val} {original_mode_val}) -> processed to {img.width}x{img.height} for output as {output_format}]"
+            if indices: # `indices` here is the ops_str
+                 text_representation = f"[Image: {os.path.basename(file_path)} (original: {original_format_val} {original_mode_val}, ops: \"{indices}\") -> processed to {img.width}x{img.height} for output as {output_format}]"
 
             return {
                 "text": text_representation,
@@ -298,8 +301,8 @@ class ImageParser(BaseParser):
                 "image_object": img,  # This is now the (potentially) transformed image
                 "width": img.width,   # Width of the transformed image
                 "height": img.height, # Height of the transformed image
-                "original_format": img.format, # Pillow's format of the loaded image
-                "original_mode": img.mode,     # Pillow's mode of the loaded image
+                "original_format": original_format_val, # Use captured value
+                "original_mode": original_mode_val,     # Use captured value
                 "output_format": output_format, # Target format for base64/saving
                 "output_quality": output_quality, # Target quality for base64/saving
                 "applied_operations": operations # Store the operations that were parsed

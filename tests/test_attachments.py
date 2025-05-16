@@ -200,21 +200,23 @@ class TestAttachmentsIntegration(unittest.TestCase):
         from PIL import Image
         self.assertIsInstance(data['image_object'], Image.Image)
 
-    def test_render_method_default_xml(self):
+    def test_render_method_xml_explicitly_for_pptx(self):
         if not hasattr(self, 'sample_pptx_exists') or not self.sample_pptx_exists:
-            self.skipTest(f"Skipping PPTX render test as {SAMPLE_PPTX} is not available or readable.")
+            self.skipTest(f"Skipping PPTX XML render test as {SAMPLE_PPTX} is not available or readable.")
         atts = Attachments(SAMPLE_PPTX)
-        xml_output = atts.render()
+        xml_output = atts.render('xml') # Explicitly render as XML
+        self.assertTrue(xml_output.startswith("<attachments>"))
+        self.assertTrue(xml_output.endswith("</attachments>"))
         self.assertIn('<attachment id="pptx1" type="pptx">', xml_output)
-        self.assertIn("<meta name=\"num_slides\" value=\"3\" />", xml_output) # Expect 3 slides
-        self.assertIn("Slide 1 Title", xml_output)
+        self.assertIn("<meta name=\"num_slides\" value=\"3\" />", xml_output)
+        self.assertIn("Slide 1 Title", xml_output) # Assuming PlainTextRenderer output for PPTX text is used in XML
         self.assertIn("Content for page 3", xml_output)
 
     def test_render_method_default_xml_with_html(self):
         if not self.sample_html_exists:
             self.skipTest(f"{SAMPLE_HTML} not found.")
         atts = Attachments(SAMPLE_HTML)
-        xml_output = atts.render()
+        xml_output = atts.render('xml') # Explicitly render as XML
         self.assertTrue(xml_output.startswith("<attachments>"))
         self.assertTrue(xml_output.endswith("</attachments>"))
         self.assertIn('<attachment id="html1" type="html">', xml_output)
@@ -252,7 +254,7 @@ class TestAttachmentsIntegration(unittest.TestCase):
         if not os.path.exists(SAMPLE_PDF):
             self.skipTest(f"{SAMPLE_PDF} not found.")
         atts = Attachments(SAMPLE_PDF)
-        xml_output = str(atts)
+        xml_output = atts.render('xml') # Check XML rendering explicitly
         self.assertTrue(xml_output.startswith("<attachments>"))
         self.assertTrue(xml_output.endswith("</attachments>"))
         self.assertIn('<attachment id="pdf1" type="pdf">', xml_output)
@@ -566,6 +568,86 @@ class TestAttachmentsIntegration(unittest.TestCase):
         # Both sample.png (RGB) and sample.jpg (RGB) will default to JPEG output
         self.assertTrue(all(img.startswith("data:image/jpeg;base64,") for img in atts.images))
         # To test PNG output specifically, we'd need an RGBA PNG or use format:png operation
+
+    def test_repr_markdown_output(self):
+        if not (self.sample_png_exists and os.path.exists(SAMPLE_PDF)):
+            self.skipTest(f"Missing {SAMPLE_PNG} or {SAMPLE_PDF} for markdown repr test.")
+        
+        atts = Attachments(SAMPLE_PDF, f"{SAMPLE_PNG}[resize:20x20]")
+        markdown_output = atts._repr_markdown_()
+
+        self.assertIn("### Attachments Summary", markdown_output)
+        # Check PDF part (summary)
+        self.assertIn(f"**ID:** `pdf1` (`pdf` from `{SAMPLE_PDF}`)", markdown_output)
+        self.assertIn("Hello PDF!", markdown_output) # Snippet from PDF
+        self.assertIn("Total Pages:** `1` (All processed)", markdown_output)
+
+        # Check Image part (embedded image and details)
+        self.assertIn(f"**ID:** `png2` (`png` from `{SAMPLE_PNG}[resize:20x20]`)", markdown_output)
+        self.assertIn("![sample.png](data:image/jpeg;base64,", markdown_output) # sample.png (RGB) becomes jpeg thumbnail by default
+        self.assertIn("*Original Dimensions: 20x20 PNG RGB*", markdown_output) # Dimensions after user op, original format/mode
+        self.assertIn("Operations: `{'resize': (20, 20)}`", markdown_output)
+        self.assertIn("Output as: `jpeg`", markdown_output)
+        self.assertIn("---", markdown_output) # Separator
+
+    def test_str_representation_default_is_xml(self):
+        if not (self.sample_png_exists and os.path.exists(SAMPLE_PDF)):
+            self.skipTest(f"Missing {SAMPLE_PNG} or {SAMPLE_PDF} for str representation test.")
+        atts = Attachments(SAMPLE_PDF, f"{SAMPLE_PNG}[resize:10x10]")
+        
+        output_str = str(atts)
+
+        self.assertTrue(output_str.startswith("<attachments>"))
+        self.assertTrue(output_str.endswith("</attachments>"))
+        # Check for PDF part
+        self.assertIn('<attachment id="pdf1" type="pdf">', output_str)
+        self.assertIn("<meta name=\"num_pages\" value=\"1\" />", output_str)
+        self.assertIn("<content>\nHello PDF!\n    </content>", output_str)
+        # Check for Image part
+        self.assertIn('<attachment id="png2" type="png">', output_str)
+        self.assertIn("[Image: sample.png (original: PNG RGB, ops: \"resize:10x10\") -&gt; processed to 10x10 for output as jpeg]", output_str) # Text content
+        # Check for some image metadata (exact structure from DefaultXMLRenderer)
+        self.assertIn("<meta name=\"dimensions\" value=\"10x10\" />", output_str)
+        self.assertIn("<meta name=\"original_format\" value=\"PNG\" />", output_str)
+        self.assertIn("<meta name=\"output_format_target\" value=\"jpeg\" />", output_str) # Default output for RGB PNG is jpeg
+        self.assertIn("<meta name=\"applied_operations\" value=\"{'resize': (10, 10)}\"", output_str) # Check part of applied_ops, tuple is (w, h)
+
+    def test_render_explicit_xml(self):
+        if not os.path.exists(SAMPLE_PDF):
+            self.skipTest(f"{SAMPLE_PDF} not found for explicit XML render test.")
+        atts = Attachments(SAMPLE_PDF)
+        xml_output = atts.render('xml') # Explicitly request XML
+        self.assertTrue(xml_output.startswith("<attachments>"))
+        self.assertIn("<content>\nHello PDF!\n    </content>", xml_output)
+        self.assertIn('<attachment id="pdf1" type="pdf">', xml_output)
+
+    def test_render_explicit_text(self):
+        if not os.path.exists(SAMPLE_PDF):
+            self.skipTest(f"{SAMPLE_PDF} not found for explicit text render test.")
+        atts = Attachments(SAMPLE_PDF)
+        text_output = atts.render('text')
+        self.assertEqual(text_output.strip(), "Hello PDF!")
+        self.assertNotIn("<attachments>", text_output)
+
+    def test_xml_rendering_for_image_with_metadata(self):
+        if not self.sample_png_exists:
+            self.skipTest(f"{SAMPLE_PNG} not found for XML image metadata test.")
+        
+        atts = Attachments(f"{SAMPLE_PNG}[resize:30x40,format:jpeg,quality:85]")
+        xml_output = atts.render('xml')
+        
+        self.assertIn('<attachment id="png1" type="png">', xml_output) # Type remains original detected type
+        self.assertIn('<meta name="dimensions" value="30x40" />', xml_output)
+        self.assertIn('<meta name="original_format" value="PNG" />', xml_output)
+        self.assertIn('<meta name="original_mode" value="RGB" />', xml_output)
+        self.assertIn('<meta name="output_format_target" value="jpeg" />', xml_output)
+        self.assertIn('<meta name="output_quality_target" value="85" />', xml_output)
+        # Exact ops string can be tricky due to dict order, check for components
+        self.assertIn('<meta name="applied_operations" value="', xml_output)
+        self.assertIn("'resize': (30, 40)", xml_output)
+        self.assertIn("'format': 'jpeg'", xml_output)
+        self.assertIn("'quality': 85", xml_output)
+        self.assertIn("[Image: sample.png (original: PNG RGB, ops: \"resize:30x40,format:jpeg,quality:85\") -&gt; processed to 30x40 for output as jpeg]", xml_output)
 
 class TestIndividualParsers(unittest.TestCase):
     @classmethod

@@ -79,11 +79,54 @@ class DefaultXMLRenderer(BaseRenderer):
             if 'num_slides' in item:
                 output_parts.append(f"    <meta name=\"num_slides\" value=\"{item['num_slides']}\" />")
             
+            # Add image-specific metadata if available
+            if item.get('type') in ['jpeg', 'png', 'gif', 'bmp', 'webp', 'tiff']:
+                if 'width' in item and 'height' in item:
+                    output_parts.append(f"    <meta name=\"dimensions\" value=\"{item['width']}x{item['height']}\" />")
+                if 'original_format' in item:
+                    output_parts.append(f"    <meta name=\"original_format\" value=\"{item['original_format']}\" />")
+                if 'original_mode' in item:
+                    output_parts.append(f"    <meta name=\"original_mode\" value=\"{item['original_mode']}\" />")
+                if 'output_format' in item:
+                    output_parts.append(f"    <meta name=\"output_format_target\" value=\"{item['output_format']}\" />") # Renamed to avoid clash if 'format' is a general key
+                if 'output_quality' in item:
+                    output_parts.append(f"    <meta name=\"output_quality_target\" value=\"{item['output_quality']}\" />")
+                if "applied_operations" in item and isinstance(item["applied_operations"], dict):
+                    ops_str = str(item["applied_operations"])
+                    # Escape XML special characters in the operations string
+                    escaped_ops_str = ops_str.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;")
+                    output_parts.append(f"    <meta name=\"applied_operations\" value=\"{escaped_ops_str}\" />")
+
             output_parts.append(f"    <content>\n{text_content}\n    </content>")
-            output_parts.append(f"  </attachment>")
+            output_parts.append("  </attachment>")
         output_parts.append("</attachments>")
         return "\n".join(output_parts)
 
+class PlainTextRenderer(BaseRenderer):
+    """Renders parsed content into a simple plain text string, 
+    concatenating the 'text' field of each attachment.
+    Ideal for simple LLM text prompts where images are handled separately.
+    """
+    def render(self, parsed_items):
+        """Renders a list of parsed items into a single plain text string.
+
+        Args:
+            parsed_items: A list of dictionaries, where each dictionary
+                          represents a parsed file and contains at least 'text'.
+        Returns:
+            A string concatenating the text content of each item, separated by double newlines.
+        """
+        if not parsed_items:
+            return ""
+
+        text_parts = []
+        for item in parsed_items:
+            text_content = item.get('text', '')
+            # No XML sanitization needed for plain text output
+            text_parts.append(text_content)
+        
+        # Join with double newlines to separate content from different attachments
+        return "\n\n".join(text_parts).strip()
 
 # Example usage (for testing the renderer directly):
 # if __name__ == '__main__':
