@@ -80,7 +80,7 @@ class DefaultXMLRenderer(BaseRenderer):
                 output_parts.append(f"    <meta name=\"num_slides\" value=\"{item['num_slides']}\" />")
             
             # Add image-specific metadata if available
-            if item.get('type') in ['jpeg', 'png', 'gif', 'bmp', 'webp', 'tiff']:
+            if item.get('type') in ['jpeg', 'png', 'gif', 'bmp', 'webp', 'tiff', 'heic', 'heif']:
                 if 'width' in item and 'height' in item:
                     output_parts.append(f"    <meta name=\"dimensions\" value=\"{item['width']}x{item['height']}\" />")
                 if 'original_format' in item:

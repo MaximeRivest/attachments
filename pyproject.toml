@@ -10,7 +10,7 @@ authors = [
 ]
 description = "A Python library to handle various file types for LLMs."
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.8"
 license = "MIT"  # Using simple string for SPDX identifier
 # packages = ["attachments"]  # Removing this, as it caused a conflict with setuptools validation
 classifiers = [
@@ -19,13 +19,13 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    # Add dependencies here as they are identified, e.g.,
-    # "python-magi
-    "python-pptx",
-    "PyMuPDF",
-    "requests",
-    "html2text",
-    "Pillow",
+    "python-magic>=0.4.27",
+    "python-pptx>=0.6.23",
+    "PyMuPDF>=1.24.9", # fitz
+    "Pillow>=10.4.0",
+    "requests>=2.32.3",
+    "html2text>=2024.2.26",
+    "pillow-heif>=0.17.0",
 ]
 
 [project.urls]
@@ -46,3 +46,6 @@ dev = [
 
 [tool.setuptools.packages.find]
 exclude = ["mrplay*"] # Exclude the mrplay directory and its potential submodules
+
+[tool.pytest.ini_options]
+# ... existing code ...

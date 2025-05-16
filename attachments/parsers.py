@@ -10,6 +10,13 @@ try:
 except ImportError:
     fitz = None
 
+try:
+    import pillow_heif
+    pillow_heif.register_heif_opener()
+except ImportError:
+    print("Warning: pillow-heif not installed. HEIC/HEIF support will be unavailable.")
+    pass # Allow the rest of the module to load
+
 class BaseParser(ABC):
     """Abstract base class for file parsers."""
     @abstractmethod

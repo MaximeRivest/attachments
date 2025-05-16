@@ -18,7 +18,9 @@ class Detector:
         self.register('gif', extensions=['.gif'])
         self.register('bmp', extensions=['.bmp'])
         self.register('webp', extensions=['.webp'])
-        self.register('tiff', extensions=['.tif', '.tiff']) # Added TIFF
+        self.register('tiff', extensions=['.tif', '.tiff'])
+        self.register('heic', extensions=['.heic'])
+        self.register('heif', extensions=['.heif'])
 
     def register(self, name, extensions=None, regex=None, custom_method=None):
         """Registers a detection method."""
@@ -57,8 +59,15 @@ class Detector:
             elif main_type == 'image/webp':
                 return 'webp'
             elif main_type == 'image/tiff':
-                return 'tiff' # Added TIFF
+                return 'tiff'
+            elif main_type == 'image/heic':
+                return 'heic'
+            elif main_type == 'image/heif':
+                return 'heif'
             # Add more MIME type mappings here as needed
+            # Fallback for other image/* types if not specifically handled above,
+            # could attempt to map to a generic image type or rely on extension.
+            # For now, explicit mapping is safer.
 
         # Priority 2: Extension-based detection (existing logic)
         import os
