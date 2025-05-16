@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "attachments"
+version = "0.1.0"
+authors = [
+  { name="Maxim Rivest", email="mrive052@gmail.com" },
+]
+description = "A Python library to handle various file types for LLMs."
+readme = "README.md"
+requires-python = ">=3.7"
+license = "MIT"  # Using simple string for SPDX identifier
+# packages = ["attachments"]  # Removing this, as it caused a conflict with setuptools validation
+classifiers = [
+    "Programming Language :: Python :: 3",
+    # "License :: OSI Approved :: MIT License", # Replaced by SPDX
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    # Add dependencies here as they are identified, e.g.,
+    # "python-magi
+    "python-pptx",
+    "PyMuPDF",
+    "requests",
+    "html2text",
+    # "Pillow",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/yourusername/attachments" # Placeholder, user should update
+"Bug Tracker" = "https://github.com/yourusername/attachments/issues" # Placeholder, user should update
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "flake8",
+    "mypy",
+    "black",
+    "filelock",
+]
+
+# The exclude list here was not in a standard location for setuptools package discovery.
+# Explicitly defining [project.packages] above is the recommended way for this setup.
+
+[tool.setuptools.packages.find]
+exclude = ["mrplay*"] # Exclude the mrplay directory and its potential submodules
