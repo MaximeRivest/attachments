@@ -758,6 +758,113 @@ class TestAttachmentsIntegration(unittest.TestCase):
     # For instance, if HEIC has specific metadata we want to ensure is present.
     # For now, test_str_representation_default_is_xml covers its inclusion.
 
+class TestAttachmentsIndexing(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        # Ensure necessary sample files are available (can reuse from TestAttachmentsIntegration)
+        # This setup can be minimal if TestAttachmentsIntegration.setUpClass ensures files exist.
+        # However, to be safe, explicitly check for files needed by indexing tests.
+        cls.sample_pdf_path = SAMPLE_PDF
+        cls.sample_png_path = SAMPLE_PNG
+        cls.sample_heic_path = SAMPLE_HEIC
+
+        cls.pdf_exists = os.path.exists(cls.sample_pdf_path)
+        cls.png_exists = os.path.exists(cls.sample_png_path)
+        cls.heic_exists = os.path.exists(cls.sample_heic_path)
+
+        if not (cls.pdf_exists and cls.png_exists and cls.heic_exists):
+            print("Warning: Not all sample files (PDF, PNG, HEIC) exist. Indexing tests might be limited or skipped.")
+            # Attempt to run the main setup if files are missing, as it tries to create them.
+            # This might be a bit circular if this class is run in isolation, but helpful in a full suite.
+            try:
+                TestAttachmentsIntegration.setUpClass() 
+                # Re-check after attempting main setup
+                cls.pdf_exists = os.path.exists(cls.sample_pdf_path)
+                cls.png_exists = os.path.exists(cls.sample_png_path)
+                cls.heic_exists = os.path.exists(cls.sample_heic_path)
+            except Exception as e:
+                print(f"Error running TestAttachmentsIntegration.setUpClass for TestAttachmentsIndexing: {e}")
+
+    def test_integer_indexing(self):
+        if not (self.pdf_exists and self.png_exists):
+            self.skipTest("PDF or PNG sample file missing for integer indexing test.")
+        
+        original_paths = [self.sample_pdf_path, f"{self.sample_png_path}[resize:10x10]"]
+        atts = Attachments(*original_paths)
+        self.assertEqual(len(atts.attachments_data), 2)
+
+        # Test getting the first item (PDF)
+        indexed_att_0 = atts[0]
+        self.assertIsInstance(indexed_att_0, Attachments)
+        self.assertEqual(len(indexed_att_0.attachments_data), 1)
+        self.assertEqual(indexed_att_0.attachments_data[0]['type'], 'pdf')
+        self.assertEqual(indexed_att_0.original_paths_with_indices, [original_paths[0]])
+
+        # Test getting the second item (PNG)
+        indexed_att_1 = atts[1]
+        self.assertIsInstance(indexed_att_1, Attachments)
+        self.assertEqual(len(indexed_att_1.attachments_data), 1)
+        self.assertEqual(indexed_att_1.attachments_data[0]['type'], 'png')
+        self.assertEqual(indexed_att_1.original_paths_with_indices, [original_paths[1]])
+
+    def test_slice_indexing(self):
+        if not (self.pdf_exists and self.png_exists and self.heic_exists):
+            self.skipTest("One or more sample files (PDF, PNG, HEIC) missing for slice indexing test.")
+
+        original_paths = [
+            self.sample_pdf_path,
+            f"{self.sample_png_path}[resize:10x10]",
+            f"{self.sample_heic_path}[format:png]"
+        ]
+        atts = Attachments(*original_paths)
+        self.assertEqual(len(atts.attachments_data), 3)
+
+        # Test slice [0:2]
+        sliced_atts_0_2 = atts[0:2]
+        self.assertIsInstance(sliced_atts_0_2, Attachments)
+        self.assertEqual(len(sliced_atts_0_2.attachments_data), 2)
+        self.assertEqual(sliced_atts_0_2.attachments_data[0]['type'], 'pdf')
+        self.assertEqual(sliced_atts_0_2.attachments_data[1]['type'], 'png')
+        self.assertEqual(sliced_atts_0_2.original_paths_with_indices, original_paths[0:2])
+
+        # Test slice with a step [::2]
+        sliced_atts_step = atts[::2]
+        self.assertIsInstance(sliced_atts_step, Attachments)
+        self.assertEqual(len(sliced_atts_step.attachments_data), 2) # PDF and HEIC
+        self.assertEqual(sliced_atts_step.attachments_data[0]['type'], 'pdf')
+        self.assertEqual(sliced_atts_step.attachments_data[1]['type'], 'heic') # Original type is heic
+        self.assertEqual(sliced_atts_step.original_paths_with_indices, original_paths[::2])
+
+        # Test slice resulting in one item
+        sliced_atts_single = atts[1:2]
+        self.assertIsInstance(sliced_atts_single, Attachments)
+        self.assertEqual(len(sliced_atts_single.attachments_data), 1)
+        self.assertEqual(sliced_atts_single.attachments_data[0]['type'], 'png')
+        self.assertEqual(sliced_atts_single.original_paths_with_indices, original_paths[1:2])
+
+    def test_empty_slice_indexing(self):
+        if not self.pdf_exists:
+            self.skipTest("PDF sample file missing for empty slice test.")
+        atts = Attachments(self.sample_pdf_path)
+        empty_atts = atts[10:12] # Slice that will be out of bounds / empty
+        self.assertIsInstance(empty_atts, Attachments)
+        self.assertEqual(len(empty_atts.attachments_data), 0)
+        self.assertEqual(len(empty_atts.original_paths_with_indices), 0)
+
+    def test_out_of_bounds_integer_indexing(self):
+        if not self.pdf_exists:
+            self.skipTest("PDF sample file missing for out-of-bounds test.")
+        atts = Attachments(self.sample_pdf_path)
+        with self.assertRaises(IndexError):
+            _ = atts[1] # original_paths_with_indices has only 1 item
+
+    def test_invalid_index_type(self):
+        if not self.pdf_exists:
+            self.skipTest("PDF sample file missing for invalid index type test.")
+        atts = Attachments(self.sample_pdf_path)
+        with self.assertRaises(TypeError):
+            _ = atts["key"] # type: ignore
+
 class TestIndividualParsers(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

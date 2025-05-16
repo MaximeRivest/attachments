@@ -246,6 +246,23 @@ class Attachments:
         path_reprs = [repr(p) for p in self.original_paths_with_indices]
         return f"Attachments({', '.join(path_reprs)})"
 
+    def __getitem__(self, index):
+        """Allows indexing into the Attachments object to get a new Attachments object
+        with a subset of the original paths."""
+        if isinstance(index, int):
+            # Get the single path string for the given index
+            selected_path = self.original_paths_with_indices[index]
+            # Return a new Attachments object initialized with this single path
+            return Attachments(selected_path)
+        elif isinstance(index, slice):
+            # Get the list of path strings for the given slice
+            selected_paths_list = self.original_paths_with_indices[index]
+            # Return a new Attachments object initialized with this list of paths
+            # The Attachments constructor handles a list if it's the first arg.
+            return Attachments(selected_paths_list) 
+        else:
+            raise TypeError(f"Attachments indices must be integers or slices, not {type(index).__name__}")
+
     def _repr_markdown_(self):
         """Return a Markdown representation for IPython/Jupyter.
         Displays images and provides summaries for other file types.
