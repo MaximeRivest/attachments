@@ -3,9 +3,11 @@ import re
 from urllib.parse import urlparse # Added for URL parsing
 import requests                   # Added for downloading URLs
 import tempfile                   # Added for temporary file handling
+import io                         # For in-memory byte streams (image base64 encoding)
+import base64                     # For base64 encoding
 
 from .detectors import Detector
-from .parsers import ParserRegistry, PDFParser, PPTXParser, HTMLParser
+from .parsers import ParserRegistry, PDFParser, PPTXParser, HTMLParser, ImageParser
 from .renderers import RendererRegistry, DefaultXMLRenderer
 from .exceptions import DetectionError, ParsingError
 
@@ -33,6 +35,16 @@ class Attachments:
         self.parser_registry.register('pdf', PDFParser())
         self.parser_registry.register('pptx', PPTXParser())
         self.parser_registry.register('html', HTMLParser())
+        
+        # Register ImageParser for various image types
+        image_parser = ImageParser()
+        self.parser_registry.register('jpeg', image_parser)
+        self.parser_registry.register('png', image_parser)
+        self.parser_registry.register('gif', image_parser)
+        self.parser_registry.register('bmp', image_parser)
+        self.parser_registry.register('webp', image_parser)
+        self.parser_registry.register('tiff', image_parser)
+        
         self.renderer_registry.register('default_xml', DefaultXMLRenderer(), default=True)
 
     def _parse_path_string(self, path_str):
@@ -41,7 +53,7 @@ class Attachments:
         Returns: (file_path, indices_str or None)
         """
         # Regex to capture path and optional slice part (e.g. [...])
-        match = re.match(r'(.+?)(\\[.*\\])?$', path_str)
+        match = re.match(r'(.+?)(\[.*\])?$', path_str)
         if not match:
             # If no match (e.g. empty string or malformed), return the original string stripped
             # and None for indices. This handles empty path_str gracefully.
@@ -155,6 +167,63 @@ class Attachments:
                     except Exception as e_clean:
                         print(f"Warning: Could not clean up temporary file {temp_file_path_for_parsing}: {e_clean}")
     
+    @property
+    def images(self):
+        """Returns a list of base64 encoded image strings suitable for LLM APIs.
+        Each string is in the format: data:image/<format>;base64,<encoded_data>
+        """
+        base64_images = []
+        image_item_types = ['jpeg', 'png', 'gif', 'bmp', 'webp', 'tiff'] # Types considered images
+
+        for item_data in self.attachments_data:
+            if item_data.get('type') in image_item_types and 'image_object' in item_data:
+                img_obj = item_data['image_object']
+                output_format = item_data.get('output_format', 'jpeg').lower()
+                # Ensure format is pillow-compatible (jpg -> jpeg)
+                if output_format == 'jpg': 
+                    output_format = 'jpeg' 
+                
+                quality = item_data.get('output_quality', 90)
+                
+                # Handle Pillow format compatibility for saving (e.g. Pillow saves as JPEG not JPG)
+                pillow_save_format = output_format.upper()
+                if pillow_save_format == "JPG": pillow_save_format = "JPEG"
+
+                # Some modes are not directly saveable in all formats (e.g. P mode for JPEG)
+                # Convert to RGB/RGBA before saving if necessary, based on output format
+                save_img = img_obj
+                if pillow_save_format == 'JPEG':
+                    if save_img.mode == 'RGBA' or save_img.mode == 'LA': # JPEG doesn't support alpha
+                        save_img = save_img.convert('RGB')
+                    elif save_img.mode == 'P': # Palette mode
+                         save_img = save_img.convert('RGB') 
+                elif pillow_save_format == 'PNG':
+                    if save_img.mode not in ['RGB', 'RGBA', 'L', 'P']: # PNG supports these
+                         save_img = save_img.convert('RGBA') # Convert to RGBA to be safe for PNG
+                
+                try:
+                    buffered = io.BytesIO()
+                    save_params = {}
+                    if pillow_save_format == 'JPEG':
+                        save_params['quality'] = quality
+                        save_params['optimize'] = True # Good to have
+                    elif pillow_save_format == 'PNG':
+                        save_params['optimize'] = True
+                    # WEBP also supports quality
+                    elif pillow_save_format == 'WEBP':
+                        save_params['quality'] = quality
+
+                    save_img.save(buffered, format=pillow_save_format, **save_params)
+                    img_base64 = base64.b64encode(buffered.getvalue()).decode('utf-8')
+                    
+                    # Determine MIME type for the data URI
+                    mime_type = f"image/{output_format}"
+                    
+                    base64_images.append(f"data:{mime_type};base64,{img_base64}")
+                except Exception as e_save_b64:
+                    print(f"Warning: Could not convert image {item_data.get('file_path', 'unknown')} to base64 (format: {output_format}): {e_save_b64}")
+        return base64_images
+
     def render(self, renderer_name=None):
         """Renders the processed attachments using a specified or default renderer."""
         renderer = self.renderer_registry.get_renderer(renderer_name)

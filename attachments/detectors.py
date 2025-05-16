@@ -12,6 +12,13 @@ class Detector:
         self.register('pdf', extensions=['.pdf'])
         self.register('pptx', extensions=['.pptx'])
         self.register('html', extensions=['.html', '.htm'])
+        # Image types
+        self.register('jpeg', extensions=['.jpg', '.jpeg'])
+        self.register('png', extensions=['.png'])
+        self.register('gif', extensions=['.gif'])
+        self.register('bmp', extensions=['.bmp'])
+        self.register('webp', extensions=['.webp'])
+        self.register('tiff', extensions=['.tif', '.tiff']) # Added TIFF
 
     def register(self, name, extensions=None, regex=None, custom_method=None):
         """Registers a detection method."""
@@ -38,6 +45,19 @@ class Detector:
                 return 'pdf'
             elif main_type == 'application/vnd.openxmlformats-officedocument.presentationml.presentation':
                 return 'pptx'
+            # Image MIME types
+            elif main_type == 'image/jpeg':
+                return 'jpeg'
+            elif main_type == 'image/png':
+                return 'png'
+            elif main_type == 'image/gif':
+                return 'gif'
+            elif main_type == 'image/bmp':
+                return 'bmp'
+            elif main_type == 'image/webp':
+                return 'webp'
+            elif main_type == 'image/tiff':
+                return 'tiff' # Added TIFF
             # Add more MIME type mappings here as needed
 
         # Priority 2: Extension-based detection (existing logic)

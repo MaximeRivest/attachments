@@ -1,8 +1,9 @@
 """File parsing logic."""
 
+import os
 from abc import ABC, abstractmethod
 from .exceptions import ParsingError
-from .utils import parse_index_string # Import the new utility
+from .utils import parse_index_string, parse_image_operations # Added parse_image_operations
 
 try:
     import fitz  # PyMuPDF
@@ -217,6 +218,98 @@ class HTMLParser(BaseParser):
             raise ParsingError(f"Error parsing HTML: File not found at {file_path}")
         except Exception as e:
             raise ParsingError(f"An unexpected error occurred while parsing HTML file {file_path}: {e}")
+
+class ImageParser(BaseParser):
+    """Parses image files using Pillow."""
+    def parse(self, file_path, indices=None):
+        """Parses the image file, extracts metadata, applies transformations, 
+        and stores the Pillow Image object.
+        `indices` for images is an operation string, e.g., "resize:100x100,rotate:90"
+        """
+        try:
+            from PIL import Image, UnidentifiedImageError, ImageOps
+        except ImportError:
+            raise ParsingError("Pillow (PIL) is not installed. Please install it to parse image files. You can typically install it with: pip install Pillow")
+
+        operations = parse_image_operations(indices) # `indices` is the ops_str for images
+        
+        try:
+            img = Image.open(file_path)
+            img.load() 
+
+            # Apply operations
+            if 'rotate' in operations:
+                angle = operations['rotate']
+                # Pillow's rotate can expand the image. For 90, 180, 270, we want exact rotations.
+                # For 0, no change. For 180, it's fine.
+                # For 90 and 270, using transpose is better to avoid black borders/resizing.
+                if angle == 90:
+                    img = img.transpose(Image.Transpose.ROTATE_90)
+                elif angle == 180:
+                    img = img.rotate(180) # rotate(180) is exact
+                elif angle == 270:
+                    img = img.transpose(Image.Transpose.ROTATE_270)
+                # Not applying img.rotate(angle, expand=True) for other angles for now to keep it simple
+                # and avoid unexpected dimension changes unless explicitly handled.
+
+            if 'resize' in operations:
+                target_w, target_h = operations['resize']
+                original_w, original_h = img.width, img.height
+                
+                if target_w is None and target_h is None: # Should be caught by parser, but defensive
+                    pass # No resize
+                elif target_w is None: # auto width, fixed height
+                    aspect_ratio = original_w / original_h
+                    target_w = int(target_h * aspect_ratio)
+                elif target_h is None: # auto height, fixed width
+                    aspect_ratio = original_h / original_w
+                    target_h = int(target_w * aspect_ratio)
+                
+                # Now target_w and target_h are determined
+                if (target_w, target_h) != (original_w, original_h) and target_w > 0 and target_h > 0:
+                    img = img.resize((target_w, target_h), Image.Resampling.LANCZOS)
+            
+            # Original mode conversion logic (P, PA, L)
+            if img.mode in ('P', 'PA'):
+                if 'A' in img.mode or (img.info.get('transparency') is not None):
+                    img = img.convert('RGBA')
+                else:
+                    img = img.convert('RGB')
+            elif img.mode == 'L':
+                img = img.convert('RGB')
+
+            # Determine output format and quality (can be overridden by operations)
+            output_format = operations.get('format')
+            if not output_format: # If not specified by operation, infer a sensible default
+                if img.format and img.format.upper() in ['PNG', 'GIF', 'WEBP'] and img.mode == 'RGBA':
+                    output_format = 'png' # Preserve alpha for these types if present
+                else:
+                    output_format = 'jpeg' # Default to JPEG for others or if no alpha
+            
+            output_quality = operations.get('quality', 90) # Default quality
+
+            text_representation = f"[Image: {os.path.basename(file_path)} (original: {img.format} {img.mode}) -> processed to {img.width}x{img.height} for output as {output_format}]"
+            if indices:
+                 text_representation = f"[Image: {os.path.basename(file_path)} (original: {img.format} {img.mode}, ops: \"{indices}\") -> processed to {img.width}x{img.height} for output as {output_format}]"
+
+            return {
+                "text": text_representation,
+                "file_path": file_path,
+                "image_object": img,  # This is now the (potentially) transformed image
+                "width": img.width,   # Width of the transformed image
+                "height": img.height, # Height of the transformed image
+                "original_format": img.format, # Pillow's format of the loaded image
+                "original_mode": img.mode,     # Pillow's mode of the loaded image
+                "output_format": output_format, # Target format for base64/saving
+                "output_quality": output_quality, # Target quality for base64/saving
+                "applied_operations": operations # Store the operations that were parsed
+            }
+        except FileNotFoundError:
+            raise ParsingError(f"Error parsing image: File not found at {file_path}")
+        except UnidentifiedImageError:
+            raise ParsingError(f"Error parsing image: Cannot identify image file at {file_path}. It might be corrupted or not a supported image format by Pillow.")
+        except Exception as e:
+            raise ParsingError(f"An unexpected error occurred while parsing image file {file_path} with Pillow: {e}")
 
 # Example of how parsers might be registered (this would typically happen in the Attachments core or user code)
 # parser_registry = ParserRegistry()

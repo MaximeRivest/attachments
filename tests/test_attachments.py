@@ -4,6 +4,7 @@ from attachments import Attachments, PDFParser, PPTXParser, DefaultXMLRenderer, 
 from attachments.exceptions import ParsingError
 from attachments.utils import parse_index_string # For potential direct tests if needed
 import subprocess
+from PIL import Image
 
 # Define the path to the test data directory
 TEST_DATA_DIR = os.path.join(os.path.dirname(__file__), 'test_data')
@@ -12,6 +13,8 @@ SAMPLE_PPTX = os.path.join(TEST_DATA_DIR, 'sample.pptx') # 3 slides: "Slide 1 Ti
 GENERATED_MULTI_PAGE_PDF = os.path.join(TEST_DATA_DIR, 'multi_page.pdf')
 SAMPLE_HTML = os.path.join(TEST_DATA_DIR, 'sample.html') # Added for HTML tests
 NON_EXISTENT_FILE = os.path.join(TEST_DATA_DIR, 'not_here.txt')
+SAMPLE_PNG = os.path.join(TEST_DATA_DIR, 'sample.png') # Added for PNG tests
+SAMPLE_JPG = os.path.join(TEST_DATA_DIR, 'sample.jpg') # Added for JPG tests
 
 # Helper to create a multi-page PDF for testing PDF indexing
 def create_multi_page_pdf(path, num_pages=5):
@@ -96,6 +99,32 @@ class TestAttachmentsIntegration(unittest.TestCase):
                 print(f"Could not create fallback {SAMPLE_HTML}: {e_html_create}")
         cls.sample_html_exists = os.path.exists(SAMPLE_HTML)
 
+        # Ensure sample images exist
+        cls.sample_png_exists = os.path.exists(SAMPLE_PNG)
+        cls.sample_jpg_exists = os.path.exists(SAMPLE_JPG)
+        if not cls.sample_png_exists or not cls.sample_jpg_exists:
+            print(f"Warning: Sample images (sample.png or sample.jpg) not found. Attempting to create them.")
+            try:
+                # Attempt to run the creation script if images are missing
+                img_creation_script_path = os.path.join(TEST_DATA_DIR, "create_sample_images.py")
+                if os.path.exists(img_creation_script_path):
+                    subprocess.run(["python3", img_creation_script_path], check=True, cwd=TEST_DATA_DIR, capture_output=True)
+                    cls.sample_png_exists = os.path.exists(SAMPLE_PNG)
+                    cls.sample_jpg_exists = os.path.exists(SAMPLE_JPG)
+                    if cls.sample_png_exists and cls.sample_jpg_exists:
+                        print("Successfully created sample images using create_sample_images.py.")
+                    else:
+                        print("Failed to create sample images using script.")
+                else:
+                    print(f"create_sample_images.py not found at {img_creation_script_path}.")
+            except Exception as e_img_create:
+                print(f"Could not create sample images: {e_img_create}")
+        
+        if not cls.sample_png_exists:
+            print(f"CRITICAL WARNING: {SAMPLE_PNG} is still missing. PNG image tests will fail or be skipped.")
+        if not cls.sample_jpg_exists:
+            print(f"CRITICAL WARNING: {SAMPLE_JPG} is still missing. JPG image tests will fail or be skipped.")
+
     def test_initialize_attachments_with_pdf(self):
         if not os.path.exists(SAMPLE_PDF):
             self.skipTest(f"{SAMPLE_PDF} not found.")
@@ -140,6 +169,36 @@ class TestAttachmentsIntegration(unittest.TestCase):
         self.assertIsNone(data.get('indices_processed')) # HTMLParser doesn't add it
         self.assertIsNone(data.get('num_pages'))
         self.assertIsNone(data.get('num_slides'))
+
+    def test_initialize_attachments_with_png(self):
+        if not self.sample_png_exists:
+            self.skipTest(f"{SAMPLE_PNG} not found.")
+        atts = Attachments(SAMPLE_PNG)
+        self.assertEqual(len(atts.attachments_data), 1)
+        data = atts.attachments_data[0]
+        self.assertEqual(data['type'], 'png')
+        self.assertEqual(data['file_path'], SAMPLE_PNG)
+        self.assertIn("[Image: sample.png (original: PNG RGB) -> processed to 1x1 for output as jpeg]", data['text'])
+        self.assertEqual(data['width'], 1)
+        self.assertEqual(data['height'], 1)
+        self.assertTrue('image_object' in data)
+        from PIL import Image
+        self.assertIsInstance(data['image_object'], Image.Image)
+
+    def test_initialize_attachments_with_jpeg(self):
+        if not self.sample_jpg_exists:
+            self.skipTest(f"{SAMPLE_JPG} not found.")
+        atts = Attachments(SAMPLE_JPG)
+        self.assertEqual(len(atts.attachments_data), 1)
+        data = atts.attachments_data[0]
+        self.assertEqual(data['type'], 'jpeg')
+        self.assertEqual(data['file_path'], SAMPLE_JPG)
+        self.assertIn("[Image: sample.jpg (original: JPEG RGB) -> processed to 1x1 for output as jpeg]", data['text'])
+        self.assertEqual(data['width'], 1)
+        self.assertEqual(data['height'], 1)
+        self.assertTrue('image_object' in data)
+        from PIL import Image
+        self.assertIsInstance(data['image_object'], Image.Image)
 
     def test_render_method_default_xml(self):
         if not hasattr(self, 'sample_pptx_exists') or not self.sample_pptx_exists:
@@ -413,6 +472,100 @@ class TestAttachmentsIntegration(unittest.TestCase):
         self.assertIn("Slide 3 Title", data['text'])
         self.assertEqual(data['num_slides'], 3)
         self.assertEqual(data['indices_processed'], [1, 2, 3])
+
+    def test_image_transformations_resize(self):
+        if not self.sample_png_exists:
+            self.skipTest(f"{SAMPLE_PNG} not found for resize test.")
+        atts = Attachments(f"{SAMPLE_PNG}[resize:50x75]")
+        self.assertEqual(len(atts.attachments_data), 1)
+        data = atts.attachments_data[0]
+        self.assertEqual(data['type'], 'png')
+        self.assertTrue('image_object' in data)
+        self.assertEqual(data['image_object'].width, 50)
+        self.assertEqual(data['image_object'].height, 75)
+        self.assertEqual(data['width'], 50) # Check metadata reflects transform
+        self.assertEqual(data['height'], 75)
+        self.assertIn("resize:50x75", data['text'])
+        self.assertEqual(data['applied_operations'].get('resize'), (50,75))
+
+    def test_image_transformations_rotate(self):
+        if not self.sample_jpg_exists:
+            self.skipTest(f"{SAMPLE_JPG} not found for rotate test.")
+        # Original sample.jpg is 1x1. Rotating 90 deg should keep it 1x1.
+        atts = Attachments(f"{SAMPLE_JPG}[rotate:90]") 
+        self.assertEqual(len(atts.attachments_data), 1)
+        data = atts.attachments_data[0]
+        self.assertEqual(data['type'], 'jpeg')
+        self.assertTrue('image_object' in data)
+        self.assertEqual(data['image_object'].width, 1) # Dimensions may swap for non-square after 90/270 rotation
+        self.assertEqual(data['image_object'].height, 1)
+        self.assertEqual(data['width'], 1)
+        self.assertEqual(data['height'], 1)
+        self.assertIn("rotate:90", data['text'])
+        self.assertEqual(data['applied_operations'].get('rotate'), 90)
+
+    def test_image_transformations_resize_auto_height(self):
+        if not self.sample_png_exists: # sample.png is 1x1
+            self.skipTest(f"{SAMPLE_PNG} not found for resize test.")
+        # Create a non-square image for this test to be meaningful
+        temp_img_path = os.path.join(TEST_DATA_DIR, "temp_2x1.png")
+        try:
+            img = Image.new('RGB', (2, 1), color='green')
+            img.save(temp_img_path, 'PNG')
+            atts = Attachments(f"{temp_img_path}[resize:100xauto]")
+            self.assertEqual(len(atts.attachments_data), 1)
+            data = atts.attachments_data[0]
+            self.assertEqual(data['image_object'].width, 100)
+            self.assertEqual(data['image_object'].height, 50) # Original 2x1 -> 100x50
+            self.assertEqual(data['applied_operations'].get('resize'), (100,None))
+        finally:
+            if os.path.exists(temp_img_path):
+                os.remove(temp_img_path)
+
+    def test_attachments_images_property_empty(self):
+        atts = Attachments(SAMPLE_PDF) # Only a PDF
+        self.assertEqual(atts.images, [])
+
+    def test_attachments_images_property_single_png(self):
+        if not self.sample_png_exists:
+            self.skipTest(f"{SAMPLE_PNG} not found.")
+        atts = Attachments(SAMPLE_PNG)
+        self.assertEqual(len(atts.images), 1)
+        b64_image = atts.images[0]
+        # Default output for an RGB PNG (like our sample) is now JPEG as per ImageParser logic
+        self.assertTrue(b64_image.startswith("data:image/jpeg;base64,"))
+        # Basic check: decode and see if it resembles an image header (optional)
+        import base64
+        try:
+            header = base64.b64decode(b64_image.split(',')[1])[:3] # JPEG SOI + APPx marker
+            self.assertEqual(header, b'\xff\xd8\xff') 
+        except Exception:
+            self.fail("Base64 decoding or JPEG header check failed for PNG converted to JPEG.")
+
+    def test_attachments_images_property_jpeg_output_format(self):
+        if not self.sample_png_exists:
+            self.skipTest(f"{SAMPLE_PNG} not found.")
+        atts = Attachments(f"{SAMPLE_PNG}[format:jpeg,quality:70]")
+        self.assertEqual(len(atts.images), 1)
+        b64_image = atts.images[0]
+        self.assertTrue(b64_image.startswith("data:image/jpeg;base64,"))
+        self.assertEqual(atts.attachments_data[0]['output_format'], 'jpeg')
+        self.assertEqual(atts.attachments_data[0]['output_quality'], 70)
+        import base64
+        try:
+            header = base64.b64decode(b64_image.split(',')[1])[:3]
+            self.assertEqual(header, b'\xff\xd8\xff') # JPEG SOI & APP0/APP1 marker start
+        except Exception:
+            self.fail("Base64 decoding or JPEG header check failed.")
+
+    def test_attachments_images_property_multiple_images(self):
+        if not (self.sample_png_exists and self.sample_jpg_exists):
+            self.skipTest(f"Sample images not found for multiple image test.")
+        atts = Attachments(SAMPLE_PNG, SAMPLE_JPG)
+        self.assertEqual(len(atts.images), 2)
+        # Both sample.png (RGB) and sample.jpg (RGB) will default to JPEG output
+        self.assertTrue(all(img.startswith("data:image/jpeg;base64,") for img in atts.images))
+        # To test PNG output specifically, we'd need an RGBA PNG or use format:png operation
 
 class TestIndividualParsers(unittest.TestCase):
     @classmethod

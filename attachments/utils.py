@@ -135,6 +135,92 @@ def parse_index_string(index_str: str, total_items: int) -> list[int]:
 
     return sorted(list(processed_indices))
 
+def parse_image_operations(ops_str):
+    """Parses image operation strings like 'resize:100x100,rotate:90,format:jpeg,quality:80'.
+    Returns a dictionary of operations.
+    Example: {
+        'resize': (100, 100), 
+        'rotate': 90, 
+        'format': 'jpeg', 
+        'quality': 80,
+        'max_size': (1024,1024) # Example for a potential future op
+    }
+    """
+    operations = {}
+    if not ops_str or not isinstance(ops_str, str):
+        return operations
+
+    ops_list = ops_str.split(',')
+    for op_item in ops_list:
+        op_item = op_item.strip()
+        if not op_item:
+            continue
+        
+        parts = op_item.split(':', 1)
+        if len(parts) != 2:
+            print(f"Warning: Could not parse image operation part: '{op_item}'. Expected key:value format.")
+            continue
+        
+        key = parts[0].strip().lower()
+        value = parts[1].strip()
+
+        if key == 'resize':
+            try:
+                w_str, h_str = value.lower().split('x')
+                w = int(w_str) if w_str != 'auto' and w_str != '' and w_str != '?' else None
+                h = int(h_str) if h_str != 'auto' and h_str != '' and h_str != '?' else None
+                if w is None and h is None:
+                    print(f"Warning: Invalid resize value '{value}'. Both width and height cannot be auto/empty.")
+                    continue
+                operations[key] = (w, h)
+            except ValueError:
+                print(f"Warning: Invalid resize value '{value}'. Expected WxH format (e.g., 100x100, 100xauto, autox100).")
+        elif key == 'rotate':
+            try:
+                # Common rotations. Pillow's rotate expands image if not multiple of 90.
+                # For simplicity, let's only allow specific degrees that don't require expand=True or cropping.
+                # Or, use transpose for 90/270 if that's preferred for exact rotations.
+                # Image.rotate(angle, expand=True) is better for arbitrary angles.
+                # Let's allow 0, 90, 180, 270 for now.
+                angle = int(value)
+                if angle not in [0, 90, 180, 270]:
+                    print(f"Warning: Invalid rotation angle '{value}'. Only 0, 90, 180, 270 are currently directly supported for exact rotations without expansion.")
+                    # Or we can map to transpose operations for 90, 270 to avoid black borders / expansion issues
+                    # e.g., if angle == 90: operations[key] = Image.Transpose.ROTATE_90
+                else:
+                    operations[key] = angle
+            except ValueError:
+                print(f"Warning: Invalid rotate value '{value}'. Expected an integer angle (e.g., 90).")
+        elif key == 'format':
+            value_lower = value.lower()
+            if value_lower in ['jpeg', 'jpg', 'png', 'webp']:
+                operations[key] = 'jpeg' if value_lower == 'jpg' else value_lower
+            else:
+                print(f"Warning: Unsupported image format '{value}' for output. Supported: jpeg, png, webp.")
+        elif key == 'quality':
+            try:
+                quality_val = int(value)
+                if 1 <= quality_val <= 100:
+                    operations[key] = quality_val
+                else:
+                    print(f"Warning: Invalid quality value '{value}'. Expected integer between 1 and 100.")
+            except ValueError:
+                print(f"Warning: Invalid quality value '{value}'. Expected an integer.")
+        # Example for a new operation, can be extended
+        # elif key == 'max_size': 
+        #     try:
+        #         mw_str, mh_str = value.lower().split('x')
+        #         mw = int(mw_str) if mw_str != '?' else None
+        #         mh = int(mh_str) if mh_str != '?' else None
+        #         if mw is None and mh is None: continue
+        #         operations[key] = (mw, mh)
+        #     except ValueError:
+        #         print(f"Warning: Invalid max_size value '{value}'.")
+        else:
+            print(f"Warning: Unknown image operation key: '{key}'.")
+            
+    return operations
+
 if __name__ == '__main__':
     # Test cases with N replacement integrated
     print("--- Test Cases ---")
