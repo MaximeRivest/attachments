@@ -12,11 +12,14 @@ most user will not have to learn anything more then that: `Attachments("path/to/
 
 ```python
 from attachments import Attachments
-# Make sure you have sample files in an 'examples' directory 
-# (e.g., examples/sample.pdf, examples/sample.pptx)
-a = Attachments("examples/sample.pdf",
-                "examples/sample.pptx",
-                "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/BremenBotanikaZen.jpg/1280px-BremenBotanikaZen.jpg")
+
+# These URLs point to sample files in the GitHub repository.
+# Ensure the 'examples' directory is committed and pushed to the 'main' branch.
+PDF_URL = "https://raw.githubusercontent.com/MaximeRivest/attachments/main/examples/sample.pdf"
+PPTX_URL = "https://raw.githubusercontent.com/MaximeRivest/attachments/main/examples/sample.pptx"
+WIKIMEDIA_JPG_URL = "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/BremenBotanikaZen.jpg/1280px-BremenBotanikaZen.jpg"
+
+a = Attachments(PDF_URL, PPTX_URL, WIKIMEDIA_JPG_URL)
 print(a)# will print a string representation of the pdf, pptx and image that can be used in a prompt
 ```
 
