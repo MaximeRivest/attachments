@@ -10,7 +10,7 @@ authors = [
 ]
 description = "A Python library to handle various file types for LLMs."
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 license = "MIT"  # Using simple string for SPDX identifier
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -18,16 +18,23 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "python-magic>=0.4.27",
-    "python-pptx>=0.6.23",
-    "PyMuPDF>=1.24.9", # fitz
-    "Pillow>=10.4.0",
-    "requests>=2.32.3",
-    "html2text>=2024.2.26",
-    "pillow-heif>=0.17.0",
-    "pydub>=0.25.1",
-    "python-docx>=1.1.2", # Added for .docx support
-    "odfpy>=0.9.7",       # Corrected for .odt support
+    "Pillow",
+    "python-dotenv",
+    "pytest",
+    "beautifulsoup4",
+    "html2text",
+    "markdownify",
+    "lxml",
+    "python-magic",
+    "mammoth",
+    "PyMuPDF",
+    "python-pptx",
+    "python-docx",
+    "odfpy",
+    "pillow-heif",
+    "pydub",
+    "SpeechRecognition",
+    "markitdown[all]>=0.1.1",
 ]
 
 [project.urls]

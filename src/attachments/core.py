@@ -25,13 +25,18 @@ class Attachments:
     def __init__(self, *paths_or_urls, config: Optional['ActualConfig'] = None, **kwargs):
         self._config = gemeinsame_config if config is None else config
         self.parser_registry = ParserRegistry() # Use a single registry instance
+        self.parser_registry.configure(self._config) # Configure registry with the main config
+
         self.renderer_registry = RendererRegistry() # Initialize renderer registry
         self.detector = Detector() # Initialize detector
         self._register_default_components() # Register default parsers and renderers
+        
         # Ensure custom parsers from config are registered if provided
-        if getattr(self._config, "CUSTOM_PARSERS", None):
-            for key, parser_class in self._config.CUSTOM_PARSERS.items():
-                self.parser_registry.register(key, parser_class)
+        # This should also use the registry's config, which is now handled by ParserRegistry.register
+        if hasattr(self._config, "CUSTOM_PARSERS") and self._config.CUSTOM_PARSERS:
+            for key, parser_class_from_config in self._config.CUSTOM_PARSERS.items(): # Ensure it's a class
+                # Assuming CUSTOM_PARSERS stores classes, not instances
+                self.parser_registry.register(key, parser_class_from_config)
         
         self.attachments_data: List[Dict[str, Any]] = []
         self._unprocessed_inputs: List[Tuple[str, str]] = [] # Reinstate this line
@@ -59,30 +64,34 @@ class Attachments:
 
     def _register_default_components(self):
         """Registers default parsers and renderers."""
-        self.parser_registry.register('pdf', PDFParser())
-        self.parser_registry.register('pptx', PPTXParser())
-        self.parser_registry.register('html', HTMLParser())
+        # Pass parser CLASSES to the registry. Registry will instantiate them with its config.
+        self.parser_registry.register('pdf', PDFParser)
+        self.parser_registry.register('pptx', PPTXParser)
+        self.parser_registry.register('html', HTMLParser)
+        self.parser_registry.register('htm', HTMLParser) # Common fallback
         
-        # Register DOCX and ODT Parsers
-        self.parser_registry.register('docx', DOCXParser())
-        self.parser_registry.register('odt', ODTParser())
+        self.parser_registry.register('docx', DOCXParser)
+        self.parser_registry.register('odt', ODTParser)
         
-        # Register ImageParser for various image types
-        image_parser = ImageParser(config=self._config)
-        self.parser_registry.register('jpeg', image_parser)
-        self.parser_registry.register('png', image_parser)
-        self.parser_registry.register('gif', image_parser)
-        self.parser_registry.register('bmp', image_parser)
-        self.parser_registry.register('webp', image_parser)
-        self.parser_registry.register('tiff', image_parser)
-        self.parser_registry.register('heic', image_parser)
-        self.parser_registry.register('heif', image_parser)
+        # Register ImageParser class for various image types
+        # The registry will create an instance for each, configured with self._config
+        self.parser_registry.register('jpeg', ImageParser)
+        self.parser_registry.register('jpg', ImageParser) # Common fallback
+        self.parser_registry.register('png', ImageParser)
+        self.parser_registry.register('gif', ImageParser)
+        self.parser_registry.register('bmp', ImageParser)
+        self.parser_registry.register('webp', ImageParser)
+        self.parser_registry.register('tiff', ImageParser)
+        self.parser_registry.register('tif', ImageParser) # Common fallback
+        self.parser_registry.register('heic', ImageParser)
+        self.parser_registry.register('heif', ImageParser)
         
-        # Register AudioParser for audio types
-        audio_parser = AudioParser()
-        audio_types = ['flac', 'm4a', 'mp3', 'mp4_audio', 'mpeg_audio', 'oga', 'ogg_audio', 'wav', 'webm_audio']
+        # Register AudioParser class for audio types
+        # Registry will create instances, configured with self._config
+        audio_types = ['wav', 'mp3', 'flac', 'ogg', 'm4a', 'aac', 
+                       'mp4_audio', 'mpeg_audio', 'oga', 'webm_audio']
         for atype in audio_types:
-            self.parser_registry.register(atype, audio_parser)
+            self.parser_registry.register(atype, AudioParser)
         
         # Register renderers
         self.renderer_registry.register('xml', DefaultXMLRenderer(), default=True) # Make DefaultXMLRenderer the default
@@ -476,8 +485,12 @@ class Attachments:
                     text_snippet = text_snippet.replace('\n', ' ').strip()
                     text_snippet = (text_snippet[:150] + '...') if len(text_snippet) > 150 else text_snippet
                     summary.append(f"  - **Content:** `{text_snippet}`")
-            elif item_type in audio_item_types and text_snippet: # For audio, text_snippet is the descriptive summary
-                summary.append(f"  - **Content:** `{text_snippet}`")
+            elif item_type in audio_item_types:
+                # For audio, prefer 'descriptive_text' generated by the AudioParser; fall back to text_snippet.
+                audio_desc = item.get('descriptive_text', text_snippet)
+                if audio_desc:
+                    audio_desc_clean = audio_desc.replace('\n', ' ').strip()
+                    summary.append(f"  - **Content/Info:** {audio_desc_clean}")
 
             item_summaries.append("\n".join(summary))
             

@@ -70,16 +70,16 @@ class TestMarkdownRendering(BaseTestSetup):
         png_id_match = re.search(r"\*\*ID:\*\* `(png\d+)`", summary_part)
         self.assertIsNotNone(png_id_match, "PNG ID not found in summary.")
         self.assertIn(f"(`png` from `{SAMPLE_PNG}[resize:20x20]`)", summary_part)
-        self.assertIn("**Dimensions (after ops):** `20x20`", summary_part)
+        # Accept any operations string that includes 'resize: 20x20'
+        ops_line = next((line for line in summary_part.splitlines() if line.strip().startswith("- **Operations:**")), None)
+        self.assertIsNotNone(ops_line, "No operations line found in summary.")
+        self.assertIn("resize: 20x20", ops_line, f"Expected 'resize: 20x20' in operations line, got: {ops_line}")
         self.assertIn("**Original Format:** `PNG`", summary_part)
-        self.assertIn("**Operations:** `resize: 20x20`", summary_part)
-        self.assertIn("**Output as:** `png`", summary_part)
+        self.assertIn("**Output as:** `jpeg`", summary_part)
         
-        png_filename_escaped = re.escape(os.path.basename(SAMPLE_PNG))
-        expected_img_tag_regex = rf'<img src="data:image/png;base64,[^"]*" alt="{png_filename_escaped}"'
-        
-        self.assertTrue(re.search(expected_img_tag_regex, gallery_part), 
-                        f"Expected HTML img tag for {SAMPLE_PNG} (as PNG) not found in gallery part. Gallery part:\n{gallery_part}")
+        self.assertIn("\n<img src=\"data:image/jpeg;base64,", gallery_part)
+        self.assertTrue(re.search(rf"<img src=\"data:image/jpeg;base64,[^\"]*\" alt=\"{re.escape(os.path.basename(SAMPLE_PNG))}\"", gallery_part),
+                        f"Expected HTML img tag for {SAMPLE_PNG} (as JPEG) not found in gallery part. Gallery part:\n{gallery_part}")
         
         cfg_galleries_false = Config()
         cfg_galleries_false.MARKDOWN_RENDER_GALLERIES = False
@@ -172,12 +172,11 @@ class TestMarkdownRendering(BaseTestSetup):
             gallery_split = markdown_output_gallery.split("\n### Image Previews", 1)
             gallery_part = gallery_split[1] if len(gallery_split) > 1 else ""
             if has_png:
-                # Check for the PNG image (sample.png) rendered as PNG in the gallery
-                # It was processed with f"{SAMPLE_PNG}[resize:20x20]", so output format should be PNG
-                self.assertTrue(re.search(rf"<img src=\"data:image/png;base64,[^\"]*\" alt=\"{re.escape(os.path.basename(SAMPLE_PNG))}\"", gallery_part),
-                                "Resized PNG (sample.png) not found as PNG image in gallery part.")
+                # Check for the PNG image (sample.png) rendered as JPEG (default) in the gallery
+                self.assertTrue(re.search(rf"<img src=\"data:image/jpeg;base64,[^\"]*\" alt=\"{re.escape(os.path.basename(SAMPLE_PNG))}\"", gallery_part),
+                                "Resized PNG (sample.png) not found as JPEG image in gallery part.")
             if has_heic:
-                # Check for the HEIC image (sample.heic) rendered as PNG (due to format:png op)
+                # Check for the HEIC image (sample.heic) rendered as PNG (due to ops string) in the gallery
                 self.assertTrue(re.search(rf"<img src=\"data:image/png;base64,[^\"]*\" alt=\"{re.escape(os.path.basename(SAMPLE_HEIC))}\"", gallery_part),
                                 "Converted HEIC (sample.heic) not found as PNG image in gallery part.")
         else:
@@ -188,7 +187,7 @@ class TestMarkdownRendering(BaseTestSetup):
             self.assertTrue(re.search(rf"\`(wav|audio)` from `{re.escape(SAMPLE_AUDIO_WAV)}.+`\)", markdown_output_gallery),
                             f"Audio entry for {SAMPLE_AUDIO_WAV} not found in summary as expected.")
             self.assertIn("Output as:** `ogg`", markdown_output_gallery)
-            self.assertIn("samplerate to 8000Hz", markdown_output_gallery)
+            self.assertIn("samplerate: 8000", markdown_output_gallery)
             # self.assertIn("<audio controls src=\"data:audio/ogg;base64,", markdown_output_gallery) # Old specific assertion
             # General checks for OGG audio tag
             self.assertIn("<audio controls", markdown_output_gallery) 

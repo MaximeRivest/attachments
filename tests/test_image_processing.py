@@ -95,13 +95,28 @@ class TestImageProcessing(unittest.TestCase):
         atts = Attachments(f"{SAMPLE_PNG}[format:jpeg,quality:75]")
         self.assertEqual(len(atts.attachments_data), 1)
         data = atts.attachments_data[0]
-        self.assertEqual(data['type'], 'png')
+        self.assertEqual(data['type'], 'png') # Original type
         self.assertEqual(data['output_format'], 'jpeg')
         self.assertEqual(data['output_quality'], 75)
-        self.assertIn("format:jpeg", data['text'])
-        self.assertIn("quality:75", data['text'])
-        self.assertEqual(data['operations_applied'].get('format'), 'jpeg')
-        self.assertEqual(data['operations_applied'].get('quality'), 75)
+        # self.assertIn("format:jpeg", data['text']) # Text is now empty for images
+        self.assertIn("format", data['operations_applied'])
+        self.assertEqual(data['operations_applied']['format'], 'jpeg')
+        self.assertIn("quality", data['operations_applied'])
+        self.assertEqual(data['operations_applied']['quality'], 75)
+
+    def test_image_transformation_invalid_ops(self):
+        if not self.sample_png_exists:
+            self.skipTest(f"{SAMPLE_PNG} not found for invalid ops test.")
+        atts = Attachments(f"{SAMPLE_PNG}[invalid_ops]")
+        self.assertEqual(len(atts.attachments_data), 1)
+        data = atts.attachments_data[0]
+        self.assertEqual(data['type'], 'png')
+        self.assertEqual(data['output_format'], 'png') # Key: output is still PNG
+        self.assertEqual(data['output_quality'], 75)   # Default quality is applied
+        # self.assertIn("format", data['operations_applied'])
+        # self.assertEqual(data['operations_applied']['format'], 'jpeg') # This was incorrect
+        self.assertNotIn('format', data['operations_applied']) # Format op should not be in applied_ops if it was invalid and fell back to original
+        self.assertEqual(data['operations_applied'].get('quality'), 75) # Quality op (default) should be there
 
     # --- Tests for Attachments.images property ---
     def test_attachments_images_property_empty_when_no_images(self):

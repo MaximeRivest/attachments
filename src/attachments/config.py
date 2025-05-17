@@ -1,6 +1,7 @@
 # src/attachments/config.py
 
 from typing import Optional, Dict, Any
+from markitdown import MarkItDown
 
 class Config:
     def __init__(self):
@@ -19,11 +20,15 @@ class Config:
 
         # Default image processing parameters
         self.DEFAULT_IMAGE_OUTPUT_FORMAT: str = 'jpeg' # Default format for image operations if not specified
-        self.DEFAULT_IMAGE_QUALITY: int = 85          # For lossy formats like JPEG/WEBP (1-100)
+        self.DEFAULT_IMAGE_QUALITY: int = 75          # For lossy formats like JPEG/WEBP (1-100)
         
         # Verbosity and Error Handling
         self.RAISE_EXCEPTIONS_ON_PARSE_FAILURE: bool = False # If True, parsing errors will raise exceptions instead of being collected.
                                                               # This is more for direct use of parsers than the Attachments class.
+        
+        # Markitdown instance
+        self.MARKITDOWN_INSTANCE: Optional[MarkItDown] = None # For user-provided MarkItDown instance
+
         # Add other configuration options as needed 
 
         # Placeholder for custom parsers if needed

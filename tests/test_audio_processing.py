@@ -7,6 +7,7 @@ from pydub import AudioSegment # For inspecting processed audio
 from unittest.mock import patch, MagicMock
 
 from attachments import Attachments, AudioParser, ParsingError
+from attachments.config import Config # Import Config
 from attachments.audio_processing import convert_audio_to_common_format, get_audio_segment, analyze_audio, MP3_BITRATE
 from tests.conftest import (
     TEST_DATA_DIR, AUDIO_DIR,
@@ -189,11 +190,11 @@ class TestAudioProcessing(BaseTestSetup):
         self.assertEqual(parsed_content['output_channels'], 1)
         self.assertTrue(parsed_content['processed_filename_for_api'].endswith('.ogg'))
         
-        # Check for descriptive parts in the new text_summary format
-        self.assertIn("format to ogg", parsed_content['text'])
-        self.assertIn("samplerate to 8000Hz", parsed_content['text'])
-        self.assertIn("channels to 1", parsed_content['text'])
-        self.assertIn("Output as: ogg, 8000Hz, 1ch", parsed_content['text']) # Also check the final output summary part
+        # Check for descriptive parts in the descriptive_text field
+        self.assertIn("Ops: format: ogg", parsed_content['descriptive_text'])
+        self.assertIn("samplerate: 8000", parsed_content['descriptive_text'])
+        self.assertIn("channels: 1", parsed_content['descriptive_text'])
+        # self.assertIn("Output as: ogg, 8000Hz, 1ch", parsed_content['text']) # This format is no longer used
 
         self.assertIn('audio_segment', parsed_content)
         audio_segment = parsed_content['audio_segment']
@@ -224,14 +225,11 @@ class TestAudioProcessing(BaseTestSetup):
 
     def test_audio_parser_unsupported_file_type(self):
         # Assuming SAMPLE_PDF exists and is not an audio file
-        if not self.sample_pdf_exists: # This flag comes from conftest
-            self.skipTest(f"Sample PDF {SAMPLE_PDF} not found, skipping unsupported audio type test.")
+        if not self.sample_pdf_exists:
+            self.skipTest(f"{SAMPLE_PDF} not found for unsupported audio type test.")
         parser = AudioParser()
-        with self.assertRaises(ParsingError) as context:
-            parser.parse(SAMPLE_PDF)
-        # Check for key phrases from the actual error message
-        self.assertIn("could not decode audio file", str(context.exception).lower())
-        self.assertIn("corrupted or an unsupported format", str(context.exception).lower())
+        with self.assertRaisesRegex(ParsingError, r"Could not decode audio.*Corrupt or unsupported\? Pydub"):
+            parser.parse(SAMPLE_PDF) # Pass a non-audio file
 
     @patch('attachments.audio_processing.AudioSegment.from_file')
     def test_audio_parser_processing_error_reraised_as_parsing_error(self, mock_from_file):
@@ -297,36 +295,46 @@ class TestAudioProcessing(BaseTestSetup):
     def test_repr_markdown_audio_preview(self):
         self.skipTestIfNoFFmpeg() # Skip if ffmpeg is not available
         if not self.sample_audio_wav_exists:
-            self.skipTest(f"Sample audio WAV {SAMPLE_AUDIO_WAV} not found.")
+            self.skipTest(f"{SAMPLE_AUDIO_WAV} not found.")
         
         # Test with default processing (to WAV)
-        atts_default = Attachments(SAMPLE_AUDIO_WAV, verbose=True) # Default processing to wav, 16kHz, 1ch
+        cfg = Config() # Default config: galleries=True
+        atts_default = Attachments(SAMPLE_AUDIO_WAV, config=cfg, verbose=True) # Default processing to wav, 16kHz, 1ch
         md_default = atts_default._repr_markdown_()
-        # print(f"MD Default WAV: {md_default}") # For debugging
-        self.assertIn(f"Audio: {os.path.basename(SAMPLE_AUDIO_WAV)}", md_default) 
-        self.assertIn("Original Format:** `WAV`", md_default)
-        # self.assertIn("[audio_segment available for API use]", md_default) # This marker was removed
-        # self.assertNotIn("<audio controls src=\"data:audio/wav;base64,", md_default) # OLD: No preview for WAV by default
-        # NEW: WAV should now have a preview if verbose=True
-        self.assertIn("### Audio Previews", md_default)
+        
+        self.assertIn("### Attachments Summary", md_default)
+        # Check for descriptive text (which includes "Audio: sample_audio.wav")
+        self.assertIn(f"**Content/Info:** Audio: {os.path.basename(SAMPLE_AUDIO_WAV)}.", md_default)
+        self.assertIn("Original Format:** `WAV`", md_default) # Original format is WAV
+        self.assertIn("Output as:** `wav`", md_default) # Default output format is wav if no ops
+        self.assertIn("samplerate: 16000", md_default) # Default samplerate applied
+        self.assertIn("channels: 1", md_default) # Default channels applied
+
+        self.assertIn("### Audio Previews", md_default) # WAV should have a preview
         self.assertIn("<audio controls", md_default)
         self.assertIn("data:audio/wav", md_default) # Check for correct MIME type indication for WAV
 
         # Test with conversion to MP3 (which should have a preview)
-        atts_mp3 = Attachments(f"{SAMPLE_AUDIO_WAV}[format:mp3]", verbose=True)
+        atts_mp3 = Attachments(f"{SAMPLE_AUDIO_WAV}[format:mp3]", config=cfg, verbose=True)
         md_mp3 = atts_mp3._repr_markdown_()
-        # print(f"MD MP3: {md_mp3}") # For debugging
+        self.assertIn("### Attachments Summary", md_mp3)
+        self.assertIn(f"**Content/Info:** Audio: {os.path.basename(SAMPLE_AUDIO_WAV)}.", md_mp3)
+        self.assertIn("Ops: format: mp3", md_mp3)
+        self.assertIn("Output as:** `mp3`", md_mp3)
+        
         self.assertIn("### Audio Previews", md_mp3)
-        # General check for an MP3 audio tag
         self.assertIn("<audio controls", md_mp3) 
         self.assertIn("data:audio/mpeg", md_mp3) # Check for correct MIME type indication
 
         # Test with conversion to OGG (which should have a preview)
-        atts_ogg = Attachments(f"{SAMPLE_AUDIO_WAV}[format:ogg]", verbose=True)
+        atts_ogg = Attachments(f"{SAMPLE_AUDIO_WAV}[format:ogg]", config=cfg, verbose=True)
         md_ogg = atts_ogg._repr_markdown_()
-        # print(f"MD OGG: {md_ogg}") # For debugging
+        self.assertIn("### Attachments Summary", md_ogg)
+        self.assertIn(f"**Content/Info:** Audio: {os.path.basename(SAMPLE_AUDIO_WAV)}.", md_ogg)
+        self.assertIn("Ops: format: ogg", md_ogg)
+        self.assertIn("Output as:** `ogg`", md_ogg)
+
         self.assertIn("### Audio Previews", md_ogg)
-        # General check for an OGG audio tag
         self.assertIn("<audio controls", md_ogg)
         self.assertIn("data:audio/ogg", md_ogg) # Check for correct MIME type indication
 

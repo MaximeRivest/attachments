@@ -22,7 +22,7 @@ class TestHtmlParsing(unittest.TestCase):
         self.assertIn("# Main Heading", data['text']) 
         self.assertIn("This is a paragraph", data['text'])
         self.assertIn("**strong emphasis**", data['text']) 
-        self.assertIn("_italic text_", data['text'])     
+        self.assertIn("*italic text*", data['text'])
         self.assertIn("[Example Link](http://example.com)", data['text'])
         self.assertIn("* First item", data['text']) 
         # Check that script/style tags are removed
@@ -47,24 +47,44 @@ class TestHtmlParsing(unittest.TestCase):
         # Check that raw HTML tags are removed/converted
         self.assertNotIn("<p>", data['text'])
         self.assertNotIn("<h1>", data['text'])
-        self.assertNotIn("<em>", data['text'])
+        self.assertIn("*italic text*", data['text'])
         self.assertNotIn("<strong>", data['text'])
         # Check that script/style tags are removed
         self.assertNotIn("<script>", data['text'])
         self.assertNotIn("console.log('test')", data['text'])
         self.assertNotIn("<style>", data['text'])
         self.assertEqual(data['file_path'], SAMPLE_HTML)
-        self.assertEqual(data['type'], 'html') # HTMLParser should set its type
+        # self.assertEqual(data['type'], 'html') # HTMLParser does not set 'type' in its direct output
 
-    # Consider adding a test for HTML parser with a non-existent file if desired
-    # def test_html_parser_file_not_found(self):
-    #     parser = HTMLParser()
-    #     with self.assertRaisesRegex(ParsingError, r"(File not found|no such file|cannot open)"):
-    #         parser.parse(NON_EXISTENT_FILE) # NON_EXISTENT_FILE from base
+    def test_html_parser_file_not_found(self):
+        parser = HTMLParser()
+        with self.assertRaisesRegex(ParsingError, r"(Error processing HTML|Failed to parse HTML).*(No such file or directory|FileNotFoundError)"):
+            parser.parse(NON_EXISTENT_FILE)
 
     def test_attachments_init_with_html(self):
         if not self.sample_html_exists:
             self.skipTest(f"{SAMPLE_HTML} not found.")
+
+    def test_html_parsing_from_url_direct(self):
+        if not self.sample_html_exists:
+            self.skipTest(f"{SAMPLE_HTML} not found for direct HTML parser test.")
+        parser = HTMLParser()
+        data = parser.parse(SAMPLE_HTML)
+        # Check for specific markdown conversions by the parser directly
+        self.assertIn("# Main Heading", data['text'])
+        self.assertIn("**strong emphasis**", data['text'])
+        self.assertIn("[Example Link](http://example.com)", data['text'])
+        # Check that raw HTML tags are removed/converted
+        self.assertNotIn("<p>", data['text'])
+        self.assertNotIn("<h1>", data['text'])
+        self.assertIn("*italic text*", data['text'])
+        self.assertNotIn("<strong>", data['text'])
+        # Check that script/style tags are removed
+        self.assertNotIn("<script>", data['text'])
+        self.assertNotIn("console.log('test')", data['text'])
+        self.assertNotIn("<style>", data['text'])
+        self.assertEqual(data['file_path'], SAMPLE_HTML)
+        # self.assertEqual(data['type'], 'html') # HTMLParser does not set 'type' in its direct output
 
 if __name__ == '__main__':
     unittest.main() 

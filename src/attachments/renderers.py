@@ -1,6 +1,8 @@
 """Content rendering logic."""
 
 from abc import ABC, abstractmethod
+from typing import List, Dict, Any
+import xml.etree.ElementTree as ET
 
 class BaseRenderer(ABC):
     """Abstract base class for content renderers."""
@@ -49,59 +51,44 @@ class RendererRegistry:
 
 class DefaultXMLRenderer(BaseRenderer):
     """Renders parsed content into a default XML-like string format."""
-    def render(self, parsed_items):
-        """Renders a list of parsed items into an XML-like string.
+    def render(self, attachments_data: List[Dict[str, Any]]) -> str:
+        root = ET.Element("attachments")
+        for item_data in attachments_data:
+            item_id = item_data.get("id", "unknown")
+            item_type = item_data.get("type", "unknown")
+            original_path = item_data.get("original_path_str", item_data.get("file_path", "N/A"))
 
-        Args:
-            parsed_items: A list of dictionaries, where each dictionary
-                          represents a parsed file and contains at least
-                          'type', 'id', and 'text'.
-        Returns:
-            A string in an XML-like format.
-        """
-        if not parsed_items:
-            return ""
+            attachment_element = ET.SubElement(root, "attachment")
+            attachment_element.set("id", item_id)
+            attachment_element.set("type", item_type)
+            attachment_element.set("original_path", original_path)
 
-        output_parts = ["<attachments>"]
-        for item in parsed_items:
-            # Ensure basic keys are present
-            item_type = item.get('type', 'unknown')
-            item_id = item.get('id', 'item') # This ID needs to be generated in Attachments class
-            text_content = item.get('text', '')
-            # Sanitize text content for XML/HTML-like structures
-            # A more robust sanitization might be needed for production
-            text_content = text_content.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-
-            output_parts.append(f"  <attachment id=\"{item_id}\" type=\"{item_type}\">")
-            # Add other metadata if available
-            if 'page_count' in item:
-                output_parts.append(f"    <meta name=\"page_count\" value=\"{item['page_count']}\" />")
-            if 'num_slides' in item:
-                output_parts.append(f"    <meta name=\"num_slides\" value=\"{item['num_slides']}\" />")
+            content_text = item_data.get("text", "")
             
-            # Add image-specific metadata if available
-            # For image dimensions, use 'dimensions_after_ops' if available, else 'original_dimensions'
-            dims_to_render = item.get('dimensions_after_ops') or item.get('original_dimensions')
-            if item.get('type') in ['jpeg', 'png', 'gif', 'bmp', 'webp', 'tiff', 'heic', 'heif'] and dims_to_render:
-                output_parts.append(f"    <meta name=\"dimensions\" value=\"{dims_to_render[0]}x{dims_to_render[1]}\" />")
-            if 'original_format' in item:
-                output_parts.append(f"    <meta name=\"original_format\" value=\"{item['original_format']}\" />")
-                if 'original_mode' in item:
-                    output_parts.append(f"    <meta name=\"original_mode\" value=\"{item['original_mode']}\" />")
-                if 'output_format' in item:
-                    output_parts.append(f"    <meta name=\"output_format_target\" value=\"{item['output_format']}\" />") # Renamed to avoid clash if 'format' is a general key
-                if 'output_quality' in item:
-                    output_parts.append(f"    <meta name=\"output_quality_target\" value=\"{item['output_quality']}\" />")
-                if "applied_operations" in item and isinstance(item["applied_operations"], dict):
-                    ops_str = str(item["applied_operations"])
-                    # Escape XML special characters in the operations string
-                    escaped_ops_str = ops_str.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;")
-                    output_parts.append(f"    <meta name=\"applied_operations\" value=\"{escaped_ops_str}\" />")
+            content_element = ET.SubElement(attachment_element, "content")
+            # Using a direct assignment for CDATA. 
+            # ET doesn't have a specific CDATA type, but this is a common way to handle it.
+            # Actual CDATA wrapping might need to happen during serialization if the library doesn't do it.
+            if content_text: # Only add text if it's not empty
+                content_element.text = content_text # Store as regular text; XML serializer should handle escaping.
+                                                # For literal CDATA, one might need a custom serializer or to build the string manually.
+            else:
+                # If there's no text content, we can leave the content tag empty
+                # or add a comment, or omit it. For now, an empty tag is fine.
+                pass
 
-            output_parts.append(f"    <content>\n{text_content}\n    </content>")
-            output_parts.append("  </attachment>")
-        output_parts.append("</attachments>")
-        return "\n".join(output_parts)
+        # Serialize to string with pretty print
+        # ET.indent(root) # Available in Python 3.9+
+        xml_str = ET.tostring(root, encoding="utf-8").decode("utf-8")
+        
+        # Basic pretty printing for older Python versions or if ET.indent is not sufficient
+        try:
+            import xml.dom.minidom
+            dom = xml.dom.minidom.parseString(xml_str)
+            return dom.toprettyxml(indent="  ")
+        except ImportError:
+            # Fallback if minidom is not available (though it's standard)
+            return xml_str
 
 class PlainTextRenderer(BaseRenderer):
     """Renders parsed content into a simple plain text string, 

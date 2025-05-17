@@ -13,13 +13,8 @@ most user will not have to learn anything more then that: `Attachments("path/to/
 ```python
 from attachments import Attachments
 
-# This example assumes you have 'sample.pdf' and 'sample.pptx'
-# in an 'examples' directory relative to where you run this script.
-# You can create this directory and place sample files from the project's
-# tests/test_data if you have cloned the repository.
-
-a = Attachments("examples/sample.pdf",
-                "examples/sample.pptx",
+a = Attachments("https://github.com/microsoft/markitdown/raw/refs/heads/main/packages/markitdown/tests/test_files/test.pdf",
+                "https://github.com/microsoft/markitdown/raw/refs/heads/main/packages/markitdown/tests/test_files/test.pptx",
                 "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/BremenBotanikaZen.jpg/1280px-BremenBotanikaZen.jpg")
 print(a)# will print a string representation of the pdf, pptx and image that can be used in a prompt
 ```
