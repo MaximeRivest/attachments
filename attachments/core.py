@@ -103,11 +103,13 @@ class Attachments:
                     if self.verbose:
                         print(f"Attempting to download content from URL: {file_path}")
                     
-                    # Define a User-Agent header
+                    # Define headers to mimic a browser more closely
                     headers = {
-                        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+                        'Accept-Encoding': 'gzip, deflate', # Let requests handle br if available and needed
                     }
-                    response = requests.get(file_path, stream=True, timeout=10, headers=headers) # Add headers
+                    response = requests.get(file_path, stream=True, timeout=10, headers=headers)
                     response.raise_for_status()
 
                     # Get Content-Type header
