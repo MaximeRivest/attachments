@@ -3,7 +3,7 @@ Attachments library __init__ file.
 """
 
 from .core import Attachments
-from .parsers import BaseParser, ParserRegistry, PDFParser, PPTXParser, HTMLParser, AudioParser
+from .parsers import BaseParser, ParserRegistry, PDFParser, PPTXParser, HTMLParser, AudioParser, DOCXParser, ODTParser
 from .renderers import BaseRenderer, RendererRegistry, DefaultXMLRenderer
 from .detectors import Detector
 from .exceptions import AttachmentError, DetectionError, ParsingError, RenderingError, ConfigurationError
@@ -18,6 +18,8 @@ __all__ = [
     "PPTXParser",
     "HTMLParser",
     "AudioParser",
+    "DOCXParser",
+    "ODTParser",
     "BaseRenderer",
     "RendererRegistry",
     "DefaultXMLRenderer",

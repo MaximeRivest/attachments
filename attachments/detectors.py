@@ -33,6 +33,10 @@ class Detector:
         self.register('wav', extensions=['.wav', '.wave'])
         self.register('webm_audio', extensions=['.webm']) # .webm can be video (VP8/VP9) or audio (Opus/Vorbis)
 
+        # Word processing documents
+        self.register('docx', extensions=['.docx'])
+        self.register('odt', extensions=['.odt'])
+
     def register(self, name, extensions=None, regex=None, custom_method=None):
         """Registers a detection method."""
         # Placeholder for registration logic
@@ -58,6 +62,11 @@ class Detector:
                 return 'pdf'
             elif main_type == 'application/vnd.openxmlformats-officedocument.presentationml.presentation':
                 return 'pptx'
+            # Word processing MIME types
+            elif main_type == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+                return 'docx'
+            elif main_type == 'application/vnd.oasis.opendocument.text':
+                return 'odt'
             # Image MIME types
             elif main_type == 'image/jpeg':
                 return 'jpeg'

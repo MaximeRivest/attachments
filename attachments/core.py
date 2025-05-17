@@ -9,7 +9,7 @@ from PIL import Image
 import mimetypes # For guessing MIME types
 
 from .detectors import Detector
-from .parsers import ParserRegistry, PDFParser, PPTXParser, HTMLParser, ImageParser, AudioParser
+from .parsers import ParserRegistry, PDFParser, PPTXParser, HTMLParser, ImageParser, AudioParser, DOCXParser, ODTParser
 from .renderers import RendererRegistry, DefaultXMLRenderer, PlainTextRenderer
 from .exceptions import DetectionError, ParsingError
 
@@ -38,6 +38,10 @@ class Attachments:
         self.parser_registry.register('pdf', PDFParser())
         self.parser_registry.register('pptx', PPTXParser())
         self.parser_registry.register('html', HTMLParser())
+        
+        # Register DOCX and ODT Parsers
+        self.parser_registry.register('docx', DOCXParser())
+        self.parser_registry.register('odt', ODTParser())
         
         # Register ImageParser for various image types
         image_parser = ImageParser()

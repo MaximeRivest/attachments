@@ -1,6 +1,6 @@
 import unittest
 import os
-from attachments import Attachments, PDFParser, PPTXParser, DefaultXMLRenderer, HTMLParser, AudioParser
+from attachments import Attachments, PDFParser, PPTXParser, DefaultXMLRenderer, HTMLParser, AudioParser, DOCXParser, ODTParser
 from attachments.exceptions import ParsingError
 from attachments.utils import parse_index_string # For potential direct tests if needed
 import subprocess
@@ -32,6 +32,8 @@ SAMPLE_M4A = os.path.join(TEST_DATA_DIR, 'audio', 'sample.m4a')
 SAMPLE_MP4_AUDIO = os.path.join(TEST_DATA_DIR, 'audio', 'sample_audio.mp4')
 SAMPLE_WEBM_AUDIO = os.path.join(TEST_DATA_DIR, 'audio', 'sample_audio.webm')
 USER_PROVIDED_WAV = os.path.join(TEST_DATA_DIR, 'sample_audio.wav') # User's provided WAV file (should be a valid WAV)
+SAMPLE_DOCX = os.path.join(TEST_DATA_DIR, 'sample.docx') # Added for DOCX tests
+SAMPLE_ODT = os.path.join(TEST_DATA_DIR, 'sample.odt')   # Added for ODT tests
 
 # Helper to create a multi-page PDF for testing PDF indexing
 def create_multi_page_pdf(path, num_pages=5):
@@ -206,6 +208,14 @@ class TestAttachmentsIntegration(unittest.TestCase):
         cls.user_provided_wav_exists = os.path.exists(USER_PROVIDED_WAV)
         if not cls.user_provided_wav_exists:
             print(f"CRITICAL WARNING: User provided WAV {USER_PROVIDED_WAV} is missing. Audio conversion tests will fail/skip.")
+
+        cls.sample_docx_exists = os.path.exists(SAMPLE_DOCX)
+        if not cls.sample_docx_exists:
+            print(f"CRITICAL WARNING: {SAMPLE_DOCX} is missing. DOCX tests will fail/skip.")
+        
+        cls.sample_odt_exists = os.path.exists(SAMPLE_ODT)
+        if not cls.sample_odt_exists:
+            print(f"CRITICAL WARNING: {SAMPLE_ODT} is missing. ODT tests will fail/skip.")
 
     def test_initialize_attachments_with_pdf(self):
         if not os.path.exists(SAMPLE_PDF):
@@ -1199,6 +1209,45 @@ class TestAttachmentsIntegration(unittest.TestCase):
 
         print("Markdown representation for single audio preview (WAV to MP3) check: OK")
 
+    def test_repr_markdown_word_documents(self):
+        docx_path_for_md = None
+        odt_path_for_md = None
+        paths_for_markdown = []
+
+        if self.sample_docx_exists:
+            docx_path_for_md = SAMPLE_DOCX
+            paths_for_markdown.append(docx_path_for_md)
+        if self.sample_odt_exists:
+            odt_path_for_md = SAMPLE_ODT
+            paths_for_markdown.append(odt_path_for_md)
+        
+        if not paths_for_markdown:
+            self.skipTest("Neither sample.docx nor sample.odt found for Markdown test.")
+
+        atts = Attachments(*paths_for_markdown, verbose=True)
+        markdown_output = atts._repr_markdown_()
+
+        self.assertIn("### Attachments Summary", markdown_output)
+
+        if docx_path_for_md:
+            docx_id_match = re.search(r"\*\*ID:\*\* `(docx\d+)` \(`docx` from", markdown_output)
+            self.assertIsNotNone(docx_id_match, "DOCX ID line not found in summary")
+            self.assertIn(f"(`docx` from `{SAMPLE_DOCX}`)", markdown_output)
+            self.assertIn("Header is here", markdown_output) # Check for snippet from actual file
+            self.assertIn("Hello this is a test document", markdown_output) # Check for snippet from actual file
+            self.assertIn(f"Source:** `{SAMPLE_DOCX}`", markdown_output)
+
+        if odt_path_for_md:
+            odt_id_match = re.search(r"\*\*ID:\*\* `(odt\d+)` \(`odt` from", markdown_output)
+            self.assertIsNotNone(odt_id_match, "ODT ID line not found in summary")
+            self.assertIn(f"(`odt` from `{SAMPLE_ODT}`)", markdown_output)
+            # self.assertIn("Hello ODT!", markdown_output) # Old assertion
+            self.assertIn("Header is here", markdown_output) # Check for snippet from actual ODT file
+            self.assertIn("Hello this is a test document", markdown_output) # Check for snippet from actual ODT file
+            self.assertIn(f"Source:** `{SAMPLE_ODT}`", markdown_output)
+        
+        print("Markdown representation for DOCX/ODT check: OK")
+
 class TestAttachmentsIndexing(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -1295,6 +1344,30 @@ class TestAttachmentsIndexing(unittest.TestCase):
         atts = Attachments(self.sample_pdf_path)
         with self.assertRaises(TypeError):
             _ = atts["key"] # type: ignore
+
+    def test_docx_parser_direct(self):
+        if not TestAttachmentsIntegration.sample_docx_exists: # Use class variable from TestAttachmentsIntegration
+            self.skipTest(f"{SAMPLE_DOCX} not found for direct DOCX parser test.")
+        parser = DOCXParser()
+        data = parser.parse(SAMPLE_DOCX)
+        self.assertIn("Header is here", data['text'])
+        self.assertIn("Hello this is a test document", data['text'])
+        # self.assertIn("Hello DOCX!", data['text']) # Old assertion
+        # self.assertIn("sample DOCX file", data['text']) # Old assertion
+        self.assertEqual(data['file_path'], SAMPLE_DOCX)
+        print("DOCXParser direct check: OK")
+
+    def test_odt_parser_direct(self):
+        if not TestAttachmentsIntegration.sample_odt_exists: # Use class variable from TestAttachmentsIntegration
+            self.skipTest(f"{SAMPLE_ODT} not found for direct ODT parser test.")
+        parser = ODTParser()
+        data = parser.parse(SAMPLE_ODT)
+        # self.assertIn("Hello ODT!", data['text']) # Old assertion
+        # self.assertIn("sample ODT file", data['text']) # Old assertion
+        self.assertIn("Header is here", data['text'])
+        self.assertIn("Hello this is a test document", data['text'])
+        self.assertEqual(data['file_path'], SAMPLE_ODT)
+        print("ODTParser direct check: OK")
 
 class TestIndividualParsers(unittest.TestCase):
     @classmethod

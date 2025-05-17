@@ -235,6 +235,94 @@ class HTMLParser(BaseParser):
         except Exception as e:
             raise ParsingError(f"An unexpected error occurred while parsing HTML file {file_path}: {e}")
 
+class DOCXParser(BaseParser):
+    """Parses Word (DOCX) files using python-docx."""
+    def parse(self, file_path, indices=None):
+        """Parses the DOCX file and extracts text content.
+        `indices` is currently ignored for DOCX files.
+        """
+        try:
+            from docx import Document
+        except ImportError:
+            raise ParsingError("python-docx is not installed. Please install it to parse DOCX files. You can typically install it with: pip install python-docx")
+
+        try:
+            document = Document(file_path)
+            text_parts = []
+            for para in document.paragraphs:
+                text_parts.append(para.text)
+            
+            # Also extract text from tables
+            for table in document.tables:
+                for row in table.rows:
+                    for cell in row.cells:
+                        for para_in_cell in cell.paragraphs:
+                            text_parts.append(para_in_cell.text)
+            
+            full_text = "\n".join(text_parts)
+
+            # For DOCX, num_pages/num_slides isn't directly applicable or easily determined without more complex parsing.
+            # We will omit num_pages/num_slides and indices_processed for now.
+            return {
+                "text": full_text.strip(),
+                "file_path": file_path,
+                # "num_pages": None, # Or some other metadata if useful
+                # "indices_processed": [] 
+            }
+        except FileNotFoundError:
+            raise ParsingError(f"Error parsing DOCX: File not found at {file_path}")
+        except Exception as e:
+            # Check for common python-docx errors, e.g., if the file is not a valid docx (often raises zipfile.BadZipFile)
+            if "BadZipFile" in str(type(e)) or "Package not found" in str(e):
+                raise ParsingError(f"Error parsing DOCX file {file_path}. The file might be corrupted or not a valid DOCX format: {e}")
+            raise ParsingError(f"An unexpected error occurred while parsing DOCX file {file_path}: {e}")
+
+class ODTParser(BaseParser):
+    """Parses OpenDocument Text (ODT) files using odfpy."""
+    def parse(self, file_path, indices=None):
+        """Parses the ODT file and extracts text content.
+        `indices` is currently ignored for ODT files.
+        """
+        try:
+            from odf.opendocument import load as load_odf # odfpy uses load
+            from odf.text import P as OdfP, H as OdfH # Paragraphs and Headers from odf.text
+            from odf import teletype # For extracting text from elements
+        except ImportError:
+            raise ParsingError("odfpy is not installed. Please install it to parse ODT files. You can typically install it with: pip install odfpy")
+
+        try:
+            doc = load_odf(file_path)
+            text_parts = []
+            
+            # Iterate for Paragraphs
+            for p_element in doc.getElementsByType(OdfP):
+                text_content = teletype.extractText(p_element)
+                if text_content.strip():
+                    text_parts.append(text_content.strip())
+            
+            # Iterate for Headers (optional, add if headers are also needed)
+            # If you want headers interspersed correctly by document order, a more complex traversal is needed.
+            # For simplicity, appending them if found.
+            for h_element in doc.getElementsByType(OdfH):
+                text_content = teletype.extractText(h_element)
+                if text_content.strip():
+                    text_parts.append(text_content.strip()) # Could add a prefix like "[Header] "
+
+            full_text = "\n".join(text_parts)
+            
+            return {
+                "text": full_text.strip(),
+                "file_path": file_path,
+            }
+        except FileNotFoundError:
+            raise ParsingError(f"Error parsing ODT: File not found at {file_path}")
+        except Exception as e:
+            # Check for common odfpy errors
+            # odfpy might raise various XML parsing errors or zip errors for corrupted files
+            if "BadZipFile" in str(type(e)) or "xml.etree.ElementTree.ParseError" in str(type(e)) or "Invalid ODF file" in str(e):
+                raise ParsingError(f"Error parsing ODT file {file_path}. The file might be corrupted or not a valid ODT format: {e}")
+            raise ParsingError(f"An unexpected error occurred while parsing ODT file {file_path}: {e}")
+
 class ImageParser(BaseParser):
     """Parses image files using Pillow, supporting transformations."""
     def parse(self, file_path, indices=None):
