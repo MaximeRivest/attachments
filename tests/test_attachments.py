@@ -10,6 +10,7 @@ import io # Added for io.BytesIO
 import wave # Added for creating dummy WAV files
 import struct # Added for creating dummy WAV FILES
 from pydub import AudioSegment # For inspecting processed audio in tests
+import base64
 
 # Define the path to the test data directory
 TEST_DATA_DIR = os.path.join(os.path.dirname(__file__), 'test_data')
@@ -1157,6 +1158,46 @@ class TestAttachmentsIntegration(unittest.TestCase):
         self.assertIn("ops: \"format:ogg,samplerate:22050,channels:1\"", md_output) # Check escaping in details
         self.assertIn("-> processed to ogg 22kHz mono]`", md_output) 
         print("Markdown representation for processed audio check: OK")
+
+    def test_repr_markdown_audio_preview(self):
+        if not self.user_provided_wav_exists:
+            self.skipTest(f"User provided WAV file {USER_PROVIDED_WAV} not found. Skipping Markdown audio preview test.")
+
+        # Process a WAV file to MP3 for a specific test case
+        ops_str = "format:mp3,samplerate:22050"
+        atts = Attachments(f"{USER_PROVIDED_WAV}[{ops_str}]", verbose=True)
+        self.assertEqual(len(atts.attachments_data), 1, "Should have one attachment item.")
+        item_data = atts.attachments_data[0]
+        item_id = item_data.get('id', 'audio_id_not_found')
+        display_name = item_data.get('processed_filename_for_api', 'filename_not_found')
+
+        markdown_output = atts._repr_markdown_()
+
+        self.assertIn("### Audio Previews", markdown_output, "Audio previews section header missing.")
+        
+        # Check for the specific item ID and display name
+        self.assertIn(f"- **{item_id}:** {display_name}", markdown_output, "Audio item title/ID line missing or incorrect.")
+        
+        # Check for the presence of an audio player tag
+        # Example: <audio controls src="data:audio/mpeg;base64,..."></audio>
+        expected_audio_tag_pattern = r'<audio controls src="data:audio/mpeg;base64,([a-zA-Z0-9+/=]+)"></audio>'
+        self.assertTrue(re.search(expected_audio_tag_pattern, markdown_output), 
+                        f"HTML audio player tag for MP3 not found or incorrect. Expected pattern: {expected_audio_tag_pattern}")
+        
+        # Verify that the base64 content is not empty
+        match = re.search(expected_audio_tag_pattern, markdown_output)
+        self.assertIsNotNone(match, "Audio tag regex failed to match after initial check.")
+        base64_content = match.group(1)
+        self.assertTrue(len(base64_content) > 0, "Base64 content in audio tag is empty.")
+        
+        # Try to decode base64 to ensure it's somewhat valid (not a full audio validation)
+        try:
+            decoded_bytes = base64.b64decode(base64_content)
+            self.assertTrue(len(decoded_bytes) > 100, "Decoded audio bytes seem too small for a valid MP3 snippet.") # Arbitrary small size check
+        except Exception as e:
+            self.fail(f"Failed to decode base64 audio content from Markdown: {e}")
+
+        print("Markdown representation for single audio preview (WAV to MP3) check: OK")
 
 class TestAttachmentsIndexing(unittest.TestCase):
     @classmethod

@@ -398,6 +398,7 @@ class Attachments:
         known_audio_types = ['flac', 'm4a', 'mp3', 'mp4_audio', 'mpeg_audio', 'oga', 'ogg_audio', 'wav', 'webm_audio']
         
         collected_image_previews = [] 
+        collected_audio_previews = [] # New list for audio
 
         for i, item in enumerate(self.attachments_data):
             item_id = item.get('id', f'item{i+1}')
@@ -463,7 +464,42 @@ class Attachments:
 
                 text_snippet = item.get('text', '') # This is the rich text from AudioParser
                 md_parts.append(f"  - **Details:** `{text_snippet}`")
-            
+
+                # Attempt to generate audio preview for markdown
+                # We need to find the corresponding processed audio from self.audios
+                # This relies on self.audios being called or its logic being accessible
+                # Matching by original_path_str and ops could be one way if IDs are not stable enough.
+                # For simplicity, we'll iterate through self.audios and match based on original_path_str
+                # or a more robust identifier if available.
+                # Let's assume item_data's 'processed_filename_for_api' is unique enough for this context.
+                
+                # Find the corresponding audio data from the self.audios property
+                # This is a bit inefficient as self.audios re-processes.
+                # A better way would be to cache the results of self.audios or make its components available.
+                # For now, let's make a targeted call to get the specific audio BytesIO
+                
+                target_filename_for_preview = item.get('processed_filename_for_api')
+                audio_preview_data = None
+                # Iterate through the results of the audios property to find the matching file
+                for audio_api_item in self.audios: # This will re-process all audios, can be slow
+                    if audio_api_item['filename'] == target_filename_for_preview:
+                        audio_preview_data = audio_api_item
+                        break
+                
+                if audio_preview_data:
+                    try:
+                        audio_bytes = audio_preview_data['file_object'].getvalue()
+                        audio_base64 = base64.b64encode(audio_bytes).decode('utf-8')
+                        audio_mime_type = audio_preview_data['content_type']
+                        audio_player_html = f'<audio controls src="data:{audio_mime_type};base64,{audio_base64}"></audio>'
+                        collected_audio_previews.append((item_id, display_name, audio_player_html))
+                    except Exception as e_audio_preview:
+                        collected_audio_previews.append((item_id, display_name, None, f"Error generating audio preview: {e_audio_preview}"))
+                else:
+                    # This case might happen if self.audios logic filters out some items or filenames don't match.
+                    if self.verbose: print(f"Markdown preview: Could not find matching audio data for {target_filename_for_preview} in self.audios results.")
+                    collected_audio_previews.append((item_id, display_name, None, "Audio data not readily available for preview."))
+
             else: # For other types like PDF, PPTX, HTML
                 # Use processed_file_path for these as they don't have 'original_filename_for_api' usually
                 processed_file_path_display = item.get('file_path', 'N/A') # This is original_file_path_or_url
@@ -504,6 +540,18 @@ class Attachments:
                         row_images.append("&nbsp;") 
                     md_parts.append(f"| {' | '.join(row_images)} |")
                     row_images = []
+
+        # Add Audio Previews section
+        if collected_audio_previews:
+            md_parts.append("\n### Audio Previews")
+            # For audio, a simple list format might be better than a table due to player height
+            for audio_id, audio_name, player_html, error_msg in [(ca[0], ca[1], ca[2] if len(ca) > 2 and ca[2] else None, ca[3] if len(ca) > 3 else (ca[2] if len(ca) == 3 and ca[2] is None else None) ) for ca in collected_audio_previews]: # Ensure correct unpacking
+                if player_html:
+                    md_parts.append(f"- **{audio_id}:** {audio_name}<br/>{player_html}")
+                else:
+                    error_detail = error_msg or "Could not generate player."
+                    md_parts.append(f"- **{audio_id}:** {audio_name} - *{error_detail}*")
+                md_parts.append("---")
 
         return "\n".join(md_parts)
     
