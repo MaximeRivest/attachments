@@ -26,15 +26,11 @@ print(a)# will print a string representation of the pdf, pptx and image that can
 
 ```xml
 <attachments>
-  <attachment id="pdf1" type="pdf">
-    <meta name="num_pages" value="1" />
-    <content>
+  <pdf_attachment_1>
+  page 1:
 Hello PDF!
-    </content>
-  </attachment>
-  <attachment id="pptx2" type="pptx">
-    <meta name="num_slides" value="3" />
-    <content>
+  </pdf_attachment_1>
+  <pptx_attachment_2>
 --- Slide 1 ---
 Slide 1 Title This is the first slide. Content for page 1.
 
@@ -43,23 +39,9 @@ Slide 2 Title This is the second slide. Content for page 2.
 
 --- Slide 3 ---
 Slide 3 Title This is the third slide. Content for page 3.
-    </content>
-  </attachment>
-  <attachment id="jpeg3" type="jpeg">
-    <meta name="dimensions" value="1280x960" />
-    <meta name="original_format" value="JPEG" />
-    <meta name="original_mode" value="RGB" />
-    <meta name="output_format_target" value="jpeg" />
-    <meta name="output_quality_target" value="90" />
-    <meta name="applied_operations" value="{}" />
-    <content>
-[Image: tmpXXXXXXX.jpg (original: JPEG RGB) -&gt; processed to 1280x960 for output as jpeg]
-    </content>
-  </attachment>
+  </pptx_attachment_2>
 </attachments>
 ```
-
-(Note: The exact filename like `tmpXXXXXXX.jpg` in the image content will vary as it's based on a temporary file created during processing.)
 
 The ambition of `attachments` is to provide a robust reader, processor, and renderer for a wide array of common file types, simplifying the process of providing complex, multi-modal context to LLMs. The power comes from doing a best effort media -> text + image prompt and thus most of the value of `attachments` is not visible in long tutorial and lots of things to learn but in rather in it's simplicity and ability to get out of your way and let you pass files/data/information to LLMs.
 

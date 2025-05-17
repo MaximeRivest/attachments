@@ -12,7 +12,6 @@ description = "A Python library to handle various file types for LLMs."
 readme = "README.md"
 requires-python = ">=3.8"
 license = "MIT"  # Using simple string for SPDX identifier
-# packages = ["attachments"]  # Removing this, as it caused a conflict with setuptools validation
 classifiers = [
     "Programming Language :: Python :: 3",
     # "License :: OSI Approved :: MIT License", # Replaced by SPDX
@@ -44,11 +43,13 @@ dev = [
     "filelock",
 ]
 
-# The exclude list here was not in a standard location for setuptools package discovery.
-# Explicitly defining [project.packages] above is the recommended way for this setup.
+[tool.setuptools]
+# packages = ["attachments"] # We'll let find discover it
 
 [tool.setuptools.packages.find]
-exclude = ["mrplay*"] # Exclude the mrplay directory and its potential submodules
+where = ["src"]
+namespaces = false
 
 [tool.pytest.ini_options]
-# ... existing code ...
+pythonpath = ["src"]
+norecursedirs = ["mrplay", ".venv", "dist", "build", "attachments.egg-info"]

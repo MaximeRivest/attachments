@@ -1,0 +1,20 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+The [README.md](mdc:README.md) is the ground truth on the interface we aim to implement.
+
+We aim for a clean and robust architectural design outline, adhering closely to your goals of modularity, extensibility, ease of use, and flexibility in rendering.
+
+Refactor as soon as you see a need to it to make the code easier for you to work with!
+
+use uv and .venv (my uv virtual environment).
+
+use:
+source .venv/bin/activate
+uv run pytest
+
+run the unit tests before claiming your changes are done!
+
+always use the scientific method: 1) state your assumptions, 2) make testable predictions and 3) check them to confirm the code and system is in the state you believe and it works as you believe.Allocate bayesian believes and update them maybe even store them in your own .mdc rule file?!

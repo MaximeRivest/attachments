@@ -125,10 +125,6 @@ class Detector:
         import os
         _, ext = os.path.splitext(file_path)
         ext = ext.lower()
-        # ---- START TEMPORARY DEBUGGING ----
-        if "recording_2025-04-26_11-10-42.wav" in file_path: # Crude check for the specific file
-            print(f"[DEBUG DETECTOR] file_path: {file_path}, ext: '{ext}'")
-        # ---- END TEMPORARY DEBUGGING ----
 
         for name, method_info in self.detection_methods.items():
             if method_info['type'] == 'extension':

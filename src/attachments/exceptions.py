@@ -19,3 +19,7 @@ class RenderingError(AttachmentError):
 class ConfigurationError(AttachmentError):
     """Custom exception for configuration-related errors."""
     pass 
+
+class ImageProcessingError(AttachmentError):
+    """Raised when an error occurs during image processing operations."""
+    pass 

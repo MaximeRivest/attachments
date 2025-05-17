@@ -73,18 +73,19 @@ class DefaultXMLRenderer(BaseRenderer):
             text_content = text_content.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
             output_parts.append(f"  <attachment id=\"{item_id}\" type=\"{item_type}\">")
-            # Add other metadata if available, e.g., num_pages, num_slides
-            if 'num_pages' in item:
-                output_parts.append(f"    <meta name=\"num_pages\" value=\"{item['num_pages']}\" />")
+            # Add other metadata if available
+            if 'page_count' in item:
+                output_parts.append(f"    <meta name=\"page_count\" value=\"{item['page_count']}\" />")
             if 'num_slides' in item:
                 output_parts.append(f"    <meta name=\"num_slides\" value=\"{item['num_slides']}\" />")
             
             # Add image-specific metadata if available
-            if item.get('type') in ['jpeg', 'png', 'gif', 'bmp', 'webp', 'tiff', 'heic', 'heif']:
-                if 'width' in item and 'height' in item:
-                    output_parts.append(f"    <meta name=\"dimensions\" value=\"{item['width']}x{item['height']}\" />")
-                if 'original_format' in item:
-                    output_parts.append(f"    <meta name=\"original_format\" value=\"{item['original_format']}\" />")
+            # For image dimensions, use 'dimensions_after_ops' if available, else 'original_dimensions'
+            dims_to_render = item.get('dimensions_after_ops') or item.get('original_dimensions')
+            if item.get('type') in ['jpeg', 'png', 'gif', 'bmp', 'webp', 'tiff', 'heic', 'heif'] and dims_to_render:
+                output_parts.append(f"    <meta name=\"dimensions\" value=\"{dims_to_render[0]}x{dims_to_render[1]}\" />")
+            if 'original_format' in item:
+                output_parts.append(f"    <meta name=\"original_format\" value=\"{item['original_format']}\" />")
                 if 'original_mode' in item:
                     output_parts.append(f"    <meta name=\"original_mode\" value=\"{item['original_mode']}\" />")
                 if 'output_format' in item:
