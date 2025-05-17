@@ -302,11 +302,15 @@ class TestAudioProcessing(BaseTestSetup):
         # Test with default processing (to WAV)
         atts_default = Attachments(SAMPLE_AUDIO_WAV, verbose=True) # Default processing to wav, 16kHz, 1ch
         md_default = atts_default._repr_markdown_()
-        # print(f"MD Default: {md_default}") # For debugging
-        self.assertIn(f"Audio: {os.path.basename(SAMPLE_AUDIO_WAV)}", md_default) # This part of the summary comes from AudioParser's text field
-        self.assertIn("Original Format:** `WAV`", md_default) # Check for the actual markdown line for original format
-        # self.assertIn("[audio_segment available for API use]", md_default) # This marker was removed from AudioParser's text output
-        self.assertNotIn("<audio controls src=\"data:audio/wav;base64,", md_default) # No preview for WAV by default in Markdown
+        # print(f"MD Default WAV: {md_default}") # For debugging
+        self.assertIn(f"Audio: {os.path.basename(SAMPLE_AUDIO_WAV)}", md_default) 
+        self.assertIn("Original Format:** `WAV`", md_default)
+        # self.assertIn("[audio_segment available for API use]", md_default) # This marker was removed
+        # self.assertNotIn("<audio controls src=\"data:audio/wav;base64,", md_default) # OLD: No preview for WAV by default
+        # NEW: WAV should now have a preview if verbose=True
+        self.assertIn("### Audio Previews", md_default)
+        self.assertIn("<audio controls", md_default)
+        self.assertIn("data:audio/wav", md_default) # Check for correct MIME type indication for WAV
 
         # Test with conversion to MP3 (which should have a preview)
         atts_mp3 = Attachments(f"{SAMPLE_AUDIO_WAV}[format:mp3]", verbose=True)

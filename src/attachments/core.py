@@ -427,13 +427,14 @@ class Attachments:
         num_processed = len(self.attachments_data)
         num_inputs = len(self.original_paths_with_indices) # Ensure this uses the correct attribute name
         
-        md_parts.append(f"Successfully processed {num_processed} item(s) from {num_inputs} initial input(s).")
-        if num_inputs == num_processed and num_inputs > 0:
-            md_parts.append("\nSuccessfully processed all initial inputs.")
-        elif num_inputs > num_processed and num_processed > 0:
-            md_parts.append(f"\n{num_inputs - num_processed} input(s) could not be processed. See warnings/errors.")
-        elif num_processed == 0 and num_inputs > 0:
-            md_parts.append("\nNo inputs could be processed. See warnings/errors.")
+        if self.verbose: # Only include these detailed processing status lines if verbose is True
+            md_parts.append(f"Successfully processed {num_processed} item(s) from {num_inputs} initial input(s).")
+            if num_inputs == num_processed and num_inputs > 0:
+                md_parts.append("\nSuccessfully processed all initial inputs.")
+            elif num_inputs > num_processed and num_processed > 0:
+                md_parts.append(f"\n{num_inputs - num_processed} input(s) could not be processed. See warnings/errors.")
+            elif num_processed == 0 and num_inputs > 0:
+                md_parts.append("\nNo inputs could be processed. See warnings/errors.")
 
         item_summaries = []
         image_gallery_items = []
@@ -441,7 +442,9 @@ class Attachments:
 
         # Define type lists here for clarity in conditions below
         image_item_types = ['jpeg', 'png', 'gif', 'bmp', 'webp', 'tiff', 'heic', 'heif']
-        audio_item_types = ['flac', 'm4a', 'mp3', 'wav', 'ogg', 'opus', 'aac']
+        # Extended audio_item_types to include more that pydub might handle or that are common.
+        # Note: 'opus' and 'aac' are often codecs within containers like ogg or m4a.
+        audio_item_types = ['flac', 'm4a', 'mp3', 'wav', 'ogg', 'oga', 'opus', 'aac', 'mp4_audio', 'mpeg_audio', 'webm_audio']
 
         for item_index, item in enumerate(self.attachments_data):
             item_type = item.get('type', 'unknown').lower()
@@ -478,8 +481,8 @@ class Attachments:
 
             item_summaries.append("\n".join(summary))
             
-            # Prepare for image gallery (original logic)
-            if item_type in image_item_types and self.verbose:
+            # Prepare for image gallery
+            if item_type in image_item_types and self._config.MARKDOWN_RENDER_GALLERIES:
                 try:
                     base64_img = self._render_image_to_base64(item)
                     img_alt = item.get('original_basename', item_id)
@@ -490,9 +493,11 @@ class Attachments:
                 except Exception as e:
                     image_gallery_items.append(f"_Could not render preview for {item_id} ({item.get('original_basename', '')}) due to: {e}_<br/>")
             
-            # Prepare for audio gallery (original logic)
-            eligible_audio_preview_format = item.get('output_format', '').lower() in ['mp3', 'ogg', 'opus', 'aac', 'm4a']
-            if item_type in audio_item_types and self.verbose and eligible_audio_preview_format:
+            # Prepare for audio gallery
+            eligible_audio_preview_formats = ['mp3', 'ogg', 'opus', 'aac', 'm4a', 'wav'] 
+            is_eligible_for_preview = item.get('output_format', '').lower() in eligible_audio_preview_formats
+            
+            if item_type in audio_item_types and self._config.MARKDOWN_RENDER_GALLERIES and is_eligible_for_preview:
                 try:
                     base64_audio, audio_mime_type = self._render_audio_to_base64(item)
                     audio_title = f"{item_id}: {item.get('original_basename', '')} (Type: {item_type}, Output: {item.get('output_format')})"
@@ -503,15 +508,16 @@ class Attachments:
         if item_summaries:
             md_parts.append("\n" + "\n---\n".join(item_summaries))
         
-        if image_gallery_items and self.verbose:
+        # Append image gallery if rendering is enabled and items exist
+        if image_gallery_items and self._config.MARKDOWN_RENDER_GALLERIES:
             md_parts.append("\n\n### Image Previews")
             if self._config.MARKDOWN_IMAGE_GALLERY_STYLE == 'html':
-                md_parts.append("\n" + "\n".join(image_gallery_items)) # Simple join for HTML items
-            # Add other styles like 'grid' if needed
+                md_parts.append("\n" + "\n".join(image_gallery_items))
         
-        if audio_gallery_items and self.verbose:
+        # Append audio gallery if rendering is enabled and items exist
+        if audio_gallery_items and self._config.MARKDOWN_RENDER_GALLERIES:
             md_parts.append("\n\n### Audio Previews")
-            if self._config.MARKDOWN_AUDIO_PREVIEW_STYLE == 'html': # Assuming a similar config for audio
+            if self._config.MARKDOWN_AUDIO_PREVIEW_STYLE == 'html': 
                 md_parts.append("\n" + "\n".join(audio_gallery_items))
 
         # Restore original verbose state if it was changed for debug (it wasn't here, but good practice if it were)

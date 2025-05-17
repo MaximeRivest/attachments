@@ -7,7 +7,7 @@ import re
 from typing import Any, Optional, Union
 
 from PIL import Image, UnidentifiedImageError, ImageOps
-from pillow_heif import register_heif_opener
+# Removed: from pillow_heif import register_heif_opener
 
 import fitz  # PyMuPDF for PDFParser
 from pptx import Presentation # for PPTXParser
@@ -38,8 +38,14 @@ except ImportError:
     sr = None # type: ignore
     SPEECH_RECOGNITION_AVAILABLE = False
 
-# Register HEIF opener for Pillow
-register_heif_opener()
+# Conditional import for pillow_heif
+try:
+    import pillow_heif
+    HAS_PILLOW_HEIF = True
+    pillow_heif.register_heif_opener() # Call only if import succeeded
+except ImportError:
+    pillow_heif = None # type: ignore
+    HAS_PILLOW_HEIF = False
 
 # Global constants for audio processing (can be moved to config or class if preferred)
 SUPPORTED_AUDIO_FORMATS = ['wav', 'mp3', 'ogg', 'flac', 'm4a', 'aac']
@@ -333,211 +339,261 @@ class ODTParser(BaseParser):
             raise ParsingError(f"An unexpected error occurred while parsing ODT file {file_path}: {e}")
 
 class ImageParser(BaseParser):
-    """Parses image files using Pillow, applies transformations, and extracts metadata."""
+    """Parses various image formats using Pillow, with special handling for HEIC/HEIF."""
+
     def __init__(self, config: Optional[Config] = None):
-        self.config = config if config else Config() # Get config or use default
+        self.config = config if config else Config()
 
     def _parse_image_operations(self, img: Image.Image, ops_str: str) -> tuple[Image.Image, dict, list[str], str | None, int | None]:
-        original_img = img
+        img_modified = img.copy()
         applied_ops_summary = {}
         text_parts = []
-        # Default to original format, can be overridden by 'format' op
-        # Convert Pillow's format (e.g., JPEG) to lowercase (e.g., jpeg)
-        current_output_format = img.format.lower() if img.format else None 
-        current_quality = None # Default, can be set by 'quality' op
+        current_output_format = None
+        current_quality = None
 
-        operations = ops_str.strip().lower().split(',')
-        
-        # First pass for format and quality, as they affect saving options for other ops like resize.
-        for op_part in operations:
-            op_part = op_part.strip()
-            if op_part.startswith("format:"):
-                fmt = op_part.split(":", 1)[1]
-                if fmt in ["jpg", "jpeg", "png", "gif", "bmp", "webp", "tiff", "heic", "heif"]:
-                    current_output_format = "jpeg" if fmt == "jpg" else fmt
-                    applied_ops_summary['format'] = current_output_format
-                    text_parts.append(f"format:{current_output_format}")
-            elif op_part.startswith("quality:"):
-                try:
-                    q = int(op_part.split(":", 1)[1])
-                    if 0 <= q <= 100:
-                        current_quality = q
-                        applied_ops_summary['quality'] = current_quality
-                        text_parts.append(f"quality:{current_quality}")
-                    else:
-                        print(f"Warning: Invalid image quality '{q}'. Must be 0-100. Ignoring.")
-                except ValueError:
-                    print(f"Warning: Invalid image quality value in '{op_part}'. Ignoring.")
+        operations = ops_str.lower().split(',')
+        for op_full_str in operations:
+            op_full_str = op_full_str.strip()
+            if not op_full_str:
+                continue
 
-        # Second pass for transformations (resize, rotate)
-        # These operations modify the Pillow image object directly.
-        img_modified = original_img.copy() # Work on a copy
+            parts = op_full_str.split(':', 1)
+            op_name = parts[0].strip()
+            op_value_str = parts[1].strip() if len(parts) > 1 else ""
 
-        for op_part in operations:
-            op_part = op_part.strip()
-            if op_part.startswith("resize:"):
-                size_str = op_part.split(":", 1)[1].strip() # Ensure size_str is stripped
-                size_match = re.match(r"(\d+|auto)x(\d+|auto)", size_str)
-                if size_match:
-                    width_str, height_str = size_match.group(1), size_match.group(2)
+            try:
+                if op_name == "resize":
+                    if 'x' not in op_value_str:
+                        print(f"Warning: Invalid resize format '{op_value_str}'. Expected 'WIDTHxHEIGHT'. Skipping resize op.")
+                        continue
+                    width_str, height_str = op_value_str.split('x', 1)
                     
-                    parsed_width: Optional[int] = None
+                    parsed_width: Optional[int] = None # Explicitly Optional[int]
                     if width_str != "auto":
                         try:
                             parsed_width = int(width_str)
                             if parsed_width <= 0: raise ValueError("Width must be positive.")
                         except ValueError:
-                            print(f"Warning: Invalid width '{width_str}' in resize. Skipping resize op.")
+                            print(f"Warning: Invalid width '{width_str}' for resize. Must be positive integer or 'auto'. Skipping resize op.")
                             continue
                     
-                    parsed_height: Optional[int] = None
+                    parsed_height: Optional[int] = None # Explicitly Optional[int]
                     if height_str != "auto":
                         try:
                             parsed_height = int(height_str)
                             if parsed_height <= 0: raise ValueError("Height must be positive.")
                         except ValueError:
-                            print(f"Warning: Invalid height '{height_str}' in resize. Skipping resize op.")
+                            print(f"Warning: Invalid height '{height_str}' for resize. Must be positive integer or 'auto'. Skipping resize op.")
                             continue
 
                     if parsed_width is None and parsed_height is None:
                         print("Warning: Resize specified with auto x auto. No change. Skipping resize op.")
                         continue
 
-                    # Store the original string 'auto' if used, otherwise the integer value
                     resize_op_value_w = width_str if width_str == "auto" else parsed_width
                     resize_op_value_h = height_str if height_str == "auto" else parsed_height
                     applied_ops_summary['resize'] = (resize_op_value_w, resize_op_value_h)
-                    text_parts.append(f"resize:{width_str}x{height_str}") # Keep original string for text part
+                    text_parts.append(f"resize:{width_str}x{height_str}")
 
-                    original_width, original_height = img_modified.size
-                    target_width: int
-                    target_height: int
+                    original_w, original_h = img_modified.size
+                    target_w: Optional[int] = parsed_width # Start with parsed values
+                    target_h: Optional[int] = parsed_height
 
-                    if parsed_width is not None and parsed_height is not None:
-                        target_width = parsed_width
-                        target_height = parsed_height
-                    elif parsed_width is not None: # height is auto (parsed_height is None)
-                        target_width = parsed_width
-                        aspect_ratio = original_height / original_width if original_width else 1
-                        target_height = int(target_width * aspect_ratio)
-                    elif parsed_height is not None: # width is auto (parsed_width is None)
-                        target_height = parsed_height
-                        aspect_ratio = original_width / original_height if original_height else 1
-                        target_width = int(target_height * aspect_ratio)
-                    else: # Should be caught by (parsed_width is None and parsed_height is None)
-                        print("Warning: Unhandled resize auto/auto case. Skipping.")
+                    if target_w is None and target_h is not None: # height is specified, width is auto
+                        aspect_ratio = original_w / original_h if original_h else 1 # Avoid division by zero
+                        target_w = int(target_h * aspect_ratio)
+                    elif target_h is None and target_w is not None: # width is specified, height is auto
+                        aspect_ratio = original_h / original_w if original_w else 1 # Avoid division by zero
+                        target_h = int(target_w * aspect_ratio)
+                    # If both are None, we already continued. If both are not None, they are used directly.
+                    
+                    # Ensure target_w and target_h are now integers before comparison/use
+                    if not isinstance(target_w, int) or not isinstance(target_h, int):
+                        print(f"Warning: Could not determine valid integer dimensions for resize ({target_w}x{target_h}). Skipping resize op.")
                         continue
-                                        
-                    if target_width <= 0: target_width = 1 # Ensure not zero
-                    if target_height <= 0: target_height = 1 # Ensure not zero
                         
-                    img_modified = ImageOps.fit(img_modified, (target_width, target_height), Image.Resampling.LANCZOS)
+                    if target_w <= 0 or target_h <= 0:
+                        print(f"Warning: Calculated resize dimensions resulted in non-positive value ({target_w}x{target_h}). Skipping resize op.")
+                        continue
+                        
+                    img_modified = img_modified.resize((target_w, target_h), Image.Resampling.LANCZOS)
+                elif op_name == "rotate":
+                    try:
+                        angle = float(op_value_str)
+                        img_modified = img_modified.rotate(angle, expand=True)
+                        applied_ops_summary['rotate'] = angle
+                        text_parts.append(f"rotate:{op_value_str}")
+                    except ValueError:
+                        print(f"Warning: Invalid angle '{op_value_str}' for rotate. Must be a number. Skipping rotate op.")
+                
+                elif op_name == "format":
+                    fmt = op_value_str.lower()
+                    if fmt in ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'tiff']: 
+                        current_output_format = 'jpeg' if fmt == 'jpg' else fmt
+                        applied_ops_summary['format'] = current_output_format
+                        text_parts.append(f"format:{fmt}")
+                    else:
+                        print(f"Warning: Unsupported format '{fmt}'. Skipping format op.")
+
+                elif op_name == "quality":
+                    try:
+                        q = int(op_value_str)
+                        if not (0 <= q <= 100):
+                            raise ValueError("Quality must be between 0 and 100.")
+                        current_quality = q
+                        applied_ops_summary['quality'] = q
+                        text_parts.append(f"quality:{q}")
+                    except ValueError as e_qual:
+                        print(f"Warning: Invalid quality '{op_value_str}'. {e_qual}. Skipping quality op.")
+                
+                elif op_name == "grayscale" or op_name == "greyscale":
+                    img_modified = ImageOps.grayscale(img_modified)
+                    applied_ops_summary['grayscale'] = True
+                    text_parts.append("grayscale")
+
                 else:
-                    print(f"Warning: Invalid resize format '{size_str}'. Should be WxH. Skipping resize op.")
-            elif op_part.startswith("rotate:"):
-                angle = int(op_part.split(":", 1)[1])
-                img_modified = img_modified.rotate(-angle, expand=True)
-                applied_ops_summary['rotate'] = angle
-                text_parts.append(f"rotate:{angle}")
-            elif op_part.startswith("crop:"):
-                coords_str = op_part.split(":", 1)[1]
-                # Ensure coords are parsed to a 4-tuple of numbers
-                try:
-                    raw_coords = coords_str.split(';')
-                    if len(raw_coords) != 4:
-                        raise ValueError("Crop operation requires 4 coordinates (left;top;right;bottom).")
-                    coords: tuple[Union[int, float], Union[int, float], Union[int, float], Union[int, float]] = (
-                        float(raw_coords[0]) if '.' in raw_coords[0] else int(raw_coords[0]),
-                        float(raw_coords[1]) if '.' in raw_coords[1] else int(raw_coords[1]),
-                        float(raw_coords[2]) if '.' in raw_coords[2] else int(raw_coords[2]),
-                        float(raw_coords[3]) if '.' in raw_coords[3] else int(raw_coords[3]),
-                    )
-                    img_modified = img_modified.crop(coords)
-                    applied_ops_summary['crop'] = coords # Store the parsed numeric tuple
-                    text_parts.append(f"crop:{coords_str}") # Store original string for text part
-                except ValueError as e:
-                    print(f"Warning: Invalid crop coordinates '{coords_str}': {e}. Skipping crop op.")
-                    continue
-            elif op_part == 'grayscale' or op_part == 'greyscale':
-                img_modified = img_modified.convert("L")
-                applied_ops_summary[op_part] = True
-                text_parts.append(op_part)
+                    print(f"Warning: Unknown image operation '{op_name}'. Skipping.")
+            
+            except Exception as e_op:
+                print(f"Error during image operation '{op_full_str}': {e_op}. Skipping this operation.")
+                continue
 
-        if current_output_format is None and img_modified.format:
-            img_format = img_modified.format
-            if isinstance(img_format, str) and img_format is not None:
-                current_output_format = img_format.lower()
-            else:
-                current_output_format = None
-
-        # print(f"DEBUG ImageParser._parse_image_operations: returning ops: {applied_ops_summary}") # DEBUG
         return img_modified, applied_ops_summary, text_parts, current_output_format, current_quality
 
     def parse(self, file_path, indices=None):
+        parsed_data = {} 
+        current_img = None
+        original_format = None
+        original_mode = None
+        original_width, original_height = 0, 0
+        
+        file_ext_lower = os.path.splitext(file_path)[1].lower()
+
+        # Explicit check for HEIC/HEIF and missing dependency first
+        if file_ext_lower in ['.heic', '.heif'] and not HAS_PILLOW_HEIF:
+            raise ParsingError(
+                f"Processing {file_ext_lower.upper()} file '{file_path}' requires the 'pillow_heif' library. "
+                f"Please install it by running: pip install pillow-heif"
+            )
+
         try:
-            img = Image.open(file_path)
-            original_pil_format = img.format
-            original_mode = img.mode
-            original_width, original_height = img.size
-            img.load() # Ensure image data is loaded
-        except FileNotFoundError:
-            raise ParsingError(f"Image file not found: {file_path}")
-        except UnidentifiedImageError:
-            raise ParsingError(f"Cannot identify image file (unsupported format or corrupt): {file_path}")
-        except Exception as e:
-            raise ParsingError(f"Error opening or loading image {file_path}: {e}")
-
-        # Initialize defaults that might be overridden by operations
-        applied_ops_details = {} # Initialize as empty dict
-        ops_log = [] # Log of operations performed
-        output_format = original_pil_format.lower() if original_pil_format else self.config.DEFAULT_IMAGE_OUTPUT_FORMAT # Use config default
-        output_quality = self.config.DEFAULT_IMAGE_QUALITY # Use config default
-
-        current_img = img.copy() # Work on a copy
-
-        if indices:
             try:
-                current_img, applied_ops_details, ops_log, op_output_format, op_quality = \
-                    self._parse_image_operations(current_img.copy(), indices) # Pass a copy to avoid modification issues if _parse... modifies it before returning
-                # print(f"DEBUG ImageParser.parse: applied_ops_details after call: {applied_ops_details}") # DEBUG
+                img_opened_by_pillow = Image.open(file_path)
+                original_format = img_opened_by_pillow.format
+                original_mode = img_opened_by_pillow.mode
+                original_width, original_height = img_opened_by_pillow.size
+                img_opened_by_pillow.load() 
+                current_img = img_opened_by_pillow.copy() 
+            except UnidentifiedImageError:
+                # Pillow couldn't identify it. If it was HEIC/HEIF, the check above should have caught it if pillow_heif was missing.
+                # If pillow_heif IS available, let the specific HEIC block try.
+                if file_ext_lower in ['.heic', '.heif'] and HAS_PILLOW_HEIF and pillow_heif:
+                    pass # Will be handled by the HEIC block below
+                else:
+                    # For other unidentified types, or if it was HEIC and pillow_heif IS installed but still couldn't parse (unlikely here)
+                    raise ParsingError(f"Cannot identify image file (unsupported format or corrupt): {file_path}")
+            except FileNotFoundError:
+                 raise ParsingError(f"Image file not found: {file_path}")
+
+            # Specific handling for HEIC/HEIF if Pillow failed or if format is explicitly HEIC
+            # This block now assumes HAS_PILLOW_HEIF is True if file_ext_lower suggests HEIC, due to the check at the start of the method.
+            if (file_ext_lower in ['.heic', '.heif'] or (original_format and original_format.upper() in ['HEIC', 'HEIF'])):
+                if not (HAS_PILLOW_HEIF and pillow_heif):
+                    # This case should ideally be caught by the top-level check, but as a safeguard:
+                    raise ParsingError(
+                        f"Internal Error: Attempting HEIC/HEIF processing for '{file_path}' but pillow_heif is not available. "
+                        f"Please install it: pip install pillow-heif"
+                    )
+                try:
+                    heif_file = pillow_heif.read_heif(file_path)
+                    img_from_heif = Image.frombytes(
+                        heif_file.mode,
+                        heif_file.size,
+                        heif_file.data,
+                        "raw",
+                    )
+                    if img_from_heif.mode not in ('RGB', 'RGBA', 'L'):
+                        img_from_heif = img_from_heif.convert('RGBA' if 'A' in heif_file.mode else 'RGB')
+                    
+                    current_img = img_from_heif 
+                    original_format = "HEIF" 
+                    original_mode = current_img.mode 
+                    original_width, original_height = current_img.size
+                    parsed_data['output_format_for_base64'] = 'png' 
+                except Exception as e_heif:
+                    raise ParsingError(f"Error parsing HEIC/HEIF file {file_path} with pillow_heif: {e_heif}") from e_heif
+            
+            if current_img is None:
+                # This should ideally not be reached if logic is correct, means some image type wasn't handled
+                raise ParsingError(f"Could not open or identify image file (and not a recognized HEIC needing pillow_heif): {file_path}")
+
+        except FileNotFoundError: 
+            raise ParsingError(f"Image file not found: {file_path}")
+        except ParsingError: # Re-raise parsing errors explicitly
+            raise
+        except Exception as e: # Catch other general errors during initial load
+            raise ParsingError(f"Error loading image file {file_path}: {e}")
+
+        applied_ops_details = {}
+        ops_log_parts = []
+        
+        output_format = original_format.lower() if original_format else self.config.DEFAULT_IMAGE_OUTPUT_FORMAT
+        output_quality = self.config.DEFAULT_IMAGE_QUALITY
+
+        if indices: 
+            try:
+                current_img, applied_ops_details, ops_log_parts, op_output_format, op_quality = \
+                    self._parse_image_operations(current_img.copy(), indices)
                 if op_output_format:
                     output_format = op_output_format
                 if op_quality is not None:
                     output_quality = op_quality
-            except Exception as e:
-                # If parsing operations fails, we might still want to return info about the original image
-                # For now, let's re-raise as a ParsingError to indicate failure during op parsing
-                raise ParsingError(f"Error parsing image operations '{indices}' for {file_path}: {e}")
-        
+            except Exception as e_ops_parse:
+                print(f"Warning: Could not apply one or more image operations from '{indices}' for {file_path}: {e_ops_parse}. Using image as is or with partial ops.")
+
         final_width, final_height = current_img.size
         
-        # Construct text summary
         text_summary_parts = [
-            f"Image: {os.path.basename(file_path)}",
-            f"Original format: {original_pil_format}, Original mode: {original_mode}, Original dims: {original_width}x{original_height}"
+            f"Image: {os.path.basename(file_path)}.",
+            f"Original format: {original_format}, Original mode: {original_mode}, Original dims: {original_width}x{original_height}."
         ]
         if applied_ops_details:
-            ops_str_summary = ", ".join([f'{k}:{str(v)}' for k, v in applied_ops_details.items()])
-            text_summary_parts.append(f"Operations: [{ops_str_summary}]. Final dims: {final_width}x{final_height}")
-        else:
-            text_summary_parts.append(f"Final dims: {final_width}x{final_height} (no operations)")
-        
-        text_summary = ". ".join(text_summary_parts) + "."
+            op_summary_str = ", ".join(ops_log_parts) if ops_log_parts else "details unavailable"
+            if not ops_log_parts and applied_ops_details:
+                temp_ops_summary = []
+                for k,v in applied_ops_details.items():
+                    if isinstance(v, tuple) and len(v) == 2: temp_ops_summary.append(f"{k}:{v[0]}x{v[1]}")
+                    else: temp_ops_summary.append(f"{k}:{v}")
+                op_summary_str = ", ".join(temp_ops_summary)
 
-        return {
-            "type": original_pil_format.lower() if original_pil_format else 'image', # Type is the original detected type
+            text_summary_parts.append(f"Operations: {op_summary_str}.")
+            text_summary_parts.append(f"Final dims: {final_width}x{final_height}, Output as: {output_format}.")
+        else:
+            text_summary_parts.append(f"Final dims: {final_width}x{final_height} (no operations).")
+        
+        text_summary = " ".join(text_summary_parts)
+
+        result_type = original_format.lower() if original_format else 'image' 
+        if result_type in ['heic', 'heif']: result_type = 'heif' 
+
+        final_data = {
+            "type": result_type,
             "text": text_summary,
-            "image_object": current_img, # The Pillow image object, potentially modified
-            "original_format": original_pil_format,
+            "image_object": current_img,
+            "original_format": original_format, 
             "original_mode": original_mode,
             "original_dimensions": (original_width, original_height),
             "dimensions_after_ops": (final_width, final_height),
-            "operations_applied": applied_ops_details, # Dictionary of actual operations and their values
-            "output_format": output_format.lower(), # Target output format after operations
-            "output_quality": output_quality,      # Target quality after operations
+            "operations_applied": applied_ops_details if applied_ops_details else False, 
+            "output_format": output_format,
+            "output_quality": output_quality,
             "file_path": file_path,
             "original_basename": os.path.basename(file_path)
         }
+        if 'output_format_for_base64' in parsed_data:
+            final_data['output_format_for_base64'] = parsed_data['output_format_for_base64']
+            
+        return final_data
 
 class AudioParser(BaseParser):
     """Parses audio files, applying transformations using pydub."""
