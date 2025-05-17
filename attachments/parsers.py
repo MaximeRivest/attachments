@@ -3,7 +3,8 @@
 import os
 from abc import ABC, abstractmethod
 from .exceptions import ParsingError
-from .utils import parse_index_string, parse_image_operations # Added parse_image_operations
+from .utils import parse_index_string, parse_image_operations, parse_audio_operations # Added parse_audio_operations
+import io # Ensure io is imported for BytesIO if AudioParser exports to it directly
 
 try:
     import fitz  # PyMuPDF
@@ -16,6 +17,14 @@ try:
 except ImportError:
     print("Warning: pillow-heif not installed. HEIC/HEIF support will be unavailable.")
     pass # Allow the rest of the module to load
+
+try:
+    from pydub import AudioSegment
+    from pydub.exceptions import CouldntDecodeError
+except ImportError:
+    AudioSegment = None # pydub is optional, handled in AudioParser
+    CouldntDecodeError = None
+    print("Warning: pydub not installed. Audio processing capabilities will be limited. pip install pydub")
 
 class BaseParser(ABC):
     """Abstract base class for file parsers."""
@@ -227,7 +236,7 @@ class HTMLParser(BaseParser):
             raise ParsingError(f"An unexpected error occurred while parsing HTML file {file_path}: {e}")
 
 class ImageParser(BaseParser):
-    """Parses image files using Pillow."""
+    """Parses image files using Pillow, supporting transformations."""
     def parse(self, file_path, indices=None):
         """Parses the image file, extracts metadata, applies transformations, 
         and stores the Pillow Image object.
@@ -320,6 +329,110 @@ class ImageParser(BaseParser):
             raise ParsingError(f"Error parsing image: Cannot identify image file at {file_path}. It might be corrupted or not a supported image format by Pillow.")
         except Exception as e:
             raise ParsingError(f"An unexpected error occurred while parsing image file {file_path} with Pillow: {e}")
+
+# Audio Parser
+class AudioParser(BaseParser):
+    """Parses and processes audio files using pydub for API submission preparation."""
+    def parse(self, file_path, indices=None):
+        """Loads audio, applies transformations (format, samplerate, channels, bitrate),
+        and returns a dictionary with the processed audio segment and metadata.
+        Default processing: convert to 16kHz mono WAV if no operations specified.
+        """
+        if AudioSegment is None:
+            raise ParsingError("pydub is not installed. Please install it to enable audio processing: pip install pydub")
+
+        if not os.path.exists(file_path):
+            raise ParsingError(f"Audio file not found: {file_path}")
+
+        operations = parse_audio_operations(indices if isinstance(indices, str) else "")
+        
+        # Default operations if not specified by user
+        # Whisper prefers mono 16kHz WAV for best performance.
+        # Let's make this our default if no format is specified by user.
+        output_format = operations.get('format', 'wav').lower()
+        target_samplerate = operations.get('samplerate') 
+        target_channels = operations.get('channels')
+        target_bitrate = operations.get('bitrate')
+
+        if not operations.get('format') and not target_samplerate and not target_channels: # If no user ops affecting these
+            target_samplerate = target_samplerate or 16000
+            target_channels = target_channels or 1 # Mono
+
+        original_basename = os.path.basename(file_path)
+        original_name_part, _ = os.path.splitext(original_basename)
+        
+        try:
+            # Load the audio file. pydub usually infers input format automatically.
+            # Explicitly providing format might be useful if detection fails.
+            # For now, rely on pydub's auto-detection.
+            try:
+                audio_segment = AudioSegment.from_file(file_path)
+            except CouldntDecodeError as e:
+                # Attempt with common extensions if pydub fails to guess format
+                # (This is a fallback, usually pydub is good with extensions)
+                _, ext = os.path.splitext(file_path)
+                ext = ext.lower().replace('.', '')
+                if ext in ['mp3', 'wav', 'flac', 'ogg', 'm4a', 'aac', 'opus']:
+                    try:
+                        print(f"Retrying pydub load for {file_path} with explicit format: {ext}")
+                        audio_segment = AudioSegment.from_file(file_path, format=ext)
+                    except CouldntDecodeError:
+                         raise ParsingError(f"pydub could not decode audio file {file_path} even with explicit format '{ext}': {e}") from e
+                else:
+                    raise ParsingError(f"pydub could not decode audio file {file_path}: {e}") from e
+            except Exception as e_load: # Catch other pydub loading errors
+                raise ParsingError(f"Error loading audio file {file_path} with pydub: {e_load}") from e_load
+
+
+            # Apply transformations
+            if target_samplerate and audio_segment.frame_rate != target_samplerate:
+                audio_segment = audio_segment.set_frame_rate(target_samplerate)
+            
+            if target_channels and audio_segment.channels != target_channels:
+                if target_channels == 1:
+                    audio_segment = audio_segment.set_channels(1) # Convert to mono
+                # else: pydub doesn't have a simple "set_channels(2)" if it's already stereo.
+                # If converting mono to stereo, it's more complex (e.g. duplicate channel).
+                # For STT, mono is usually preferred or sufficient.
+                # If user explicitly asks for stereo and it's already stereo, no change.
+                # If user explicitly asks for stereo and it's mono, this is an edge case to consider.
+                # For now, primary use case is ensuring mono if target_channels is 1.
+
+            # Note: format conversion and bitrate are handled during export by pydub.
+            # We store the target format and bitrate for the .audios property to use.
+
+            processed_filename_for_api = f"{original_name_part}.{output_format}"
+            
+            text_representation_parts = [f"Audio: {original_basename}"]
+            if indices:
+                text_representation_parts.append(f"ops: \"{indices}\"")
+            
+            text_representation_parts.append(f"-> processed to {output_format}")
+            if target_samplerate: text_representation_parts.append(f"{target_samplerate//1000}kHz")
+            if target_channels == 1: text_representation_parts.append("mono")
+            elif target_channels == 2: text_representation_parts.append("stereo")
+            
+            text_representation = f"[{' '.join(text_representation_parts)}]"
+            
+            return {
+                "text": text_representation,
+                "raw_path": file_path, # Keep original path for reference
+                "audio_segment": audio_segment, # The pydub AudioSegment object
+                "original_basename": original_basename, # For reference
+                "processed_filename_for_api": processed_filename_for_api, # e.g., "input.wav"
+                "output_format": output_format, # e.g., "wav"
+                "output_samplerate": audio_segment.frame_rate, # Actual rate after processing
+                "output_channels": audio_segment.channels,   # Actual channels after processing
+                "output_bitrate": target_bitrate, # Requested bitrate for export (string like "128k")
+                "applied_operations": operations # Store parsed operations
+            }
+
+        except CouldntDecodeError as e: # Should be caught above, but as a safety net
+            raise ParsingError(f"pydub failed to decode audio file: {file_path}. Ensure ffmpeg/libav is installed if it's not a WAV/MP3. Error: {e}")
+        except FileNotFoundError: # Should be caught by os.path.exists already
+            raise ParsingError(f"Audio file not found during pydub processing (should have been caught earlier): {file_path}")
+        except Exception as e:
+            raise ParsingError(f"An unexpected error occurred while processing audio file {file_path} with pydub: {e}")
 
 # Example of how parsers might be registered (this would typically happen in the Attachments core or user code)
 # parser_registry = ParserRegistry()

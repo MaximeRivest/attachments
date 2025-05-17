@@ -221,6 +221,80 @@ def parse_image_operations(ops_str):
             
     return operations
 
+def parse_audio_operations(ops_str: str) -> dict:
+    """Parses audio operation strings like 'format:wav,samplerate:16000,channels:1,bitrate:128k'.
+    Returns a dictionary of operations.
+    Example: {
+        'format': 'wav',
+        'samplerate': 16000,
+        'channels': 1,
+        'bitrate': '128k'
+    }
+    """
+    operations = {}
+    if not ops_str or not isinstance(ops_str, str):
+        return operations
+
+    ops_list = ops_str.split(',')
+    for op_item in ops_list:
+        op_item = op_item.strip()
+        if not op_item:
+            continue
+        
+        parts = op_item.split(':', 1)
+        if len(parts) != 2:
+            print(f"Warning: Could not parse audio operation part: '{op_item}'. Expected key:value format.")
+            continue
+        
+        key = parts[0].strip().lower()
+        value = parts[1].strip()
+
+        if key == 'format':
+            # Supported output formats by pydub (common ones)
+            # Users might need ffmpeg for some of these.
+            supported_formats = ['wav', 'mp3', 'flac', 'ogg', 'opus', 'm4a', 'aac', 'webm', 'mp4'] 
+            value_lower = value.lower()
+            if value_lower in supported_formats:
+                operations[key] = value_lower
+            else:
+                print(f"Warning: Unsupported audio format '{value}' for output. Supported: {supported_formats}.")
+        elif key == 'samplerate' or key == 'rate':
+            try:
+                operations['samplerate'] = int(value) # pydub expects frame_rate as int
+            except ValueError:
+                print(f"Warning: Invalid samplerate value '{value}'. Expected an integer (e.g., 16000).")
+        elif key == 'channels':
+            try:
+                channels_val = int(value)
+                if channels_val in [1, 2]: # Mono or Stereo
+                    operations[key] = channels_val
+                else:
+                    print(f"Warning: Invalid channels value '{value}'. Expected 1 (mono) or 2 (stereo).")
+            except ValueError:
+                print(f"Warning: Invalid channels value '{value}'. Expected an integer.")
+        elif key == 'bitrate':
+            # pydub expects bitrate like "128k", "192k" etc.
+            if isinstance(value, str) and (value.endswith('k') or value.endswith('K')):
+                try:
+                    # Check if the numeric part is valid
+                    int(value[:-1]) 
+                    operations[key] = value
+                except ValueError:
+                    print(f"Warning: Invalid bitrate value '{value}'. Numeric part of bitrate is not an integer (e.g., 128k).")
+            else:
+                try:
+                    # Allow raw numbers, assume kbps, will append 'k' later if pydub needs it stringified
+                    # For now, let's just store what user gives if it looks like a number or valid string.
+                    # Pydub's export function often takes bitrate as a string e.g. "192k"
+                    int_val = int(value)
+                    operations[key] = f"{int_val}k" # Store as string with k for pydub
+                except ValueError:
+                    print(f"Warning: Invalid bitrate value '{value}'. Expected a string like '128k' or an integer number of kbps.")
+        else:
+            print(f"Warning: Unknown audio operation key: '{key}'.")
+            
+    return operations
+
 if __name__ == '__main__':
     # Test cases with N replacement integrated
     print("--- Test Cases ---")

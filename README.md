@@ -65,7 +65,7 @@ The ambition of `attachments` is to provide a robust reader, processor, and rend
 
 ## Key Features
 
-*   **Versatile File Handling**: Process a variety of file types including PDFs, PPTX, HTML, and common image formats.
+*   **Versatile File Handling**: Process a variety of file types including PDFs, PPTX, HTML, common image formats, and audio files.
 *   **Local and URL Support**: Accepts local file paths and URLs as input.
 *   **Content Extraction**: Extracts text from documents and rich metadata from all supported types.
 *   **Advanced Image Processing**:
@@ -80,6 +80,7 @@ The ambition of `attachments` is to provide a robust reader, processor, and rend
 *   **LLM-Ready Outputs**:
     *   Default XML rendering (`str(attachments)`) provides a structured representation suitable for LLM prompts, including detailed metadata and textual content.
     *   `.images` property: Conveniently access a list of base64-encoded image strings (e.g., `data:image/jpeg;base64,...`), ready for multi-modal LLM APIs.
+    *   `.audios` property: Provides a list of audio file data, each with a filename, a `BytesIO` file object, and content type, suitable for audio-processing APIs (e.g., OpenAI Whisper).
 *   **Broad Image Format Support**: Handles JPEG, PNG, GIF, BMP, WEBP, TIFF, and modern formats like HEIC/HEIF (requires `libheif`).
 
 ## Installation
@@ -177,6 +178,22 @@ if base64_image_list:
     # Output: First image data URI: data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD...
 ```
 
+**3. Audio Files for LLMs:**
+The `.audios` property returns a list of dictionaries, each prepared for audio API submission (e.g., to OpenAI Whisper). Each dictionary contains:
+*   `'filename'`: The original filename (e.g., `'speech.mp3'`).
+*   `'file_object'`: An `io.BytesIO` object containing the raw audio data. Its `.name` attribute is set to the filename.
+*   `'content_type'`: The detected MIME type of the audio (e.g., `'audio/mpeg'`).
+
+```python
+audio_files_for_api = a.audios
+if audio_files_for_api:
+    first_audio = audio_files_for_api[0]
+    print(f"Audio Filename: {first_audio['filename']}")
+    print(f"Audio Content-Type: {first_audio['content_type']}")
+    # The first_audio['file_object'] can be directly passed to APIs like openai.Audio.transcribe
+    # For example: transcript = openai.Audio.transcribe("whisper-1", first_audio['file_object'])
+```
+
 ### Indexing Attachments
 You can get a new `Attachments` object containing a subset of the original attachments using integer or slice indexing:
 ```python
@@ -201,17 +218,4 @@ specific_slides_pptx = Attachments("presentation.pptx[:3,N]")
 *   **Documents**: PDF (`.pdf`), PowerPoint (`.pptx`)
 *   **Web**: HTML (`.html`, URLs)
 *   **Images**: JPEG (`.jpg`, `.jpeg`), PNG (`.png`), GIF (`.gif`), BMP (`.bmp`), WEBP (`.webp`), TIFF (`.tiff`), HEIC (`.heic`), HEIF (`.heif`)
-
-## Running Tests
-To run the test suite:
-1. Clone the repository.
-2. Ensure you have `pytest` installed (`pip install pytest`).
-3. Navigate to the root directory of the project and run:
-   ```bash
-   pytest
-   ```
-
-## License
-(To be added - e.g., MIT License)
-
-
+*   **Audio**: FLAC (`.flac`), M4A (`.m4a`), MP3 (`.mp3`), MP4 audio (`.mp4`), MPEG audio (`.mpeg`, `.mpga`), Ogg audio (`.oga`, `.ogg`), WAV (`.wav`), WebM audio (`.webm`)

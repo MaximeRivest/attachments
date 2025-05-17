@@ -26,6 +26,7 @@ dependencies = [
     "requests>=2.32.3",
     "html2text>=2024.2.26",
     "pillow-heif>=0.17.0",
+    "pydub>=0.25.1",
 ]
 
 [project.urls]

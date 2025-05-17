@@ -22,6 +22,17 @@ class Detector:
         self.register('heic', extensions=['.heic'])
         self.register('heif', extensions=['.heif'])
 
+        # Audio types - based on OpenAI Whisper and ElevenLabs Scribe lists
+        self.register('flac', extensions=['.flac'])
+        self.register('m4a', extensions=['.m4a'])
+        self.register('mp3', extensions=['.mp3'])
+        self.register('mp4_audio', extensions=['.mp4']) # Distinguish from video mp4 if necessary later
+        self.register('mpeg_audio', extensions=['.mpeg', '.mpg', '.mpga']) # .mpeg/.mpg can be video too
+        self.register('oga', extensions=['.oga']) # Ogg Audio
+        self.register('ogg_audio', extensions=['.ogg']) # .ogg can be video (Theora) or audio (Vorbis)
+        self.register('wav', extensions=['.wav', '.wave'])
+        self.register('webm_audio', extensions=['.webm']) # .webm can be video (VP8/VP9) or audio (Opus/Vorbis)
+
     def register(self, name, extensions=None, regex=None, custom_method=None):
         """Registers a detection method."""
         # Placeholder for registration logic
@@ -64,6 +75,38 @@ class Detector:
                 return 'heic'
             elif main_type == 'image/heif':
                 return 'heif'
+            # Audio MIME types
+            elif main_type == 'audio/flac' or main_type == 'audio/x-flac':
+                return 'flac'
+            elif main_type == 'audio/m4a' or main_type == 'audio/x-m4a' or (main_type == 'audio/mp4' and file_path.lower().endswith('.m4a')): # audio/mp4 can be m4a
+                return 'm4a'
+            elif main_type == 'audio/mpeg': # Covers mp3, mpga
+                # More specific check for mp3 extension if mime is generic audio/mpeg
+                if file_path.lower().endswith('.mp3'):
+                    return 'mp3'
+                return 'mpeg_audio' # Default for audio/mpeg if not .mp3
+            elif main_type == 'audio/mp3': # Explicit mp3
+                 return 'mp3'
+            elif main_type == 'audio/mp4': # If not m4a, could be mp4 audio
+                 return 'mp4_audio'
+            elif main_type == 'audio/ogg': # Covers oga (Vorbis, Opus, FLAC in Ogg)
+                 # Prefer oga if extension matches, else generic ogg_audio
+                if file_path.lower().endswith('.oga'):
+                    return 'oga'
+                return 'ogg_audio'
+            elif main_type == 'audio/opus': # Often in .ogg or .opus containers
+                 return 'ogg_audio' # Or define 'opus' type if distinct handling needed
+            elif main_type == 'audio/wav' or main_type == 'audio/x-wav' or main_type == 'audio/wave':
+                return 'wav'
+            elif main_type == 'audio/webm':
+                return 'webm_audio'
+            # Add more MIME type mappings here as needed
+            # Fallback for other audio/* types
+            elif main_type.startswith('audio/'):
+                # Generic audio type if no specific match, rely on extension then
+                # This part helps if a new audio MIME type appears but has a known extension
+                # Let extension check handle it below.
+                pass
             # Add more MIME type mappings here as needed
             # Fallback for other image/* types if not specifically handled above,
             # could attempt to map to a generic image type or rely on extension.
@@ -73,6 +116,10 @@ class Detector:
         import os
         _, ext = os.path.splitext(file_path)
         ext = ext.lower()
+        # ---- START TEMPORARY DEBUGGING ----
+        if "recording_2025-04-26_11-10-42.wav" in file_path: # Crude check for the specific file
+            print(f"[DEBUG DETECTOR] file_path: {file_path}, ext: '{ext}'")
+        # ---- END TEMPORARY DEBUGGING ----
 
         for name, method_info in self.detection_methods.items():
             if method_info['type'] == 'extension':

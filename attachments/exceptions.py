@@ -14,7 +14,7 @@ class ParsingError(AttachmentError):
 
 class RenderingError(AttachmentError):
     """Raised when content rendering fails."""
-    pass
+    pass 
 
 class ConfigurationError(AttachmentError):
     """Custom exception for configuration-related errors."""
