@@ -16,6 +16,7 @@ from .renderers import RendererRegistry, DefaultXMLRenderer, PlainTextRenderer
 from .exceptions import DetectionError, ParsingError
 from .image_processing import DEFAULT_IMAGE_OUTPUT_FORMAT, DEFAULT_IMAGE_QUALITY
 from .config import Config as ActualConfig
+from . import office_contact_sheet  # <-- Import the contact sheet utility
 
 # Provide a default gemeinsame_config if not already defined elsewhere
 gemeinsame_config = ActualConfig()
@@ -200,6 +201,58 @@ class Attachments:
                 parsed_content['file_path'] = original_file_path_or_url 
 
                 known_audio_types = ['flac', 'm4a', 'mp3', 'mp4_audio', 'mpeg_audio', 'oga', 'ogg_audio', 'wav', 'webm_audio']
+                # --- Contact Sheet Generation for Document Types ---
+                doc_types_for_contact_sheet = ['pdf', 'pptx', 'docx', 'xlsx']
+                if file_type in doc_types_for_contact_sheet:
+                    try:
+                        from PIL import Image
+                        # Determine output format (png/jpeg/webp/etc)
+                        output_format = self._config.DEFAULT_IMAGE_OUTPUT_FORMAT.lower()
+                        if output_format == 'jpg':
+                            output_format = 'jpeg'
+                        # Create temp file for contact sheet
+                        with tempfile.NamedTemporaryFile(delete=False, suffix=f'.{output_format}') as tmp_img:
+                            contact_sheet_path = tmp_img.name
+                        # Generate contact sheet
+                        if file_type == 'pdf':
+                            office_contact_sheet.pdf_to_contact_sheet(
+                                path_for_detector_and_parser, contact_sheet_path, dpi=150
+                            )
+                        else:
+                            office_contact_sheet.office_file_to_contact_sheet(
+                                path_for_detector_and_parser, contact_sheet_path, temp_dir=os.path.dirname(contact_sheet_path), dpi=150
+                            )
+                        # Load as Pillow image
+                        contact_img = Image.open(contact_sheet_path)
+                        contact_img.load()
+                        # Add to attachments_data as an image
+                        contact_sheet_data = {
+                            'type': output_format,
+                            'id': f'contact_sheet{i+1}',
+                            'original_path_str': f'[auto-generated contact sheet for {file_path}]',
+                            'file_path': contact_sheet_path,  # temp file path (for traceability)
+                            'image_object': contact_img,
+                            'original_format': output_format.upper(),
+                            'original_mode': contact_img.mode,
+                            'original_dimensions': contact_img.size,
+                            'dimensions_after_ops': contact_img.size,
+                            'operations_applied': {'contact_sheet': True},
+                            'output_format': output_format,
+                            'output_quality': self._config.DEFAULT_IMAGE_QUALITY,
+                            'output_format_for_base64': output_format,
+                        }
+                        self.attachments_data.append(contact_sheet_data)
+                    except Exception as e:
+                        print(f"Warning: Could not generate contact sheet for {file_type} '{file_path}': {e}")
+                    finally:
+                        # Clean up temp file after loading
+                        try:
+                            if os.path.exists(contact_sheet_path):
+                                os.remove(contact_sheet_path)
+                        except Exception:
+                            pass
+                # --- End Contact Sheet Generation ---
+
                 if file_type in known_audio_types:
                     parsed_content['original_format'] = file_type # Add original_format for audio
                     if 'original_basename' not in parsed_content: # Fallback if parser didn't provide it

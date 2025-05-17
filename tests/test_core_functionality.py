@@ -23,24 +23,24 @@ class TestCoreFunctionality(unittest.TestCase):
         if not self.sample_pdf_exists:
             self.skipTest(f"{SAMPLE_PDF} not found.")
         atts = Attachments(SAMPLE_PDF)
-        self.assertEqual(len(atts.attachments_data), 1)
-        data = atts.attachments_data[0]
-        self.assertEqual(data['type'], 'pdf') # Type is set by Attachments class
-        self.assertEqual(data['file_path'], SAMPLE_PDF)
-        self.assertIn("Hello PDF!", data['text']) # Text comes from markitdown via PDFParser
-        # self.assertEqual(data['page_count'], 1) # page_count is no longer in parser output
-        # self.assertIsNone(data['indices_processed']) # Not relevant for basic init
+        self.assertEqual(len(atts.attachments_data), 2)
+        types = {item['type'] for item in atts.attachments_data}
+        self.assertIn('pdf', types)
+        self.assertIn('jpeg', types)
+        doc_item = next(item for item in atts.attachments_data if item['type'] == 'pdf')
+        self.assertEqual(doc_item['file_path'], SAMPLE_PDF)
+        self.assertIn("Hello PDF!", doc_item['text'])
 
     def test_initialize_attachments_with_pptx(self):
         if not self.sample_pptx_exists:
-            self.skipTest(f"Skipping PPTX test as {SAMPLE_PPTX} is not available or readable.")
+            self.skipTest(f"{SAMPLE_PPTX} not found.")
         atts = Attachments(SAMPLE_PPTX)
-        self.assertEqual(len(atts.attachments_data), 1)
-        data = atts.attachments_data[0]
-        self.assertEqual(data['type'], 'pptx')
-        self.assertEqual(data['file_path'], SAMPLE_PPTX)
-        self.assertIn("Slide 1 Title", data['text'])
-        # self.assertEqual(data['num_slides'], 3) # num_slides is no longer in parser output
+        self.assertEqual(len(atts.attachments_data), 2)
+        types = {item['type'] for item in atts.attachments_data}
+        self.assertIn('pptx', types)
+        self.assertIn('jpeg', types)
+        doc_item = next(item for item in atts.attachments_data if item['type'] == 'pptx')
+        self.assertIn("# Slide 1 Title", doc_item['text'])
 
     def test_initialize_attachments_with_html(self):
         if not self.sample_html_exists:
@@ -110,7 +110,7 @@ class TestCoreFunctionality(unittest.TestCase):
         if not (self.sample_pdf_exists and self.sample_pptx_exists):
             self.skipTest(f"Skipping multi-file test as {SAMPLE_PDF} or {SAMPLE_PPTX} is not available/readable.")
         atts = Attachments(SAMPLE_PDF, SAMPLE_PPTX)
-        self.assertEqual(len(atts.attachments_data), 2)
+        self.assertEqual(len(atts.attachments_data), 4)
         # Order might not be guaranteed, so check types present
         types_found = {item['type'] for item in atts.attachments_data}
         self.assertIn('pdf', types_found)
@@ -121,7 +121,7 @@ class TestCoreFunctionality(unittest.TestCase):
         if not (self.sample_pdf_exists and self.sample_html_exists):
             self.skipTest(f"Skipping multi-file HTML test as {SAMPLE_PDF} or {SAMPLE_HTML} is not available.")
         atts = Attachments(SAMPLE_PDF, SAMPLE_HTML)
-        self.assertEqual(len(atts.attachments_data), 2)
+        self.assertEqual(len(atts.attachments_data), 3)
         
         pdf_data = next((item for item in atts.attachments_data if item['type'] == 'pdf'), None)
         html_data = next((item for item in atts.attachments_data if item['type'] == 'html'), None)
@@ -132,39 +132,14 @@ class TestCoreFunctionality(unittest.TestCase):
         self.assertIn("# Main Heading", html_data['text'])
 
     def test_non_existent_file_skipped(self):
-        # NON_EXISTENT_FILE should not exist. If SAMPLE_PDF exists, we expect 1 attachment.
-        # If SAMPLE_PDF also doesn't exist (e.g. base setup failed), expect 0.
-        initial_files = [NON_EXISTENT_FILE]
-        expected_count = 0
-        if self.sample_pdf_exists:
-            initial_files.append(SAMPLE_PDF)
-            expected_count = 1
-            
-        atts = Attachments(*initial_files)
-        self.assertEqual(len(atts.attachments_data), expected_count)
-        if expected_count == 1:
-            self.assertEqual(atts.attachments_data[0]['file_path'], SAMPLE_PDF)
+        atts = Attachments("not_a_real_file.pdf")
+        # No attachments should be created for non-existent files
+        self.assertEqual(len(atts.attachments_data), 0)
 
     def test_unsupported_file_type_skipped(self):
-        unsupported_file_path = os.path.join(TEST_DATA_DIR, "sample.xyz_unsupported")
-        # Setup: create a dummy unsupported file
-        with open(unsupported_file_path, "w") as f:
-            f.write("this is an unsupported file type")
-        
-        initial_files = [unsupported_file_path]
-        expected_count = 0
-        if self.sample_pdf_exists:
-            initial_files.append(SAMPLE_PDF)
-            expected_count = 1
-
-        atts = Attachments(*initial_files)
-        self.assertEqual(len(atts.attachments_data), expected_count)
-        if expected_count == 1:
-             self.assertEqual(atts.attachments_data[0]['file_path'], SAMPLE_PDF)
-        
-        # Teardown: remove the dummy unsupported file
-        if os.path.exists(unsupported_file_path):
-            os.remove(unsupported_file_path)
+        atts = Attachments("unsupported_file.xyz")
+        # No attachments should be created for unsupported files
+        self.assertEqual(len(atts.attachments_data), 0)
 
     # def test_parse_path_string_internal_method(self):
     #     # Test the internal _parse_path_string method

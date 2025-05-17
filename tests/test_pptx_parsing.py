@@ -17,63 +17,71 @@ class TestPptxParsing(unittest.TestCase):
         if not self.sample_pptx_exists:
             self.skipTest(f"{SAMPLE_PPTX} not available/readable for PPTX indexing test.")
         atts = Attachments(f"{SAMPLE_PPTX}[2]")
-        self.assertEqual(len(atts.attachments_data), 1)
-        data = atts.attachments_data[0]
-        self.assertEqual(data['type'], 'pptx')
-        # Markitdown processes the whole PPTX.
-        self.assertIn("Slide 1 Title", data['text'])
-        self.assertIn("Slide 2 Title", data['text'])
-        self.assertIn("Content for page 2", data['text'])
-        self.assertIn("Slide 3 Title", data['text'])
-        # self.assertNotIn("Slide 1 Title", data['text'])
-        # self.assertNotIn("Slide 3 Title", data['text'])
+        self.assertEqual(len(atts.attachments_data), 2)
+        types = {item['type'] for item in atts.attachments_data}
+        self.assertIn('pptx', types)
+        self.assertIn('jpeg', types)
+        doc_item = next(item for item in atts.attachments_data if item['type'] == 'pptx')
+        self.assertIn("This is the second slide.", doc_item['text'])
+        self.assertIn("Content for page 2.", doc_item['text'])
 
     def test_pptx_indexing_range(self):
         if not self.sample_pptx_exists:
             self.skipTest(f"{SAMPLE_PPTX} not available/readable for PPTX indexing test.")
-        atts = Attachments(f"{SAMPLE_PPTX}[1-2]") 
-        self.assertEqual(len(atts.attachments_data), 1)
-        data = atts.attachments_data[0]
-        self.assertIn("Slide 1 Title", data['text'])
-        self.assertIn("Slide 2 Title", data['text'])
-        # Markitdown processes the whole PPTX.
-        self.assertIn("Slide 3 Title", data['text'])
-        # self.assertNotIn("Slide 3 Title", data['text'])
+        atts = Attachments(f"{SAMPLE_PPTX}[1-2]")
+        self.assertEqual(len(atts.attachments_data), 2)
+        types = {item['type'] for item in atts.attachments_data}
+        self.assertIn('pptx', types)
+        self.assertIn('jpeg', types)
+        doc_item = next(item for item in atts.attachments_data if item['type'] == 'pptx')
+        self.assertIn("This is the first slide.", doc_item['text'])
+        self.assertIn("Content for page 1.", doc_item['text'])
+        self.assertIn("This is the second slide.", doc_item['text'])
+        self.assertIn("Content for page 2.", doc_item['text'])
 
     def test_pptx_indexing_with_n(self):
         if not self.sample_pptx_exists:
             self.skipTest(f"{SAMPLE_PPTX} not available/readable for PPTX indexing test.")
-        atts = Attachments(f"{SAMPLE_PPTX}[1,N]") 
-        self.assertEqual(len(atts.attachments_data), 1)
-        data = atts.attachments_data[0]
-        self.assertIn("Slide 1 Title", data['text'])
-        self.assertIn("Slide 3 Title", data['text'])
-        # Markitdown processes the whole PPTX.
-        self.assertIn("Slide 2 Title", data['text'])
-        # self.assertNotIn("Slide 2 Title", data['text'])
+        atts = Attachments(f"{SAMPLE_PPTX}[1,N]")
+        self.assertEqual(len(atts.attachments_data), 2)
+        types = {item['type'] for item in atts.attachments_data}
+        self.assertIn('pptx', types)
+        self.assertIn('jpeg', types)
+        doc_item = next(item for item in atts.attachments_data if item['type'] == 'pptx')
+        self.assertIn("This is the first slide.", doc_item['text'])
+        self.assertIn("Content for page 1.", doc_item['text'])
+        self.assertIn("This is the third slide.", doc_item['text'])
+        self.assertIn("Content for page 3.", doc_item['text'])
 
     def test_pptx_indexing_negative_slice(self):
         if not self.sample_pptx_exists:
             self.skipTest(f"{SAMPLE_PPTX} not available/readable for PPTX indexing test.")
-        atts = Attachments(f"{SAMPLE_PPTX}[-2:]") 
-        self.assertEqual(len(atts.attachments_data), 1)
-        data = atts.attachments_data[0]
-        self.assertIn("Slide 2 Title", data['text'])
-        self.assertIn("Slide 3 Title", data['text'])
-        # Markitdown processes the whole PPTX.
-        self.assertIn("Slide 1 Title", data['text'])
-        # self.assertNotIn("Slide 1 Title", data['text'])
+        atts = Attachments(f"{SAMPLE_PPTX}[-2:]")
+        self.assertEqual(len(atts.attachments_data), 2)
+        types = {item['type'] for item in atts.attachments_data}
+        self.assertIn('pptx', types)
+        self.assertIn('jpeg', types)
+        doc_item = next(item for item in atts.attachments_data if item['type'] == 'pptx')
+        self.assertIn("This is the second slide.", doc_item['text'])
+        self.assertIn("Content for page 2.", doc_item['text'])
+        self.assertIn("This is the third slide.", doc_item['text'])
+        self.assertIn("Content for page 3.", doc_item['text'])
 
     def test_pptx_indexing_empty_indices_string(self):
         if not self.sample_pptx_exists:
             self.skipTest(f"{SAMPLE_PPTX} not available/readable for PPTX indexing test.")
         atts = Attachments(f"{SAMPLE_PPTX}[]") # Empty index means all slides
-        self.assertEqual(len(atts.attachments_data), 1)
-        data = atts.attachments_data[0]
-        self.assertIn("Slide 1 Title", data['text'])
-        self.assertIn("Slide 2 Title", data['text'])
-        self.assertIn("Slide 3 Title", data['text'])
-        # self.assertEqual(data['num_slides'], 3) # Not from parser
+        self.assertEqual(len(atts.attachments_data), 2)
+        types = {item['type'] for item in atts.attachments_data}
+        self.assertIn('pptx', types)
+        self.assertIn('jpeg', types)
+        doc_item = next(item for item in atts.attachments_data if item['type'] == 'pptx')
+        self.assertIn("This is the first slide.", doc_item['text'])
+        self.assertIn("Content for page 1.", doc_item['text'])
+        self.assertIn("This is the second slide.", doc_item['text'])
+        self.assertIn("Content for page 2.", doc_item['text'])
+        self.assertIn("This is the third slide.", doc_item['text'])
+        self.assertIn("Content for page 3.", doc_item['text'])
 
     # --- Direct PPTXParser tests (from old TestIndividualParsers) ---
     def test_pptx_parser_direct_indexing(self):

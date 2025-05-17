@@ -7,6 +7,7 @@ from .parsers import BaseParser, ParserRegistry, PDFParser, PPTXParser, HTMLPars
 from .renderers import BaseRenderer, RendererRegistry, DefaultXMLRenderer, PlainTextRenderer # Added PlainTextRenderer
 from .detectors import Detector
 from .exceptions import AttachmentError, DetectionError, ParsingError, RenderingError, ConfigurationError
+from .office_contact_sheet import pdf_to_contact_sheet, office_file_to_contact_sheet
 
 __version__ = "0.1.1" # Updated version
 
@@ -31,6 +32,8 @@ __all__ = [
     "ParsingError",
     "RenderingError",
     "ConfigurationError",
+    "pdf_to_contact_sheet",
+    "office_file_to_contact_sheet",
 ]
 
 # This file will expose the core components of the library. 

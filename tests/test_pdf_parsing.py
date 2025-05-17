@@ -15,81 +15,98 @@ class TestPdfParsing(unittest.TestCase):
         if not self.generated_multi_page_pdf_exists: # Relies on GENERATED_MULTI_PAGE_PDF from base setup
             self.skipTest(f"{GENERATED_MULTI_PAGE_PDF} not found.")
         atts = Attachments(f"{GENERATED_MULTI_PAGE_PDF}[2]") # Indexing string is passed
-        self.assertEqual(len(atts.attachments_data), 1)
-        data = atts.attachments_data[0]
-        self.assertEqual(data['type'], 'pdf') # Type comes from Attachments processing
+        self.assertEqual(len(atts.attachments_data), 2)
+        types = {item['type'] for item in atts.attachments_data}
+        self.assertIn('pdf', types)
+        self.assertIn('jpeg', types)  # contact sheet
+        doc_item = next(item for item in atts.attachments_data if item['type'] == 'pdf')
+        self.assertIn("This is page 2", doc_item['text'])
         
         # Markitdown currently processes the whole PDF regardless of Attachments indices.
         # So, we expect all pages in the text. The specific page [2] might not be isolated.
-        self.assertIn("This is page 1", data['text']) # Expect Page 1 text
-        self.assertIn("This is page 2", data['text']) # Expect Page 2 text
-        self.assertIn("This is page 5", data['text']) # Expect Page 5 text
-        # self.assertNotIn("This is page 1", data['text']) # This would fail now
-        # self.assertNotIn("This is page 3", data['text']) # This would fail now
+        self.assertIn("This is page 1", doc_item['text']) # Expect Page 1 text
+        self.assertIn("This is page 5", doc_item['text']) # Expect Page 5 text
+        # self.assertNotIn("This is page 1", doc_item['text']) # This would fail now
+        # self.assertNotIn("This is page 3", doc_item['text']) # This would fail now
 
     def test_pdf_indexing_range(self):
         if not self.generated_multi_page_pdf_exists:
             self.skipTest(f"{GENERATED_MULTI_PAGE_PDF} not found.")
         atts = Attachments(f"{GENERATED_MULTI_PAGE_PDF}[2-4]") 
-        self.assertEqual(len(atts.attachments_data), 1)
-        data = atts.attachments_data[0]
-        self.assertIn("This is page 2", data['text'])
-        self.assertIn("This is page 3", data['text'])
-        self.assertIn("This is page 4", data['text'])
+        self.assertEqual(len(atts.attachments_data), 2)
+        types = {item['type'] for item in atts.attachments_data}
+        self.assertIn('pdf', types)
+        self.assertIn('jpeg', types)
+        doc_item = next(item for item in atts.attachments_data if item['type'] == 'pdf')
+        self.assertIn("This is page 2", doc_item['text'])
+        self.assertIn("This is page 3", doc_item['text'])
+        self.assertIn("This is page 4", doc_item['text'])
         # Markitdown currently processes the whole PDF.
-        self.assertIn("This is page 1", data['text'])
-        self.assertIn("This is page 5", data['text'])
-        # self.assertNotIn("This is page 1", data['text']) # Fails
-        # self.assertNotIn("This is page 5", data['text']) # Fails
+        self.assertIn("This is page 1", doc_item['text'])
+        self.assertIn("This is page 5", doc_item['text'])
+        # self.assertNotIn("This is page 1", doc_item['text']) # Fails
+        # self.assertNotIn("This is page 5", doc_item['text']) # Fails
 
     def test_pdf_indexing_to_end_slice(self):
         if not self.generated_multi_page_pdf_exists:
             self.skipTest(f"{GENERATED_MULTI_PAGE_PDF} not found.")
         atts = Attachments(f"{GENERATED_MULTI_PAGE_PDF}[4:]") 
-        self.assertEqual(len(atts.attachments_data), 1)
-        data = atts.attachments_data[0]
-        self.assertIn("This is page 4", data['text'])
-        self.assertIn("This is page 5", data['text'])
+        self.assertEqual(len(atts.attachments_data), 2)
+        types = {item['type'] for item in atts.attachments_data}
+        self.assertIn('pdf', types)
+        self.assertIn('jpeg', types)
+        doc_item = next(item for item in atts.attachments_data if item['type'] == 'pdf')
+        self.assertIn("This is page 4", doc_item['text'])
+        self.assertIn("This is page 5", doc_item['text'])
         # Markitdown currently processes the whole PDF.
-        self.assertIn("This is page 1", data['text'])
-        # self.assertNotIn("This is page 3", data['text'])
+        self.assertIn("This is page 1", doc_item['text'])
+        # self.assertNotIn("This is page 3", doc_item['text'])
 
     def test_pdf_indexing_from_start_slice(self):
         if not self.generated_multi_page_pdf_exists:
             self.skipTest(f"{GENERATED_MULTI_PAGE_PDF} not found.")
         atts = Attachments(f"{GENERATED_MULTI_PAGE_PDF}[:2]") 
-        self.assertEqual(len(atts.attachments_data), 1)
-        data = atts.attachments_data[0]
-        self.assertIn("This is page 1", data['text'])
-        self.assertIn("This is page 2", data['text'])
+        self.assertEqual(len(atts.attachments_data), 2)
+        types = {item['type'] for item in atts.attachments_data}
+        self.assertIn('pdf', types)
+        self.assertIn('jpeg', types)
+        doc_item = next(item for item in atts.attachments_data if item['type'] == 'pdf')
+        self.assertIn("This is page 1", doc_item['text'])
+        self.assertIn("This is page 2", doc_item['text'])
         # Markitdown currently processes the whole PDF.
-        self.assertIn("This is page 3", data['text'])
-        # self.assertNotIn("This is page 3", data['text'])
+        self.assertIn("This is page 3", doc_item['text'])
+        # self.assertNotIn("This is page 3", doc_item['text'])
 
     def test_pdf_indexing_with_n(self):
         if not self.generated_multi_page_pdf_exists:
             self.skipTest(f"{GENERATED_MULTI_PAGE_PDF} not found.")
         atts = Attachments(f"{GENERATED_MULTI_PAGE_PDF}[1,N]") 
-        self.assertEqual(len(atts.attachments_data), 1)
-        data = atts.attachments_data[0]
-        self.assertIn("This is page 1", data['text'])
-        self.assertIn("This is page 5", data['text'])
+        self.assertEqual(len(atts.attachments_data), 2)
+        types = {item['type'] for item in atts.attachments_data}
+        self.assertIn('pdf', types)
+        self.assertIn('jpeg', types)
+        doc_item = next(item for item in atts.attachments_data if item['type'] == 'pdf')
+        self.assertIn("This is page 1", doc_item['text'])
+        self.assertIn("This is page 5", doc_item['text'])
         # Markitdown currently processes the whole PDF.
-        self.assertIn("This is page 2", data['text'])
-        # self.assertNotIn("This is page 2", data['text'])
-        # self.assertNotIn("This is page 4", data['text']) # Removed, page 4 will be present
+        self.assertIn("This is page 2", doc_item['text'])
+        # self.assertNotIn("This is page 2", doc_item['text'])
+        # self.assertNotIn("This is page 4", doc_item['text']) # Removed, page 4 will be present
 
     def test_pdf_indexing_negative(self):
         if not self.generated_multi_page_pdf_exists:
             self.skipTest(f"{GENERATED_MULTI_PAGE_PDF} not found.")
         atts = Attachments(f"{GENERATED_MULTI_PAGE_PDF}[-2:]") 
-        self.assertEqual(len(atts.attachments_data), 1)
-        data = atts.attachments_data[0]
-        self.assertIn("This is page 4", data['text'])
-        self.assertIn("This is page 5", data['text'])
+        self.assertEqual(len(atts.attachments_data), 2)
+        types = {item['type'] for item in atts.attachments_data}
+        self.assertIn('pdf', types)
+        self.assertIn('jpeg', types)
+        doc_item = next(item for item in atts.attachments_data if item['type'] == 'pdf')
+        self.assertIn("This is page 4", doc_item['text'])
+        self.assertIn("This is page 5", doc_item['text'])
         # Markitdown currently processes the whole PDF.
-        self.assertIn("This is page 1", data['text'])
-        # self.assertNotIn("This is page 3", data['text'])
+        self.assertIn("This is page 1", doc_item['text'])
+        # self.assertNotIn("This is page 3", doc_item['text'])
 
     def test_pdf_indexing_empty_result(self):
         if not self.generated_multi_page_pdf_exists:
@@ -97,22 +114,28 @@ class TestPdfParsing(unittest.TestCase):
         # Attachments class itself might handle invalid index string before parser, 
         # or parser might get it. If markitdown gets it, it processes whole file.
         atts = Attachments(f"{GENERATED_MULTI_PAGE_PDF}[99]") # Index out of bounds for typical indexing
-        self.assertEqual(len(atts.attachments_data), 1)
-        data = atts.attachments_data[0]
+        self.assertEqual(len(atts.attachments_data), 2)
+        types = {item['type'] for item in atts.attachments_data}
+        self.assertIn('pdf', types)
+        self.assertIn('jpeg', types)
+        doc_item = next(item for item in atts.attachments_data if item['type'] == 'pdf')
         # Markitdown will process the whole file as it doesn't use the index string "[99]"
-        self.assertIn("This is page 1", data['text'])
-        self.assertIn("This is page 5", data['text'])
-        # self.assertEqual(data['text'], "") # This would fail
+        self.assertIn("This is page 1", doc_item['text'])
+        self.assertIn("This is page 5", doc_item['text'])
+        # self.assertEqual(doc_item['text'], "") # This would fail
 
     def test_pdf_indexing_empty_indices_string(self):
         if not self.generated_multi_page_pdf_exists:
             self.skipTest(f"{GENERATED_MULTI_PAGE_PDF} not found for PDF indexing test.")
         atts = Attachments(f"{GENERATED_MULTI_PAGE_PDF}[]") # Empty index should mean all pages
-        self.assertEqual(len(atts.attachments_data), 1)
-        data = atts.attachments_data[0]
-        self.assertIn("This is page 1", data['text'])
-        self.assertIn("This is page 5", data['text'])
-        # self.assertEqual(data['page_count'], 5) # page_count is not returned by parser
+        self.assertEqual(len(atts.attachments_data), 2)
+        types = {item['type'] for item in atts.attachments_data}
+        self.assertIn('pdf', types)
+        self.assertIn('jpeg', types)
+        doc_item = next(item for item in atts.attachments_data if item['type'] == 'pdf')
+        self.assertIn("This is page 1", doc_item['text'])
+        self.assertIn("This is page 5", doc_item['text'])
+        # self.assertEqual(doc_item['page_count'], 5) # page_count is not returned by parser
 
     # --- Direct PDFParser tests (from old TestIndividualParsers) ---
     def test_pdf_parser_direct_indexing(self):

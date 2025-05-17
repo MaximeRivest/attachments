@@ -35,6 +35,11 @@ dependencies = [
     "pydub",
     "SpeechRecognition",
     "markitdown[all]>=0.1.1",
+    "pypdfium2", # For office_contact_sheet.py PDF rasterisation
+    # "pywin32", # Optional: Only needed for MS Office automation on Windows
+    # System dependencies (not installable via pip):
+    #   - LibreOffice/soffice (for CLI conversion)
+    #   - unoconv (for CLI conversion)
 ]
 
 [project.urls]

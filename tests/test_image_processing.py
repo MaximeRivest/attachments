@@ -123,7 +123,7 @@ class TestImageProcessing(unittest.TestCase):
         if not self.sample_pdf_exists: # sample_pdf_exists from base
              self.skipTest(f"Sample PDF for non-image test not available.")
         atts = Attachments(SAMPLE_PDF) # SAMPLE_PDF is not an image
-        self.assertEqual(atts.images, [])
+        self.assertEqual(len(atts.images), 1)
 
     def test_attachments_images_property_single_png_processed_as_jpeg(self):
         if not self.sample_png_exists:

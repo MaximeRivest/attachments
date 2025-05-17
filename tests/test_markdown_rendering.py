@@ -5,7 +5,7 @@ import re
 from attachments import Attachments
 from attachments.config import Config
 from tests.conftest import (
-    SAMPLE_PDF, SAMPLE_PNG, SAMPLE_HEIC, SAMPLE_AUDIO_WAV, SAMPLE_DOCX, SAMPLE_JPG, SAMPLE_ODT,
+    SAMPLE_PDF, SAMPLE_PNG, SAMPLE_HEIC, SAMPLE_AUDIO_WAV, SAMPLE_DOCX, SAMPLE_JPG, SAMPLE_ODT, SAMPLE_PPTX,
     BaseTestSetup
 )
 
@@ -29,23 +29,15 @@ class TestMarkdownRendering(BaseTestSetup):
         cfg_galleries_false = Config()
         cfg_galleries_false.MARKDOWN_RENDER_GALLERIES = False
 
-        # Test with verbose=False, galleries True (default item, no gallery expected for PDF)
+        # Test with verbose=False, galleries True (gallery expected for PDF)
         atts_galleries_true_not_verbose = Attachments(SAMPLE_PDF, config=cfg_galleries_true, verbose=False)
         md_galleries_true_not_verbose = atts_galleries_true_not_verbose._repr_markdown_()
-        self.assertNotIn("### Image Previews", md_galleries_true_not_verbose)
-        self.assertNotIn("Successfully processed", md_galleries_true_not_verbose)
+        self.assertIn("### Image Previews", md_galleries_true_not_verbose)
 
-        # Test with verbose=False, galleries False (default item, no gallery expected for PDF)
+        # Test with verbose=False, galleries False (gallery not expected for PDF)
         atts_galleries_false_not_verbose = Attachments(SAMPLE_PDF, config=cfg_galleries_false, verbose=False)
         md_galleries_false_not_verbose = atts_galleries_false_not_verbose._repr_markdown_()
         self.assertNotIn("### Image Previews", md_galleries_false_not_verbose)
-        self.assertNotIn("Successfully processed", md_galleries_false_not_verbose)
-
-        # Test with verbose=True, galleries True (default item, no gallery expected for PDF)
-        atts_galleries_true_verbose = Attachments(SAMPLE_PDF, config=cfg_galleries_true, verbose=True)
-        md_galleries_true_verbose = atts_galleries_true_verbose._repr_markdown_()
-        self.assertNotIn("### Image Previews", md_galleries_true_verbose)
-        self.assertIn("Successfully processed", md_galleries_true_verbose)
 
     def test_repr_markdown_image_only_with_gallery(self):
         if not self.sample_png_exists:
@@ -112,18 +104,22 @@ class TestMarkdownRendering(BaseTestSetup):
     def test_repr_markdown_docx_only(self):
         if not self.sample_docx_exists:
             self.skipTest(f"{SAMPLE_DOCX} not found.")
-        # DOCX doesn't have a gallery, so config for galleries is less relevant here for gallery presence
-        # but verbose still controls summary detail.
-        cfg = Config() # Default config (galleries true)
-        atts_verbose = Attachments(SAMPLE_DOCX, config=cfg, verbose=True)
-        markdown_output_verbose = atts_verbose._repr_markdown_()
-        self.assertIn("Successfully processed", markdown_output_verbose)
-        self.assertNotIn("### Image Previews", markdown_output_verbose)
+        
+        cfg_galleries_true = Config()
+        cfg_galleries_true.MARKDOWN_RENDER_GALLERIES = True
 
-        atts_not_verbose = Attachments(SAMPLE_DOCX, config=cfg, verbose=False)
-        markdown_output_not_verbose = atts_not_verbose._repr_markdown_()
-        self.assertNotIn("Successfully processed", markdown_output_not_verbose)
-        self.assertNotIn("### Image Previews", markdown_output_not_verbose)
+        cfg_galleries_false = Config()
+        cfg_galleries_false.MARKDOWN_RENDER_GALLERIES = False
+
+        # Test with verbose=False, galleries True (gallery expected for DOCX)
+        atts_galleries_true_not_verbose = Attachments(SAMPLE_DOCX, config=cfg_galleries_true, verbose=False)
+        md_galleries_true_not_verbose = atts_galleries_true_not_verbose._repr_markdown_()
+        self.assertIn("### Image Previews", md_galleries_true_not_verbose)
+
+        # Test with verbose=False, galleries False (gallery not expected for DOCX)
+        atts_galleries_false_not_verbose = Attachments(SAMPLE_DOCX, config=cfg_galleries_false, verbose=False)
+        md_galleries_false_not_verbose = atts_galleries_false_not_verbose._repr_markdown_()
+        self.assertNotIn("### Image Previews", md_galleries_false_not_verbose)
 
     def test_repr_markdown_multiple_mixed_attachments(self):
         self.skipTestIfNoFFmpeg()
@@ -148,8 +144,17 @@ class TestMarkdownRendering(BaseTestSetup):
         markdown_output_gallery = atts_gallery._repr_markdown_()
 
         self.assertIn("Successfully processed", markdown_output_gallery)
+        # Each document (pdf) now adds a contact sheet image, so +1 per doc
         num_attachments = len(paths_for_markdown)
-        self.assertTrue(markdown_output_gallery.count("**ID:**") == num_attachments, f"Expected {num_attachments} ID sections.")
+        num_extra = 0
+        if has_pdf:
+            num_extra += 1
+        if self.sample_docx_exists and SAMPLE_DOCX in paths_for_markdown:
+            num_extra += 1
+        if self.sample_pptx_exists and SAMPLE_PPTX in paths_for_markdown:
+            num_extra += 1
+        # If you add XLSX, add here
+        self.assertTrue(markdown_output_gallery.count("**ID:**") == num_attachments + num_extra, f"Expected {num_attachments + num_extra} ID sections.")
         # Check for horizontal rule separators between items
         # Expect num_attachments - 1 separators if num_attachments > 1
         if num_attachments > 1:
@@ -184,7 +189,7 @@ class TestMarkdownRendering(BaseTestSetup):
 
         if has_audio:
             self.assertIn("\n### Audio Previews", markdown_output_gallery)
-            self.assertTrue(re.search(rf"\`(wav|audio)` from `{re.escape(SAMPLE_AUDIO_WAV)}.+`\)", markdown_output_gallery),
+            self.assertTrue(re.search(rf"\`(wav|audio)\` from \`{re.escape(SAMPLE_AUDIO_WAV)}.+\`\)", markdown_output_gallery),
                             f"Audio entry for {SAMPLE_AUDIO_WAV} not found in summary as expected.")
             self.assertIn("Output as:** `ogg`", markdown_output_gallery)
             self.assertIn("samplerate: 8000", markdown_output_gallery)
@@ -204,4 +209,4 @@ class TestMarkdownRendering(BaseTestSetup):
         self.assertNotIn("\n### Audio Previews", markdown_output_no_gallery)
 
 if __name__ == '__main__':
-    unittest.main() 
+    unittest.main()

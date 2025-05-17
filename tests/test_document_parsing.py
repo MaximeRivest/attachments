@@ -15,13 +15,14 @@ class TestDocumentParsing(unittest.TestCase):
         if not self.sample_docx_exists:
             self.skipTest(f"{SAMPLE_DOCX} not found.")
         atts = Attachments(SAMPLE_DOCX)
-        self.assertEqual(len(atts.attachments_data), 1)
-        data = atts.attachments_data[0]
-        self.assertEqual(data['type'], 'docx')
-        self.assertEqual(data['file_path'], SAMPLE_DOCX)
-        # These assertions depend on the content of your sample.docx
-        self.assertIn("Header is here", data['text'])
-        self.assertIn("Hello this is a test document", data['text'])
+        self.assertEqual(len(atts.attachments_data), 2)
+        types = {item['type'] for item in atts.attachments_data}
+        self.assertIn('docx', types)
+        self.assertIn('jpeg', types)
+        doc_item = next(item for item in atts.attachments_data if item['type'] == 'docx')
+        self.assertEqual(doc_item['file_path'], SAMPLE_DOCX)
+        self.assertIn("Header is here", doc_item['text'])
+        self.assertIn("Hello this is a test document", doc_item['text'])
         # Add more specific content checks if necessary
 
     # --- Test ODT parsing via Attachments object ---
