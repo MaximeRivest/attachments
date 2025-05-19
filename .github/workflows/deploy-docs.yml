@@ -1,0 +1,41 @@
+name: Deploy MyST Documentation to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main # Or your default branch
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11' # Match your project's Python version
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Install dependencies
+        run: uv pip install -e '.[dev]'
+
+      - name: Build MyST documentation
+        run: myst build --html # Output will be in _build/html/ by default
+
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _build/html/ # Path to the directory containing the built site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4 

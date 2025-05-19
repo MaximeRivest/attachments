@@ -98,4 +98,14 @@ venv.bak/
 *.swn 
 
 mrplay/
-dist/
+dist/ # Intentionally commented out as it's a standard output dir sometimes committed
+
+# MyST specific project file (should be versioned)
+# myst.yml # Ensuring it's not ignored if it were added by a generic rule
+# docs/myst.yml # Ensuring it's not ignored
+
+# MyST build outputs (already covered by docs/_build/ under Sphinx)
+# _build # Removing this generic one as docs/_build/ is more specific and present
+
+# MyST build outputs
+_build
