@@ -17,6 +17,8 @@ Refer to the [README.md](../README.md) for a very quick start.
 
 ## Introduction
 
+Each attachment is a file that is transformed into an image+text for large language models context.
+
 ## About this Documentation
 
 This documentation is built with [MyST Markdown](https://mystmd.org/). 
