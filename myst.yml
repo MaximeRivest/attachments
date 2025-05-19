@@ -25,6 +25,10 @@ project:
       children:
         - file: docs/explanation/architecture.md
         - file: docs/explanation/extending.md
+    - title: Examples
+      children:
+        - file: docs/examples/load_and_explore_attachments.ipynb
+        - file: docs/examples/openai_attachments_tutorial.ipynb
     - file: CONTRIBUTING.md
     - file: docs/changelog.md
 

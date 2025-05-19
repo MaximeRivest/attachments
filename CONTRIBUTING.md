@@ -73,6 +73,39 @@ The necessary tools for documentation (including `mystmd`) are installed as part
 
 Documentation is automatically built and deployed to GitHub Pages whenever changes are pushed to the `main` branch. This is handled by the GitHub Actions workflow defined in `.github/workflows/deploy-docs.yml`.
 
+### Creating Tutorials
+
+Tutorials are a great way to help users learn how to use the `attachments` library. We use a workflow that starts with a Python script and converts it to a Jupyter Notebook for the documentation.
+
+1.  **Write the Tutorial as a Python Script:**
+    *   Create a new Python (`.py`) file in the `docs/example_scripts/` directory.
+    *   Structure your script using cell markers for compatibility with `jupytext` and direct execution:
+        *   Use `# %%` for code cells.
+        *   Use `# %% [md]` for Markdown cells.
+    *   Ensure the script is self-contained and clearly explains the concepts.
+
+2.  **Install `jupytext`:**
+    If you haven't already, install `jupytext` in your development environment:
+    ```bash
+    uv pip install jupytext
+    ```
+
+3.  **Convert the Script to a Jupyter Notebook:**
+    Use the `jupytext` command-line tool to convert your Python script to a `.ipynb` file. Place the output notebook in the `docs/examples/` directory.
+    ```bash
+    jupytext --to notebook --output docs/examples/your_tutorial_name.ipynb docs/example_scripts/your_tutorial_name.py
+    ```
+    Replace `your_tutorial_name.py` and `your_tutorial_name.ipynb` with the actual names of your files.
+
+4.  **Add the Notebook to Documentation:**
+    Edit the `myst.yml` file at the project root. Add a reference to your new notebook file (`docs/examples/your_tutorial_name.ipynb`) under the appropriate section in the `toc` (Table of Contents), usually within the "Examples" section.
+
+5.  **Build and Verify:**
+    Build the documentation locally to ensure your new tutorial renders correctly:
+    ```bash
+    myst build --html
+    ```
+
 ## Submitting Changes
 
 1.  Commit your changes: `git commit -m "Your descriptive commit message"`
