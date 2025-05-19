@@ -49,6 +49,40 @@ response = OpenAI().responses.create(model="gpt-4.1-nano", input=[{"role": "user
 response.output_text
 ```
 
+## How to give attachments to anthropic llms?
+
+```python
+import anthropic
+from attachments import Attachments
+
+pptx_file = Attachments(
+    "https://github.com/microsoft/markitdown/raw/refs/heads/main/packages/markitdown/tests/test_files/test.pptx")
+
+prompt = f"""
+Analyze the following documents:
+{pptx_file}
+"""
+
+content = [
+    {
+        "type": "image",
+        "source": {
+            "type": "base64",
+            "media_type": image.split(";")[0].split(":")[1], # this is ugly but it works
+            "data": image.split(",")[1] # this is ugly but it works
+        }
+    }
+    for image in pptx_file.images
+] + [{"type": "text", "text": prompt}]
+
+message = anthropic.Anthropic().messages.create(
+    max_tokens=8192,
+    model="claude-3-5-haiku-20241022",
+    messages=[{"role": "user", "content": content}])
+print(message.content)
+```
+
+
 ## Usage
 
 ### Basic Initialization
