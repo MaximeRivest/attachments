@@ -1,0 +1,41 @@
+name: Publish Python Package to PyPI
+
+on:
+  push:
+    tags:
+      - 'v*' # Trigger on tags like v1.0, v0.2.5, etc.
+
+permissions:
+  contents: read
+  # id-token: write # Required for trusted publishing, if you set that up with PyPI
+
+jobs:
+  build-and-publish:
+    name: Build and publish Python package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11' # Match your project's Python version
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Install build dependencies
+        run: uv pip install build twine
+
+      - name: Clean dist directory
+        run: rm -rf dist/
+
+      - name: Build package
+        run: python -m build
+
+      - name: Publish package to PyPI
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: python -m twine upload dist/* 

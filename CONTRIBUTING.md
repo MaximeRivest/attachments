@@ -91,4 +91,17 @@ Run tests using:
 uv run pytest
 ```
 
+## Releasing a New Version (Publishing to PyPI)
+
+This project uses GitHub Actions to automate building and publishing the package to PyPI when a new version tag is pushed.
+
+1.  **Update Version:** Update the `version` in `pyproject.toml` (e.g., `version = "0.2.5"`).
+2.  **Commit Changes:** Commit the version update: `git commit -am "Bump version to 0.2.5"`
+3.  **Create Git Tag:** Tag the commit with the same version, prefixed by `v`: `git tag v0.2.5`
+4.  **Push Tag:** Push the tag to GitHub: `git push origin v0.2.5`
+
+This will trigger the workflow defined in `.github/workflows/publish-to-pypi.yml`.
+
+**Note on PyPI Token:** The publishing workflow requires a PyPI API token stored as a GitHub secret named `PYPI_API_TOKEN`. Ensure this is configured in the repository settings under "Secrets and variables" > "Actions".
+
 Thank you for your contribution! 

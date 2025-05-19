@@ -25,11 +25,16 @@ jobs:
       - name: Install uv
         run: pip install uv
 
+      - name: Create virtual environment with uv
+        run: uv venv
+
       - name: Install dependencies
+        # This will use the .venv created by "uv venv"
         run: uv pip install -e '.[dev]'
 
       - name: Build MyST documentation
-        run: myst build --html # Output will be in _build/html/ by default
+        # Ensure myst is run from the virtual environment
+        run: source .venv/bin/activate && myst build --html
 
       - name: Upload GitHub Pages artifact
         uses: actions/upload-pages-artifact@v3
