@@ -82,6 +82,43 @@ message = anthropic.Anthropic().messages.create(
 print(message.content)
 ```
 
+## How to give a word document (with tables and images) to langchain?
+
+I am not a fan of the object that langchain and anthropic make you create, but hey!, I don't make the rules...
+
+```python
+from langchain.chat_models import init_chat_model
+from attachments import Attachments
+
+docx_file = Attachments("https://github.com/microsoft/markitdown/raw/refs/heads/main/packages/markitdown/tests/test_files/test.docx")
+
+llm = init_chat_model("anthropic:claude-3-5-sonnet-latest")
+
+# Creation of a list of object as expected by langchain/anthropic
+content = [{"type": "text", "text": f"Analyze the following documents: {docx_file}"}]
+
+for image in docx_file.images
+    media_type_i = image.split(";")[0].split(":")[1]
+    media_data_i = image.split(",")[1]
+    content.append({
+        "type": "image",
+        "source": {
+            "type": "base64",
+            "media_type": media_type_i, 
+            "data": media_data_i 
+        }
+    })
+
+
+message = {
+    "role": "user",
+    "content": content,
+}
+
+#Finally call the llm
+response = llm.invoke([message])
+print(response.text())
+```
 
 ## Usage
 
