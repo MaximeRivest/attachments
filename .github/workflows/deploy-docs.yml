@@ -32,6 +32,9 @@ jobs:
         # This will use the .venv created by "uv venv"
         run: uv pip install -e '.[dev]'
 
+      - name: Clean previous build (if any)
+        run: rm -rf _build
+
       - name: Build MyST documentation
         # Ensure myst is run from the virtual environment
         run: source .venv/bin/activate && myst build --html
