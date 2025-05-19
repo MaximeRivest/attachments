@@ -28,3 +28,4 @@ site:
     - title: View on GitHub
       url: https://github.com/MaximeRivest/attachments
   domains: [] # Add any custom domains here later
+  base_url: /attachments/ # Explicitly set for GitHub Pages
