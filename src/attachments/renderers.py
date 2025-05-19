@@ -3,6 +3,7 @@
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any
 import xml.etree.ElementTree as ET
+import re
 
 class BaseRenderer(ABC):
     """Abstract base class for content renderers."""
@@ -51,12 +52,35 @@ class RendererRegistry:
 
 class DefaultXMLRenderer(BaseRenderer):
     """Renders parsed content into a default XML-like string format."""
+    def _sanitize_xml_attr(self, value):
+        """Ensure value is a string and escape/replace invalid XML attribute characters."""
+        if value is None:
+            return ""
+        value = str(value)
+        # Remove control characters except tab, newline, carriage return
+        value = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]', '', value)
+        # Replace invalid XML attribute chars (", <, >, &, ')
+        value = value.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+        value = value.replace('"', '&quot;').replace("'", '&apos;')
+        return value
+
+    def _sanitize_xml_text(self, value):
+        """Ensure value is a string and escape/replace invalid XML text characters."""
+        if value is None:
+            return ""
+        value = str(value)
+        # Remove control characters except tab, newline, carriage return
+        value = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]', '', value)
+        # ElementTree will escape &, <, > automatically in text, but we can pre-escape for safety
+        value = value.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+        return value
+
     def render(self, attachments_data: List[Dict[str, Any]]) -> str:
         root = ET.Element("attachments")
         for item_data in attachments_data:
-            item_id = item_data.get("id", "unknown")
-            item_type = item_data.get("type", "unknown")
-            original_path = item_data.get("original_path_str", item_data.get("file_path", "N/A"))
+            item_id = self._sanitize_xml_attr(item_data.get("id", "unknown"))
+            item_type = self._sanitize_xml_attr(item_data.get("type", "unknown"))
+            original_path = self._sanitize_xml_attr(item_data.get("original_path_str", item_data.get("file_path", "N/A")))
 
             attachment_element = ET.SubElement(root, "attachment")
             attachment_element.set("id", item_id)
@@ -64,31 +88,21 @@ class DefaultXMLRenderer(BaseRenderer):
             attachment_element.set("original_path", original_path)
 
             content_text = item_data.get("text", "")
-            
             content_element = ET.SubElement(attachment_element, "content")
-            # Using a direct assignment for CDATA. 
-            # ET doesn't have a specific CDATA type, but this is a common way to handle it.
-            # Actual CDATA wrapping might need to happen during serialization if the library doesn't do it.
-            if content_text: # Only add text if it's not empty
-                content_element.text = content_text # Store as regular text; XML serializer should handle escaping.
-                                                # For literal CDATA, one might need a custom serializer or to build the string manually.
+            if content_text:
+                content_element.text = self._sanitize_xml_text(content_text)
             else:
-                # If there's no text content, we can leave the content tag empty
-                # or add a comment, or omit it. For now, an empty tag is fine.
                 pass
 
-        # Serialize to string with pretty print
-        # ET.indent(root) # Available in Python 3.9+
         xml_str = ET.tostring(root, encoding="utf-8").decode("utf-8")
-        
-        # Basic pretty printing for older Python versions or if ET.indent is not sufficient
         try:
             import xml.dom.minidom
             dom = xml.dom.minidom.parseString(xml_str)
             return dom.toprettyxml(indent="  ")
-        except ImportError:
-            # Fallback if minidom is not available (though it's standard)
-            return xml_str
+        except Exception as e:
+            print("[attachments] XML rendering error. Invalid XML string was:\n", xml_str)
+            print("Exception:", e)
+            raise
 
 class PlainTextRenderer(BaseRenderer):
     """Renders parsed content into a simple plain text string, 

@@ -1,5 +1,52 @@
 # Attachments
-## Quickstart
+## Easiest way to give context to LLMs
+
+Attachments has the ambition to be the general funnel for any files to be transformed into images+text for large language models context. For this to be true we, has a community, have to stop implementing this funnel (file -> images+text) each on our own. If you have a detector + parser + renderer contibute it! This will help you and us. Don't let your code alone in a dark corner of you computer.
+
+## Very quickstart
+
+```python
+from attachments import Attachments
+
+a = Attachment("/the/path/or/url/to/your/to/the/content/you/want/to/give/the/llm.xlsx", "another.pdf", "another.pptx"...)
+
+prompt_ready_context = str(a)
+images_ready_for_llm = a.images
+```
+
+That is really just it!
+
+You can print it `print(a)`, you can interpolate it `f"the content is {a}"` you can string it `str(a)`. This will give you something very good to give the llm so that the AI can consider you content. 
+
+Nowadays, most genAI models comes with the ability to see images too. So you also have all attachments in images forms by using `a.images`.
+This is a list of base64 encoded images, this is the fundamental format the most llm provider accept. 
+
+The simplest way to use and think about attachments is that if you want to put you best foot forward and up you chances that the llm grok your content you should pass all of the text in `a` to the prompt and all of the images in `a.images` in the image input. We aim for making those two as 'prompt engineered' as possible. *Attachments* is young but already very powerful and used in production. The api will not change. Maybe advanced feature and syntax will be added but the core will stay the same. Mostly we will support more file types and we will have better rendering for better performance and with less extreneous tokens.
+
+## How to give attachments to openai llms?
+
+```python
+from openai import OpenAI
+from attachments import Attachments
+
+pdf_attachment = Attachments("https://github.com/microsoft/markitdown/raw/refs/heads/main/packages/markitdown/tests/test_files/test.pdf")
+
+prompt = f"""
+Analyze the following documents:
+{pdf_attachment}
+"""
+
+content = [{"type": "input_image","image_url": image} for image in pdf_attachment.images] + \
+          [{"type": "input_text", "text": prompt}]
+
+response = OpenAI().responses.create(model="gpt-4.1-nano", input=[{"role": "user", "content": content}])
+response.output_text
+```
+
+
+
+
+
 A Python library designed to seamlessly handle various file types (local or URLs), process them, and present them in formats suitable for Large Language Models (LLMs).
 
 It is meant to be very minimal.
