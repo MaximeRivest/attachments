@@ -39,15 +39,11 @@ from attachments import Attachments
 
 pdf_attachment = Attachments("https://github.com/microsoft/markitdown/raw/refs/heads/main/packages/markitdown/tests/test_files/test.pdf")
 
-prompt = f"""
-Analyze the following documents:
-{pdf_attachment}
-"""
-
-content = [{"type": "input_image","image_url": image} for image in pdf_attachment.images] + \
-          [{"type": "input_text", "text": prompt}]
-
-response = OpenAI().responses.create(model="gpt-4.1-nano", input=[{"role": "user", "content": content}])
+response = OpenAI().responses.create(
+    model="gpt-4.1-nano", 
+    input=[{
+        "role": "user",
+        "content": pdf_attachment.to_openai_content("Analyze the following documents:")}])
 response.output_text
 ```
 
@@ -60,27 +56,10 @@ from attachments import Attachments
 pptx_file = Attachments(
     "https://github.com/microsoft/markitdown/raw/refs/heads/main/packages/markitdown/tests/test_files/test.pptx")
 
-prompt = f"""
-Analyze the following documents:
-{pptx_file}
-"""
-
-content = [
-    {
-        "type": "image",
-        "source": {
-            "type": "base64",
-            "media_type": image.split(";")[0].split(":")[1], # this is ugly but it works
-            "data": image.split(",")[1] # this is ugly but it works
-        }
-    }
-    for image in pptx_file.images
-] + [{"type": "text", "text": prompt}]
-
 message = anthropic.Anthropic().messages.create(
     max_tokens=8192,
     model="claude-3-5-haiku-20241022",
-    messages=[{"role": "user", "content": content}])
+    messages=[{"role": "user", "content": pptx_file.to_claude_content("Analyze the following documents:")}])
 print(message.content)
 ```
 
@@ -89,6 +68,7 @@ print(message.content)
 I am not a fan of the object that langchain and anthropic make you create, but hey!, I don't make the rules...
 
 ```python
+#pip install -U langchain-anthropic
 from langchain.chat_models import init_chat_model
 from attachments import Attachments
 
@@ -97,21 +77,7 @@ docx_file = Attachments("https://github.com/microsoft/markitdown/raw/refs/heads/
 llm = init_chat_model("anthropic:claude-3-5-sonnet-latest")
 
 # Creation of a list of object as expected by langchain/anthropic
-content = [{"type": "text", "text": f"Analyze the following documents: {docx_file}"}]
-
-for image in docx_file.images
-    media_type_i = image.split(";")[0].split(":")[1]
-    media_data_i = image.split(",")[1]
-    content.append({
-        "type": "image",
-        "source": {
-            "type": "base64",
-            "media_type": media_type_i, 
-            "data": media_data_i 
-        }
-    })
-
-
+content = docx_file.to_claude_content("Analyze the following documents:")
 message = {
     "role": "user",
     "content": content,

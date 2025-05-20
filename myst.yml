@@ -11,20 +11,20 @@ project:
   github: https://github.com/MaximeRivest/attachments
   toc:
     - file: README.md
-    - title: API Reference
-      children:
-        - file: docs/api_reference.md # Main landing page for API
-        - file: docs/api/attachments_class.md
-        - file: docs/api/config_class.md
-        - file: docs/api/parsers.md
-        - file: docs/api/renderers.md
-        - file: docs/api/detectors.md
-        - file: docs/api/exceptions.md
-        - file: docs/api/utilities.md
-    - title: Explanation
-      children:
-        - file: docs/explanation/architecture.md
-        - file: docs/explanation/extending.md
+    #- title: API Reference
+    #  children:
+    #    - file: docs/api_reference.md # Main landing page for API
+    #    - file: docs/api/attachments_class.md
+    #    - file: docs/api/config_class.md
+    #    - file: docs/api/parsers.md
+    #    - file: docs/api/renderers.md
+    #    - file: docs/api/detectors.md
+    #    - file: docs/api/exceptions.md
+   #     - file: docs/api/utilities.md
+    #- title: Explanation
+    #  children:
+    #    - file: docs/explanation/architecture.md
+    #    - file: docs/explanation/extending.md
     - title: AI tutorials with attachments
       children:
         - file: docs/examples/openai_attachments_tutorial.ipynb
