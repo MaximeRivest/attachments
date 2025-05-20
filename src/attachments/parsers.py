@@ -150,6 +150,27 @@ class PPTXParser(BaseParser):
         except Exception as e:
             raise ParsingError(message=f"Failed to parse PPTX '{file_path}': {e}", file_path=file_path, parser_name=self.__class__.__name__) from e
 
+class TextParser(BaseParser):
+    """Parses plain text files."""
+    def parse(self, file_path: str, indices: Optional[str] = None) -> Dict[str, Any]:
+        """Reads the file content as UTF-8 text.
+        `indices` argument is ignored for text files.
+        """
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                text_content = f.read()
+            return {
+                "text": text_content,
+                "original_basename": os.path.basename(file_path),
+                "file_path": file_path,
+            }
+        except FileNotFoundError:
+            raise ParsingError(message=f"Text file not found: {file_path}", file_path=file_path, parser_name=self.__class__.__name__) from None
+        except UnicodeDecodeError as e:
+            raise ParsingError(message=f"Error decoding text file '{file_path}' as UTF-8: {e}. The file might not be plain text or uses a different encoding.", file_path=file_path, parser_name=self.__class__.__name__) from e
+        except Exception as e:
+            raise ParsingError(message=f"Failed to parse text file '{file_path}': {e}", file_path=file_path, parser_name=self.__class__.__name__) from e
+
 # ImageParser and AudioParser __init__ are fine from previous step.
 # Their full parse methods will be restored/verified after document parsers.
 class ImageParser(BaseParser):

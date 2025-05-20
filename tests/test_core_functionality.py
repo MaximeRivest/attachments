@@ -282,5 +282,55 @@ class TestCoreFunctionality(unittest.TestCase):
         # It's unclear what this test is intended to check, so it's left unchanged
         pass
 
+    def test_fallback_to_text_parser(self):
+        """Test that files with unknown extensions or no extension fall back to TextParser."""
+        unknown_ext_content = "Unknown extension fallback test."
+        no_ext_content = "No extension fallback test."
+        
+        temp_dir = TEST_DATA_DIR # Use the existing test data directory for temp files
+        unknown_ext_filepath = os.path.join(temp_dir, "test_unknown.unknownext")
+        no_ext_filepath = os.path.join(temp_dir, "test_no_ext_file")
+
+        try:
+            with open(unknown_ext_filepath, "w", encoding="utf-8") as f:
+                f.write(unknown_ext_content)
+            with open(no_ext_filepath, "w", encoding="utf-8") as f:
+                f.write(no_ext_content)
+
+            atts = Attachments(unknown_ext_filepath, no_ext_filepath, verbose=True) # Verbose for debugging if needed
+            self.assertEqual(len(atts.attachments_data), 2, "Should process two files with fallback")
+
+            # Sort by original path to ensure consistent order for assertions
+            sorted_attachments = sorted(atts.attachments_data, key=lambda x: x['original_path_str'])
+
+            # Test the file with no extension
+            # The order depends on how Attachments processes and potentially sorts them, or how listdir returns them.
+            # Assuming Attachments processes in order of input for now, or we find by path.
+            no_ext_data = next((item for item in sorted_attachments if item['original_path_str'] == no_ext_filepath), None)
+            self.assertIsNotNone(no_ext_data, "Data for no-extension file not found")
+            if no_ext_data: # Check to satisfy mypy
+                self.assertEqual(no_ext_data['type'], 'txt', "File with no extension should be parsed as txt")
+                self.assertEqual(no_ext_data['text'], no_ext_content, "Text content mismatch for no-extension file")
+                self.assertIsNone(no_ext_data.get('original_detected_type'), "original_detected_type should be None for no-extension file")
+
+            # Test the file with an unknown extension
+            unknown_ext_data = next((item for item in sorted_attachments if item['original_path_str'] == unknown_ext_filepath), None)
+            self.assertIsNotNone(unknown_ext_data, "Data for unknown-extension file not found")
+            if unknown_ext_data: # Check to satisfy mypy
+                self.assertEqual(unknown_ext_data['type'], 'txt', "File with unknown extension should be parsed as txt")
+                self.assertEqual(unknown_ext_data['text'], unknown_ext_content, "Text content mismatch for unknown-extension file")
+                self.assertIsNone(unknown_ext_data.get('original_detected_type'), "original_detected_type should be None for unknown-extension file")
+
+        finally:
+            # Clean up temporary files
+            if os.path.exists(unknown_ext_filepath):
+                os.remove(unknown_ext_filepath)
+            if os.path.exists(no_ext_filepath):
+                os.remove(no_ext_filepath)
+
+    def test_initialize_attachments_with_list_of_paths(self):
+        """Test initializing Attachments with a list of paths."""
+        # ... existing code ...
+
 if __name__ == '__main__':
     unittest.main() 

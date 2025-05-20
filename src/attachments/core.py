@@ -11,7 +11,7 @@ from typing import List, Dict, Tuple, Optional, Any, Union, cast
 from collections import defaultdict
 
 from .detectors import Detector
-from .parsers import ParserRegistry, PDFParser, PPTXParser, HTMLParser, ImageParser, AudioParser, DOCXParser, ODTParser
+from .parsers import ParserRegistry, PDFParser, PPTXParser, HTMLParser, ImageParser, AudioParser, DOCXParser, ODTParser, TextParser
 from .renderers import RendererRegistry, DefaultXMLRenderer, PlainTextRenderer
 from .exceptions import DetectionError, ParsingError
 from .image_processing import DEFAULT_IMAGE_OUTPUT_FORMAT, DEFAULT_IMAGE_QUALITY
@@ -73,6 +73,7 @@ class Attachments:
         
         self.parser_registry.register('docx', DOCXParser)
         self.parser_registry.register('odt', ODTParser)
+        self.parser_registry.register('txt', TextParser) # Register TextParser
         
         # Register ImageParser class for various image types
         # The registry will create an instance for each, configured with self._config
@@ -188,14 +189,42 @@ class Attachments:
                 
                 file_type = self.detector.detect(path_for_detector_and_parser, content_type=detected_file_type_arg)
                 
-                if not file_type:
-                    print(f"Warning: Could not detect file type for '{path_for_detector_and_parser}' (from input '{path_str}'). Skipping.")
-                    continue
+                parser = None
+                original_detected_type = file_type # Keep track of initially detected type
 
-                parser = self.parser_registry.get_parser(file_type)
+                if file_type:
+                    try:
+                        parser = self.parser_registry.get_parser(file_type)
+                    except KeyError:
+                        if self.verbose:
+                            print(f"Warning: No parser registered for detected type '{file_type}' for '{path_for_detector_and_parser}' (from input '{path_str}'). Attempting to parse as plain text.")
+                        file_type = 'txt' # Fallback to txt
+                else:
+                    if self.verbose:
+                        print(f"Warning: Could not detect file type for '{path_for_detector_and_parser}' (from input '{path_str}'). Attempting to parse as plain text.")
+                    file_type = 'txt' # Fallback to txt
+
+                if not parser: # If parser is still None, it means we are in a fallback scenario or initial detection failed
+                    try:
+                        parser = self.parser_registry.get_parser(file_type) # This should get TextParser if file_type is 'txt'
+                    except KeyError:
+                        # This should ideally not happen if TextParser is registered, but as a safeguard:
+                        print(f"Critical Warning: Fallback TextParser not found or not registered for type '{file_type}'. Cannot process '{path_for_detector_and_parser}'. Skipping.")
+                        # Clean up temp file if it was created for a URL
+                        if is_url and temp_file_path_for_parsing and os.path.exists(temp_file_path_for_parsing):
+                            try:
+                                os.remove(temp_file_path_for_parsing)
+                            except Exception as e_clean_critical:
+                                print(f"Warning: Could not clean up temp file {temp_file_path_for_parsing} during critical skip: {e_clean_critical}")
+                        continue # Skip this file
+                
+                # If file_type was overridden for fallback, ensure the parsed_content reflects that.
+                # However, we might want to store the original_detected_type if it existed.
                 parsed_content = parser.parse(path_for_detector_and_parser, indices=indices)
                 
-                parsed_content['type'] = file_type
+                parsed_content['type'] = file_type # Use the final file_type (could be 'txt')
+                if original_detected_type and original_detected_type != file_type:
+                    parsed_content['original_detected_type'] = original_detected_type
                 parsed_content['id'] = f"{file_type}{i+1}" 
                 parsed_content['original_path_str'] = path_str 
                 parsed_content['file_path'] = original_file_path_or_url 

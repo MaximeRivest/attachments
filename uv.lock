@@ -10,7 +10,7 @@ resolution-markers = [
 
 [[package]]
 name = "attachments"
-version = "0.2.0"
+version = "0.2.6"
 source = { editable = "." }
 dependencies = [
     { name = "beautifulsoup4" },
@@ -39,6 +39,7 @@ dev = [
     { name = "filelock" },
     { name = "flake8" },
     { name = "mypy" },
+    { name = "mystmd" },
     { name = "pytest" },
 ]
 
@@ -54,6 +55,7 @@ requires-dist = [
     { name = "markdownify" },
     { name = "markitdown", extras = ["all"], specifier = ">=0.1.1" },
     { name = "mypy", marker = "extra == 'dev'" },
+    { name = "mystmd", marker = "extra == 'dev'" },
     { name = "odfpy" },
     { name = "pillow" },
     { name = "pillow-heif" },
@@ -776,6 +778,28 @@ wheels = [
 ]
 
 [[package]]
+name = "mystmd"
+version = "1.3.27"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "nodeenv" },
+    { name = "platformdirs" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/93/57/8fa5322012a7942a56fa73325b8c2906bc505a9125a57c98c1b0dbb89e1f/mystmd-1.3.27.tar.gz", hash = "sha256:1b3b95738b6bf6ca158821680d1fcb89c054f589f291aaa2541f522c0045b937", size = 2592786, upload-time = "2025-05-17T00:35:52.678Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ec/bf/4c1beabd0337158e5aa45d4ab8fd4637623e7dd3be68f77fb5884958726a/mystmd-1.3.27-py3-none-any.whl", hash = "sha256:4a6f0695657c6877a659cebb75d60fb659c33f7d209d011f7195a3181cf97b31", size = 2624672, upload-time = "2025-05-17T00:35:50.47Z" },
+]
+
+[[package]]
+name = "nodeenv"
+version = "1.9.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/43/16/fc88b08840de0e0a72a2f9d8c6bae36be573e475a6326ae854bcc549fc45/nodeenv-1.9.1.tar.gz", hash = "sha256:6ec12890a2dab7946721edbfbcd91f3319c6ccc9aec47be7c7e6b7011ee6645f", size = 47437, upload-time = "2024-06-04T18:44:11.171Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d2/1d/1b658dbd2b9fa9c4c9f32accbfc0205d532c8c6194dc0f2a4c0428e7128a/nodeenv-1.9.1-py2.py3-none-any.whl", hash = "sha256:ba11c9782d29c27c70ffbdda2d7415098754709be8a7056d79a737cd901155c9", size = 22314, upload-time = "2024-06-04T18:44:08.352Z" },
+]
+
+[[package]]
 name = "numpy"
 version = "2.2.5"
 source = { registry = "https://pypi.org/simple" }
@@ -1102,11 +1126,11 @@ wheels = [
 
 [[package]]
 name = "platformdirs"
-version = "4.3.8"
+version = "4.2.2"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/fe/8b/3c73abc9c759ecd3f1f7ceff6685840859e8070c4d947c93fae71f6a0bf2/platformdirs-4.3.8.tar.gz", hash = "sha256:3d512d96e16bcb959a814c9f348431070822a6496326a4be0911c40b5a74c2bc", size = 21362, upload-time = "2025-05-07T22:47:42.121Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f5/52/0763d1d976d5c262df53ddda8d8d4719eedf9594d046f117c25a27261a19/platformdirs-4.2.2.tar.gz", hash = "sha256:38b7b51f512eed9e84a22788b4bce1de17c0adb134d6becb09836e37d8654cd3", size = 20916, upload-time = "2024-05-15T03:18:23.372Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/fe/39/979e8e21520d4e47a0bbe349e2713c0aac6f3d853d0e5b34d76206c439aa/platformdirs-4.3.8-py3-none-any.whl", hash = "sha256:ff7059bb7eb1179e2685604f4aaf157cfd9535242bd23742eadc3c13542139b4", size = 18567, upload-time = "2025-05-07T22:47:40.376Z" },
+    { url = "https://files.pythonhosted.org/packages/68/13/2aa1f0e1364feb2c9ef45302f387ac0bd81484e9c9a4c5688a322fbdfd08/platformdirs-4.2.2-py3-none-any.whl", hash = "sha256:2d7a1657e36a80ea911db832a8a6ece5ee53d8de21edd5cc5879af6530b1bfee", size = 18146, upload-time = "2024-05-15T03:18:21.209Z" },
 ]
 
 [[package]]
