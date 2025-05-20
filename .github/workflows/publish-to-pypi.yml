@@ -25,6 +25,18 @@ jobs:
       - name: Install uv
         run: pip install uv
 
+      - name: create venv
+        run: uv venv
+
+      - name: activate venv
+        run: source .venv/bin/activate
+
+      - name: install dependencies
+        run: uv pip install -e .
+
+      - name: install build dependencies
+        run: uv pip install --system build twine
+
       - name: Install build dependencies
         run: uv pip install --system build twine
 
