@@ -278,7 +278,7 @@ class Attachments:
                         'm4a': 'audio/m4a', # mimetypes might say audio/mp4, which is also fine for .m4a
                         'mp4_audio': 'audio/mp4',
                         'wav': 'audio/wav', 
-                        'flac': 'audio/flac', 
+                        'flac': 'audio/flac',
                         'ogg_audio': 'audio/ogg',
                         'oga': 'audio/ogg', 
                         'webm_audio': 'audio/webm', 
@@ -633,6 +633,59 @@ class Attachments:
     # Adding a placeholder for the next potential method or end of class.
     def another_method_or_end_of_class_placeholder(self):
         pass
+
+    def to_openai_content(self, prompt: str) -> List[Dict[str, Any]]:
+        """
+        Formats attachments and a prompt for the OpenAI API.
+        Currently supports images.
+
+        Args:
+            prompt: The text prompt to include.
+
+        Returns:
+            A list of dictionaries formatted for the OpenAI API,
+            combining image data and the text prompt.
+        """
+        content = [{"type": "input_image", "image_url": image_data_uri} for image_data_uri in self.images]
+        content.append({"type": "input_text", "text": prompt + "\n\n" + self.__str__()})
+        return content
+
+    def to_claude_content(self, prompt: str) -> List[Dict[str, Any]]:
+        """
+        Formats attachments and a prompt for the Anthropic Claude API.
+        Currently supports images.
+
+        Args:
+            prompt: The text prompt to include.
+
+        Returns:
+            A list of dictionaries formatted for the Anthropic Claude API,
+            combining image data and the text prompt.
+        """
+        content = []
+        for image_data_uri in self.images:
+            try:
+                # Example data URI: "data:image/jpeg;base64,BASE64_STRING"
+                header, base64_data = image_data_uri.split(',', 1)
+                media_type = header.split(';')[0].split(':')[1]
+                
+                content.append({
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": media_type,
+                        "data": base64_data
+                    }
+                })
+            except ValueError as e:
+                # Handle cases where the data URI might not be as expected, though self.images should provide valid ones.
+                if self.verbose:
+                    print(f"Warning: Could not parse image data URI for Claude content: {image_data_uri}. Error: {e}")
+                # Optionally, append an error or skip this image
+                continue # Skip malformed URIs for now
+        
+        content.append({"type": "text", "text": prompt})
+        return content
 
     # Potentially other methods follow, or end of class / file 
 

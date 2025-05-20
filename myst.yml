@@ -25,9 +25,8 @@ project:
       children:
         - file: docs/explanation/architecture.md
         - file: docs/explanation/extending.md
-    - title: Examples
+    - title: AI tutorials with attachments
       children:
-        - file: docs/examples/load_and_explore_attachments.ipynb
         - file: docs/examples/openai_attachments_tutorial.ipynb
     - file: CONTRIBUTING.md
     - file: docs/changelog.md
@@ -40,7 +39,7 @@ site:
   domains: [] # Add any custom domains here later
   options:
     base_url: /attachments/
-    logo_text: A simple python library # Text to display next to/as the logo
+    logo_text: A simple python library and some AI tutorials # Text to display next to/as the logo
 
 
 # Options for particular exports

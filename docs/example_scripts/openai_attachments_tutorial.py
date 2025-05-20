@@ -1,12 +1,18 @@
 # %% [md]
-# # Using `attachments` with the OpenAI API
+# # Complete Beginner Tutorial: Using the OpenAI Library in Python
 #
-# This tutorial demonstrates how to use the `attachments` library to process local or remote files
-# and prepare their content for use with the OpenAI API, particularly for multimodal models
-# like GPT-4 with Vision or for text-based analysis.
+# This tutorial is tailored for those new to interacting with Large Language Models (LLMs)
+# programmatically, assuming no prior experience.
+#
+# Learning the OpenAI Python library is a worthwhile endeavor. While it might not always
+# be my top recommendation for direct use, its foundational role in the ecosystem means
+# that a vast number of other libraries depend on it. Furthermore, the library's design is
+#  closely tied to the JSON format required by the OpenAI API. This JSON structure, for better
+#  or worse (and I'd lean towards the latter), has become a de facto standard.
+
 
 # %% [md]
-# ## 1. Setup and Imports
+# ## Without the attachments library
 #
 # First, ensure you have the `attachments` and `openai` libraries installed.
 #
@@ -16,164 +22,177 @@
 #
 # Now, let's import the necessary modules.
 
-# %%
-# Ensure you have an .env file with your OPENAI_API_KEY or set it as an environment variable
+# %% [md]
+# Ensure you have an `.env` file with your `OPENAI_API_KEY` or set it as an environment variable
+#%%
 import os
 from attachments import Attachments
-from openai import OpenAI
-from dotenv import load_dotenv
-
-load_dotenv() # Load environment variables from .env file
+import openai
 
 # %% [md]
-# ## 2. Initialize Attachments
+# We are loading attachments as this is a much easier way to pass files to openai.
+# However, we will start doing it the vanilla way to show how it works. Some may
+# even call it raw dogging it.
 #
-# We'll create an `Attachments` object. You can use URLs or local file paths.
-# For this example, let's use a publicly available PDF and an image.
+# We will first look at the object we must pass to the OpenAI API.
+# In its simplest form, the object is a list of dictionaries.
+# Each dictionary contains a `role` and a `content` key.
+# The `content` key is a list of dictionaries.
+# Each of those dictionaries contains a `type` key and the actual content.
+#
+# To pass an image, we use the `input_image` type.
+# To pass text, we use the `input_text` type.
+# So to ask an llm what is sees in an image, we would prepare the following:
+#%%
+image_data_url = "data:image/jpeg;base64,..."
+openai_messages_content = [
+    {
+        "role": "user",
+        "content": [
+            {"type": "input_text", "text": "what is in this image?"},
+            {
+                "type": "input_image",
+                "image_url": image_data_url
+            }
+        ]
+    }
+]
+# %% [md]
+# but the image must be encoded as a base64 string. this is a bit of a pain.
+# we would need to do something like this:
+#%%
+import base64
+from pathlib import Path
 
-# %%
-# Example using online resources
+image_bytes = Path("/home/maxime/Projects/attachments/sample.jpg").read_bytes()
+image_base64 = base64.b64encode(image_bytes).decode("utf-8")
+image_data_url = f"data:image/jpeg;base64,{image_base64}"
+
+#%% [md]
+# Then we have all of the boilerplate to make the API call.
+# For this we need to instantiate the OpenAI client. This will search for your API key
+# in your environment variables. You can also pass it directly as a string, like this:
+# `client = OpenAI(api_key="your_key_here")`
+#%%
+client = openai.OpenAI()
+
+response = client.responses.create(
+    model="gpt-4.1-nano",
+    input=openai_messages_content
+)
+# %% [md]
+# Putting it all together, we get the following:
+#%%
+import openai
+import base64
+from pathlib import Path
+
+image_bytes = Path("/home/maxime/Pictures/20230803_130936.jpg").read_bytes()
+image_base64 = base64.b64encode(image_bytes).decode("utf-8")
+image_data_url = f"data:image/jpeg;base64,{image_base64}"
+
+client = openai.OpenAI()
+
+response = client.responses.create(
+    model="gpt-4.1-nano",
+    input=[
+    {
+        "role": "user",
+        "content": [
+            {"type": "input_text", "text": "what is in this image?"},
+            {
+                "type": "input_image",
+                "image_url": image_data_url
+            }
+        ]
+    }
+]
+)
+response.__dict__
+
+# %% [md]
+# ## With the attachments library
+#
+# Here is the same example using the attachments library. 
+#%%
+import openai
+from attachments import Attachments
+client = openai.OpenAI()
+
+response = client.responses.create(
+    model="gpt-4.1-nano",
+    input=[
+    {
+        "role": "user",
+        "content": Attachments("/home/maxime/Pictures/20230803_130936.jpg").\
+                    to_openai_content("what is in this picture?")
+    }
+]
+)
+response.__dict__
+# %% [md]
+# It is already more concise and easier to manage but where attachments really shines is when
+# you want to pass other file types, not just images.
+# let's for instance try to pass this pdf:
+#%%
 pdf_url = "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
-image_url = "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/BremenBotanikaZen.jpg/1280px-BremenBotanikaZen.jpg"
 
-# You can also use local paths, e.g.:
-# pdf_local_path = "path/to/your/document.pdf"
-# image_local_path = "path/to/your/image.jpg"
-# attachments_obj = Attachments(pdf_local_path, image_local_path, verbose=True)
+import openai
+from attachments import Attachments
+client = openai.OpenAI()
 
-attachments_obj = Attachments(pdf_url, image_url, verbose=True) # Renamed to avoid conflict
+response = client.responses.create(
+    model="gpt-4.1-nano",
+    input=[
+    {
+        "role": "user",
+        "content": Attachments(pdf_url).to_openai_content("what is in this pdf?")
+    }
+]
+)
+response.__dict__
+# %% [md]
+# And it even works with multiple files.
+#%%
+a = Attachments("https://github.com/microsoft/markitdown/raw/refs/heads/main/packages/markitdown/tests/test_files/test.pdf",
+                "https://github.com/microsoft/markitdown/raw/refs/heads/main/packages/markitdown/tests/test_files/test.pptx",
+                "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/BremenBotanikaZen.jpg/1280px-BremenBotanikaZen.jpg")
+a
+# %% [md]
+# Now to send this to gpt-4.1 we can do the following:
+#%%
+response = client.responses.create(
+    model="gpt-4.1-nano",
+    input=[
+    {
+        "role": "user",
+        "content": a.to_openai_content("what do you see in these three files?")
+    }
+]
+)
+response.output[0].content[0].text
+
+#%% [md]
+# let's focus on the powerpoint file.
+#%%
+response = client.responses.create(
+    model="gpt-4.1-nano",
+    input=[
+    {
+        "role": "user",
+        "content": a[1].to_openai_content("what do you see in this pptx file?")
+    }
+]
+)
+response.output[0].content[0].text
+
 
 # %% [md]
-# ## 3. Inspecting Attachments
-#
-# The `Attachments` object processes the files. Its string representation (`str(attachments_obj)`)
-# provides an XML-like format suitable for LLM prompts. For vision models,
-# the `.images` property provides base64 encoded image data URLs.
-
-# %%
-# Get the string representation for text-based analysis or context
-llm_context_string = str(attachments_obj)
-print("--- LLM Context String (sample) ---")
-# Print a sample, as it can be very long
-print(llm_context_string[:500] + "..." if len(llm_context_string) > 500 else llm_context_string)
-
-# %%
-# Access image data for vision models
-# .images will contain a list of data URLs (e.g., "data:image/jpeg;base64,...")
-if attachments_obj.images:
-    print(f"\n--- Found {len(attachments_obj.images)} image(s) ---")
-    # print("First image data URL (sample):", attachments_obj.images[0][:100] + "...") # Print a sample of the data URL
-else:
-    print("\n--- No images found or processed ---")
-
-# %% [md]
-# ## 4. Preparing Content for OpenAI API
-#
-# Let's construct a message for the OpenAI API. We'll demonstrate a multimodal example
-# using GPT-4o (or another vision-capable model).
-
-# %%
-client = OpenAI() # Assumes OPENAI_API_KEY is set in your environment via .env or system variable
-
-# %% [md]
-# ### 4.1. Multimodal Prompt (Text and Images)
-#
-# We'll combine the textual context from `str(attachments_obj)` with any images found.
-
-# %%
-# Prepare the content list for the OpenAI API
-openai_messages_content = []
-
-# Add text part: a general instruction and the context from attachments_obj
-prompt_text = f'''
-Analyze the following documents and images. Provide a brief summary of the PDF content
-and describe the image.
-
-Document context:
-{llm_context_string}
-'''
-openai_messages_content.append({"type": "text", "text": prompt_text})
-
-# Add image parts
-for image_data_url in attachments_obj.images:
-    # OpenAI API expects image_url with "data:image/jpeg;base64,..." format for base64 encoded images
-    openai_messages_content.append({
-        "type": "image_url",
-        "image_url": {
-            "url": image_data_url,
-            "detail": "low" # Use "high" for more detail, "low" for faster processing
-        }
-    })
-
-# %% [md]
-# ### 4.2. Making the API Call (Example)
-#
-# Now, let's construct the full message and show how you would make the API call.
-# **Note:** Running this cell will make an API call to OpenAI if your API key is configured.
-
-# %%
-if not os.getenv("OPENAI_API_KEY"):
-    print("OPENAI_API_KEY not found in environment variables. Skipping API call.")
-    print("Please create a .env file with OPENAI_API_KEY='your_key_here' or set it as an environment variable.")
-else:
-    print("Attempting to call OpenAI API (multimodal)...")
-    try:
-        response = client.chat.completions.create(
-            model="gpt-4o", # Or your preferred vision-capable model like "gpt-4-turbo"
-            messages=[
-                {
-                    "role": "user",
-                    "content": openai_messages_content
-                }
-            ],
-            max_tokens=500
-        )
-        print("\n--- OpenAI API Response (Multimodal) ---")
-        print(response.choices[0].message.content)
-    except Exception as e:
-        print(f"Error calling OpenAI API (multimodal): {e}")
-
-# %% [md]
-# ## 5. Text-Only Analysis
-#
-# If you are using a text-only model (e.g., `gpt-3.5-turbo`), you would only pass the `llm_context_string`.
-
-# %%
-# Example for a text-only model
-text_only_prompt = f'''
-Based on the following document content, please answer specific questions or perform tasks.
-For example, what is the main subject of the PDF?
-
-Document context:
-{llm_context_string}
-'''
-
-if not os.getenv("OPENAI_API_KEY"):
-    print("OPENAI_API_KEY not found. Skipping text-only API call.")
-else:
-    print("\nAttempting text-only OpenAI API call...")
-    try:
-        response_text_only = client.chat.completions.create(
-            model="gpt-3.5-turbo", # Or your preferred text model
-            messages=[
-                {
-                    "role": "user",
-                    "content": text_only_prompt
-                }
-            ],
-            max_tokens=300
-        )
-        print("\n--- OpenAI Text-Only API Response ---")
-        print(response_text_only.choices[0].message.content)
-    except Exception as e:
-        print(f"Error calling OpenAI API (text-only): {e}")
-
-# %% [md]
-# ## Conclusion
-#
-# This tutorial showed how to use the `attachments` library to load files/URLs,
-# extract their content into formats suitable for LLMs, and construct prompts
-# for the OpenAI API for both multimodal and text-only analysis.
-#
-# Remember to handle your API keys securely (e.g., using a `.env` file and `python-dotenv`)
-# and manage costs associated with API calls. 
+# Below we can see that we pass the attachments twice to gpt-4.1 once as a tiled (3x3) image and once as extracted text.
+# this really helps the llm out. On once said it reduced the hallucinations from parsing only the image
+# and on the other it provide the style and structure of the pdf, otherwise lacking in the text only version.
+#%%
+a[1].to_openai_content("what do you see in this pptx file?")
+#%%
+from IPython.display import display, HTML
+display(HTML(f'<img src="{a[1].images[0]}" style="max-width:600px;">'))

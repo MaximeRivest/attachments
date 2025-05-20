@@ -1,7 +1,9 @@
-# Attachments
+# Attachments: The Python Library for Effortless LLM Context
 ## Easiest way to give context to LLMs
 
 Attachments has the ambition to be the general funnel for any files to be transformed into images+text for large language models context. For this to be true we, has a community, have to stop implementing this funnel (file -> images+text) each on our own. If you have a detector + parser + renderer contibute it! This will help you and us. Don't let your code alone in a dark corner of you computer.
+
+From a `path` to a `string` and a `base64` image encoded string. That is the goal.
 
 ## Very quickstart
 
