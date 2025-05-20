@@ -26,7 +26,7 @@ jobs:
         run: pip install uv
 
       - name: Install build dependencies
-        run: uv pip install build twine
+        run: uv pip install --system build twine
 
       - name: Clean dist directory
         run: rm -rf dist/
