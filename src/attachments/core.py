@@ -121,7 +121,9 @@ class Attachments:
         """Processes a list of path strings, which can be local files or URLs."""
         for i, path_str in enumerate(paths_to_process):
             if not isinstance(path_str, str):
-                print(f"Warning: Item '{path_str}' is not a string path and will be skipped.")
+                reason = f"Item '{path_str}' is not a string path."
+                print(f"Warning: {reason} Skipping.")
+                self._unprocessed_inputs.append((str(path_str), reason)) # Use str(path_str) for safety
                 continue
 
             file_path, indices = self._parse_path_string(path_str)
@@ -167,17 +169,23 @@ class Attachments:
                     path_for_detector_and_parser = temp_file_path_for_parsing
                 
                 except requests.RequestException as e_req:
-                    print(f"Warning: Failed to download URL '{file_path}': {e_req}. Skipping.")
+                    reason = f"Failed to download URL: {e_req}"
+                    print(f"Warning: {reason} for input '{path_str}'. Skipping.")
+                    self._unprocessed_inputs.append((path_str, reason))
                     continue 
                 except Exception as e_url_handle: 
-                    print(f"Warning: An unexpected error occurred while handling URL '{file_path}': {e_url_handle}. Skipping.")
+                    reason = f"Unexpected error handling URL: {e_url_handle}"
+                    print(f"Warning: {reason} for input '{path_str}'. Skipping.")
+                    self._unprocessed_inputs.append((path_str, reason))
                     if temp_file_path_for_parsing and os.path.exists(temp_file_path_for_parsing):
                          os.remove(temp_file_path_for_parsing) 
                     continue
             else: 
                 # This block is for local file paths
                 if not os.path.exists(file_path):
-                    print(f"Warning: File '{file_path}' not found and will be skipped.")
+                    reason = f"File not found: '{file_path}'"
+                    print(f"Warning: {reason}. Skipping input '{path_str}'.")
+                    self._unprocessed_inputs.append((path_str, reason))
                     continue
                 # If we are here, the local file exists
                 path_for_detector_and_parser = file_path
@@ -195,21 +203,24 @@ class Attachments:
                 if file_type:
                     try:
                         parser = self.parser_registry.get_parser(file_type)
-                    except KeyError:
+                    except KeyError: # Changed from ValueError to KeyError based on ParserRegistry.get_parser
+                        reason = f"No parser registered for detected type '{file_type}'"
                         if self.verbose:
-                            print(f"Warning: No parser registered for detected type '{file_type}' for '{path_for_detector_and_parser}' (from input '{path_str}'). Attempting to parse as plain text.")
+                            print(f"Warning: {reason} for '{path_for_detector_and_parser}' (from input '{path_str}'). Attempting to parse as plain text.")
                         file_type = 'txt' # Fallback to txt
                 else:
+                    reason = f"Could not detect file type for '{path_for_detector_and_parser}'"
                     if self.verbose:
-                        print(f"Warning: Could not detect file type for '{path_for_detector_and_parser}' (from input '{path_str}'). Attempting to parse as plain text.")
+                        print(f"Warning: {reason} (from input '{path_str}'). Attempting to parse as plain text.")
                     file_type = 'txt' # Fallback to txt
 
                 if not parser: # If parser is still None, it means we are in a fallback scenario or initial detection failed
                     try:
                         parser = self.parser_registry.get_parser(file_type) # This should get TextParser if file_type is 'txt'
-                    except KeyError:
-                        # This should ideally not happen if TextParser is registered, but as a safeguard:
-                        print(f"Critical Warning: Fallback TextParser not found or not registered for type '{file_type}'. Cannot process '{path_for_detector_and_parser}'. Skipping.")
+                    except KeyError: # Changed from ValueError to KeyError
+                        reason = f"Fallback TextParser not found or not registered for type '{file_type}'"
+                        print(f"Critical Warning: {reason}. Cannot process '{path_for_detector_and_parser}'. Skipping input '{path_str}'.")
+                        self._unprocessed_inputs.append((path_str, reason))
                         # Clean up temp file if it was created for a URL
                         if is_url and temp_file_path_for_parsing and os.path.exists(temp_file_path_for_parsing):
                             try:
@@ -332,11 +343,17 @@ class Attachments:
                 self.attachments_data.append(parsed_content)
 
             except ValueError as e_parser_val: 
-                print(f"Warning: {e_parser_val} Skipping input '{path_str}'.")
+                reason = f"Parsing value error: {e_parser_val}"
+                print(f"Warning: {reason} Skipping input '{path_str}'.")
+                self._unprocessed_inputs.append((path_str, reason))
             except ParsingError as e_parse:
-                print(f"Error parsing input '{path_str}': {e_parse}. Skipping.")
+                reason = f"Parsing error: {e_parse}"
+                print(f"Error parsing input '{path_str}': {reason}. Skipping.")
+                self._unprocessed_inputs.append((path_str, reason))
             except Exception as e:
-                print(f"An unexpected error occurred processing input '{path_str}': {e}. Skipping.")
+                reason = f"Unexpected error processing input: {e}"
+                print(f"An unexpected error occurred processing input '{path_str}': {reason}. Skipping.")
+                self._unprocessed_inputs.append((path_str, reason))
             
             finally:
                 if is_url and temp_file_path_for_parsing and os.path.exists(temp_file_path_for_parsing):
@@ -346,6 +363,13 @@ class Attachments:
                             print(f"Cleaned up temporary file: {temp_file_path_for_parsing}")
                     except Exception as e_clean:
                         print(f"Warning: Could not clean up temporary file {temp_file_path_for_parsing}: {e_clean}")
+    @property
+    def unprocessed_inputs(self) -> List[Tuple[str, str]]:
+        """Returns a list of tuples for inputs that could not be processed, 
+           each containing (original_path_string, reason_for_failure).
+        """
+        return list(self._unprocessed_inputs) # Return a copy
+
     @property
     def images(self):
         """Returns a list of base64 encoded strings for all processed images.
@@ -614,6 +638,14 @@ class Attachments:
             md_parts.append("\n\n### Audio Previews")
             if self._config.MARKDOWN_AUDIO_PREVIEW_STYLE == 'html': 
                 md_parts.append("\n" + "\n".join(audio_gallery_items))
+
+        # Add summary of unprocessed inputs
+        if self.unprocessed_inputs: # Use the new public property
+            md_parts.append("\n\n### Unprocessed Inputs")
+            unprocessed_summary = []
+            for path_str, reason in self.unprocessed_inputs:
+                unprocessed_summary.append(f"*   `{path_str}`: {reason}")
+            md_parts.append("\n" + "\n".join(unprocessed_summary))
 
         # Restore original verbose state if it was changed for debug (it wasn't here, but good practice if it were)
         # self.verbose = getattr(self, '_original_verbose_for_debug', self.verbose)

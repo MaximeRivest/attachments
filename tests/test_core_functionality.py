@@ -328,6 +328,45 @@ class TestCoreFunctionality(unittest.TestCase):
             if os.path.exists(no_ext_filepath):
                 os.remove(no_ext_filepath)
 
+    def test_unprocessed_inputs_populated_and_rendered(self):
+        """Test that unprocessed_inputs list is populated for failed items and rendered in markdown."""
+        non_existent_file = "/tmp/this/path/should/really/not/exist/ever/non_existent_file.txt"
+        # Using a URL that is syntactically valid but should reliably fail to connect or resolve
+        unreachable_url = "http://thisshouldnotexist.example.com/nonexistent.doc"
+        
+        # A file that exists but might cause a parsing error if we had a dummy parser for a fake type
+        # For now, we'll just focus on file not found and URL unreachable
+        
+        if self.sample_pdf_exists: # A valid file to ensure some processing happens too
+            atts = Attachments(non_existent_file, unreachable_url, SAMPLE_PDF, verbose=True)
+        else:
+            atts = Attachments(non_existent_file, unreachable_url, verbose=True)
+
+        self.assertTrue(len(atts.unprocessed_inputs) >= 2, 
+                        f"Expected at least 2 unprocessed inputs, got {len(atts.unprocessed_inputs)}")
+
+        unprocessed_paths = [item[0] for item in atts.unprocessed_inputs]
+        self.assertIn(non_existent_file, unprocessed_paths, "Non-existent file path not found in unprocessed_inputs")
+        self.assertIn(unreachable_url, unprocessed_paths, "Unreachable URL not found in unprocessed_inputs")
+
+        # Check that reasons are populated (not asserting exact string)
+        for path_str, reason in atts.unprocessed_inputs:
+            if path_str == non_existent_file:
+                self.assertTrue(len(reason) > 0, "Reason for non-existent file should not be empty")
+                self.assertIn("not found", reason.lower(), "Reason for non-existent file should mention 'not found'")
+            if path_str == unreachable_url:
+                self.assertTrue(len(reason) > 0, "Reason for unreachable URL should not be empty")
+                self.assertIn("failed to download", reason.lower(), "Reason for unreachable URL should mention download failure")
+
+        # Check Markdown representation
+        markdown_output = atts._repr_markdown_()
+        self.assertIn("### Unprocessed Inputs", markdown_output, "Markdown output missing Unprocessed Inputs section")
+        self.assertIn(f"`{non_existent_file}`", markdown_output, "Markdown output missing non-existent file path")
+        self.assertIn(f"`{unreachable_url}`", markdown_output, "Markdown output missing unreachable URL")
+        # Also check that a part of the reason is there, e.g., "not found"
+        self.assertIn("not found", markdown_output.lower(), "Markdown output missing 'not found' keyword for unprocessed file")
+        self.assertIn("failed to download", markdown_output.lower(), "Markdown output missing download failure keyword for unprocessed URL")
+
     def test_initialize_attachments_with_list_of_paths(self):
         """Test initializing Attachments with a list of paths."""
         # ... existing code ...
