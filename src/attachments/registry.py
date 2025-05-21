@@ -16,83 +16,88 @@ plugins at runtime or change priority without touching core code.
 
 from __future__ import annotations
 from collections import defaultdict
-from typing import Callable, Dict, List, Tuple, Type, Any
+from typing import Callable, Dict, List, Tuple, Type, Any, NamedTuple
 from contextlib import contextmanager
+import warnings
 
 # --------------------------------------------------------------------- #
-class _Registry:
-    """Internal singleton; do *not* instantiate twice."""
+class RegistryItem(NamedTuple):
+    cls: Type
+    priority: int
+
+class Registry:
     def __init__(self) -> None:
-        # {kind: List[Tuple[int, Type]]}
-        self._plugins: Dict[str, List[Tuple[int, Type[Any]]]] = defaultdict(list)
+        self._registry = defaultdict(list) # kind -> list[RegistryItem]
 
     # ---------------- registration ---------------- #
     def register(self,
                  kind: str,
-                 plugin_cls: Type[Any],
+                 cls: Type,
                  priority: int = 100) -> None:
         """Add a plugin class with a priority (higher = preferred)."""
         if not isinstance(priority, int):
             raise TypeError("priority must be int")
-        self._plugins[kind].append((priority, plugin_cls))
-        self._plugins[kind].sort(key=lambda t: -t[0])        # high → low
+        # Basic check if class is already registered to avoid duplicates if reloaded
+        if any(item.cls is cls for item in self._registry[kind]):
+            warnings.warn(f"Plugin {cls.__name__} already registered for kind '{kind}'. Skipping.", RuntimeWarning)
+            return
+        self._registry[kind].append(RegistryItem(cls, priority))
 
     # --------------- priority tweaks -------------- #
     def bump_priority(self,
-                      plugin_cls: Type[Any],
+                      cls: Type,
                       delta: int) -> None:
         """Raise or lower an existing plugin's priority."""
-        for kind, lst in self._plugins.items():
-            for i, (prio, cls) in enumerate(lst):
-                if cls is plugin_cls:
-                    lst[i] = (prio + delta, cls)
-            lst.sort(key=lambda t: -t[0])
+        for kind, items in self._registry.items():
+            for i, item in enumerate(items):
+                if item.cls is cls:
+                    items[i] = RegistryItem(item.cls, item.priority + delta)
+            items.sort(key=lambda x: -x.priority)
 
     # ----------------- retrieval ------------------ #
     def first(self,
               kind: str,
-              predicate: Callable[[Type[Any]], bool]) -> Type[Any] | None:
+              predicate: Callable[[Type], bool]) -> Type | None:
         """Return the first plugin of `kind` whose class satisfies predicate."""
-        for _, cls in self._plugins.get(kind, []):
-            if predicate(cls):
-                return cls
+        for item in sorted(self._registry.get(kind, []), key=lambda x: x.priority, reverse=True):
+            if predicate(item.cls):
+                return item.cls
         return None
 
     def all(self,
-            kind: str,
-            predicate: Callable[[Type[Any]], bool] | None = None) -> List[Type[Any]]:
-        """Return *all* plugins of a kind, optionally filtered by predicate."""
-        pred = predicate or (lambda _: True)
-        return [cls for _, cls in self._plugins.get(kind, []) if pred(cls)]
+            kind: str) -> list[Type]:
+        """Return *all* plugins of a kind."""
+        return [item.cls for item in sorted(self._registry.get(kind, []), key=lambda x: x.priority, reverse=True)]
 
     # ------------------- misc --------------------- #
     def kinds(self) -> List[str]:
-        return list(self._plugins.keys())
+        return list(self._registry.keys())
 
     def dump(self) -> None:
         """Pretty-print current registry (debug helper)."""
-        from pprint import pprint
-        view = {k: [(p, c.__name__) for p, c in v] for k, v in self._plugins.items()}
-        pprint(view)
+        for kind, items in self._registry.items():
+            print(f"  Kind: {kind}")
+            for item in sorted(items, key=lambda x: x.priority, reverse=True):
+                print(f"    - {item.cls.__name__} (priority: {item.priority})")
 
-    def unregister(self, kind: str, plugin_cls: type) -> None:
+    def unregister(self, kind: str, cls: Type) -> None:
         """Remove a plugin class from the registry for a given kind."""
-        self._plugins[kind] = [(prio, cls) for prio, cls in self._plugins.get(kind, []) if cls is not plugin_cls]
+        self._registry[kind] = [item for item in self._registry.get(kind, []) if item.cls is not cls]
 
-    def clear(self, kind: str) -> None:
-        """Remove all plugins of a given kind (test only)."""
-        self._plugins[kind] = []
+    def clear(self) -> None:
+        """Clear all registered plugins. Useful for testing."""
+        self._registry = defaultdict(list)
 
     @contextmanager
-    def temp_registration(self, kind: str, plugin_cls: type, priority: int = 100):
+    def temp_registration(self, kind: str, cls: Type, priority: int = 100):
         """Temporarily register a plugin for the duration of a test."""
-        self.register(kind, plugin_cls, priority)
+        self.register(kind, cls, priority)
         try:
             yield
         finally:
-            self.unregister(kind, plugin_cls)
+            self.unregister(kind, cls)
 
 # a single global instance
-REGISTRY: _Registry = _Registry()
+REGISTRY = Registry()
 
 __all__ = ["REGISTRY"]

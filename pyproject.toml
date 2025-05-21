@@ -48,6 +48,8 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest",
+    "pytest-randomly",
+    "pytest-cov",
     "flake8",
     "mypy",
     "black",
@@ -68,3 +70,7 @@ namespaces = false
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 norecursedirs = ["mrplay", ".venv", "dist", "build", "attachments.egg-info"]
+addopts = "--cov=src/attachments --cov-branch --cov-report=term-missing --cov-fail-under=90"
+markers = [
+    "contract: marks tests as contract tests (slower, more comprehensive)"
+]

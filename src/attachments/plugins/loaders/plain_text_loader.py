@@ -9,11 +9,6 @@ class PlainTextLoader(Loader, PluginContract):
 
     @classmethod
     def match(cls, path: str) -> bool:
-        # As a low-priority fallback, if this loader is considered,
-        # it means no higher-priority loader matched.
-        # We can make it match any file that wasn't caught by others.
-        # For simplicity and to ensure it's a true fallback, always return True.
-        # The registry's priority system will ensure it's tried last.
         return True
 
     def load(self, path: str) -> str:

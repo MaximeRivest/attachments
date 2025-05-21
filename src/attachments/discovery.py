@@ -1,41 +1,54 @@
 """
 Scan ATTACHMENTS_PLUGIN_PATH for *.py files & packages, import them,
 and rely on their top-level `REGISTRY.register(...)` calls.
+
+Also discovers plugins via entry points in the 'attachments.plugins' group.
 """
 
 import os, sys, pathlib
 import importlib.metadata
 from .utils import try_initialize_plugin_module
+import logging
+
+logger = logging.getLogger("attachments")
 
 ENV_VAR = "ATTACHMENTS_PLUGIN_PATH"
 ENTRY_POINT_GROUP = "attachments.plugins"
 
 def load_external_plugins() -> None:
-    # 1. Discover plugins via entry points first
+    """
+    Load plugins from entry points and environment paths.
+    
+    This function:
+    1. Discovers plugins registered via entry points in the 'attachments.plugins' group
+    2. Discovers plugins from paths specified in the ATTACHMENTS_PLUGIN_PATH environment variable
+    """
+    # 1. Discover plugins via entry points
     try:
         # For Python 3.10+
-        eps = importlib.metadata.entry_points(group=ENTRY_POINT_GROUP)
-    except TypeError: # Fallback for Python < 3.10 where `group` is not a kwarg
+        eps = list(importlib.metadata.entry_points(group=ENTRY_POINT_GROUP))
+    except TypeError:
+        # Fallback for Python < 3.10 where `group` is not a kwarg
         try:
             all_eps = importlib.metadata.entry_points()
             eps = all_eps.get(ENTRY_POINT_GROUP, [])
-        except Exception: # Broad catch if entry_points itself fails unexpectedly
-            eps = [] # type: ignore
+        except Exception as e:
+            logger.warning(f"Failed to load entry points: {e}")
+            eps = []
 
     for ep in eps:
         try:
-            plugin_module_name = ep.value.split(":")[0] # e.g., "my_pkg.csv_super" from "my_pkg.csv_super:CSVSuperLoader"
-            # The entry point itself might load the specific class/function, but we typically want to init the module
-            # to pick up @register_plugin calls. So, we import the module part.
-            # The original design relies on module import to trigger registration.
-            # If ep.load() is preferred, ensure registration happens upon loading the specific object.
-            # For now, stick to module-level initialization.
-            # module_obj = ep.load() # This would load the CSVSuperLoader directly
-            try_initialize_plugin_module(plugin_module_name, is_external=True, source=f"entry_point {ENTRY_POINT_GROUP}:{ep.name}")
+            # Get the module name from the entry point
+            plugin_module_name = ep.value.split(":")[0]
+            try_initialize_plugin_module(
+                plugin_module_name,
+                is_external=True,
+                source=f"entry_point {ENTRY_POINT_GROUP}:{ep.name}"
+            )
         except Exception as e:
-            print(f"[attachments] Warning: Failed to load plugin from entry point '{ep.name}': {e}", file=sys.stderr)
+            logger.warning(f"Failed to load plugin from entry point '{ep.name}': {e}")
 
-    # 2. Discover plugins via environment variable (existing mechanism)
+    # 2. Discover plugins via environment variable
     paths_str = os.getenv(ENV_VAR, "")
     if not paths_str:
         return
@@ -45,6 +58,7 @@ def load_external_plugins() -> None:
     for raw_path in paths_str.split(os.pathsep):
         p = pathlib.Path(raw_path).expanduser().resolve()
         if not p.exists():
+            logger.warning(f"Plugin path does not exist: {p}")
             continue
 
         # 1️⃣  Single .py files  -------------------------------------
@@ -56,7 +70,11 @@ def load_external_plugins() -> None:
             if dir_path_str not in sys.path:
                 sys.path.insert(0, dir_path_str)
             
-            try_initialize_plugin_module(module_name, is_external=True, source=f"env_var {ENV_VAR}")
+            try_initialize_plugin_module(
+                module_name,
+                is_external=True,
+                source=f"env_var {ENV_VAR}"
+            )
             
             # Clean up sys.path immediately if we added it
             if dir_path_str in sys.path and dir_path_str not in original_sys_path:
@@ -85,7 +103,11 @@ def load_external_plugins() -> None:
                 relative_path = py_file.relative_to(p)
                 module_name_to_import = '.'.join(relative_path.with_suffix("").parts)
                 
-                try_initialize_plugin_module(module_name_to_import, is_external=True, source=f"env_var {ENV_VAR}")
+                try_initialize_plugin_module(
+                    module_name_to_import,
+                    is_external=True,
+                    source=f"env_var {ENV_VAR}"
+                )
 
             # Clean up sys.path if we added this directory
             if dir_path_str in sys.path and dir_path_str not in original_sys_path:

@@ -10,6 +10,7 @@ def is_real_plugin(cls):
     # skip if from core module and is an ABC
     return not (mod.endswith("core") and name in abc_names)
 
+@pytest.mark.contract
 @pytest.mark.parametrize("cls",
     [c for k in REGISTRY.kinds() for c in REGISTRY.all(k) if is_real_plugin(c)])
 def test_plugin_contract(cls, tmp_path):

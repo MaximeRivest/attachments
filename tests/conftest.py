@@ -1,5 +1,11 @@
 import io, pathlib, tempfile, textwrap, pandas as pd
 import pytest, base64
+import importlib
+import sys
+import os
+import importlib.util
+import pkgutil
+from unittest.mock import patch
 
 try:
     import fitz
@@ -9,6 +15,52 @@ try:
     from PIL import Image
 except ImportError:
     Image = None # type: ignore
+
+# Ensure plugins are properly loaded for all tests
+@pytest.fixture(autouse=True)
+def ensure_plugins_loaded():
+    """Ensure all built-in plugins are properly loaded before each test."""
+    # First clean up all existing attachments modules from sys.modules
+    # to ensure a completely fresh reload
+    to_delete = [k for k in sys.modules if k.startswith("src.attachments")]
+    for k in to_delete:
+        del sys.modules[k]
+    
+    # Now reimport base modules
+    import src.attachments.registry
+    import src.attachments.core
+    import src.attachments.plugin_api
+    
+    # Get a fresh registry
+    from src.attachments.registry import REGISTRY
+    REGISTRY.clear()
+    
+    # Import core classes to register them
+    from src.attachments.core import Loader, Renderer, Transform, Deliverer
+    
+    # Dynamically discover and import all plugin modules
+    import src.attachments.plugins
+    
+    # Use pkgutil to walk through all subpackages
+    plugin_types = ['loaders', 'renderers', 'transforms', 'deliverers']
+    
+    # For each plugin type, dynamically import all modules
+    for plugin_type in plugin_types:
+        plugin_path = os.path.join(os.path.dirname(src.attachments.plugins.__file__), plugin_type)
+        if os.path.exists(plugin_path):
+            # Find all .py files that don't start with _ (skipping __init__.py and others)
+            for module_file in os.listdir(plugin_path):
+                if module_file.endswith('.py') and not module_file.startswith('_'):
+                    module_name = f"src.attachments.plugins.{plugin_type}.{module_file[:-3]}"
+                    try:
+                        # Import the module to trigger registration
+                        if module_name not in sys.modules:
+                            importlib.import_module(module_name)
+                    except ImportError as e:
+                        print(f"Warning: Could not import plugin module {module_name}: {e}")
+    
+    # Finally import the main package to complete registration
+    import src.attachments
 
 def get_sample_path(ext, tmp_path=None):
     """Return a sample file path for a given extension (csv, img, pdf)."""
@@ -40,6 +92,13 @@ def get_sample_path(ext, tmp_path=None):
         doc.save(p)
         return str(p)
     raise ValueError(f"Unknown ext: {ext}")
+
+@pytest.fixture
+def sample_txt(tmp_path):
+    """Create a sample text file."""
+    p = tmp_path / "sample.txt"
+    p.write_text("This is a sample text file for testing.")
+    return str(p)
 
 @pytest.fixture
 def sample_csv(tmp_path):

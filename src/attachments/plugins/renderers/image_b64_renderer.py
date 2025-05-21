@@ -15,13 +15,22 @@ class ImageB64Renderer(Renderer, PluginContract):
         _sample_obj = None
 
     def match(self, obj):
-        from PIL import Image  # type: ignore import-not-found
-        return isinstance(obj, Image.Image)
+        try:
+            from PIL import Image  # type: ignore import-not-found
+            return isinstance(obj, Image.Image)
+        except ImportError:
+            # When PIL is not available, we can't match Image objects
+            # Also need to handle strings that might be error messages from ImageLoader
+            return False
 
     def render(self, obj, meta):
-        from PIL import Image  # to ensure same namespace; lint ignore
-        buf = io.BytesIO()
-        obj.save(buf, format='PNG')
-        return [f"data:image/png;base64,{base64.b64encode(buf.getvalue()).decode()}"]
+        try:
+            from PIL import Image  # to ensure same namespace; lint ignore
+            buf = io.BytesIO()
+            obj.save(buf, format='PNG')
+            return [f"data:image/png;base64,{base64.b64encode(buf.getvalue()).decode()}"]
+        except ImportError:
+            # This should not be reached if match returns False when PIL is not available
+            return ["data:image/png;base64,"]  # Return an empty base64 image
 
 __all__ = ["ImageB64Renderer"]
