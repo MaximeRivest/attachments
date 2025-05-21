@@ -16,7 +16,7 @@ Most users will not have to learn anything more then that: `Attachments("path/to
 ```python
 from attachments import Attachments
 
-a = Attachment("/the/path/or/url/to/your/to/the/content/you/want/to/give/the/llm.xlsx", "another.pdf", "another.pptx"...)
+a = Attachments("/the/path/or/url/to/your/to/the/content/you/want/to/give/the/llm.xlsx", "another.pdf", "another.pptx"...)
 
 prompt_ready_context = str(a)
 images_ready_for_llm = a.images
