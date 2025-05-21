@@ -15,7 +15,7 @@ def load_external_plugins() -> None:
 
     original_sys_path = list(sys.path)
 
-    for raw_path in paths_str.split(":"):
+    for raw_path in paths_str.split(os.pathsep):
         p = pathlib.Path(raw_path).expanduser().resolve()
         if not p.exists():
             continue

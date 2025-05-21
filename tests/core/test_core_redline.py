@@ -19,6 +19,20 @@ def test_dsl_split():
     assert Attachment._split("foo.pdf[rotate:90]") == ("foo.pdf", "rotate:90")
     assert Attachment._split("bar.csv") == ("bar.csv", "")
 
+    # New test cases
+    assert Attachment._split("file.txt[cmd]") == ("file.txt", "cmd")
+    assert Attachment._split("file[name].txt[cmd]") == ("file[name].txt", "cmd")
+    assert Attachment._split("url/to/file?p1=[v1]&p2=[v2][cmd]") == ("url/to/file?p1=[v1]&p2=[v2]", "cmd")
+    assert Attachment._split("url/to/file?p1=[v1]&p2=[v2]") == ("url/to/file?p1=[v1]&p2=[v2]", "")
+    assert Attachment._split("[cmd]") == ("[cmd]", "") # Not a path + cmd
+    assert Attachment._split("file[]") == ("file[]", "")     # Empty cmd part means no cmd
+    assert Attachment._split("file[ ]") == ("file[ ]", "")   # Empty cmd part means no cmd
+    assert Attachment._split("file[c]") == ("file", "c")
+    assert Attachment._split("file[[inner_cmd]]") == ("file[", "inner_cmd]")
+    assert Attachment._split("path/to/some[file].txt") == ("path/to/some[file].txt", "") # No cmd
+    assert Attachment._split("another_path_with_no_cmd[") == ("another_path_with_no_cmd[", "") # Incomplete
+    assert Attachment._split("path_ends_with_bracket]") == ("path_ends_with_bracket]", "")
+
 def test_loader_discovery(sample_csv):
     att = Attachment(sample_csv)
     assert isinstance(att.obj, pd.DataFrame)

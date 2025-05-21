@@ -94,13 +94,46 @@ class Attachment:
     # -------------------------------------------------------------- #
     #                           internals                            #
     # -------------------------------------------------------------- #
-    _BRACKET_RX = re.compile(r"(.*)\[(.*)\]$")
+    # _BRACKET_RX = re.compile(r"(.*)\\[(.*)\\]$") # Remove or comment out old regex
 
     @classmethod
     def _split(cls, s: str) -> Tuple[str, str]:
-        """Separate `file.ext[param1:value1,param2]` into ('file.ext', 'param1…')."""
-        m = cls._BRACKET_RX.match(s)
-        return (m.group(1), m.group(2)) if m else (s, "")
+        """Separate `file.ext[param1:value1,param2]` into ('file.ext', 'param1…').
+        
+        Handles nested brackets by finding the last top-level square bracket pair
+        at the end of the string, which is assumed to be the command block.
+        Example: "https://example.com/file.pdf?p=[abc][cmd1,cmd2]"
+        should be split into ("https://example.com/file.pdf?p=[abc]", "cmd1,cmd2").
+        """
+        # Find the last '['
+        last_bracket_open_idx = s.rfind('[')
+
+        # If no '[' is found, or if the string doesn't end with ']',
+        # or if the last '[' is after the last char (should not happen with rfind unless string is "[")
+        # or if the last '[' is the last character itself.
+        if last_bracket_open_idx == -1 or not s.endswith(']') or last_bracket_open_idx >= len(s) - 1:
+            return s, ""
+
+        # Potential path part and command part
+        path_part = s[:last_bracket_open_idx]
+        cmd_part = s[last_bracket_open_idx + 1 : -1] # Content between last '[' and final ']'
+
+        # If the path_part is empty AND the original string started with '[',
+        # it means the original string was like "[cmd]". This is not a path with a command.
+        if not path_part and s.startswith('['):
+            return s, "" # Treat as a path without commands
+
+        # Heuristic for URL query parameters: if path_part ends with '=',
+        # it's likely that the stuff in brackets was a value, not a command.
+        if path_part.endswith('='):
+            return s, "" # Treat the whole thing as a path
+
+        # If the extracted command part is empty after stripping, it's not a valid command.
+        if not cmd_part.strip():
+             # This could be a path like "file_with_empty_brackets[]" or "file_with_spaces[ ]"
+             return s, ""
+
+        return path_part, cmd_part.strip()
 
     # ------------------------- loading ---------------------------- #
     def _load(self) -> Any:
