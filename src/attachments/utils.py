@@ -25,3 +25,6 @@ def try_initialize_plugin_module(module_name: str, is_external: bool = False, so
             f"[attachments] Warning: Unexpected error while importing {prefix}plugin module '{module_name}'{display_source}: {err}",
             file=sys.stderr,
         ) 
+
+def is_url(path: str) -> bool:
+    return path.startswith(("http://", "https://"))

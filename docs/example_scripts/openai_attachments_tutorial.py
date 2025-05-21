@@ -73,13 +73,14 @@ image_data_url = f"data:image/jpeg;base64,{image_base64}"
 # For this we need to instantiate the OpenAI client. This will search for your API key
 # in your environment variables. You can also pass it directly as a string, like this:
 # `client = OpenAI(api_key="your_key_here")`
-#%%
-client = openai.OpenAI()
-
-response = client.responses.create(
-    model="gpt-4.1-nano",
-    input=openai_messages_content
-)
+#```python
+#client = openai.OpenAI()
+#
+#response = client.responses.create(
+#    model="gpt-4.1-nano",
+#    input=openai_messages_content
+#)
+#```
 # %% [md]
 # Putting it all together, we get the following:
 #%%
@@ -124,8 +125,9 @@ response = client.responses.create(
     input=[
     {
         "role": "user",
-        "content": Attachments("/home/maxime/Pictures/20230803_130936.jpg").\
-                    to_openai_content("what is in this picture?")
+        "content": Attachments("/home/maxime/Pictures/20230803_130936.jpg").to_openai(
+            prompt="what is in this picture?"
+            )
     }
 ]
 )
@@ -134,7 +136,6 @@ response.__dict__
 # It is already more concise and easier to manage but where attachments really shines is when
 # you want to pass other file types, not just images.
 # let's for instance try to pass this pdf:
-#%%
 pdf_url = "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
 
 import openai
@@ -146,7 +147,7 @@ response = client.responses.create(
     input=[
     {
         "role": "user",
-        "content": Attachments(pdf_url).to_openai_content("what is in this pdf?")
+        "content": Attachments(pdf_url).to_openai(prompt="what is in this pdf?")
     }
 ]
 )

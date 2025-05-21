@@ -56,6 +56,9 @@ dev = [
     "filelock",
     "mystmd",
 ]
+browser = ["playwright>=1.43.0"]
+images  = ["Pillow>=10"]
+all     = ["playwright>=1.43.0", "Pillow>=10"]
 
 [project.scripts]
 attachments = "attachments.__main__:cli"
