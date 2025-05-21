@@ -85,18 +85,36 @@ def test_deliverer_packaging(sample_img):
         pkg = att.format_for("dummy")
         assert {"type": "input_image"} in pkg
 
-def test_missing_dep_guard(caplog):
+def test_missing_dep_guard():
     from attachments.plugin_api import register_plugin, requires
+    
     @register_plugin("renderer_text", priority=10)
-    @requires("nonexistent_pkg_xyz")
+    @requires("nonexistent_pkg_xyz", pip_names={"nonexistent_pkg_xyz": "fancy-nonexistent-package"})
     class MissingDepRenderer:
         content_type = "text"
-        def match(self, obj): return False
-        def render(self, obj, meta): return ""
-    # Should not be in registry
-    assert MissingDepRenderer not in REGISTRY.all("renderer_text")
-    assert any("nonexistent_pkg_xyz" in r.message for r in caplog.records)
-    REGISTRY.unregister("renderer_text", MissingDepRenderer)
+        _sample_obj = "test"
+        _attachments_disabled = False
+
+        def __init__(self):
+            pass
+
+        def match(self, obj): 
+            return False
+        def render(self, obj, meta): 
+            return ""
+
+    assert not any(issubclass(r, MissingDepRenderer) or r.__name__.startswith("MissingDepRenderer") for r in REGISTRY.all("renderer_text"))
+
+    with pytest.raises(ModuleNotFoundError) as excinfo:
+        MissingDepRenderer()
+    
+    assert "Module 'nonexistent_pkg_xyz' not found" in str(excinfo.value)
+    assert "Try `pip install fancy-nonexistent-package`" in str(excinfo.value)
+    assert "Plugin 'MissingDepRenderer' is disabled" in str(excinfo.value)
+
+    all_renderers = REGISTRY.all("renderer_text")
+    original_class_present = any(r.__name__ == "MissingDepRenderer" and not hasattr(r, "_attachments_disabled_reason") for r in all_renderers)
+    assert not original_class_present
 
 def test_external_plugin_path(monkeypatch, tmp_path):
     # Create a dummy plugin in a temp dir

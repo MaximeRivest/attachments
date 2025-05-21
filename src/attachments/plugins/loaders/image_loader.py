@@ -3,7 +3,7 @@ from attachments.core import Loader
 from attachments.testing import PluginContract
 
 @register_plugin("loader", priority=100)
-@requires("PIL")
+@requires("PIL", pip_names={"PIL": "Pillow"})
 class ImageLoader(Loader, PluginContract):
     _sample_path = "jpg"
 

@@ -4,7 +4,7 @@ from attachments.core import Renderer
 from attachments.testing import PluginContract
 
 @register_plugin("renderer_image", priority=100)
-@requires("PIL")
+@requires("PIL", pip_names={"PIL": "Pillow"})
 class ImageB64Renderer(Renderer, PluginContract):
     content_type = 'image'
 

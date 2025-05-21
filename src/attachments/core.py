@@ -11,8 +11,9 @@ Attachment pipeline:
 from __future__ import annotations
 import os
 import re
-from typing import Any, Dict, List, Tuple, Protocol
+from typing import Any, Dict, List, Tuple, Literal
 import warnings
+import abc
 
 from .registry import REGISTRY
 
@@ -20,25 +21,34 @@ from .registry import REGISTRY
 # ------------------------------------------------------------------ #
 #                       Abstract plugin ABCs                         #
 # ------------------------------------------------------------------ #
-class Loader(Protocol):
+class Loader(abc.ABC):
     """Sub-class and register → turn path → Python object."""
 
     @classmethod
+    @abc.abstractmethod
     def match(cls, path: str) -> bool: ...
+
+    @abc.abstractmethod
     def load(self, path: str) -> Any: ...
 
 
-class Renderer(Protocol):
+# Define ContentT for Renderer
+ContentT = Literal["text", "image", "audio"]
+
+class Renderer(abc.ABC):
     """Sub-class and register → turn object → text / images / audio."""
 
     # must be 'text' | 'image' | 'audio'
-    content_type: str = "text"
+    content_type: ContentT = "text"
 
+    @abc.abstractmethod
     def match(self, obj: Any) -> bool: ...
+
+    @abc.abstractmethod
     def render(self, obj: Any, meta: Dict[str, Any]) -> Any: ...
 
 
-class Transform(Protocol):
+class Transform(abc.ABC):
     """Sub-class and register → modify object after load.
 
     Attribute `name` (str) is the DSL token that triggers the transform:
@@ -47,15 +57,18 @@ class Transform(Protocol):
 
     name: str
 
+    @abc.abstractmethod
     def apply(self, obj: Any, arg: str | None) -> Any: ...
 
 
-class Deliverer(Protocol):
+class Deliverer(abc.ABC):
     """
     Turn the results of .text / .images / .audio into the format
     expected by a downstream client (OpenAI, Anthropic, LangChain …).
     """
     name: str                        # e.g. 'openai', 'claude'
+
+    @abc.abstractmethod
     def package(self,
                 text: str | None,
                 images: list[str] | None,

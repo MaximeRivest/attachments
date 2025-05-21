@@ -3,7 +3,7 @@ from attachments.core import Renderer
 from attachments.testing import PluginContract
 
 @register_plugin("renderer_text", priority=50)
-@requires("pytesseract", "PIL")
+@requires("pytesseract", "PIL", pip_names={"pytesseract": "pytesseract", "PIL": "Pillow"})
 class ImageOCRText(Renderer, PluginContract):
     content_type = "text"
 

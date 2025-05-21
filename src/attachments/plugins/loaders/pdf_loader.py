@@ -4,7 +4,7 @@ from attachments.core import Loader
 from attachments.testing import PluginContract
 
 @register_plugin("loader", priority=100)
-@requires("fitz")
+@requires("fitz", pip_names={"fitz": "PyMuPDF"})
 class PDFLoader(Loader, PluginContract):
     _sample_path = "pdf"
 
