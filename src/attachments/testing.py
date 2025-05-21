@@ -51,6 +51,10 @@ def _create_sample_file_for_selftest(ext: str, tmp_path: pathlib.Path):
         p = tmp_path / f"sample.{ext}"
         p.write_text("This is a sample text file for testing.")
         return str(p)
+    if ext in ("http", "https"):
+        p = tmp_path / "sample.txt"
+        p.write_text("This is a sample text file for http(s) testing.")
+        return str(p)
 
     raise ValueError(f"Unsupported extension for _create_sample_file_for_selftest: {ext}")
 
@@ -68,9 +72,14 @@ class PluginContract:
             sample_ext = getattr(self, "_sample_path", None)
             if sample_ext and isinstance(sample_ext, str):
                 # Create the sample file in tmp_path using the extension
-                actual_sample_path = _create_sample_file_for_selftest(sample_ext, tmp_path)
-                assert type(self).match(actual_sample_path) # type: ignore
-                obj = self.load(actual_sample_path) # type: ignore
+                if sample_ext in ("http", "https"):
+                    # For URL loaders, match against a dummy URL string, not a file path
+                    actual_sample_path_or_url = f"{sample_ext}://example.com/sample.html" 
+                else:
+                    actual_sample_path_or_url = _create_sample_file_for_selftest(sample_ext, tmp_path)
+                
+                assert type(self).match(actual_sample_path_or_url) # type: ignore
+                obj = self.load(actual_sample_path_or_url) # type: ignore
                 assert obj is not None
             elif sample_ext:
                  # If _sample_path is not a string, it might be an object for some loaders?

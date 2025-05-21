@@ -1,6 +1,8 @@
 import sys
 from .registry import REGISTRY
 from .core import Attachments
+import logging
+import os
 
 def cli(args=None, attachments_cls=Attachments):
     """CLI entry point with dependency injection support for testing."""
@@ -13,7 +15,26 @@ def cli(args=None, attachments_cls=Attachments):
         nargs="*",
         help="File(s) to extract (if omitted, just dumps plugin registry)",
     )
+
+    parser.add_argument("-d", "--debug", action="store_true",
+                        help="Print plugin diagnostics to stderr")
+
+    parser.add_argument(
+        "--log-level",
+        default=os.getenv("ATTACHMENTS_LOG", "WARNING"),
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        help="Set the logging level (default: WARNING or ATTACHMENTS_LOG env var)"
+    )
+
     parsed_args = parser.parse_args(args)
+
+    # Apply log level from CLI arg
+    logging.basicConfig(level=parsed_args.log_level.upper(), force=True) # force=True to override previous config
+
+    if parsed_args.debug:
+        import pprint, sys
+        from . import diagnostics
+        pprint.pp(diagnostics(), stream=sys.stderr)
 
     if not parsed_args.paths:
         print("[attachments] Plugin registry:")

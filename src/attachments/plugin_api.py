@@ -73,10 +73,16 @@ def requires(*modules: str, pip_names: dict[str, str] | None = None):
             class MissingDependencyProxy:
                 _attachments_original_plugin_name = cls.__name__
                 _attachments_disabled_reason = full_error_message
+                _attachments_disabled = True
+                _attachments_disabled_msg = full_error_message
 
                 def __init__(self, *args, **kwargs):
-                    raise ModuleNotFoundError(full_error_message)
-                
+                    raise RuntimeError(self._attachments_disabled_reason)
+
+                # expose reason for diagnostics
+                _attachments_disabled = True
+                _attachments_disabled_msg = full_error_message
+
                 @classmethod # Keep match as classmethod if original had it
                 def match(cls_proxy, *args, **kwargs):
                      # For selftest in PluginContract, we need match to exist but indicate failure.
@@ -85,16 +91,15 @@ def requires(*modules: str, pip_names: dict[str, str] | None = None):
                     if hasattr(cls, "match") and inspect.ismethod(getattr(cls, "match")):
                         # If the original had a classmethod match, we can't easily call it. 
                         # The best we can do is indicate it's part of a disabled plugin.
-                        # Alternatively, always return False or raise the ModuleNotFoundError here too.
+                        # Alternatively, always return False or raise the RuntimeError here too.
                         # For simplicity with PluginContract, we need it to exist.
                         # We could also make PluginContract check for _attachments_disabled_reason.
                         print(f"Warning: '{cls_proxy._attachments_original_plugin_name}.match()' called on a plugin disabled due to: {cls_proxy._attachments_disabled_reason}", file=sys.stderr)
-                        return False # Or raise ModuleNotFoundError(full_error_message)
-                    raise ModuleNotFoundError(full_error_message)
+                        return False # Or raise RuntimeError(cls_proxy._attachments_disabled_reason)
+                    raise RuntimeError(cls_proxy._attachments_disabled_reason)
 
             # For selftest in PluginContract, we still need _attachments_disabled for the skip logic
             # and _sample_path/_sample_obj if they existed, so register_plugin doesn't fail before skipping.
-            MissingDependencyProxy._attachments_disabled = True # type: ignore
             if hasattr(cls, "_sample_path"):
                 MissingDependencyProxy._sample_path = getattr(cls, "_sample_path") # type: ignore
             if hasattr(cls, "_sample_obj"):
@@ -120,18 +125,12 @@ def requires(*modules: str, pip_names: dict[str, str] | None = None):
 # ----------------------------------------------------------- #
 
 def register_plugin(kind: str, priority: int = 100):
-    """Decorator that registers the class with REGISTRY when appropriate.
-
-    Registration is skipped if the class was previously marked as disabled
-    by the @requires decorator (or any other mechanism that sets
-    ``_attachments_disabled = True``).
-    """
-
-    def decorator(cls: Type[Any]) -> Type[Any]:
+    def decorator(cls):
         if getattr(cls, "_attachments_disabled", False):
-            # silently ignore – requires() already warned
-            return cls
+            # remember **why** so we can show it later
+            reason = getattr(cls, "_attachments_disabled_msg", "disabled")
+            REGISTRY._disabled.append((kind, cls, reason))    # NEW
+            return cls                                         # don’t register
         REGISTRY.register(kind, cls, priority)
         return cls
-
-    return decorator 
+    return decorator

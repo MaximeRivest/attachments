@@ -5,6 +5,11 @@ from .registry import REGISTRY
 from .utils import try_initialize_plugin_module
 import os
 import pkgutil
+import logging
+
+# Configure logging
+logging.basicConfig(level=os.getenv("ATTACHMENTS_LOG", "WARNING"))
+logger = logging.getLogger(__name__)
 
 # 1. Load *user* plugins first so they can override priorities if they wish.
 load_external_plugins()
@@ -37,4 +42,16 @@ for d_cls in REGISTRY.all("deliverer"):
         return _api
     setattr(Attachments, f"to_{name}", _mk_api_method_attachments(name))
 
-__all__ = ["Attachment", "Attachments"]
+def diagnostics():
+    """
+    Return a dict with two keys:
+      • "registry": plugins grouped by kind + disabled list
+      • "env":      ATTACHMENTS_* environment variables
+    """
+    import os, pprint
+    reg = {k: [c.__name__ for c in REGISTRY.all(k)] for k in REGISTRY.kinds()}
+    disabled = [(k, c.__name__, r) for k, c, r in REGISTRY.disabled()]
+    return {"registry": reg, "disabled": disabled,
+            "env": {k: v for k, v in os.environ.items() if k.startswith("ATTACHMENTS")}}
+
+__all__ = ["Attachment", "Attachments", "diagnostics"]

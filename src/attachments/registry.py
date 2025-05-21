@@ -28,6 +28,12 @@ class RegistryItem(NamedTuple):
 class Registry:
     def __init__(self) -> None:
         self._registry = defaultdict(list) # kind -> list[RegistryItem]
+        self._disabled: list[tuple[str, type, str]] = []  
+           
+    def disabled(self) -> list[tuple[str, type, str]]:
+            """Return [(kind, class, reason), …] for all plugins that *wanted*
+            to register but were skipped (e.g. missing deps)."""
+            return self._disabled
 
     # ---------------- registration ---------------- #
     def register(self,
@@ -68,6 +74,24 @@ class Registry:
             kind: str) -> list[Type]:
         """Return *all* plugins of a kind."""
         return [item.cls for item in sorted(self._registry.get(kind, []), key=lambda x: x.priority, reverse=True)]
+
+    def candidates(self, kind: str, predicate: Callable[[Type], bool]):
+        """
+        Return **all** plugins of `kind` with a tuple (cls, usable: bool, reason:str|None)
+        regardless of whether they are disabled or fail the predicate.
+        """
+        out = []
+        for item in sorted(self._registry.get(kind, []), key=lambda x: -x.priority):
+            cls = item.cls
+            usable = predicate(cls) and not getattr(cls, "_attachments_disabled", False)
+            reason = None
+            if not usable:
+                if getattr(cls, "_attachments_disabled", False):
+                    reason = getattr(cls, "_attachments_disabled_msg", "disabled")
+                elif not predicate(cls):
+                    reason = "predicate_mismatch"
+            out.append((cls, usable, reason))
+        return out
 
     # ------------------- misc --------------------- #
     def kinds(self) -> List[str]:

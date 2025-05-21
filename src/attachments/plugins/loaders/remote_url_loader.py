@@ -3,11 +3,11 @@ from attachments.core import Loader
 from attachments.testing import PluginContract
 from urllib.parse import urlparse
 
-@register_plugin("loader", priority=90)       # below RemoteFileLoader (999) so only picks up “unknown” URLs
+@register_plugin("loader", priority=1000)
 class RemoteURLLoader(Loader, PluginContract):
     """
     Match http(s) URLs where the path has *no* usual file extension.
-    Returns the URL string unchanged – the renderer will do the work.
+    Returns the URL string unchanged - the renderer will do the work.
     """
     _sample_path = "https"          # self-test skips network
 

@@ -179,7 +179,7 @@ def test_missing_dep_guard():
 
     assert not any(issubclass(r, MissingDepRenderer) or r.__name__.startswith("MissingDepRenderer") for r in REGISTRY.all("renderer_text"))
 
-    with pytest.raises(ModuleNotFoundError) as excinfo:
+    with pytest.raises(RuntimeError) as excinfo:
         MissingDepRenderer()
     
     assert "Module 'nonexistent_pkg_xyz' not found" in str(excinfo.value)

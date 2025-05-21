@@ -11,7 +11,8 @@ Attachment pipeline:
 from __future__ import annotations
 import os
 import re
-from typing import Any, Dict, List, Tuple, Literal
+from os import PathLike
+from typing import Any, Dict, List, Tuple, Literal, Optional
 import warnings
 import abc
 
@@ -87,12 +88,22 @@ REGISTRY.register("abc", Deliverer, 0)
 class Attachment:
     """High-level façade.  Users *only* import this class."""
 
-    # -------------------------------------------------------------- #
-    def __init__(self, original: str) -> None:
-        if not isinstance(original, str):
-            original = str(original)
-        self.original = original
-        self.path, self._cmd = self._split(original)
+    obj: Any
+    source: str
+    original: str  # for display, never changes
+    meta: Dict[str, Any]
+    _diagnostics: dict
+
+    def __init__(self, source: str | PathLike, obj: Any = None, meta: Optional[Dict[str, Any]] = None):
+        """Pass either `source` (path or URL) or `obj` (in-memory object) not both."""
+        self._diagnostics = {} # Initialize here
+        self._diagnostics["loaders_tried"]     = []   # NEW
+        self._diagnostics["renderers_tried"]   = {}
+        if isinstance(source, PathLike):
+            source = str(source)
+        self.source = source
+        self.original = source
+        self.path, self._cmd = self._split(source)
 
         # load
         self.obj = self._load()
@@ -104,6 +115,9 @@ class Attachment:
         self.text: str | None = self._render("text")
         self.images: List[str] | None = self._render("image")
         self.audio: List[str] | None = self._render("audio")
+
+        if meta:
+            self.meta = meta
 
     # -------------------------------------------------------------- #
     #                           internals                            #
@@ -151,15 +165,14 @@ class Attachment:
 
     # ------------------------- loading ---------------------------- #
     def _load(self) -> Any:
-        loader_cls = REGISTRY.first("loader",
-                                    lambda L: L.match(self.path))
-        if loader_cls is None:
-            # With PlainTextLoader, this should ideally not be hit for existent files
-            # unless PlainTextLoader itself is somehow disabled or not registered.
-            # However, if a file is truly unreadable or of an unhandled binary type
-            # that even PlainTextLoader can't process meaningfully, this path might still be relevant.
+        for L in REGISTRY.all("loader"):
+            if L.match(self.path):
+                self._diagnostics["loaders_tried"].append(L.__name__)   # NEW
+                obj = L().load(self.path)
+                break
+        else:
             raise ValueError(f"No loader registered for '{self.path}'")
-        return loader_cls().load(self.path)
+        return obj
 
     # ----------------------- transforms --------------------------- #
     def _apply_transforms(self, obj: Any, cmd: str) -> Any:
@@ -175,13 +188,32 @@ class Attachment:
 
     # ------------------------ rendering --------------------------- #
     def _render(self, ctype: str):
+        # 1️⃣  identify the bucket we're looking at
         key = f"renderer_{ctype}"
-        rend_cls = REGISTRY.first(key,
-                                  lambda R: getattr(R, "content_type", None) == ctype
-                                            and R().match(self.obj))
-        if rend_cls is None:
-            return None
-        return rend_cls().render(self.obj, {})
+
+        # 2️⃣  convenience wrapper so we don't explode on instantiation errors
+        def _matches(cls) -> bool:
+            if getattr(cls, "content_type", None) != ctype:
+                return False
+            try:
+                return cls().match(self.obj)
+            except Exception:
+                return False
+
+        # 3️⃣  collect full decision trace (usable or not)
+        candidates = REGISTRY.candidates(key, _matches)
+        self._diagnostics.setdefault("renderers_tried", {})[ctype] = [
+            (c.__name__, ok, reason) for c, ok, reason in candidates
+        ]
+
+        # 4️⃣  pick the first usable one
+        for cls, ok, _ in candidates:
+            if ok:
+                return cls().render(self.obj, {})
+
+        # 5️⃣  none worked → return None so caller can fall back / emit debug
+        return None
+
 
     # -------------------------------------------------------------- #
     #                        dunder helpers                          #
@@ -208,15 +240,27 @@ class Attachment:
             raise ValueError(f"No deliverer named '{style}'")
         return d_cls().package(self.text, self.images, self.audio, prompt)
 
-    # Convenience for OpenAI / Claude, etc.
-    # Users can of course write their own wrappers.
-    def to_openai_content(self, prompt: str = ""):
-        warnings.warn(
-            "Method to_openai_content() is deprecated, use to_openai() instead.",
-            DeprecationWarning,
-            stacklevel=2
-        )
-        return self.to_openai(prompt)
+    # -------------------------------------------------------------- #
+    #                          diagnostics                           #
+    # -------------------------------------------------------------- #
+    def debug(self) -> str:
+        """
+        Pretty-print every loader & renderer considered, with ✓/✗ and reasons.
+        """
+        lines: list[str] = [f"Attachment: {self.original}"]
+
+        if self._diagnostics["loaders_tried"]:
+            chain = " → ".join(self._diagnostics["loaders_tried"])
+            lines.append(f"  loaders_tried: {chain}")
+
+        for ctype, attempts in self._diagnostics["renderers_tried"].items():
+            lines.append(f"  renderer ({ctype}):")
+            for name, ok, reason in attempts:
+                mark = "✅" if ok else "❌"
+                extra = f" ({reason})" if reason else ""
+                lines.append(f"    {mark} {name}{extra}")
+
+        return "\n".join(lines)
 
 
 class Attachments:
@@ -239,31 +283,31 @@ class Attachments:
         * Attachment        → kept as-is
         * Attachments       → flattened into this container
         """
-        self._atts: List[Attachment] = []
+        self.attachments: List[Attachment] = []
         for src in sources:
             if isinstance(src, Attachment):
-                self._atts.append(src)
+                self.attachments.append(src)
             elif isinstance(src, Attachments):
-                self._atts.extend(src._atts)
+                self.attachments.extend(src.attachments)
             else:  # assume path / URL string
-                self._atts.append(Attachment(src))
+                self.attachments.append(Attachment(src))
 
     # ---------------------------------------------------------- #
     #                 📜 combined "view" fields                   #
     # ---------------------------------------------------------- #
     @property
     def text(self) -> str | None:
-        parts = [att.text for att in self._atts if att.text]
+        parts = [att.text for att in self.attachments if att.text]
         return "\n\n".join(parts) if parts else None
 
     @property
     def images(self) -> List[str] | None:
-        imgs = [img for att in self._atts for img in (att.images or [])]
+        imgs = [img for att in self.attachments for img in (att.images or [])]
         return imgs or None
 
     @property
     def audio(self) -> List[str] | None:
-        aud = [a for att in self._atts for a in (att.audio or [])]
+        aud = [a for att in self.attachments for a in (att.audio or [])]
         return aud or None
 
     # ---------------------------------------------------------- #
@@ -286,15 +330,15 @@ class Attachments:
     #                    collection protocol                     #
     # ---------------------------------------------------------- #
     def __len__(self) -> int:                # len(a)
-        return len(self._atts)
+        return len(self.attachments)
 
     def __iter__(self):                      # for att in a
-        return iter(self._atts)
+        return iter(self.attachments)
 
     def __getitem__(self, idx):              # a[0] or a[1:3]
         if isinstance(idx, slice):
-            return Attachments(*self._atts[idx])
-        return self._atts[idx]
+            return Attachments(*self.attachments[idx])
+        return self.attachments[idx]
 
     # ---------------------------------------------------------- #
     #                     nice string views                      #
@@ -304,6 +348,35 @@ class Attachments:
 
     def __repr__(self) -> str:
         return f"Attachments({len(self)} items)"
+
+    # -------------------------------------------------------------- #
+    #                          diagnostics                           #
+    # -------------------------------------------------------------- #
+    def to_openai(self, prompt: str = "") -> List[Dict[str, Any]]:
+        text = str(self)
+        images = self.images
+
+        blocks = []
+        if prompt or text:
+            blocks.append({"type": "text", "text": f"{prompt}\n\n{text or ''}".strip()})
+        
+        if images:
+            for img_url in images:
+                blocks.append({
+                    "type": "image_url",
+                    "image_url": {"url": img_url, "detail": "auto"}
+                })
+        elif not images: 
+            diagnostic_messages = []
+            for att in self.attachments:
+                if isinstance(att, Attachment) and att._diagnostics.get("renderers"):
+                    if any(candidate_cls.content_type == "image" for candidate_cls, _, _ in att._diagnostics["renderers"].get("image", [])):
+                         diagnostic_messages.append(att.debug())
+            if diagnostic_messages:
+                msg = "\n\n".join(diagnostic_messages)
+                blocks.append({"type": "text",
+                               "text": f"[attachments diagnostics]\n{msg}"})
+        return blocks
 
 # -------------------------------------------------------------- #
 #            Inject helper methods like .as_openai()             #
