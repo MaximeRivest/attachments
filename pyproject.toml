@@ -20,7 +20,6 @@ classifiers = [
 dependencies = [
     "Pillow",
     "python-dotenv",
-    "pytest",
     "beautifulsoup4",
     "html2text",
     "markdownify",
@@ -43,8 +42,8 @@ dependencies = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/yourusername/attachments" # Placeholder, user should update
-"Bug Tracker" = "https://github.com/yourusername/attachments/issues" # Placeholder, user should update
+"Homepage" = "https://maximerivest.github.io/attachments/"
+"Bug Tracker" = "https://github.com/maximrivest/attachments/issues"
 
 [project.optional-dependencies]
 dev = [
@@ -55,6 +54,9 @@ dev = [
     "filelock",
     "mystmd",
 ]
+
+[project.scripts]
+attachments = "attachments.__main__:cli"
 
 [tool.setuptools]
 # packages = ["attachments"] # We'll let find discover it

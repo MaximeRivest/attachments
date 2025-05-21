@@ -12,6 +12,7 @@ from __future__ import annotations
 import os
 import re
 from typing import Any, Dict, List, Tuple, Protocol
+import warnings
 
 from .registry import REGISTRY
 
@@ -159,8 +160,12 @@ class Attachment:
     # Convenience for OpenAI / Claude, etc.
     # Users can of course write their own wrappers.
     def to_openai_content(self, prompt: str = ""):
-        return self.format_for("openai", prompt)
-
+        warnings.warn(
+            "Method to_openai_content() is deprecated, use to_openai() instead.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        return self.to_openai(prompt)
 
 
 class Attachments:

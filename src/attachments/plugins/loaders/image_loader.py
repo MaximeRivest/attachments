@@ -5,7 +5,7 @@ from attachments.testing import PluginContract
 @register_plugin("loader", priority=100)
 @requires("PIL")
 class ImageLoader(Loader, PluginContract):
-    _sample_path = "tests/test_data/sample.jpg"
+    _sample_path = "jpg"
 
     def match(self, path):
         return path.lower().endswith((

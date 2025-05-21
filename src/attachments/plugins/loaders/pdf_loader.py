@@ -6,7 +6,7 @@ from attachments.testing import PluginContract
 @register_plugin("loader", priority=100)
 @requires("fitz")
 class PDFLoader(Loader, PluginContract):
-    _sample_path = "tests/test_data/sample.pdf"
+    _sample_path = "pdf"
 
     def match(self, path):
         return path.lower().endswith(".pdf")

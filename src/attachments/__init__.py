@@ -1,24 +1,29 @@
 from .core import Attachment, Attachments
+from .core import _mk_api_method
 from .discovery import load_external_plugins
 from .registry import REGISTRY
 from .utils import try_initialize_plugin_module
+import os
+import pkgutil
 
 # 1. Load *user* plugins first so they can override priorities if they wish.
 load_external_plugins()
 
-# 2. Now load built-ins
-import pkgutil
-for m in pkgutil.walk_packages(__path__, prefix=__name__ + '.plugins.'):
-    try_initialize_plugin_module(m.name)
+# 2. Now load built-ins by explicitly walking known plugin subdirectories
+#    This avoids trying to import __init__.py or other non-plugin modules directly under 'plugins'
+plugin_subdirectories = ["loaders", "renderers", "transforms", "deliverers"]
+plugin_base_path = os.path.join(os.path.dirname(__file__), "plugins")
+
+for subdir_name in plugin_subdirectories:
+    subdir_path = os.path.join(plugin_base_path, subdir_name)
+    if os.path.isdir(subdir_path):
+        # Construct the module prefix for this subdirectory
+        module_prefix = f"{__name__}.plugins.{subdir_name}."
+        for m in pkgutil.walk_packages([subdir_path], prefix=module_prefix):
+            try_initialize_plugin_module(m.name)
 
 
 # ---- after built-in & external plugin discovery -----------------
-def _mk_api_method(name: str):
-    def _api(self, prompt: str = ""):
-        return self.format_for(name, prompt)
-    _api.__name__ = f"as_{name}"
-    _api.__doc__  = f"Shortcut for Attachment.format_for('{name}', ...)."
-    return _api
 
 for d_cls in REGISTRY.all("deliverer"):
     name = d_cls.name.lower()

@@ -36,9 +36,30 @@ def test_transform_chain(sample_csv):
 def test_renderer_fallback(tmp_path):
     # Create a dummy unsupported file
     dummy_path = tmp_path / "sample.xyz_unsupported"
-    dummy_path.write_text("dummy")
+    dummy_content = "dummy content for xyz_unsupported file"
+    dummy_path.write_text(dummy_content)
+
+    # With PlainTextLoader as a fallback, this should now succeed
     att = Attachment(str(dummy_path))
-    assert att.text is None
+
+    # The PlainTextLoader should have loaded the content.
+    # If no specific renderer matches a plain string, att.text should be the string itself.
+    assert att.text == dummy_content
+
+    # To test renderer fallback specifically (i.e., loader worked, but no renderer):
+    # We would need a scenario where an object is loaded that has no matching renderer.
+    # For example, if PlainTextLoader returned a custom object instead of a string,
+    # and no renderer was registered for that custom object.
+    # class CustomObject:
+    #     def __str__(self): return "custom object string"
+    # class LoaderReturningCustomObject:
+    #     def match(self, path): return path.endswith(".custom")
+    #     def load(self, path): return CustomObject()
+    # with REGISTRY.temp_registration("loader", LoaderReturningCustomObject, 10):
+    #     custom_file = tmp_path / "test.custom"
+    #     custom_file.write_text("custom data")
+    #     att_custom = Attachment(str(custom_file))
+    #     assert att_custom.text is None # Assuming no renderer for CustomObject for text
 
 def test_deliverer_packaging(sample_img):
     class DummyDeliverer:

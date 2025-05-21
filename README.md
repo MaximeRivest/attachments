@@ -6,7 +6,7 @@ Most users will not have to learn anything more then that: `Attachments("path/to
 
 > **TL;DR**  
 > ```bash
-> pip install attachments   # coming soon: `pip install attachments`
+> pip install attachments
 > ```
 > ```python
 > from attachments import Attachments
