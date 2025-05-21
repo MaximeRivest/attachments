@@ -7,7 +7,8 @@ import os
 class PlainTextLoader(Loader, PluginContract):
     _sample_path = "txt" # For its own selftest via PluginContract
 
-    def match(self, path: str) -> bool:
+    @classmethod
+    def match(cls, path: str) -> bool:
         # As a low-priority fallback, if this loader is considered,
         # it means no higher-priority loader matched.
         # We can make it match any file that wasn't caught by others.

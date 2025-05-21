@@ -7,7 +7,8 @@ from attachments.testing import PluginContract
 class ImageLoader(Loader, PluginContract):
     _sample_path = "jpg"
 
-    def match(self, path):
+    @classmethod
+    def match(cls, path):
         return path.lower().endswith((
             '.png', '.jpg', '.jpeg', '.bmp', '.gif', '.webp'
         ))

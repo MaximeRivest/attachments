@@ -8,7 +8,8 @@ from attachments.testing import PluginContract
 class PDFLoader(Loader, PluginContract):
     _sample_path = "pdf"
 
-    def match(self, path):
+    @classmethod
+    def match(cls, path):
         return path.lower().endswith(".pdf")
 
     def load(self, path):

@@ -69,7 +69,7 @@ class PluginContract:
             if sample_ext and isinstance(sample_ext, str):
                 # Create the sample file in tmp_path using the extension
                 actual_sample_path = _create_sample_file_for_selftest(sample_ext, tmp_path)
-                assert self.match(actual_sample_path) # type: ignore
+                assert type(self).match(actual_sample_path) # type: ignore
                 obj = self.load(actual_sample_path) # type: ignore
                 assert obj is not None
             elif sample_ext:

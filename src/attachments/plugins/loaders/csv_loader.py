@@ -10,7 +10,8 @@ from attachments.testing import PluginContract
 class CSVLoader(Loader, PluginContract):
     _sample_path = "csv"
 
-    def match(self, path):
+    @classmethod
+    def match(cls, path):
         return path.lower().endswith('.csv')
 
     def load(self, path):

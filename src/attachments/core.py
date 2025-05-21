@@ -23,7 +23,8 @@ from .registry import REGISTRY
 class Loader(Protocol):
     """Sub-class and register → turn path → Python object."""
 
-    def match(self, path: str) -> bool: ...
+    @classmethod
+    def match(cls, path: str) -> bool: ...
     def load(self, path: str) -> Any: ...
 
 
@@ -138,8 +139,12 @@ class Attachment:
     # ------------------------- loading ---------------------------- #
     def _load(self) -> Any:
         loader_cls = REGISTRY.first("loader",
-                                    lambda L: L().match(self.path))
+                                    lambda L: L.match(self.path))
         if loader_cls is None:
+            # With PlainTextLoader, this should ideally not be hit for existent files
+            # unless PlainTextLoader itself is somehow disabled or not registered.
+            # However, if a file is truly unreadable or of an unhandled binary type
+            # that even PlainTextLoader can't process meaningfully, this path might still be relevant.
             raise ValueError(f"No loader registered for '{self.path}'")
         return loader_cls().load(self.path)
 
