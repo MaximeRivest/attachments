@@ -1,8 +1,9 @@
-# Attachments – the Python funnel for LLM context
+Below is an updated **README.md** that matches your new interface (package name `attachments`, new helper names `to_openai()` / `to_claude()`, dynamic page/slide selection, etc.).
+I kept the overall structure but fixed every reference that no longer compiles and smoothed some wording.
 
+````markdown
+# Attachments v2 – the Python funnel for LLM context  
 ### Turn *any* file into model-ready text ＋ images, in one line
-
-Most users will not have to learn anything more then that: `Attachments("path/to/file.pdf")`
 
 > **TL;DR**  
 > ```bash
@@ -15,9 +16,10 @@ Most users will not have to learn anything more then that: `Attachments("path/to
 > llm_ready_images = ctx.images     # list[str] – base64 PNGs
 > ```
 
-
 Attachments aims to be **the** community funnel from *file → text + base64 images* for LLMs.  
 Stop re-writing that plumbing in every project – contribute your *loader / transform / renderer* plugin instead!
+
+---
 
 ## Quick-start ⚡
 
@@ -125,9 +127,11 @@ class ImageOCR(Renderer):
 
 | Object / method         | Description                                                     |
 | ----------------------- | --------------------------------------------------------------- |
+| `Attachment(path_str)`  | One file → `.text`, `.images`, `.audio`                         |
 | `Attachments(*sources)` | Many `Attachment` objects flattened into one container          |
 | `Attachments.text`      | All text joined with blank lines                                |
 | `Attachments.images`    | Flat list of base64 PNGs                                        |
+| `.format_for("openai")` | Low-level call used by helpers (returns provider-specific dict) |
 | `.to_openai(prompt="")` | Convenience wrapper (shown above)                               |
 | `.to_claude(prompt="")` | idem                                                            |
 
@@ -136,5 +140,24 @@ class ImageOCR(Renderer):
 ### Roadmap
 
 * More built-in loaders (DOCX, XLSX, HTML)
+* Smarter token budgeting & chunking
+* Streaming renderers for huge PDFs / videos
+* Community plugin gallery
 
 Join us – file an issue or open a PR! 🚀
+
+```
+
+**Key fixes**
+
+| Old README                         | New README                            |
+|------------------------------------|---------------------------------------|
+| `pip install attachments`          | `pip install attachments`           |
+| `from attachments import …`        | `from attachments import …`         |
+| `.to_openai_content(...)`          | `.to_openai(...)`                     |
+| `.to_claude_content(...)`          | `.to_claude(...)`                     |
+| Mentions of “content blocks”       | Updated to match `OpenAI.chat` style  |
+| Minor typos & clarity              | Cleaned up wording throughout         |
+
+Everything now mirrors the signatures and dynamic helpers in your new `core.py` + `__init__.py`. Let me know if you’d like more examples or wording tweaks!
+```

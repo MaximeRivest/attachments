@@ -12,7 +12,6 @@ Refactor as soon as you see a need to it to make the code easier for you to work
 use uv and .venv (my uv virtual environment).
 
 use:
-source .venv/bin/activate
 uv run pytest
 
 run the unit tests before claiming your changes are done!

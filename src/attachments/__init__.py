@@ -1,39 +1,35 @@
-"""
-Attachments library __init__ file.
-"""
+from .core import Attachment, Attachments
+from .discovery import load_external_plugins
+from .registry import REGISTRY
+from .utils import try_initialize_plugin_module
 
-from .core import Attachments
-from .parsers import BaseParser, ParserRegistry, PDFParser, PPTXParser, HTMLParser, AudioParser, DOCXParser, ODTParser, ImageParser # Added ImageParser
-from .renderers import BaseRenderer, RendererRegistry, DefaultXMLRenderer, PlainTextRenderer # Added PlainTextRenderer
-from .detectors import Detector
-from .exceptions import AttachmentError, DetectionError, ParsingError, RenderingError, ConfigurationError
-from .office_contact_sheet import pdf_to_contact_sheet, office_file_to_contact_sheet
+# 1. Load *user* plugins first so they can override priorities if they wish.
+load_external_plugins()
 
-__version__ = "0.1.1" # Updated version
+# 2. Now load built-ins
+import pkgutil
+for m in pkgutil.walk_packages(__path__, prefix=__name__ + '.plugins.'):
+    try_initialize_plugin_module(m.name)
 
-__all__ = [
-    "Attachments",
-    "BaseParser",
-    "ParserRegistry",
-    "PDFParser",
-    "PPTXParser",
-    "HTMLParser",
-    "AudioParser", # Added AudioParser to __all__ if it wasn't (it was)
-    "DOCXParser", # Added DOCXParser to __all__ if it wasn't (it was)
-    "ODTParser",  # Added ODTParser to __all__ if it wasn't (it was)
-    "ImageParser", # Added ImageParser to __all__
-    "BaseRenderer",
-    "RendererRegistry",
-    "DefaultXMLRenderer",
-    "PlainTextRenderer", # Added PlainTextRenderer to __all__
-    "Detector",
-    "AttachmentError",
-    "DetectionError",
-    "ParsingError",
-    "RenderingError",
-    "ConfigurationError",
-    "pdf_to_contact_sheet",
-    "office_file_to_contact_sheet",
-]
 
-# This file will expose the core components of the library. 
+# ---- after built-in & external plugin discovery -----------------
+def _mk_api_method(name: str):
+    def _api(self, prompt: str = ""):
+        return self.format_for(name, prompt)
+    _api.__name__ = f"as_{name}"
+    _api.__doc__  = f"Shortcut for Attachment.format_for('{name}', ...)."
+    return _api
+
+for d_cls in REGISTRY.all("deliverer"):
+    name = d_cls.name.lower()
+    setattr(Attachment, f"as_{name}", _mk_api_method(name))
+    # Patch Attachments with to_{name} methods as well
+    def _mk_api_method_attachments(name):
+        def _api(self, prompt: str = ""):
+            return self.format_for(name, prompt)
+        _api.__name__ = f"to_{name}"
+        _api.__doc__ = f"Shortcut for Attachments.format_for('{name}', ...)."
+        return _api
+    setattr(Attachments, f"to_{name}", _mk_api_method_attachments(name))
+
+__all__ = ["Attachment", "Attachments"]
