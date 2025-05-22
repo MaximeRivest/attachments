@@ -4,5 +4,6 @@
 from . import text
 from . import images
 from . import markdown
+from . import xml
 
-__all__ = ['text', 'images', 'markdown'] 
+__all__ = ['text', 'images', 'markdown', 'xml'] 

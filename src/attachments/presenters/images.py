@@ -29,6 +29,19 @@ except ImportError:
     _Image = None  # type: ignore
 
 from ..core.decorators import presenter
+# PowerPointContent removed - now we load raw pptx.Presentation objects
+from ..modifiers.tile import TiledContent
+
+
+@presenter
+def images(tiled: TiledContent) -> List[str]:
+    """Extract images from TiledContent, prioritizing the contact sheet."""
+    return tiled.images  # Already ordered: [tiled_image] + individual_images
+
+
+# PowerPoint images presenter removed - raw pptx.Presentation objects 
+# don't contain embedded images in the same way. Individual slide images
+# can be rendered using pypdfium2 or similar tools if needed.
 
 
 if _Image:
@@ -113,16 +126,14 @@ if _PdfReader and _pdfium:
             return [f"data:text/plain;base64,{base64.b64encode(f'Error rendering PDF: {e}'.encode()).decode()}"]
 
 
-if _fitz:
-    @presenter  
-    def images(pdf_doc: Any) -> List[str]:
+if _fitz:  # PyMuPDF fallback (AGPL)
+    @presenter
+    def images(pdf_doc: _fitz.Document) -> List[str]:
         """
-        Convert PDF pages to PNG images using PyMuPDF/fitz (AGPL).
-        
-        Note: This uses AGPL-licensed PyMuPDF.
+        Convert PDF pages to PNG images using PyMuPDF (AGPL license).
         
         Args:
-            pdf_doc: fitz Document object
+            pdf_doc: PyMuPDF Document object
             
         Returns:
             List of base64-encoded PNG data URLs
@@ -131,12 +142,12 @@ if _fitz:
         
         try:
             # Limit to reasonable number of pages
-            max_pages = min(pdf_doc.page_count, 10)
+            max_pages = min(len(pdf_doc), 10)
             
             for page_num in range(max_pages):
                 page = pdf_doc[page_num]
                 
-                # Render page as image (2x zoom for better quality)
+                # Render at 2x scale for better quality
                 mat = _fitz.Matrix(2, 2)
                 pix = page.get_pixmap(matrix=mat)
                 
@@ -150,6 +161,7 @@ if _fitz:
             return images
             
         except Exception as e:
+            # Fallback: return empty list with error info
             return [f"data:text/plain;base64,{base64.b64encode(f'Error rendering PDF: {e}'.encode()).decode()}"]
 
 

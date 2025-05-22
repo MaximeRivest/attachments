@@ -42,9 +42,10 @@ print(f"Images: {len(ctx.images)}")  # base64 PNG count
 # With page selection and transformations  
 ctx = Attachments(
     "report.pdf[1,3-5,-1]",          # pages 1, 3-5, and last
-    "slides.pptx[:3]",               # first 3 slides
-    "data.csv",                      # full CSV
-    "photo.jpg"                      # images as base64 PNGs
+    "slides.pptx[1-3]",              # first 3 slides from PowerPoint
+    "data.csv[sample:100]",          # random sample of 100 rows
+    "chart.jpg",                     # images as base64 PNGs
+    "summary.pdf"                    # additional documents
 )
 ```
 
@@ -72,7 +73,7 @@ print(response.choices[0].message.content)
 import anthropic
 from attachments import Attachments
 
-ctx = Attachments("presentation.pptx", "chart.png")
+ctx = Attachments("presentation.pptx[1-5]", "chart.png")
 
 client = anthropic.Anthropic()
 message = client.messages.create(
@@ -88,19 +89,20 @@ print(message.content[0].text)
 ### Built-in Support
 - **Documents**: PDF (MIT-compatible via `pypdf`), CSV, plain text
 - **Images**: PNG, JPEG, BMP, GIF, WEBP, HEIC/HEIF via PIL
-- **Path Expressions**: `file.pdf[1,3-5]`, `image.jpg[rotate:90]`, etc.
+- **Path Expressions**: `file.pdf[1,3-5]`, `data.csv[sample:100]`, etc.
 
 ### Extended Support (Optional)
 ```bash
-# More file formats
+# More file formats (including PowerPoint)
 pip install 'attachments[extended]'
-
-# AGPL-licensed PyMuPDF (if you accept AGPL terms)  
-pip install 'attachments[pdf-agpl]'
 
 # Everything
 pip install 'attachments[all]'
 ```
+
+With extended support, you get:
+- **Presentations**: PowerPoint (PPTX) via `python-pptx`
+- **Rich Documents**: Word (DOCX), Excel, and more via `markitdown`
 
 ## 🏗️ Modular Architecture 
 
@@ -111,8 +113,11 @@ from attachments.core import load, present, modify, adapt
 
 # Low-level interface for advanced users
 pdf_doc = load.pdf("report.pdf")           # Load PDF
+pptx_doc = load.pptx("slides.pptx")        # Load PowerPoint (extended)
 pages = modify.pages(pdf_doc, "1,3-5")     # Select specific pages  
+slides = modify.pages(pptx_doc, "1-3")     # Select specific slides
 text = present.text(pages)                 # Extract text
+xml = present.xml(slides)                  # Extract XML structure
 images = present.images(pages)             # Render as images
 openai_msgs = adapt.openai(text, images)   # Format for OpenAI
 ```
@@ -135,9 +140,11 @@ def xyz_file(path: str):
 | Expression              | Result                                      |
 |------------------------|---------------------------------------------|
 | `report.pdf[1,3-5,-1]` | Pages 1, 3-5, and last page               |
-| `slides.pptx[:3]`      | First 3 slides                            |
+| `slides.pptx[1-3]`     | First 3 slides from PowerPoint            |
+| `slides.pptx[-1]`      | Last slide only                           |
+| `data.csv[sample:10]`  | Random sample of 10 rows                  |
 | `data.csv[sample:100]` | Random sample of 100 rows                 |
-| `image.jpg[rotate:90]` | Rotate image 90 degrees                    |
+| `image.jpg[resize:50%]` | Resize image to 50% of original size     |
 
 ## 🔧 Extension Examples
 

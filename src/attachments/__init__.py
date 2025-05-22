@@ -64,6 +64,8 @@ class Attachments:
         # Determine file type and load appropriately
         if actual_path.lower().endswith('.pdf'):
             att = load.pdf(source)
+        elif actual_path.lower().endswith('.pptx'):
+            att = load.pptx(source)
         elif actual_path.lower().endswith('.csv'):
             att = load.csv(source)
         elif any(actual_path.lower().endswith(ext) for ext in ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']):

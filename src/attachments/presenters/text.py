@@ -2,7 +2,7 @@
 
 import pandas as pd
 import numpy as np
-from typing import Any
+# Removed Any import to avoid isinstance() issues
 
 try:
     from pypdf import PdfReader
@@ -15,6 +15,13 @@ except ImportError:
     fitz = None
 
 from ..core.decorators import presenter
+from ..modifiers.tile import TiledContent
+
+
+@presenter
+def text(tiled: TiledContent) -> str:
+    """Extract text from TiledContent."""
+    return str(tiled.original_content)
 
 
 @presenter
@@ -91,7 +98,27 @@ if fitz:
             return f"[Error reading PDF: {e}]"
 
 
-@presenter  
-def text(content: Any) -> str:
-    """Fallback text presenter for any content type."""
-    return str(content) 
+@presenter
+def text(df: pd.DataFrame) -> str:
+    """Convert DataFrame to formatted text."""
+    # For large DataFrames, provide a summary
+    if len(df) > 100:
+        summary = f"DataFrame with {len(df)} rows and {len(df.columns)} columns\n\n"
+        summary += "Column Information:\n"
+        for col in df.columns:
+            dtype = df[col].dtype
+            non_null = df[col].count()
+            summary += f"- {col}: {dtype} ({non_null}/{len(df)} non-null)\n"
+        
+        summary += f"\nFirst 10 rows:\n{df.head(10).to_string()}"
+        summary += f"\n\nLast 10 rows:\n{df.tail(10).to_string()}"
+        
+        return summary
+    else:
+        return df.to_string()
+
+
+@presenter
+def text(data: Any) -> str:
+    """Fallback text presenter for any object."""
+    return str(data) 

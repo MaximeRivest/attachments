@@ -104,6 +104,7 @@ def test_path_expressions():
         ("examples/sample.pdf[1]", "First page only"),
         ("examples/sample.pdf[-1]", "Last page only"), 
         ("examples/sample_data.csv[sample:5]", "Sample 5 rows"),
+        ("sample.jpg[resize:50%]", "Resize image to 50%"),
     ]
     
     for expression, description in expressions_to_test:

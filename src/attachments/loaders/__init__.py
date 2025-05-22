@@ -4,5 +4,6 @@
 from . import pdf
 from . import csv
 from . import image
+from . import pptx
 
-__all__ = ['pdf', 'csv', 'image'] 
+__all__ = ['pdf', 'csv', 'image', 'pptx'] 

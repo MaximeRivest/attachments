@@ -47,35 +47,3 @@ def pdf(path: str):
         
     except Exception as e:
         raise Exception(f"Failed to load PDF {actual_path}: {e}")
-
-
-# For backward compatibility and explicit usage
-def load_pdf_pypdf(path: str):
-    """Load PDF using pypdf library."""
-    return pdf(path)
-
-
-def load_pdf_pymupdf(path: str):
-    """
-    Load PDF using PyMuPDF (fitz) - AGPL licensed.
-    
-    Note: This function requires PyMuPDF and will make your project 
-    subject to AGPL licensing terms.
-    """
-    try:
-        import fitz
-    except ImportError:
-        raise ImportError(
-            "PyMuPDF is required for this function. Install with: pip install 'attachments[pdf-agpl]'\n"
-            "WARNING: PyMuPDF is AGPL-licensed, which may affect your project's licensing."
-        )
-    
-    from ..utils.parsing import parse_path_expression
-    
-    actual_path, commands = parse_path_expression(path)
-    
-    try:
-        pdf_doc = fitz.open(actual_path)
-        return pdf_doc  # Let caller wrap in Attachment if needed
-    except Exception as e:
-        raise Exception(f"Failed to load PDF {actual_path}: {e}") 
