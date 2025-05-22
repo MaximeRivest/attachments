@@ -56,15 +56,27 @@ ctx = Attachments(
 ```python
 from openai import OpenAI
 from attachments import Attachments
+from attachments.core import adapt
 
-ctx = Attachments("research_paper.pdf")
+# Load files (single or multiple)
+ctx = Attachments("research_paper.pdf", "chart.png")
+
+# Adapters work with both Attachments and Attachment objects!
+messages = adapt.openai_chat(ctx, "Summarize the key findings:")
 
 client = OpenAI()
 response = client.chat.completions.create(
     model="gpt-4o",
-    messages=ctx.to_openai("Summarize the key findings:")
+    messages=messages
 )
 print(response.choices[0].message.content)
+
+# For OpenAI's new responses API
+input_data = adapt.openai_responses(ctx, "what is in these documents?")
+response = client.responses.create(
+    model="gpt-4o",
+    input=input_data
+)
 ```
 
 ### Anthropic (Claude)
@@ -72,14 +84,19 @@ print(response.choices[0].message.content)
 ```python
 import anthropic
 from attachments import Attachments
+from attachments.core import adapt
 
-ctx = Attachments("presentation.pptx[1-5]", "chart.png")
+# Process multiple files with DSL commands
+ctx = Attachments("presentation.pptx[1-5]", "data.csv", "chart.png")
+
+# Adapter automatically handles the squashing!
+messages = adapt.claude(ctx, "Analyze these slides and data:")
 
 client = anthropic.Anthropic()
 message = client.messages.create(
     model="claude-3-5-sonnet-20241022", 
     max_tokens=8192,
-    messages=ctx.to_claude("Analyze these slides and explain the data:")
+    messages=messages
 )
 print(message.content[0].text)
 ```
@@ -197,22 +214,31 @@ See [`ARCHITECTURE.md`](ARCHITECTURE.md) for detailed design documentation and [
 
 ## 🎯 API Reference
 
+### High-Level Interface
+
 | Object                    | Description                                  |
 |--------------------------|----------------------------------------------|
-| `Attachments(*paths)`    | High-level interface, load multiple files   |
+| `Attachments(*paths)`    | Load and process multiple files             |
+| `Attachments.attachments`| List of loaded Attachment objects           |
 | `Attachments.text`       | All extracted text, joined with newlines    |
 | `Attachments.images`     | List of base64-encoded PNG data URLs        |
-| `.to_openai(prompt="")`  | Format for OpenAI Chat Completions API      |
-| `.to_claude(prompt="")`  | Format for Anthropic Messages API           |
 
-### Lower-level APIs
+### Core Components (Low-Level API)
 
-| Module                   | Purpose                                      |
-|--------------------------|----------------------------------------------|
-| `attachments.core.load`  | File loading (PDF, CSV, images, etc.)      |
-| `attachments.core.present` | Content presentation (text, images, markdown) |
-| `attachments.core.modify` | Content modification (pages, sample, resize) |
-| `attachments.core.adapt` | API formatting (OpenAI, Claude, etc.)      |
+| Module                   | Purpose                                      | Example |
+|--------------------------|----------------------------------------------|---------|
+| `attachments.core.load`  | File loaders with `\|` composition         | `load.pdf \| load.image` |
+| `attachments.core.modify` | Content modifiers                          | `modify.pages(att, "1-3")` |
+| `attachments.core.present` | Format converters                         | `present.text(att)` |
+| `attachments.core.adapt` | LLM API adapters                           | `adapt.openai_chat(att, prompt)` |
+
+### Available Adapters
+
+| Adapter | Purpose | Usage |
+|---------|---------|-------|
+| `adapt.openai_chat` | OpenAI Chat Completions | `client.chat.completions.create(messages=...)` |
+| `adapt.openai_responses` | OpenAI Responses API | `client.responses.create(input=...)` |
+| `adapt.claude` | Anthropic Messages | `client.messages.create(messages=...)` |
 
 ## 🚀 What's Next?
 

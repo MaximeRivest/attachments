@@ -139,91 +139,7 @@ class Attachments:
             self._images_cache = images
         return self._images_cache
     
-    def to_openai(self, prompt: str = "") -> List[Dict[str, Any]]:
-        """
-        Convert to OpenAI API message format using idiomatic adapter.
-        
-        This is the "squashing" operation for multiple attachments - we combine
-        all content into a single message for the LLM.
-        
-        Args:
-            prompt: User prompt to include
-            
-        Returns:
-            List of message dictionaries ready for OpenAI API
-        """
-        if not self.attachments:
-            return [{"role": "user", "content": [{"type": "text", "text": prompt}]}]
-        
-        # For single attachment, use the adapter directly  
-        if len(self.attachments) == 1:
-            return adapt.openai_chat(self.attachments[0], prompt)
-        
-        # For multiple attachments, squash them together
-        all_content = []
-        
-        if prompt:
-            all_content.append({"type": "text", "text": prompt})
-        
-        # Combine text and images from all attachments
-        text_content = self.text  # This uses present.text() internally
-        if text_content:
-            all_content.append({"type": "text", "text": text_content})
-        
-        # Add images in OpenAI format  
-        for image_data_url in self.images:  # This uses present.images() internally
-            all_content.append({
-                "type": "image_url",
-                "image_url": {"url": image_data_url}
-            })
-        
-        return [{"role": "user", "content": all_content}]
-    
-    def to_claude(self, prompt: str = "") -> List[Dict[str, Any]]:
-        """
-        Convert to Claude/Anthropic API message format using idiomatic adapter.
-        
-        This is the "squashing" operation for multiple attachments - we combine
-        all content into a single message for the LLM.
-        
-        Args:
-            prompt: User prompt to include
-            
-        Returns:
-            List of message dictionaries ready for Claude API
-        """
-        if not self.attachments:
-            return [{"role": "user", "content": [{"type": "text", "text": prompt}]}]
-        
-        # For single attachment, use the adapter directly
-        if len(self.attachments) == 1:
-            return adapt.claude(self.attachments[0], prompt)
-        
-        # For multiple attachments, squash them together
-        all_content = []
-        
-        if prompt:
-            all_content.append({"type": "text", "text": prompt})
-        
-        # Combine text and images from all attachments
-        text_content = self.text  # This uses present.text() internally
-        if text_content:
-            all_content.append({"type": "text", "text": text_content})
-        
-        # Add images in Claude format
-        for image_data_url in self.images:  # This uses present.images() internally
-            if image_data_url.startswith("data:image/"):
-                base64_data = image_data_url.split(",", 1)[1]
-                all_content.append({
-                    "type": "image",
-                    "source": {
-                        "type": "base64",
-                        "media_type": "image/png",
-                        "data": base64_data
-                    }
-                })
-        
-        return [{"role": "user", "content": all_content}]
+
     
     def __str__(self) -> str:
         """
@@ -270,33 +186,7 @@ class Attachments:
     
     def __getitem__(self, index: int):
         """Get a specific attachment by index."""
-        class AttachmentWrapper:
-            """Wrapper to provide individual attachment interface."""
-            def __init__(self, att):
-                self._att = att
-            
-            @property
-            def text(self):
-                try:
-                    text_att = present.text(self._att)
-                    return text_att.content if text_att else ""
-                except:
-                    return ""
-            
-            @property
-            def images(self):
-                try:
-                    image_att = present.images(self._att)
-                    return image_att.content if image_att else []
-                except:
-                    return []
-            
-            def to_openai_content(self, prompt=""):
-                """Individual attachment to OpenAI format using idiomatic low-level API."""
-                # Use the clean adapt.openai_chat() function for individual attachments
-                return adapt.openai_chat(self._att, prompt)
-        
-        return AttachmentWrapper(self.attachments[index])
+        return self.attachments[index]
 
 
 # Convenience exports
