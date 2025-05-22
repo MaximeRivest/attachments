@@ -1,55 +1,84 @@
+# MyST Documentation Configuration
 # See docs at: https://mystmd.org/guide/frontmatter
 version: 1
+
 project:
-  title: Attachments
-  # description: Optional description of your project
-  # keywords: [keyword1, keyword2]
+  title: "Attachments: The Python Funnel for LLM Context"
+  description: "Turn any file into model-ready text + images, in one line. A modular, type-safe library for multimodal AI applications."
+  keywords: [python, llm, ai, pdf, multimodal, openai, claude, document-processing]
   authors:
     - name: Maxime Rivest
       email: mrive052@gmail.com
-      # orcid: 0000-0000-0000-0000
+      github: MaximeRivest
+  license: MIT
   github: https://github.com/MaximeRivest/attachments
+  
+  # Jupyter configuration
+  jupyter: true
+  
+  # Table of contents structure - only existing files
   toc:
     - file: README.md
-    #- title: API Reference
-    #  children:
-    #    - file: docs/api_reference.md # Main landing page for API
-    #    - file: docs/api/attachments_class.md
-    #    - file: docs/api/config_class.md
-    #    - file: docs/api/parsers.md
-    #    - file: docs/api/renderers.md
-    #    - file: docs/api/detectors.md
-    #    - file: docs/api/exceptions.md
-   #     - file: docs/api/utilities.md
-    #- title: Explanation
-    #  children:
-    #    - file: docs/explanation/architecture.md
-    #    - file: docs/explanation/extending.md
-    - title: AI tutorials with attachments
+      title: "Home"
+    
+    - file: docs/installation.md
+      title: "Installation"
+    
+    - title: "Architecture"
       children:
+        - file: ARCHITECTURE.md
+          title: "Architecture Overview"
+        - file: docs/explanation/extending.md
+          title: "Extending the Library"
+    
+    - title: "API Reference"
+      children:
+        - file: docs/api_reference.md
+          title: "API Reference"
+    
+    - title: "Tutorials & Examples"
+      children:
+        - file: docs/examples/modular_architecture_demo.ipynb
+          title: "Modular Architecture Demo"
         - file: docs/examples/openai_attachments_tutorial.ipynb
+          title: "OpenAI Integration Tutorial"
+        - file: docs/examples/architecture_demonstration.ipynb
+          title: "Architecture Demonstration"
+        - file: docs/examples/atttachment_pipelines.ipynb
+          title: "Attachment Pipelines"
+        - file: docs/examples/how_to_develop_plugins.ipynb
+          title: "How to Develop Plugins"
+    
     - file: CONTRIBUTING.md
+      title: "Contributing"
+    
     - file: docs/changelog.md
+      title: "Changelog"
 
 site:
-  title: Attachments Library
-  actions:
-    - title: View on GitHub
+  title: "Attachments Documentation"
+  nav:
+    - title: "GitHub"
       url: https://github.com/MaximeRivest/attachments
-  domains: [] # Add any custom domains here later
+    - title: "PyPI"
+      url: https://pypi.org/project/attachments/
+  
+  # Theme and styling
+  template: article-theme
   options:
     base_url: /attachments/
-    logo_text: A simple python library and some AI tutorials # Text to display next to/as the logo
+    logo_text: "🔗 Attachments"
+    favicon: docs/_static/favicon.ico
+    analytics:
+      google: # Add Google Analytics ID if needed
+    theme:
+      primary_color: "#2563eb"  # Blue
+      accent_color: "#0ea5e9"   # Sky blue
 
-
-# Options for particular exports
-# exports:
-#   - format: typst
-#     output: output/my-document.pdf
-#     template: default
-#   - format: tex
-#     output: output/my-document.tex
-#     template: default
-#     # Options passed to the Jtex renderer
-#     options:
-#       hasFootnotes: true
+# Export formats
+exports:
+  - format: html
+    output: _build/html
+  - format: pdf
+    output: _build/attachments-docs.pdf
+    template: article

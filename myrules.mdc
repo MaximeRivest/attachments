@@ -1,0 +1,85 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Development Rules & Patterns
+
+## Python Execution in Cursor + uv
+
+**CRITICAL**: When using Cursor with uv virtual environments:
+
+- ✅ **ALWAYS use**: `uv run python -c "..."`
+- ❌ **NEVER use**: `python -c "..."` (points to Cursor AppImage!)
+
+The bare `python` command in Cursor points to the AppImage instead of the virtual environment Python, causing import and module issues.
+
+## Testing Patterns
+
+```bash
+# Good - uses venv Python
+uv run python -c "from src.attachments.core import load"
+uv run pytest tests/
+
+# Bad - uses AppImage Python
+python -c "from src.attachments.core import load"  # FAILS
+```
+
+## Documentation Workflow
+
+```bash
+# Convert Python scripts to Jupyter notebooks
+uv run python scripts/convert_to_notebooks.py
+
+# Build MyST documentation with executable notebooks  
+uv run myst build
+
+# Serve docs locally for preview
+uv run myst start
+
+# Documentation structure:
+# docs/scripts/*.py → docs/examples/*.ipynb → _build/html/
+```
+
+## Licensing Architecture 
+
+**MIT License Compatibility**: 
+
+- ✅ **Default**: `pypdf` (BSD) + `pypdfium2` (BSD/Apache) 
+- ⚠️ **Optional**: `PyMuPDF/fitz` (AGPL) - requires explicit opt-in
+
+Users get MIT-compatible PDF support by default, can opt into AGPL for more features if they accept the licensing implications.
+
+## Bayesian Beliefs & Updates
+
+### PDF Library Strategy
+- **Prior**: PyMuPDF is best (feature-rich) 
+- **Evidence**: AGPL licensing conflicts with MIT goals
+- **Updated**: pypdf + pypdfium2 provides good MIT-compatible alternative
+- **Confidence**: 85% - covers 90% of use cases with permissive licensing
+
+### Modular Architecture
+- **Prior**: Monolithic approach easier to develop
+- **Evidence**: Type dispatch + decorators create clean separation  
+- **Updated**: Modular approach worth complexity for extensibility
+- **Confidence**: 90% - enables easy addition of new components
+
+### Testing Strategy  
+- **Prior**: Manual testing sufficient during development
+- **Evidence**: Linter errors and import issues caught only by tests
+- **Updated**: `uv run pytest` essential before claiming completion
+- **Confidence**: 95% - prevents integration issues
+
+### Documentation Workflow
+- **Prior**: Separate docs and code examples hard to maintain
+- **Evidence**: Jupytext + MyST allows executable Python scripts as docs
+- **Updated**: Python scripts in `docs/scripts/` → auto-convert to notebooks in `docs/examples/`
+- **Confidence**: 90% - streamlines tutorial development and maintenance
+
+## Scientific Method Checklist
+
+For each change:
+1. **State assumptions** - what do we expect to happen?
+2. **Make predictions** - what should we observe if correct?  
+3. **Test & verify** - run `uv run pytest` to confirm
+4. **Update beliefs** - document what we learned

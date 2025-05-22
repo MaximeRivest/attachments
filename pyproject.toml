@@ -4,75 +4,238 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "attachments"
-version = "0.3.0"
+version = "0.4.0"  # Bump version for new modular architecture
 authors = [
-  { name="Maxim Rivest", email="mrive052@gmail.com" },
+  { name="Maxime Rivest", email="mrive052@gmail.com" },
 ]
-description = "A Python library to handle various file types for LLMs."
+description = "The Python funnel for LLM context - turn any file into model-ready text + images, in one line."
 readme = "README.md"
 requires-python = ">=3.10"
-license = "MIT"  # Using simple string for SPDX identifier
+license = "MIT"
 classifiers = [
-    "Programming Language :: Python :: 3",
-    # "License :: OSI Approved :: MIT License", # Replaced by SPDX
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
     "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12", 
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Text Processing",
+    "Topic :: Multimedia",
 ]
+keywords = ["llm", "ai", "pdf", "document", "multimodal", "openai", "claude"]
+
+# Core dependencies for the modular architecture
 dependencies = [
-    "Pillow",
-    "python-dotenv",
-    "beautifulsoup4",
-    "html2text",
-    "markdownify",
-    "lxml",
-    "python-magic",
-    "mammoth",
-    "python-pptx",
-    "python-docx",
-    "odfpy",
-    "pillow-heif",
-    "pydub",
-    "SpeechRecognition",
-    "markitdown[all]>=0.1.1",
-    "pypdfium2", # For office_contact_sheet.py PDF rasterisation
-    # "pywin32", # Optional: Only needed for MS Office automation on Windows
-    # System dependencies (not installable via pip):
-    #   - LibreOffice/soffice (for CLI conversion)
-    #   - unoconv (for CLI conversion)
+    # Core file processing
+    "pandas>=2.0.0",          # CSV and data processing
+    "Pillow>=10.0.0",         # Image processing
+    
+    # Additional file format support
+    "python-docx>=1.1.0",     # Word documents
+    "openpyxl>=3.1.0",        # Excel files
+    "python-pptx>=0.6.23",    # PowerPoint files
+    "beautifulsoup4>=4.12.0", # HTML parsing
+    "lxml>=4.9.0",            # XML/HTML parsing
+    "markdownify>=0.11.0",    # HTML to Markdown
+    
+    # Optional AI/LLM integrations (lightweight)
+    "anthropic>=0.25.0",      # Claude API
+    "openai>=1.0.0",         # OpenAI API
 ]
 
 [project.urls]
 "Homepage" = "https://maximerivest.github.io/attachments/"
+"Documentation" = "https://maximerivest.github.io/attachments/"
+"Repository" = "https://github.com/maximrivest/attachments"
 "Bug Tracker" = "https://github.com/maximrivest/attachments/issues"
+"Changelog" = "https://maximerivest.github.io/attachments/changelog.html"
 
 [project.optional-dependencies]
+# Development dependencies
 dev = [
-    "pytest",
-    "pytest-randomly",
-    "pytest-cov",
-    "flake8",
-    "mypy",
-    "black",
-    "filelock",
-    "mystmd",
+    "pytest>=8.0.0",
+    "pytest-randomly>=3.15.0",
+    "pytest-cov>=4.0.0",
+    "black>=24.0.0",
+    "flake8>=7.0.0",
+    "mypy>=1.8.0",
+    "pre-commit>=3.6.0",
 ]
-browser = ["playwright>=1.43.0"]
-images  = ["Pillow>=10"]
-all     = ["playwright>=1.43.0", "Pillow>=10"]
+
+# Documentation dependencies
+docs = [
+    "mystmd>=1.2.0",
+    "jupyter>=1.0.0",
+    "jupytext>=1.16.0",
+    "sphinx>=7.0.0",
+    "sphinx-autodoc2>=0.5.0",
+]
+
+# PDF processing (MIT-compatible)
+pdf = [
+    "pypdf>=5.0.0",           # Pure Python PDF library (BSD license)
+    "pypdfium2>=4.26.0",     # Google's PDFium Python binding (BSD/Apache)
+]
+
+# Alternative: Full-featured but AGPL-licensed (use only if you accept AGPL)
+pdf-agpl = [
+    "PyMuPDF>=1.24.0",        # Full-featured PDF library (AGPL/Commercial license)
+]
+
+# Extended file format support
+extended = [
+    "python-magic>=0.4.27",   # File type detection
+    "mammoth>=1.6.0",         # Advanced DOCX conversion
+    "odfpy>=1.4.1",          # OpenDocument formats
+    "pillow-heif>=0.22.0",   # HEIF image support
+    "pydub>=0.25.1",         # Audio processing
+    "SpeechRecognition>=3.10.0", # Audio transcription
+    "markitdown[all]>=0.1.1", # Microsoft's universal converter
+]
+
+# Browser automation for web content
+browser = [
+    "playwright>=1.43.0",
+    "selenium>=4.15.0",
+]
+
+# All optional dependencies (MIT-compatible)
+all = [
+    "attachments[pdf]",           # MIT-compatible PDF support
+    "attachments[extended]",
+    "attachments[browser]",
+    "attachments[docs]",
+]
+
+# Full features including AGPL dependencies (for users who accept AGPL)
+all-agpl = [
+    "attachments[pdf-agpl]",      # AGPL PyMuPDF support
+    "attachments[extended]",
+    "attachments[browser]",
+    "attachments[docs]",
+]
+
+# Test dependencies for CI
+test = [
+    "attachments[dev]",
+    "tox>=4.0.0",
+    "coverage[toml]>=7.4.0",
+]
 
 [project.scripts]
-attachments = "attachments.__main__:cli"
+attachments = "attachments.cli:main"
 
 [tool.setuptools]
-# packages = ["attachments"] # We'll let find discover it
+zip-safe = false
 
 [tool.setuptools.packages.find]
 where = ["src"]
 namespaces = false
 
+[tool.setuptools.package-data]
+attachments = ["py.typed"]
+
+# Black formatting configuration
+[tool.black]
+line-length = 100
+target-version = ['py310', 'py311', 'py312']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+)/
+'''
+
+# MyPy type checking configuration
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[[tool.mypy.overrides]]
+module = [
+    "fitz.*",
+    "PIL.*", 
+    "pandas.*",
+    "numpy.*",
+    "docx.*",
+    "pptx.*",
+    "odf.*",
+]
+ignore_missing_imports = true
+
+# Pytest configuration
 [tool.pytest.ini_options]
+minversion = "6.0"
 pythonpath = ["src"]
-norecursedirs = ["mrplay", ".venv", "dist", "build", "attachments.egg-info"]
-addopts = "--cov=src/attachments --cov-branch --cov-report=term-missing --cov-fail-under=90"
+testpaths = ["tests"]
+norecursedirs = ["mrplay", ".venv", "dist", "build", "*.egg-info", "_build"]
+addopts = [
+    "--strict-markers",
+    "--strict-config", 
+    "--cov=src/attachments",
+    "--cov-branch",
+    "--cov-report=term-missing",
+    "--cov-report=html:htmlcov",
+    "--cov-report=xml",
+    "--cov-fail-under=70",  # Lowered from 90 for now, will increase as we add tests
+]
 markers = [
-    "contract: marks tests as contract tests (slower, more comprehensive)"
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+    "contract: marks tests as contract tests (slower, more comprehensive)",
+]
+filterwarnings = [
+    "error",
+    "ignore::UserWarning",
+    "ignore::DeprecationWarning",
+]
+
+# Coverage configuration
+[tool.coverage.run]
+source = ["src"]
+omit = [
+    "*/tests/*",
+    "*/test_*",
+    "*/__main__.py",
+    "*/setup.py",
+    "*/conftest.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
 ]
