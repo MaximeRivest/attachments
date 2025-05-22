@@ -32,7 +32,14 @@ for subdir_name in plugin_subdirectories:
 
 for d_cls in REGISTRY.all("deliverer"):
     name = d_cls.name.lower()
-    setattr(Attachment, f"as_{name}", _mk_api_method(name))
+    # Only add to_{name} (not as_{name}) to both Attachment and Attachments
+    def _mk_api_method(name):
+        def _api(self, prompt: str = ""):
+            return self.format_for(name, prompt)
+        _api.__name__ = f"to_{name}"
+        _api.__doc__ = f"Shortcut for format_for('{name}', ...)."
+        return _api
+    setattr(Attachment, f"to_{name}", _mk_api_method(name))
     # Patch Attachments with to_{name} methods as well
     def _mk_api_method_attachments(name):
         def _api(self, prompt: str = ""):

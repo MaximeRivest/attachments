@@ -41,10 +41,9 @@ class WebPagePlainText(Renderer, PluginContract):
     _sample_obj  = "https://example.com"
 
     def match(self, obj):
-        print(obj)
-        print(isinstance(obj, str))
-        print(obj.startswith(("http://", "https://")))
-        return isinstance(obj, str) and obj.startswith(("http://", "https://"))
+        if not isinstance(obj, str):
+            return False
+        return obj.startswith(("http://", "https://"))
 
     # --- core work wrapped as *sync* function -------------------------
     def _extract_text(self, url: str, max_chars: int = 8000) -> str:

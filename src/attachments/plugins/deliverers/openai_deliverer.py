@@ -9,15 +9,17 @@ class OpenAIDeliverer(Deliverer, PluginContract):
     name = "openai"
 
     def package(self, text, images, audio, prompt=""):
-        blocks = []
-        if prompt or text:
-            blocks.append({"type": "input_text", "text": f"{prompt}\n\n{text or ''}".strip()})
+        # Match the output structure of Attachments.to_openai_content
+        # See: src/attachments_legacy/core.py:711
+        content = []
         if images:
-            for img in images:
-                blocks.append({"type": "input_image", "image_url": img})
-        if audio:
-            for a in audio:
-                blocks.append({"type": "input_audio", "audio_url": a})
-        return blocks
+            for image_data_uri in images:
+                content.append({"type": "input_image", "image_url": image_data_uri})
+        # Always append the text block last, as in to_openai_content
+        if prompt or text:
+            # The prompt comes first, then the text (if any), separated by two newlines
+            combined_text = (prompt or "") + ("\n\n" + text if text else "")
+            content.append({"type": "input_text", "text": combined_text})
+        return content
 
 __all__ = ["OpenAIDeliverer"]

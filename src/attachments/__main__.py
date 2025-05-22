@@ -32,7 +32,7 @@ def cli(args=None, attachments_cls=Attachments):
     logging.basicConfig(level=parsed_args.log_level.upper(), force=True) # force=True to override previous config
 
     if parsed_args.debug:
-        import pprint, sys
+        import pprint
         from . import diagnostics
         pprint.pp(diagnostics(), stream=sys.stderr)
 

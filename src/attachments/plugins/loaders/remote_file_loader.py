@@ -14,14 +14,19 @@ class RemoteFileLoader(Loader, PluginContract):
     Fetch any http(s) URL to a temporary file, then delegate
     to the *real* loader chosen by the registry.
     """
+    _sample_path = "https"
+
     # --- class helpers ------------------------------------------
     @classmethod
     def match(cls, path: str) -> bool:
-        return is_url(path)
+        return path.startswith(("http://", "https://"))
 
     # --- main logic ---------------------------------------------
     def load(self, url: str):
-        resp = requests.get(url, timeout=20)
+        headers = {
+            "User-Agent": "attachments-library/0.3 (https://github.com/maximecb/attachments)"
+        }
+        resp = requests.get(url, headers=headers, timeout=20)
         resp.raise_for_status()
 
         # Heuristic: keep original filename if present, else use MIME.

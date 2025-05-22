@@ -26,7 +26,6 @@ dependencies = [
     "lxml",
     "python-magic",
     "mammoth",
-    "PyMuPDF",
     "python-pptx",
     "python-docx",
     "odfpy",

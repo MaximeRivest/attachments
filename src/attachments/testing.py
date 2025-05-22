@@ -24,13 +24,26 @@ def _create_sample_file_for_selftest(ext: str, tmp_path: pathlib.Path):
         return str(p)
     if ext == "pdf":
         try:
-            import fitz
+            import pypdfium2 as pdfium
         except ImportError:
-            pytest.skip("PyMuPDF (fitz) not available for creating PDF sample.") # type: ignore
+            pytest.skip("pypdfium2 not available for creating PDF sample.") # type: ignore
         p = tmp_path / f"sample.{ext}"
-        doc = fitz.open()
-        doc.new_page().insert_text((72, 72), "hi")
-        doc.save(p)
+        # Create a new PDF document using pypdfium2
+        doc = pdfium.PdfDocument.new()
+        # Add a page (e.g., A4 size: 595x842 points)
+        page = doc.new_page(width=595, height=842)
+        # Insert text. pypdfium2 coordinates are often from bottom-left or require transformation.
+        # For simplicity, let's use a basic text insertion. Text rendering is complex.
+        # A robust way is to use reportlab or similar to generate a simple PDF with text and load it.
+        # However, for a minimal sample, just creating a page is often enough to test loaders.
+        # If text is strictly needed for the sample, the approach needs to be more detailed.
+        # For now, let's ensure a valid PDF structure is created.
+        # To actually add visible text easily without complex positioning:
+        # One common trick for a *very* basic PDF is to use a text object
+        page.insert_text("hi", 72, 770) # x, y_from_bottom (adjust y as needed for top-left feel)
+        page.generate_content() # Finalize the page content, makes it renderable
+
+        doc.save(str(p)) # Save the document to the path
         return str(p)
     if ext == "wav":
         import wave, struct

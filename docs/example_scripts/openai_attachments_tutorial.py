@@ -9,7 +9,9 @@
 # that a vast number of other libraries depend on it. Furthermore, the library's design is
 #  closely tied to the JSON format required by the OpenAI API. This JSON structure, for better
 #  or worse (and I'd lean towards the latter), has become a de facto standard.
-
+#%%
+import logging
+logging.getLogger("pypdf._reader").setLevel(logging.ERROR)
 
 # %% [md]
 # ## Without the attachments library
@@ -136,6 +138,7 @@ response.__dict__
 # It is already more concise and easier to manage but where attachments really shines is when
 # you want to pass other file types, not just images.
 # let's for instance try to pass this pdf:
+#%%
 pdf_url = "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
 
 import openai
@@ -147,11 +150,24 @@ response = client.responses.create(
     input=[
     {
         "role": "user",
-        "content": Attachments(pdf_url).to_openai(prompt="what is in this pdf?")
+        "content": Attachments(pdf_url).to_openai(prompt="what is in this pdf and what is the color of the background?")
     }
 ]
 )
 response.__dict__
+#%%[md]
+# here is a quick look at what the Attachments looks like:
+#%%
+a = Attachments(pdf_url)
+#%%
+
+print(a.text)
+
+#%%
+from IPython.display import display, HTML
+display(HTML(f'<img src="{a.images[0]}" style="max-width:900px;">'))
+
+
 # %% [md]
 # And it even works with multiple files.
 #%%
@@ -167,7 +183,7 @@ response = client.responses.create(
     input=[
     {
         "role": "user",
-        "content": a.to_openai_content("what do you see in these three files?")
+        "content": a.to_openai("what do you see in these three files?")
     }
 ]
 )
