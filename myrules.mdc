@@ -14,6 +14,25 @@ alwaysApply: false
 
 The bare `python` command in Cursor points to the AppImage instead of the virtual environment Python, causing import and module issues.
 
+## Type Annotation Rules
+
+**NO `typing.Any`!**
+- ❌ **NEVER use**: `typing.Any` - breaks `isinstance()` in decorators
+- ✅ **USE instead**: `object` for generic fallbacks, specific types otherwise
+- 🔧 **Reason**: Our decorator system uses `isinstance()` which fails with `typing.Any`
+
+```python
+# Bad - causes TypeError in isinstance()
+@presenter
+def text(data: Any) -> str:
+    return str(data)
+
+# Good - works with isinstance() 
+@presenter
+def text(data: object) -> str:
+    return str(data)
+```
+
 ## Testing Patterns
 
 ```bash
@@ -75,6 +94,12 @@ Users get MIT-compatible PDF support by default, can opt into AGPL for more feat
 - **Evidence**: Jupytext + MyST allows executable Python scripts as docs
 - **Updated**: Python scripts in `docs/scripts/` → auto-convert to notebooks in `docs/examples/`
 - **Confidence**: 90% - streamlines tutorial development and maintenance
+
+### Type Annotations
+- **Prior**: `typing.Any` is harmless for generic fallbacks
+- **Evidence**: `typing.Any` breaks `isinstance()` in decorator dispatch system
+- **Updated**: Use `object` for generic types, specific types otherwise
+- **Confidence**: 95% - `typing.Any` causes runtime errors with `isinstance()`
 
 ## Scientific Method Checklist
 

@@ -119,6 +119,6 @@ def text(df: pd.DataFrame) -> str:
 
 
 @presenter
-def text(data: Any) -> str:
+def text(data: object) -> str:
     """Fallback text presenter for any object."""
     return str(data) 

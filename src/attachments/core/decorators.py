@@ -17,42 +17,79 @@ _adapter_registry = {}
 def loader(matcher: Callable[[str], bool]):
     """Decorator for creating loaders."""
     def decorator(func):
-        @functools.wraps(func)
-        def wrapper(path_or_attachment):
-            # If already an attachment, check if we should process
-            if isinstance(path_or_attachment, Attachment):
-                if not path_or_attachment._pipeline_ready:
-                    return path_or_attachment
-                path = path_or_attachment.source
-            else:
-                path = path_or_attachment
+        # Create a LoaderFunction class to enable | operator
+        class LoaderFunction:
+            def __init__(self, loader_func, matcher_func):
+                self.loader_func = loader_func
+                self.matcher_func = matcher_func
+                self.__name__ = loader_func.__name__
+                self.__doc__ = loader_func.__doc__
             
-            # Parse commands
-            from ..utils.parsing import parse_path_expression
-            actual_path, commands = parse_path_expression(path)
-            
-            # Check if this loader handles this path
-            if not matcher(actual_path):
-                # Pass through for next loader in pipeline
+            def __call__(self, path_or_attachment):
+                # If already an attachment, check if we should process
                 if isinstance(path_or_attachment, Attachment):
-                    return path_or_attachment
-                # Create empty attachment that signals "not handled"
-                return Attachment(None, path, commands)
+                    if not path_or_attachment._pipeline_ready:
+                        return path_or_attachment
+                    path = path_or_attachment.source
+                else:
+                    path = path_or_attachment
+                
+                # Parse commands
+                from ..utils.parsing import parse_path_expression
+                actual_path, commands = parse_path_expression(path)
+                
+                # Check if this loader handles this path
+                if not self.matcher_func(actual_path):
+                    # Pass through for next loader in pipeline
+                    if isinstance(path_or_attachment, Attachment):
+                        return path_or_attachment
+                    # Create empty attachment that signals "not handled"
+                    return Attachment(None, path, commands)
+                
+                # Load the content
+                content = self.loader_func(actual_path)
+                
+                # Return as Attachment
+                return Attachment(content, actual_path, commands)
             
-            # Load the content
-            content = func(actual_path)
-            
-            # Return as Attachment
-            return Attachment(content, actual_path, commands)
+            def __or__(self, other):
+                """Compose loaders with | operator."""
+                def composed_loader(path_or_attachment):
+                    # Try this loader first
+                    try:
+                        result = self(path_or_attachment)
+                        # If it successfully loaded content, return it
+                        if isinstance(result, Attachment) and result.content is not None:
+                            return result
+                    except Exception:
+                        # This loader couldn't handle it, try next
+                        pass
+                    
+                    # Try the other loader
+                    return other(path_or_attachment)
+                
+                # Create a wrapper class that acts like LoaderFunction
+                class ComposedLoader:
+                    def __init__(self, name):
+                        self.__name__ = name
+                    
+                    def __call__(self, path_or_attachment):
+                        return composed_loader(path_or_attachment)
+                    
+                    def __or__(self, other):
+                        # Allow further composition
+                        return LoaderFunction.__or__(self, other)
+                
+                composed = ComposedLoader(f"{self.__name__}|{getattr(other, '__name__', 'unknown')}")
+                return composed
         
-        # Make it pipeable
-        wrapper.__or__ = lambda self, other: lambda x: wrapper(x) | other
-        wrapper.__add__ = lambda self, other: lambda x: wrapper(x) + other(x)
+        # Create loader instance
+        loader_instance = LoaderFunction(func, matcher)
         
         # Add to namespace
-        setattr(load, func.__name__, wrapper)
+        setattr(load, func.__name__, loader_instance)
         
-        return wrapper
+        return loader_instance
     return decorator
 
 

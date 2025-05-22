@@ -56,43 +56,54 @@ class Attachments:
                 print(f"Warning: Failed to process {source}: {e}")
     
     def _process_source(self, source: str) -> Optional[Attachment]:
-        """Process a single source using the new modular backend."""
+        """
+        Process a single source using idiomatic low-level API.
         
-        # Parse DSL commands from source
-        actual_path, commands = parse_path_expression(source)
-        
-        # Determine file type and load appropriately
-        if actual_path.lower().endswith('.pdf'):
-            att = load.pdf(source)
-        elif actual_path.lower().endswith('.pptx'):
-            att = load.pptx(source)
-        elif actual_path.lower().endswith('.csv'):
-            att = load.csv(source)
-        elif any(actual_path.lower().endswith(ext) for ext in ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']):
-            att = load.image(source)
-        else:
-            # Try PDF loader as fallback
-            try:
-                att = load.pdf(source)
-            except:
-                print(f"Warning: No loader found for {source}")
-                return None
-        
-        # Apply modifiers based on commands
-        if 'pages' in commands and hasattr(modify, 'pages'):
-            # The pages modifier will automatically use the command from the attachment
-            att = modify.pages(att)
-        
-        if 'summary' in commands and commands['summary'].lower() == 'true':
-            # Apply summary modifier if available
-            if hasattr(modify, 'sample'):
-                att = modify.sample(att, 100)  # Sample for summary
-        
-        if 'rotate' in commands and hasattr(modify, 'resize'):
-            # Note: We'd need a rotate modifier, using resize as placeholder
-            pass
+        Follows the clean pipeline approach from README:
+        load -> modify -> present -> adapt
+        """
+        try:
+            # Parse DSL commands from source
+            actual_path, commands = parse_path_expression(source)
             
-        return att
+            # Step 1: Load using idiomatic composed universal loader
+            # Create universal loader by composing all available loaders
+            universal_loader = load.pdf | load.pptx | load.csv | load.image
+            
+            try:
+                att = universal_loader(source)
+                # Check if loading succeeded
+                if att is None or att.content is None:
+                    print(f"Warning: No loader found for {source}")
+                    return None
+            except Exception as e:
+                print(f"Warning: Failed to load {source}: {e}")
+                return None
+            
+            # Step 2: Apply modifiers based on DSL commands
+            # Use the clean modify.* interface
+            if 'pages' in commands:
+                # The pages command is embedded in the source path
+                # The modify.pages function will extract it from the attachment
+                att = modify.pages(att)
+            
+            if 'sample' in commands:
+                # For sampling operations like data.csv[sample:100]
+                if hasattr(modify, 'sample'):
+                    sample_size = commands.get('sample', 100)
+                    att = modify.sample(att, sample_size)
+            
+            if 'resize' in commands:
+                # For image transformations like image.jpg[resize:50%]  
+                if hasattr(modify, 'resize'):
+                    resize_factor = commands.get('resize', '100%')
+                    att = modify.resize(att, resize_factor)
+                    
+            return att
+            
+        except Exception as e:
+            print(f"Warning: Failed to process {source}: {e}")
+            return None
     
     @property
     def text(self) -> str:
@@ -130,7 +141,10 @@ class Attachments:
     
     def to_openai(self, prompt: str = "") -> List[Dict[str, Any]]:
         """
-        Convert to OpenAI API message format.
+        Convert to OpenAI API message format using idiomatic adapter.
+        
+        This is the "squashing" operation for multiple attachments - we combine
+        all content into a single message for the LLM.
         
         Args:
             prompt: User prompt to include
@@ -141,19 +155,23 @@ class Attachments:
         if not self.attachments:
             return [{"role": "user", "content": [{"type": "text", "text": prompt}]}]
         
-        # Combine all attachments into one comprehensive content list
+        # For single attachment, use the adapter directly  
+        if len(self.attachments) == 1:
+            return adapt.openai_chat(self.attachments[0], prompt)
+        
+        # For multiple attachments, squash them together
         all_content = []
         
         if prompt:
             all_content.append({"type": "text", "text": prompt})
         
-        # Add text from all attachments
-        text_content = self.text
+        # Combine text and images from all attachments
+        text_content = self.text  # This uses present.text() internally
         if text_content:
             all_content.append({"type": "text", "text": text_content})
         
-        # Add images from all attachments
-        for image_data_url in self.images:
+        # Add images in OpenAI format  
+        for image_data_url in self.images:  # This uses present.images() internally
             all_content.append({
                 "type": "image_url",
                 "image_url": {"url": image_data_url}
@@ -163,7 +181,10 @@ class Attachments:
     
     def to_claude(self, prompt: str = "") -> List[Dict[str, Any]]:
         """
-        Convert to Claude/Anthropic API message format.
+        Convert to Claude/Anthropic API message format using idiomatic adapter.
+        
+        This is the "squashing" operation for multiple attachments - we combine
+        all content into a single message for the LLM.
         
         Args:
             prompt: User prompt to include
@@ -171,22 +192,29 @@ class Attachments:
         Returns:
             List of message dictionaries ready for Claude API
         """
-        content = []
+        if not self.attachments:
+            return [{"role": "user", "content": [{"type": "text", "text": prompt}]}]
+        
+        # For single attachment, use the adapter directly
+        if len(self.attachments) == 1:
+            return adapt.claude(self.attachments[0], prompt)
+        
+        # For multiple attachments, squash them together
+        all_content = []
         
         if prompt:
-            content.append({"type": "text", "text": prompt})
+            all_content.append({"type": "text", "text": prompt})
         
-        # Add text content
-        text_content = self.text
+        # Combine text and images from all attachments
+        text_content = self.text  # This uses present.text() internally
         if text_content:
-            content.append({"type": "text", "text": text_content})
+            all_content.append({"type": "text", "text": text_content})
         
-        # Add images (Claude uses base64 format)
-        for image_data_url in self.images:
-            # Extract base64 data from data URL
+        # Add images in Claude format
+        for image_data_url in self.images:  # This uses present.images() internally
             if image_data_url.startswith("data:image/"):
                 base64_data = image_data_url.split(",", 1)[1]
-                content.append({
+                all_content.append({
                     "type": "image",
                     "source": {
                         "type": "base64",
@@ -195,7 +223,7 @@ class Attachments:
                     }
                 })
         
-        return [{"role": "user", "content": content}]
+        return [{"role": "user", "content": all_content}]
     
     def __str__(self) -> str:
         """
@@ -264,8 +292,9 @@ class Attachments:
                     return []
             
             def to_openai_content(self, prompt=""):
-                """Individual attachment to OpenAI format."""
-                return adapt.openai(self._att, prompt)
+                """Individual attachment to OpenAI format using idiomatic low-level API."""
+                # Use the clean adapt.openai_chat() function for individual attachments
+                return adapt.openai_chat(self._att, prompt)
         
         return AttachmentWrapper(self.attachments[index])
 
