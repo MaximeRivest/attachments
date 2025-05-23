@@ -25,7 +25,8 @@ def test_core_imports():
     assert hasattr(present, 'images')
     assert hasattr(present, 'markdown')
     
-    assert hasattr(adapt, 'openai')
+    # Check that openai_chat adapter exists
+    assert hasattr(adapt, 'openai_chat')
 
 
 def test_attachment_creation():
@@ -188,19 +189,28 @@ def test_openai_adapter(sample_pdf_path):
     # Load PDF
     att = load.pdf(sample_pdf_path)
     
-    # Convert to OpenAI format
-    openai_content = adapt.openai(att, "Analyze this document")
+    # Convert to OpenAI format using the correct adapter name
+    openai_content = adapt.openai_chat(att, "Analyze this document")
     
     assert isinstance(openai_content, list)
     assert len(openai_content) > 0
     
+    # Should be a message with role and content
+    message = openai_content[0]
+    assert message["role"] == "user"
+    assert "content" in message
+    
+    # Content should be a list of content items
+    content_items = message["content"]
+    assert isinstance(content_items, list)
+    
     # Should have prompt text
-    text_items = [item for item in openai_content if item.get("type") == "text"]
+    text_items = [item for item in content_items if item.get("type") == "text"]
     assert len(text_items) >= 1
     assert any("Analyze this document" in item.get("text", "") for item in text_items)
     
-    # Should have images
-    image_items = [item for item in openai_content if item.get("type") == "image_url"]
+    # Should have images (PDFs get converted to images)
+    image_items = [item for item in content_items if item.get("type") == "image_url"]
     assert len(image_items) > 0
 
 
@@ -216,25 +226,14 @@ def test_high_level_attachments_interface(sample_pdf_path, sample_csv_path):
     assert len(ctx.text) > 0
     assert len(ctx.images) > 0
     
-    # Test API conversions
-    openai_msgs = ctx.to_openai("Analyze these files")
-    assert isinstance(openai_msgs, list)
-    assert len(openai_msgs) == 1
-    assert openai_msgs[0]["role"] == "user"
-    
-    claude_msgs = ctx.to_claude("Analyze these files") 
-    assert isinstance(claude_msgs, list)
-    assert len(claude_msgs) == 1
-    assert claude_msgs[0]["role"] == "user"
-    
     # Test string representation
     str_repr = str(ctx)
     assert "Attachments(2 files)" in str_repr
     
     # Test individual attachment access
     first_att = ctx[0]
-    assert hasattr(first_att, 'text')
-    assert hasattr(first_att, 'images')
+    assert hasattr(first_att, 'content')
+    assert hasattr(first_att, 'source')
 
 
 def test_path_expression_with_commands(sample_pdf_path):

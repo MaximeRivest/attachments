@@ -21,6 +21,9 @@ from . import presenters
 from . import adapters
 from .utils.parsing import parse_path_expression
 
+# Register adapter methods on Attachments class after adapters are loaded
+from .core.decorators import _register_adapter_methods_on_attachments
+
 class Attachments:
     """
     High-level interface for processing multiple files into LLM-ready context.
@@ -66,6 +69,16 @@ class Attachments:
             # Parse DSL commands from source
             actual_path, commands = parse_path_expression(source)
             
+            # Step 0: Check if path exists (for local files, not URLs)
+            if not self._is_url(actual_path):
+                path_obj = Path(actual_path)
+                if not path_obj.exists():
+                    print(f"Warning: File not found: {actual_path}")
+                    return None
+                if not path_obj.is_file():
+                    print(f"Warning: Path is not a file: {actual_path}")
+                    return None
+            
             # Step 1: Load using idiomatic composed universal loader
             # Create universal loader by composing all available loaders
             universal_loader = load.pdf | load.pptx | load.csv | load.image
@@ -74,10 +87,28 @@ class Attachments:
                 att = universal_loader(source)
                 # Check if loading succeeded
                 if att is None or att.content is None:
-                    print(f"Warning: No loader found for {source}")
+                    # This means no loader was found for this file type
+                    file_ext = Path(actual_path).suffix.lower()
+                    if file_ext:
+                        print(f"Warning: No loader available for file type '{file_ext}': {actual_path}")
+                    else:
+                        print(f"Warning: No file extension detected, cannot determine loader: {actual_path}")
                     return None
+            except FileNotFoundError:
+                print(f"Warning: File not found: {actual_path}")
+                return None
+            except PermissionError:
+                print(f"Warning: Permission denied accessing file: {actual_path}")
+                return None
             except Exception as e:
-                print(f"Warning: Failed to load {source}: {e}")
+                # This could be a loader-specific error (corrupted file, etc.)
+                error_msg = str(e)
+                if "No such file" in error_msg or "does not exist" in error_msg.lower():
+                    print(f"Warning: File not found: {actual_path}")
+                elif "permission" in error_msg.lower():
+                    print(f"Warning: Permission denied accessing file: {actual_path}")
+                else:
+                    print(f"Warning: Failed to load {actual_path}: {e}")
                 return None
             
             # Step 2: Apply modifiers based on DSL commands
@@ -102,8 +133,12 @@ class Attachments:
             return att
             
         except Exception as e:
-            print(f"Warning: Failed to process {source}: {e}")
+            print(f"Warning: Unexpected error processing {source}: {e}")
             return None
+    
+    def _is_url(self, path: str) -> bool:
+        """Check if the path is a URL."""
+        return path.startswith(('http://', 'https://', 'ftp://', 'ftps://'))
     
     @property
     def text(self) -> str:
@@ -188,6 +223,9 @@ class Attachments:
         """Get a specific attachment by index."""
         return self.attachments[index]
 
+
+# Register adapter methods automatically
+_register_adapter_methods_on_attachments()
 
 # Convenience exports
 __all__ = ['Attachments'] 
