@@ -1,8 +1,8 @@
-# 🔗 Attachments – The Python Funnel for LLM Context
+# Attachments – the Python funnel for LLM context
 
 ### Turn *any* file into model-ready text ＋ images, in one line
 
-**MIT-licensed**, modular, and type-safe. The same simple interface you know, now with a robust architecture underneath.
+Most users will not have to learn anything more then that: `Attachments("path/to/file.pdf")`
 
 > **TL;DR**  
 > ```bash
@@ -10,250 +10,131 @@
 > ```
 > ```python
 > from attachments import Attachments
-> ctx = Attachments("report.pdf", "photo.jpg")
-> llm_ready_text   = str(ctx)       # all extracted text, "prompt-engineered"
+> ctx = Attachments("report.pdf", "photo.jpg[rotate:90]")
+> llm_ready_text   = str(ctx)       # all extracted text, already “prompt-engineered”
 > llm_ready_images = ctx.images     # list[str] – base64 PNGs
 > ```
 
-**Why Attachments?** Stop re-writing file-to-LLM plumbing in every project. One line gets you from files to AI-ready content, with a **modular architecture** that's easy to extend.
 
-## ✨ What's New in v0.4
+Attachments aims to be **the** community funnel from *file → text + base64 images* for LLMs.  
+Stop re-writing that plumbing in every project – contribute your *loader / transform / renderer* plugin instead!
 
-- 🏗️ **Modular Architecture**: Clean separation of `loaders`, `presenters`, `modifiers`, `adapters`
-- 📜 **MIT License Compatible**: Default PDF support via `pypdf` + `pypdfium2` (BSD licenses)
-- 🎯 **Type-Safe Dispatch**: Components auto-register based on Python types
-- 🔧 **Easy Extension**: Add new file formats with a single decorated function
-- 📦 **Better Dependencies**: Optional heavy dependencies, lighter default install
-
-## 🚀 Quick Start
+## Quick-start ⚡
 
 ```bash
 pip install attachments
-```
+````
 
 ```python
 from attachments import Attachments
 
-# Simple usage - just like before
-ctx = Attachments("contract.pdf", "diagram.png")
-print(ctx)                    # pretty text view
-print(f"Images: {len(ctx.images)}")  # base64 PNG count
-
-# With page selection and transformations  
-ctx = Attachments(
-    "report.pdf[1,3-5,-1]",          # pages 1, 3-5, and last
-    "slides.pptx[1-3]",              # first 3 slides from PowerPoint
-    "data.csv[sample:100]",          # random sample of 100 rows
-    "chart.jpg",                     # images as base64 PNGs
-    "summary.pdf"                    # additional documents
+a = Attachments(
+    "/path/to/contract.docx",
+    "slides.pptx[:3,N]",                  # first 3 & last slide
+    "https://…/table.csv[summary:true]",  # built-in df.describe()
+    "diagram.png[rotate:90]"              # chained image transform
 )
+
+print(a)           # pretty text view
+len(a.images)      # 👉 base64 PNG list
 ```
 
-## 🤖 AI Integration
-
-### OpenAI (GPT)
+### Send to OpenAI
 
 ```python
 from openai import OpenAI
 from attachments import Attachments
-from attachments.core import adapt
 
-# Load files (single or multiple)
-ctx = Attachments("research_paper.pdf", "chart.png")
-
-# Adapters work with both Attachments and Attachment objects!
-messages = adapt.openai_chat(ctx, "Summarize the key findings:")
+pdf = Attachments("https://…/test.pdf")
 
 client = OpenAI()
-response = client.chat.completions.create(
-    model="gpt-4o",
-    messages=messages
+resp = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=pdf.to_openai("Analyse the following document:")
 )
-print(response.choices[0].message.content)
-
-# For OpenAI's new responses API
-input_data = adapt.openai_responses(ctx, "what is in these documents?")
-response = client.responses.create(
-    model="gpt-4o",
-    input=input_data
-)
+print(resp.choices[0].message.content)
 ```
 
-### Anthropic (Claude)
+### Send to Anthropic / Claude
 
 ```python
 import anthropic
 from attachments import Attachments
-from attachments.core import adapt
 
-# Process multiple files with DSL commands
-ctx = Attachments("presentation.pptx[1-5]", "data.csv", "chart.png")
+pptx = Attachments("https://…/test.pptx")
 
-# Adapter automatically handles the squashing!
-messages = adapt.claude(ctx, "Analyze these slides and data:")
-
-client = anthropic.Anthropic()
-message = client.messages.create(
-    model="claude-3-5-sonnet-20241022", 
-    max_tokens=8192,
-    messages=messages
+msg = anthropic.Anthropic().messages.create(
+    model="claude-3-5-haiku-20241022",
+    max_tokens=8_192,
+    messages=pptx.to_claude("Analyse the slides:")
 )
-print(message.content[0].text)
+print(msg.content)
 ```
 
-## 📋 Supported Formats
-
-### Built-in Support
-- **Documents**: PDF (MIT-compatible via `pypdf`), CSV, plain text
-- **Images**: PNG, JPEG, BMP, GIF, WEBP, HEIC/HEIF via PIL
-- **Path Expressions**: `file.pdf[1,3-5]`, `data.csv[sample:100]`, etc.
-
-### Extended Support (Optional)
-```bash
-# More file formats (including PowerPoint)
-pip install 'attachments[extended]'
-
-# Everything
-pip install 'attachments[all]'
-```
-
-With extended support, you get:
-- **Presentations**: PowerPoint (PPTX) via `python-pptx`
-- **Rich Documents**: Word (DOCX), Excel, and more via `markitdown`
-
-## 🏗️ Modular Architecture 
-
-The new architecture separates concerns into specialized components:
-
-```python
-from attachments.core import load, present, modify, adapt
-
-# Low-level interface for advanced users
-pdf_doc = load.pdf("report.pdf")           # Load PDF
-pptx_doc = load.pptx("slides.pptx")        # Load PowerPoint (extended)
-pages = modify.pages(pdf_doc, "1,3-5")     # Select specific pages  
-slides = modify.pages(pptx_doc, "1-3")     # Select specific slides
-text = present.text(pages)                 # Extract text
-xml = present.xml(slides)                  # Extract XML structure
-images = present.images(pages)             # Render as images
-openai_msgs = adapt.openai(text, images)   # Format for OpenAI
-```
-
-Each component is **auto-registered** based on Python types. The function name becomes the namespace attribute:
-
-```python
-from attachments.core.decorators import loader
-
-@loader(lambda path: path.endswith('.xyz'))  
-def xyz_file(path: str):
-    # Load your custom format
-    return your_custom_object
-    
-# Now available as: load.xyz_file("document.xyz")
-```
-
-## 📝 Path Expression DSL
-
-| Expression                  | Result                                      |
-|----------------------------|---------------------------------------------|
-| `report.pdf[1,3-5,-1]`     | Pages 1, 3-5, and last page               |
-| `report.pdf[resize:50%]`   | PDF pages resized to 50% (as images)      |
-| `report.pdf[resize:800x600]` | PDF pages resized to 800x600 pixels     |
-| `slides.pptx[1-3]`         | First 3 slides from PowerPoint            |
-| `slides.pptx[-1]`          | Last slide only                           |
-| `data.csv[sample:10]`      | Random sample of 10 rows                  |
-| `data.csv[sample:100]`     | Random sample of 100 rows                 |
-| `image.jpg[resize:50%]`    | Resize image to 50% of original size      |
-| `image.jpg[resize:1920x1080]` | Resize image to exact 1920x1080 pixels |
-| `photo.png[resize:200%]`   | Double the image size                      |
-
-## 🔧 Extension Examples
-
-### Add a New Loader
-
-```python
-from attachments.core.decorators import loader
-
-@loader(lambda path: path.endswith('.json'))
-def json_file(path: str):
-    import json
-    with open(path) as f:
-        return json.load(f)
-
-# Now available as: load.json_file("data.json")
-```
-
-### Add a New Presenter
-
-```python
-from attachments.core.decorators import presenter
-
-@presenter
-def summary(data: dict) -> str:
-    """Generate summary for dictionary data."""
-    return f"Dictionary with {len(data)} keys: {list(data.keys())[:5]}..."
-```
-
-The type system automatically routes content to the right handlers!
-
-## 📜 License & Compatibility
-
-**MIT License** with careful dependency management:
-
-- ✅ **Default**: MIT-compatible libraries only (`pypdf`, `pypdfium2`, `pillow`)  
-- ⚠️ **Optional**: AGPL libraries via explicit opt-in (`PyMuPDF` with `[pdf-agpl]`)
-
-This ensures your project stays MIT-licensed unless you explicitly choose otherwise.
-
-## 🛠️ Development
-
-```bash
-git clone https://github.com/MaximeRivest/attachments
-cd attachments
-uv sync
-uv run pytest
-```
-
-See [`ARCHITECTURE.md`](ARCHITECTURE.md) for detailed design documentation and [`CONTRIBUTING.md`](CONTRIBUTING.md) for contribution guidelines.
-
-## 🎯 API Reference
-
-### High-Level Interface
-
-| Object                    | Description                                  |
-|--------------------------|----------------------------------------------|
-| `Attachments(*paths)`    | Load and process multiple files             |
-| `Attachments.attachments`| List of loaded Attachment objects           |
-| `Attachments.text`       | All extracted text, joined with newlines    |
-| `Attachments.images`     | List of base64-encoded PNG data URLs        |
-
-### Core Components (Low-Level API)
-
-| Module                   | Purpose                                      | Example |
-|--------------------------|----------------------------------------------|---------|
-| `attachments.core.load`  | File loaders with `\|` composition         | `load.pdf \| load.image` |
-| `attachments.core.modify` | Content modifiers                          | `modify.pages(att, "1-3")` |
-| `attachments.core.present` | Format converters                         | `present.text(att)` |
-| `attachments.core.adapt` | LLM API adapters                           | `adapt.openai_chat(att, prompt)` |
-
-### Available Adapters
-
-| Adapter | Purpose | Usage |
-|---------|---------|-------|
-| `adapt.openai_chat` | OpenAI Chat Completions | `client.chat.completions.create(messages=...)` |
-| `adapt.openai_responses` | OpenAI Responses API | `client.responses.create(input=...)` |
-| `adapt.claude` | Anthropic Messages | `client.messages.create(messages=...)` |
-
-## 🚀 What's Next?
-
-The modular architecture makes it easy to add:
-- 📄 **New file formats** (DOCX, XLSX, HTML, etc.)
-- 🎨 **New presentations** (LaTeX, HTML, RTF, etc.) 
-- ⚙️ **New modifiers** (translate, summarize, filter, etc.)
-- 🔌 **New adapters** (Gemini, local models, etc.)
-
-**Join us!** File an issue, open a PR, or share your custom components. Let's build the universal file-to-AI pipeline together! 🌟
+*(The package auto-injects one `to_<provider>()` helper per registered deliverer; if you add a new
+`Deliverer` plugin called `myapi`, both `Attachment.as_myapi()` and `Attachments.to_myapi()` appear automatically.)*
 
 ---
 
-**Attachments** – Because every AI project starts with "How do I get my data into the model?" 🤖
+## DSL cheatsheet 📝
+
+| Piece                     | Example                   | Notes                                         |
+| ------------------------- | ------------------------- | --------------------------------------------- |
+| **Select pages / slides** | `report.pdf[1,3-5,-1]`    | Supports ranges, negative indices, `N` = last |
+| **Image transforms**      | `photo.jpg[rotate:90]`    | Any token implemented by a `Transform` plugin |
+| **Data-frame summary**    | `table.csv[summary:true]` | Ships with a quick `df.describe()` renderer   |
+
+---
+
+## Supported formats (out of the box)
+
+* **Docs**: PDF, PowerPoint (`.pptx`), CSV.
+* **Images**: PNG, JPEG, BMP, GIF, WEBP, HEIC/HEIF, …
+* Plugins live in `attachments/plugins/`; drop in a new file, decorate it with `@register_plugin`, and it’s picked up at import time (or via `$ATTACHMENTS_PLUGIN_PATH`).
+
+---
+
+## Extending 🧩
+
+```python
+# my_ocr_renderer.py
+from attachments.plugin_api import register_plugin, requires
+from attachments.core import Renderer
+
+@register_plugin("renderer_text", priority=50)
+@requires("pytesseract", "PIL")
+class ImageOCR(Renderer):
+    content_type = "text"
+
+    def match(self, obj):
+        from PIL import Image
+        return isinstance(obj, Image.Image)
+
+    def render(self, obj, meta):
+        import pytesseract
+        return pytesseract.image_to_string(obj)
+```
+
+1. Put the file somewhere on disk.
+2. `export ATTACHMENTS_PLUGIN_PATH=/abs/path/to/dir_or_file`
+3. `import attachments` – your plugin is auto-discovered, no code changes.
+
+---
+
+## API reference (essentials)
+
+| Object / method         | Description                                                     |
+| ----------------------- | --------------------------------------------------------------- |
+| `Attachments(*sources)` | Many `Attachment` objects flattened into one container          |
+| `Attachments.text`      | All text joined with blank lines                                |
+| `Attachments.images`    | Flat list of base64 PNGs                                        |
+| `.to_openai(prompt="")` | Convenience wrapper (shown above)                               |
+| `.to_claude(prompt="")` | idem                                                            |
+
+---
+
+### Roadmap
+
+* More built-in loaders (DOCX, XLSX, HTML)
+
+Join us – file an issue or open a PR! 🚀
