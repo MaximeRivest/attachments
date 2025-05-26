@@ -108,3 +108,78 @@ For each change:
 2. **Make predictions** - what should we observe if correct?  
 3. **Test & verify** - run `uv run pytest` to confirm
 4. **Update beliefs** - document what we learned
+
+# Cursor Rules for Attachments Library
+
+## Core Principles
+
+The [README.md](mdc:README.md) is the ground truth on the interface we aim to implement.
+
+We aim for a clean and robust architectural design outline, adhering closely to your goals of modularity, extensibility, ease of use, and flexibility in rendering.
+
+Refactor as soon as you see a need to it to make the code easier for you to work with!
+
+use uv and .venv (my uv virtual environment).
+
+use:
+uv run pytest
+
+run the unit tests before claiming your changes are done!
+
+always use the scientific method: 1) state your assumptions, 2) make testable predictions and 3) check them to confirm the code and system is in the state you believe and it works as you believe.Allocate bayesian believes and update them maybe even store them in your own .mdc rule file?!
+
+## OpenAI API Format Distinction
+
+**CRITICAL**: There are TWO different OpenAI API formats that must NOT be mixed:
+
+### 1. Chat Completions API (Standard)
+```python
+client.chat.completions.create(
+    model="gpt-4",
+    messages=[
+        {
+            "role": "user", 
+            "content": [
+                {"type": "text", "text": "What's in this image?"},
+                {
+                    "type": "image_url",
+                    "image_url": {"url": "https://example.com/image.jpg"}
+                }
+            ]
+        }
+    ]
+)
+```
+
+### 2. Responses API (Different Format)
+```python
+input_data = ctx.to_openai_responses("what is in this image?")
+client.responses.create(
+    model="gpt-4",
+    input=input_data  # Direct list usage
+)
+
+# Returns:
+[
+    {
+        "role": "user",
+        "content": [
+            {"type": "input_text", "text": "what is in this image?"},
+            {
+                "type": "input_image", 
+                "image_url": "https://example.com/image.jpg"
+            }
+        ]
+    }
+]
+```
+
+### Key Differences:
+- **Chat Completions**: `messages=result` + `"type": "text"` + `"image_url": {"url": "..."}`
+- **Responses**: `input=result` + `"type": "input_text"` + `"image_url": "..."`  (direct string)
+- **Both return**: `List[Dict]` but with different content structure
+
+### Adapter Implementation:
+- `openai_chat` → Chat Completions API format
+- `openai_responses` → Responses API format  
+- These must NEVER be mixed or call each other

@@ -1,0 +1,33 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "name": "Alice Johnson",
+      "email": "alice@example.com",
+      "age": 28,
+      "city": "New York",
+      "skills": ["Python", "Data Science", "Machine Learning"]
+    },
+    {
+      "id": 2,
+      "name": "Bob Smith",
+      "email": "bob@example.com", 
+      "age": 34,
+      "city": "San Francisco",
+      "skills": ["JavaScript", "React", "Node.js"]
+    },
+    {
+      "id": 3,
+      "name": "Carol Davis",
+      "email": "carol@example.com",
+      "age": 29,
+      "city": "Chicago",
+      "skills": ["Python", "Django", "PostgreSQL"]
+    }
+  ],
+  "metadata": {
+    "created": "2024-01-15",
+    "version": "1.0",
+    "description": "Sample user data for attachments library tutorials"
+  }
+} 

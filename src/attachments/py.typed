@@ -1,1 +1,4 @@
-# Marker file for PEP 561 - this package supports type hints 
+# Marker file for PEP 561 - indicates this package has type information
+# 
+# This package provides runtime type information for function discovery
+# via SmartVerbNamespace.__dir__() for excellent Jupyter/IPython autocomplete 

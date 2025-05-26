@@ -154,14 +154,18 @@ def xyz_file(path: str):
 
 ## 📝 Path Expression DSL
 
-| Expression              | Result                                      |
-|------------------------|---------------------------------------------|
-| `report.pdf[1,3-5,-1]` | Pages 1, 3-5, and last page               |
-| `slides.pptx[1-3]`     | First 3 slides from PowerPoint            |
-| `slides.pptx[-1]`      | Last slide only                           |
-| `data.csv[sample:10]`  | Random sample of 10 rows                  |
-| `data.csv[sample:100]` | Random sample of 100 rows                 |
-| `image.jpg[resize:50%]` | Resize image to 50% of original size     |
+| Expression                  | Result                                      |
+|----------------------------|---------------------------------------------|
+| `report.pdf[1,3-5,-1]`     | Pages 1, 3-5, and last page               |
+| `report.pdf[resize:50%]`   | PDF pages resized to 50% (as images)      |
+| `report.pdf[resize:800x600]` | PDF pages resized to 800x600 pixels     |
+| `slides.pptx[1-3]`         | First 3 slides from PowerPoint            |
+| `slides.pptx[-1]`          | Last slide only                           |
+| `data.csv[sample:10]`      | Random sample of 10 rows                  |
+| `data.csv[sample:100]`     | Random sample of 100 rows                 |
+| `image.jpg[resize:50%]`    | Resize image to 50% of original size      |
+| `image.jpg[resize:1920x1080]` | Resize image to exact 1920x1080 pixels |
+| `photo.png[resize:200%]`   | Double the image size                      |
 
 ## 🔧 Extension Examples
 

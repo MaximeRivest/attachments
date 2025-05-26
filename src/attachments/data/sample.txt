@@ -1,0 +1,23 @@
+Welcome to the Attachments Library!
+
+This is a sample text file that demonstrates how to work with text data using the attachments library.
+
+The attachments library provides a simple and intuitive way to load, process, and present various types of data files. Whether you're working with CSV files, JSON data, images, or plain text like this file, the library's pipeline syntax makes data manipulation easy and readable.
+
+Key Features:
+- Simple pipeline syntax using the | operator
+- Extensible loader system for different file formats
+- Built-in presenters for common output formats
+- Type-safe processing with automatic dispatch
+- Easy integration with popular data science libraries
+
+Getting Started:
+1. Load your data with attach()
+2. Transform it with loaders 
+3. Process with modifiers
+4. Present with presenters
+
+Example:
+    result = attach("data.txt") | load.text | present.markdown
+
+Happy coding! 

@@ -1,9 +1,15 @@
-"""Content presenters for different output formats."""
+"""Presenters package - formats attachment objects for output."""
 
-# Import all presenters to auto-register them
+# Import all presenter modules to register them
 from . import text
-from . import images
-from . import markdown
-from . import xml
+from . import visual
+from . import data
+from . import metadata
 
-__all__ = ['text', 'images', 'markdown', 'xml'] 
+# Re-export commonly used functions if needed
+__all__ = [
+    'text',
+    'visual',
+    'data', 
+    'metadata'
+] 
