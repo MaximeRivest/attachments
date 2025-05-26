@@ -176,6 +176,8 @@ addopts = [
     "--cov-report=html:htmlcov",
     "--cov-report=xml",
     "--cov-fail-under=70",  # Lowered from 90 for now, will increase as we add tests
+    "--ignore=mrplay",  # Explicitly ignore mrplay directory
+    "-v",  # Verbose output by default
 ]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",

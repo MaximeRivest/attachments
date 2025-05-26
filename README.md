@@ -10,7 +10,8 @@ Most users will not have to learn anything more then that: `Attachments("path/to
 > ```
 > ```python
 > from attachments import Attachments
-> ctx = Attachments("report.pdf", "photo.jpg[rotate:90]")
+> ctx = Attachments("https://github.com/MaximeRivest/attachments/blob/main/src/attachments/data/sample.pdf",
+>                    "https://github.com/MaximeRivest/attachments/raw/refs/heads/main/src/attachments/data/sample_multipage.pptx")
 > llm_ready_text   = str(ctx)       # all extracted text, already “prompt-engineered”
 > llm_ready_images = ctx.images     # list[str] – base64 PNGs
 > ```
