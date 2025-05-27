@@ -32,17 +32,41 @@ refine = SmartVerbNamespace(_refiners)
 split = SmartVerbNamespace(_modifiers)  # Split functions are also modifiers
 
 # Dynamic version reading from pyproject.toml
-try:
-    from importlib.metadata import version
-    __version__ = version("attachments")
-except ImportError:
-    # Fallback for Python < 3.8
+def _get_version():
+    """Read version from pyproject.toml"""
+    import os
+    from pathlib import Path
+    
+    # Try to find pyproject.toml starting from this file's directory
+    current_dir = Path(__file__).parent
+    for _ in range(3):  # Look up to 3 levels up
+        pyproject_path = current_dir / "pyproject.toml"
+        if pyproject_path.exists():
+            try:
+                content = pyproject_path.read_text(encoding='utf-8')
+                for line in content.split('\n'):
+                    if line.strip().startswith('version = '):
+                        # Extract version from line like: version = "0.6.0"
+                        version = line.split('=', 1)[1].strip().strip('"').strip("'")
+                        return version
+            except Exception:
+                pass
+        current_dir = current_dir.parent
+    
+    # Fallback: try importlib.metadata if package is installed
     try:
-        from importlib_metadata import version
-        __version__ = version("attachments")
+        from importlib.metadata import version
+        return version("attachments")
     except ImportError:
-        # Final fallback if metadata is not available
-        __version__ = "unknown"
+        try:
+            from importlib_metadata import version
+            return version("attachments")
+        except ImportError:
+            pass
+    
+    return "unknown"
+
+__version__ = _get_version()
 
 __all__ = [
     # Core classes and functions
