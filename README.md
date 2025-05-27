@@ -426,3 +426,7 @@ def ocr_text(att: Attachment, pil_image: 'PIL.Image.Image') -> Attachment:
 - [ ] **Add .audio and .video**: and corresponding pipelines.
 
 Join us – file an issue or open a PR! 🚀
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=maximerivest/attachments&type=Date)](https://www.star-history.com/#maximerivest/attachments&Date)
