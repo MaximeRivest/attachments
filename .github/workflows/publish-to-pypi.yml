@@ -13,7 +13,6 @@ jobs:
   build-and-publish:
     name: Build and publish to PyPI
     runs-on: ubuntu-latest
-    environment: release  # Use GitHub environment for additional protection
     
     steps:
     - name: Checkout code
