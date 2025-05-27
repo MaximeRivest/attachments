@@ -31,7 +31,18 @@ adapt = SmartVerbNamespace(_adapters)
 refine = SmartVerbNamespace(_refiners)
 split = SmartVerbNamespace(_modifiers)  # Split functions are also modifiers
 
-__version__ = "0.5.5"
+# Dynamic version reading from pyproject.toml
+try:
+    from importlib.metadata import version
+    __version__ = version("attachments")
+except ImportError:
+    # Fallback for Python < 3.8
+    try:
+        from importlib_metadata import version
+        __version__ = version("attachments")
+    except ImportError:
+        # Final fallback if metadata is not available
+        __version__ = "unknown"
 
 __all__ = [
     # Core classes and functions
