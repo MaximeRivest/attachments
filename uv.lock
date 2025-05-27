@@ -122,7 +122,7 @@ wheels = [
 
 [[package]]
 name = "attachments"
-version = "0.5.0"
+version = "0.5.3"
 source = { editable = "." }
 dependencies = [
     { name = "beautifulsoup4" },
@@ -199,11 +199,7 @@ pdf-agpl = [
     { name = "pymupdf" },
 ]
 test = [
-    { name = "black" },
     { name = "coverage", extra = ["toml"] },
-    { name = "flake8" },
-    { name = "mypy" },
-    { name = "pre-commit" },
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "pytest-randomly" },
@@ -218,7 +214,6 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "attachments", extras = ["dev"], marker = "extra == 'test'" },
     { name = "beautifulsoup4", specifier = ">=4.9.0" },
     { name = "black", marker = "extra == 'dev'", specifier = ">=24.0.0" },
     { name = "coverage", extras = ["toml"], marker = "extra == 'test'", specifier = ">=7.4.0" },
@@ -258,8 +253,11 @@ requires-dist = [
     { name = "pytesseract", marker = "extra == 'all'", specifier = ">=0.3.10" },
     { name = "pytesseract", marker = "extra == 'extended'", specifier = ">=0.3.10" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0.0" },
+    { name = "pytest", marker = "extra == 'test'", specifier = ">=8.0.0" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.0.0" },
+    { name = "pytest-cov", marker = "extra == 'test'", specifier = ">=4.0.0" },
     { name = "pytest-randomly", marker = "extra == 'dev'", specifier = ">=3.15.0" },
+    { name = "pytest-randomly", marker = "extra == 'test'", specifier = ">=3.15.0" },
     { name = "python-docx", marker = "extra == 'all'", specifier = ">=0.8.11" },
     { name = "python-docx", marker = "extra == 'common'", specifier = ">=1.1.0" },
     { name = "python-magic", marker = "extra == 'all'", specifier = ">=0.4.27" },

@@ -597,8 +597,33 @@ def images(att: Attachment, soup: 'bs4.BeautifulSoup') -> Attachment:
     try:
         from playwright.async_api import async_playwright
     except ImportError:
-        att.metadata['screenshot_error'] = "Playwright not available. Install with: pip install playwright && playwright install chromium"
-        return att
+        # Check if CSS selector was requested (which requires Playwright for highlighting)
+        css_selector = att.commands.get('select')
+        if css_selector:
+            # CSS selector highlighting was requested but Playwright isn't available
+            error_msg = (
+                f"🎯 CSS Selector Highlighting Unavailable: You requested CSS selector highlighting "
+                f"with [select:{css_selector}], but Playwright is not installed.\n\n"
+                f"To enable CSS selector highlighting and webpage screenshots:\n"
+                f"  pip install playwright\n"
+                f"  playwright install chromium\n\n"
+                f"Alternative installation methods:\n"
+                f"  # With uv:\n"
+                f"  uv add playwright\n"
+                f"  uv run playwright install chromium\n\n"
+                f"  # With attachments browser extras:\n"
+                f"  pip install attachments[browser]\n"
+                f"  playwright install chromium\n\n"
+                f"CSS selector highlighting provides:\n"
+                f"  🎯 Visual highlighting of selected elements with animations\n"
+                f"  📸 High-quality screenshots with JavaScript rendering\n"
+                f"  🎨 Professional styling with glowing borders and badges\n"
+                f"  🔍 Perfect for extracting specific page elements"
+            )
+            raise ImportError(error_msg)
+        else:
+            # Regular screenshot was requested
+            raise ImportError("Playwright not available. Install with: pip install playwright && playwright install chromium")
     
     try:
         import asyncio
