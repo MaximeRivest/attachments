@@ -89,11 +89,6 @@ pdf = [
     "pypdfium2>=4.26.0",     # Google's PDFium Python binding (BSD/Apache)
 ]
 
-# Alternative: Full-featured but AGPL-licensed (use only if you accept AGPL)
-pdf-agpl = [
-    "PyMuPDF>=1.24.0",        # Full-featured PDF library (AGPL/Commercial license)
-]
-
 # Extended file format support
 extended = [
     "python-magic>=0.4.27",   # File type detection
