@@ -80,6 +80,9 @@ def tile_images(input_obj: Union['AttachmentCollection', Attachment]) -> Attachm
     - [tile:2x2] - 2x2 grid
     - [tile:3x1] - 3x1 grid  
     - [tile:4] - 4x4 grid
+    - [tile:false] - Disable tiling (keep images separate)
+    
+    Default: 2x2 grid for multiple images (can be disabled with tile:false)
     """
     try:
         from PIL import Image, ImageDraw, ImageFont
@@ -139,8 +142,23 @@ def tile_images(input_obj: Union['AttachmentCollection', Attachment]) -> Attachm
                     except Exception:
                         continue
         
+        # Check if tiling is disabled
+        if tile_config.lower() in ('false', 'no', 'off', 'disable', 'disabled'):
+            # Tiling disabled - return original images without tiling
+            if isinstance(input_obj, Attachment):
+                return input_obj
+            else:
+                return Attachment("")
+        
         if not images:
             # No images to tile, return original or empty attachment
+            if isinstance(input_obj, Attachment):
+                return input_obj
+            else:
+                return Attachment("")
+        
+        # If only one image, no need to tile
+        if len(images) == 1:
             if isinstance(input_obj, Attachment):
                 return input_obj
             else:

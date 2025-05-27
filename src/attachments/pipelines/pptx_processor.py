@@ -11,7 +11,10 @@ DSL Commands:
         Aliases: text=plain, txt=plain, md=markdown, code=xml
     [pages:1-5,10] - Specific slides (inherits from existing modify.pages)
     [resize_images:50%|800x600] - Image resize specification (consistent naming)
-    [tile:2x2|3x1|4] - Tile multiple slides into grid layout
+    [tile:2x2|3x1|4] - Tile multiple slides into grid layout (default: 2x2 for multi-slide presentations)
+
+Note: Multi-slide PPTX files are automatically tiled in a 2x2 grid by default for better LLM consumption.
+Use [tile:false] to disable tiling or [tile:3x1] for custom layouts.
 
 Usage:
     # Explicit processor access
@@ -87,9 +90,10 @@ def pptx_to_llm(att: Attachment) -> Attachment:
         # Empty pipeline that does nothing
         image_pipeline = lambda att: att
     
-    # Enhanced pipeline with format and image control
+    # Enhanced pipeline with URL support and format control
     return (att 
-           | load.pptx_to_python_pptx
+           | load.url_to_file          # Handle URLs first - download if needed
+           | load.pptx_to_python_pptx  # Then load as PPTX
            | modify.pages  # Handles pages:1-5,10 DSL command
            | text_presenter + image_pipeline + present.metadata
            | refine.tile_images | refine.resize_images | refine.add_headers) 

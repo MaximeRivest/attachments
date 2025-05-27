@@ -17,8 +17,8 @@ from .core import Attachment, AttachmentCollection, attach, _loaders, _modifiers
 # We can't use relative imports for the namespaces since they're created in __init__.py
 def _get_namespaces():
     """Get the namespace objects after they're created."""
-    from attachments import load, present, refine, split
-    return load, present, refine, split
+    from attachments import load, present, refine, split, modify
+    return load, present, refine, split, modify
 
 # Global cache for namespaces to avoid repeated imports
 _cached_namespaces = None
@@ -63,7 +63,7 @@ class Attachments:
     def _process_files(self, paths: tuple) -> None:
         """Process all input files through universal pipeline."""
         # Get the proper namespaces
-        load, present, refine, split = _get_cached_namespaces()
+        load, present, refine, split, modify = _get_cached_namespaces()
         
         for path in paths:
             try:
@@ -140,19 +140,20 @@ class Attachments:
         """Universal fallback pipeline for files without specialized processors."""
         
         # Get the proper namespaces
-        load, present, refine, split = _get_cached_namespaces()
+        load, present, refine, split, modify = _get_cached_namespaces()
         
         # Smart loader chain - order matters for proper fallback
-        # Put more specific loaders first, more general ones last
+        # Put URL loaders first to handle URLs before file-specific loaders
         try:
             loaded = (att 
+                     | load.url_to_file             # URLs with file extensions → download and process
+                     | load.url_to_bs4              # Other URLs → BeautifulSoup
                      | load.git_repo_to_structure   # Git repos → structure object
                      | load.directory_to_structure  # Directories/globs → structure object
                      | load.pdf_to_pdfplumber       # PDF → pdfplumber object
                      | load.csv_to_pandas           # CSV → pandas DataFrame  
                      | load.image_to_pil            # Images → PIL Image
                      | load.html_to_bs4             # HTML → BeautifulSoup
-                     | load.url_to_bs4              # URLs → BeautifulSoup
                      | load.text_to_string          # Text → string
                      | load.zip_to_images)          # ZIP → AttachmentCollection (last)
         except Exception as e:
@@ -172,7 +173,7 @@ class Attachments:
             # Vectorized processing for collections
             processed = (loaded 
                         | (present.images + present.metadata)
-                        | refine.add_headers)
+                        | refine.tile_images | refine.add_headers)
             return processed
         else:
             # Check if this is a repository/directory structure
@@ -186,8 +187,9 @@ class Attachments:
                 text_presenter = _get_smart_text_presenter(loaded)
                 
                 processed = (loaded
+                            | modify.pages  # Apply page selection commands like [3-5]
                             | (text_presenter + present.images + present.metadata)
-                            | refine.add_headers)
+                            | refine.tile_images | refine.add_headers)
                 
                 # Apply truncation only if text is very long (>5000 chars)
                 if hasattr(processed, 'text') and processed.text and len(processed.text) > 5000:
@@ -376,7 +378,7 @@ def process(*paths: str) -> Attachments:
 
 def _get_smart_text_presenter(att: Attachment):
     """Select the appropriate text presenter based on DSL format commands."""
-    load, present, refine, split = _get_cached_namespaces()
+    load, present, refine, split, modify = _get_cached_namespaces()
     
     # Get format command (default to markdown)
     format_cmd = att.commands.get('format', 'markdown')

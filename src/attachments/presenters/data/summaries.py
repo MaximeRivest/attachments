@@ -5,76 +5,73 @@ from ...core import Attachment, presenter
 
 @presenter
 def summary(att: Attachment) -> Attachment:
-    """Fallback summary presenter."""
+    """Fallback summary presenter for non-DataFrame objects."""
+    try:
+        summary_text = f"\n## Object Summary\n\n"
+        summary_text += f"- **Type**: {type(att._obj).__name__}\n"
+        if hasattr(att._obj, '__len__'):
+            try:
+                summary_text += f"- **Length**: {len(att._obj)}\n"
+            except:
+                pass
+        summary_text += f"- **String representation**: {str(att._obj)[:100]}...\n"
+        att.text += summary_text + "\n"
+    except Exception as e:
+        att.text += f"\n*Error generating summary: {e}*\n\n"
     return att
 
 
 @presenter
 def summary(att: Attachment, df: 'pandas.DataFrame') -> Attachment:
-    """Generate summary statistics for DataFrame."""
+    """Add summary statistics to text."""
     try:
-        # Generate summary statistics
-        summary_text = "## DataFrame Summary\n\n"
-        summary_text += f"**Shape**: {df.shape[0]} rows × {df.shape[1]} columns\n\n"
+        summary_text = f"\n## Summary Statistics\n\n"
+        summary_text += f"- **Rows**: {len(df)}\n"
+        summary_text += f"- **Columns**: {len(df.columns)}\n"
         
-        # Column info
-        summary_text += "**Columns**:\n"
-        for col in df.columns:
-            dtype = str(df[col].dtype)
-            non_null = df[col].count()
-            total = len(df)
-            summary_text += f"- `{col}` ({dtype}): {non_null}/{total} non-null\n"
+        # Try to get memory usage (from legacy implementation)
+        try:
+            memory_usage = df.memory_usage(deep=True).sum()
+            summary_text += f"- **Memory Usage**: {memory_usage} bytes\n"
+        except:
+            summary_text += f"- **Memory Usage**: Not available\n"
         
-        summary_text += "\n"
+        # Get numeric columns (from legacy implementation)
+        try:
+            numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
+            summary_text += f"- **Numeric Columns**: {numeric_cols}\n"
+        except:
+            summary_text += f"- **Numeric Columns**: Not available\n"
         
-        # Basic statistics for numeric columns
-        numeric_cols = df.select_dtypes(include=['number']).columns
-        if len(numeric_cols) > 0:
-            summary_text += "**Numeric Statistics**:\n"
-            desc = df[numeric_cols].describe()
-            summary_text += desc.to_string()
-            summary_text += "\n\n"
-        
-        # Value counts for categorical columns (first few)
-        categorical_cols = df.select_dtypes(include=['object', 'category']).columns
-        if len(categorical_cols) > 0:
-            summary_text += "**Categorical Columns**:\n"
-            for col in categorical_cols[:3]:  # Limit to first 3 categorical columns
-                value_counts = df[col].value_counts().head(5)
-                summary_text += f"\n`{col}` (top 5 values):\n"
-                for value, count in value_counts.items():
-                    summary_text += f"- {value}: {count}\n"
-        
-        att.text += summary_text
-        return att
-        
+        att.text += summary_text + "\n"
     except Exception as e:
-        att.metadata['summary_error'] = f"Error generating summary: {e}"
-        return att
+        att.text += f"\n*Error generating summary: {e}*\n\n"
+    
+    return att
 
 
 @presenter
 def head(att: Attachment) -> Attachment:
-    """Fallback head presenter."""
+    """Fallback head presenter for non-DataFrame objects."""
+    if hasattr(att._obj, 'head'):
+        try:
+            head_result = att._obj.head()
+            att.text += f"\n## Preview\n\n{str(head_result)}\n\n"
+        except:
+            att.text += f"\n## Preview\n\n{str(att._obj)[:200]}\n\n"
+    else:
+        att.text += f"\n## Preview\n\n{str(att._obj)[:200]}\n\n"
     return att
 
 
 @presenter
 def head(att: Attachment, df: 'pandas.DataFrame') -> Attachment:
-    """Show first few rows of DataFrame."""
+    """Add data preview to text (additive)."""
     try:
-        # Get number of rows to show (default 5)
-        n_rows = int(att.commands.get('head', 5))
-        
-        # Generate head display
-        head_text = f"## DataFrame Head (first {n_rows} rows)\n\n"
-        head_df = df.head(n_rows)
-        head_text += head_df.to_string(index=True)
-        head_text += "\n\n"
-        
-        att.text += head_text
-        return att
-        
+        head_text = f"\n## Data Preview\n\n"
+        head_text += df.head().to_markdown(index=False)
+        att.text += head_text + "\n\n"  # Additive: append to existing text
     except Exception as e:
-        att.metadata['head_error'] = f"Error generating head: {e}"
-        return att 
+        att.text += f"\n*Error generating preview: {e}*\n\n"
+    
+    return att 

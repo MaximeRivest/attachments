@@ -39,9 +39,10 @@ def image_to_llm(att: Attachment) -> Attachment:
     # Import namespaces properly to get VerbFunction wrappers
     from .. import load, modify, present, refine
     
-    # Enhanced pipeline with watermark and resize support
+    # Enhanced pipeline with URL support and image control
     return (att 
-           | load.image_to_pil 
-           | modify.watermark  # Now applies auto watermark by default
+           | load.url_to_file          # Handle URLs first - download if needed
+           | load.image_to_pil         # Then load as PIL Image
+           | modify.watermark          # Apply auto watermark by default
            | present.images + present.metadata
-           | refine.resize_images + refine.add_headers)  # Only acts if [resize_images:...] present
+           | refine.resize_images | refine.add_headers)

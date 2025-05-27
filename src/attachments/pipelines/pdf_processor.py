@@ -11,8 +11,11 @@ DSL Commands:
         Aliases: text=plain, txt=plain, md=markdown
     [pages:1-5,10] - Specific pages (inherits from existing modify.pages)
     [resize_images:50%|800x600] - Image resize specification (consistent naming)
-    [tile:2x2|3x1|4] - Tile multiple PDF pages into grid layout
+    [tile:2x2|3x1|4] - Tile multiple PDF pages into grid layout (default: 2x2 for multi-page PDFs)
     [ocr:auto|true|false] - OCR for scanned PDFs (auto=detect and apply if needed)
+
+Note: Multi-page PDFs are automatically tiled in a 2x2 grid by default for better LLM consumption.
+Use [tile:false] to disable tiling or [tile:3x1] for custom layouts.
 
 Usage:
     # Explicit processor access
@@ -58,10 +61,33 @@ def pdf_to_llm(att: Attachment) -> Attachment:
     # Import namespaces properly to get VerbFunction wrappers
     from .. import load, modify, present, refine
     
-    # Enhanced pipeline with both text and images
-    # Smart filtering will choose based on DSL commands
-    # Note: Using only present.markdown (not both text + markdown) to avoid redundancy
-    # The smart presenter system will automatically choose the right format based on DSL
+    # Determine text format from DSL commands
+    format_cmd = att.commands.get('format', 'markdown')
+    
+    # Handle format aliases
+    format_aliases = {
+        'text': 'plain',
+        'txt': 'plain', 
+        'md': 'markdown'
+    }
+    format_cmd = format_aliases.get(format_cmd, format_cmd)
+    
+    # Build the pipeline based on format
+    if format_cmd == 'plain':
+        text_presenter = present.text
+    else:
+        # Default to markdown
+        text_presenter = present.markdown
+    
+    # Determine if images should be included
+    include_images = att.commands.get('images', 'true').lower() == 'true'
+    
+    # Build image pipeline if requested
+    if include_images:
+        image_pipeline = present.images
+    else:
+        # Empty pipeline that does nothing
+        image_pipeline = lambda att: att
     
     # Get OCR setting from DSL commands
     ocr_setting = att.commands.get('ocr', 'auto').lower()
@@ -69,24 +95,27 @@ def pdf_to_llm(att: Attachment) -> Attachment:
     if ocr_setting == 'true':
         # Force OCR regardless of text extraction quality
         return (att 
+               | load.url_to_file          # Handle URLs first - download if needed
                | load.pdf_to_pdfplumber 
                | modify.pages  # Optional - only acts if [pages:...] present
-               | present.markdown + present.images + present.ocr  # Include OCR
+               | text_presenter + image_pipeline + present.ocr + present.metadata  # Include OCR
                | refine.tile_images | refine.resize_images )
     elif ocr_setting == 'false':
         # Never use OCR
         return (att 
+               | load.url_to_file          # Handle URLs first - download if needed
                | load.pdf_to_pdfplumber 
                | modify.pages  # Optional - only acts if [pages:...] present
-               | present.markdown + present.images  # No OCR
+               | text_presenter + image_pipeline + present.metadata  # No OCR
                | refine.tile_images | refine.resize_images )
     else:
         # Auto mode (default): First extract text, then conditionally add OCR
         # Process with standard pipeline first
         processed = (att 
+                    | load.url_to_file          # Handle URLs first - download if needed
                     | load.pdf_to_pdfplumber 
                     | modify.pages  # Optional - only acts if [pages:...] present
-                    | present.markdown + present.images  # Standard extraction
+                    | text_presenter + image_pipeline + present.metadata  # Standard extraction
                     | refine.tile_images | refine.resize_images )
         
         # Check if OCR is needed based on text extraction quality

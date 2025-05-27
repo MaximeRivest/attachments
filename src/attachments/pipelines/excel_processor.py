@@ -11,7 +11,10 @@ DSL Commands:
         Aliases: text=plain, txt=plain, md=markdown
     [pages:1-3,5] - Specific sheets (inherits from existing modify.pages, treats pages as sheets)
     [resize_images:50%|800x600] - Image resize specification (consistent naming)
-    [tile:2x2|3x1|4] - Tile multiple sheets into grid layout
+    [tile:2x2|3x1|4] - Tile multiple sheets into grid layout (default: 2x2 for multi-sheet workbooks)
+
+Note: Multi-sheet Excel files are automatically tiled in a 2x2 grid by default for better LLM consumption.
+Use [tile:false] to disable tiling or [tile:3x1] for custom layouts.
 
 Usage:
     # Explicit processor access
@@ -91,9 +94,10 @@ def excel_to_llm(att: Attachment) -> Attachment:
         # Empty pipeline that does nothing
         image_pipeline = lambda att: att
     
-    # Enhanced pipeline with format and image control
+    # Enhanced pipeline with URL support and format control
     return (att 
-           | load.excel_to_openpyxl
-           | modify.pages  # Handles pages:1-3,5 DSL command (treats pages as sheets)
+           | load.url_to_file          # Handle URLs first - download if needed
+           | load.excel_to_openpyxl    # Then load as Excel
+           | modify.pages  # Handles pages:1-5,10 DSL command (treats pages as sheets)
            | text_presenter + image_pipeline + present.metadata
            | refine.tile_images | refine.resize_images | refine.add_headers) 

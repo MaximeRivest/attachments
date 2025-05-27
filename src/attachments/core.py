@@ -215,8 +215,13 @@ class Attachment:
         # Value part [^\[\]]* ensures it doesn't jump over other commands or include brackets.
         command_pattern_at_end = re.compile(r"\[([a-zA-Z0-9_-]+):([^\[\]]*)\]$")
         
+        # Regex to find shorthand page selection [1,3-5,-1] at the very END of the string.
+        # This matches patterns like [3-5], [1,3-5], [1,3-5,-1], etc.
+        page_shorthand_pattern = re.compile(r"\[([0-9,-]+)\]$")
+        
         temp_path_str = path_str
         while True:
+            # First try to match regular [key:value] commands
             match = command_pattern_at_end.search(temp_path_str)
             if match:
                 key = match.group(1).strip()
@@ -224,8 +229,20 @@ class Attachment:
                 commands_list.append((key, value))
                 # Update path_str to be the part before the matched command
                 temp_path_str = temp_path_str[:match.start()].strip()
-            else:
-                break # No more command-like patterns at the end
+                continue
+            
+            # If no regular command found, try shorthand page selection
+            page_match = page_shorthand_pattern.search(temp_path_str)
+            if page_match:
+                page_value = page_match.group(1).strip()
+                # Convert shorthand [3-5] to [pages:3-5]
+                commands_list.append(('pages', page_value))
+                # Update path_str to be the part before the matched command
+                temp_path_str = temp_path_str[:page_match.start()].strip()
+                continue
+            
+            # No more patterns found
+            break
         
         # Commands were parsed from right to left, so reverse for correct order in dictionary
         # For multiple commands with the same key, the rightmost one (last parsed) will win due to dict conversion.
@@ -368,8 +385,23 @@ _refiners = {}
 def loader(match: Callable[[Attachment], bool]):
     """Register a loader function with a match predicate."""
     def decorator(func):
-        _loaders[func.__name__] = (match, func)
-        return func
+        @wraps(func)
+        def wrapper(att: Attachment) -> Attachment:
+            """Wrapper that provides centralized error handling for all loaders."""
+            try:
+                return func(att)
+            except ImportError as e:
+                return _create_helpful_error_attachment(att, e, func.__name__)
+            except Exception as e:
+                # For other errors, check if it's a common issue we can help with
+                if 'github.com' in att.path and '/blob/' in att.path:
+                    return _create_github_url_error_attachment(att)
+                else:
+                    # Re-raise other exceptions as they might be legitimate errors
+                    raise e
+        
+        _loaders[func.__name__] = (match, wrapper)
+        return wrapper
     return decorator
 
 
@@ -784,5 +816,176 @@ def attach(path: str) -> Attachment:
 def A(path: str) -> Attachment:
     """Short alias for attach()."""
     return Attachment(path)
+
+
+def _create_helpful_error_attachment(att: Attachment, import_error: ImportError, loader_name: str) -> Attachment:
+    """Create a helpful error attachment for missing dependencies."""
+    error_msg = str(import_error).lower()
+    
+    # Map common import errors to helpful messages
+    dependency_map = {
+        'requests': {
+            'packages': ['requests'],
+            'description': 'Download files from URLs and access web content',
+            'use_case': 'URL processing'
+        },
+        'beautifulsoup4': {
+            'packages': ['beautifulsoup4'],
+            'description': 'Parse HTML and extract content from web pages',
+            'use_case': 'Web scraping and HTML parsing'
+        },
+        'bs4': {
+            'packages': ['beautifulsoup4'],
+            'description': 'Parse HTML and extract content from web pages', 
+            'use_case': 'Web scraping and HTML parsing'
+        },
+        'pandas': {
+            'packages': ['pandas'],
+            'description': 'Process CSV files and structured data',
+            'use_case': 'Data analysis and CSV processing'
+        },
+        'pil': {
+            'packages': ['Pillow'],
+            'description': 'Process images (resize, rotate, convert formats)',
+            'use_case': 'Image processing'
+        },
+        'pillow': {
+            'packages': ['Pillow'],
+            'description': 'Process images (resize, rotate, convert formats)',
+            'use_case': 'Image processing'
+        },
+        'pillow-heif': {
+            'packages': ['pillow-heif'],
+            'description': 'Support HEIC/HEIF image formats from Apple devices',
+            'use_case': 'HEIC image processing'
+        },
+        'pptx': {
+            'packages': ['python-pptx'],
+            'description': 'Process PowerPoint presentations',
+            'use_case': 'PowerPoint processing'
+        },
+        'python-pptx': {
+            'packages': ['python-pptx'],
+            'description': 'Process PowerPoint presentations',
+            'use_case': 'PowerPoint processing'
+        },
+        'docx': {
+            'packages': ['python-docx'],
+            'description': 'Process Word documents',
+            'use_case': 'Word document processing'
+        },
+        'openpyxl': {
+            'packages': ['openpyxl'],
+            'description': 'Process Excel spreadsheets',
+            'use_case': 'Excel processing'
+        },
+        'pdfplumber': {
+            'packages': ['pdfplumber'],
+            'description': 'Extract text and tables from PDF files',
+            'use_case': 'PDF processing'
+        },
+        'zipfile': {
+            'packages': [],  # Built-in module
+            'description': 'Process ZIP archives',
+            'use_case': 'Archive processing'
+        }
+    }
+    
+    # Find which dependency is missing
+    missing_deps = []
+    descriptions = []
+    use_cases = []
+    
+    for dep_name, info in dependency_map.items():
+        if dep_name in error_msg:
+            if info['packages']:  # Skip built-in modules
+                missing_deps.extend(info['packages'])
+                descriptions.append(info['description'])
+                use_cases.append(info['use_case'])
+    
+    # Remove duplicates while preserving order
+    missing_deps = list(dict.fromkeys(missing_deps))
+    descriptions = list(dict.fromkeys(descriptions))
+    use_cases = list(dict.fromkeys(use_cases))
+    
+    # Fallback if we can't identify the specific dependency
+    if not missing_deps:
+        missing_deps = ['required-package']
+        descriptions = ['process this file type']
+        use_cases = ['file processing']
+    
+    deps_str = ' '.join(missing_deps)
+    description = ', '.join(descriptions)
+    use_case = ', '.join(use_cases)
+    
+    att.text = f"""🚫 **Missing Dependencies for {use_case.title()}**
+
+**File:** `{att.path}`
+**Loader:** `{loader_name}`
+**Issue:** Cannot process this file because required packages are not installed.
+
+**Quick Fix:**
+```bash
+pip install {deps_str}
+```
+
+**Or with uv:**
+```bash
+uv pip install {deps_str}
+```
+
+**What this enables:**
+{description}
+
+**Alternative Solutions:**
+1. Install the optional dependencies: `pip install attachments[all]`
+2. Use a different file format if possible
+3. Convert the file to a supported format
+
+**Original Error:** {str(import_error)}
+"""
+    
+    att.metadata.update({
+        'error_type': 'missing_dependencies',
+        'helpful_error': True,
+        'missing_packages': missing_deps,
+        'loader_name': loader_name,
+        'original_error': str(import_error)
+    })
+    return att
+
+
+def _create_github_url_error_attachment(att: Attachment) -> Attachment:
+    """Create a helpful error attachment for GitHub blob URLs."""
+    raw_url = att.path.replace('/blob/', '/raw/')
+    
+    att.text = f"""💡 **GitHub URL Detected**
+
+**Original URL:** `{att.path}`
+**Suggested Raw URL:** `{raw_url}`
+
+**Issue:** GitHub blob URLs show the file viewer, not the raw file content.
+
+**Quick Fix:** Use the raw URL instead:
+```python
+from attachments import Attachments
+ctx = Attachments("{raw_url}")
+```
+
+**Why this happens:**
+- GitHub blob URLs (with `/blob/`) show the file in GitHub's web interface
+- Raw URLs (with `/raw/`) provide direct access to file content
+- Attachments needs direct file access to process content
+
+**Alternative:** Download the file locally and use the local path instead.
+"""
+    
+    att.metadata.update({
+        'error_type': 'github_url',
+        'helpful_error': True,
+        'suggested_url': raw_url,
+        'original_url': att.path
+    })
+    return att
 
 
