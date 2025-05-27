@@ -147,6 +147,42 @@ result = rag(
 print(result.answer)
 ```
 
+### Optional: CSS Selector Highlighting 🎯
+
+For advanced web scraping with visual element highlighting in screenshots:
+
+```bash
+# Install Playwright for CSS selector highlighting
+pip install playwright
+playwright install chromium
+
+# Or with uv
+uv add playwright
+uv run playwright install chromium
+
+# Or install with browser extras
+pip install attachments[browser]
+playwright install chromium
+```
+
+**What this enables:**
+- 🎯 Visual highlighting of selected elements with animations
+- 📸 High-quality screenshots with JavaScript rendering  
+- 🎨 Professional styling with glowing borders and badges
+- 🔍 Perfect for extracting specific page elements
+
+```python
+# CSS selector highlighting examples
+title = Attachments("https://example.com[select:h1]")  # Highlights H1 elements
+content = Attachments("https://example.com[select:.content]")  # Highlights .content class
+main = Attachments("https://example.com[select:#main]")  # Highlights #main ID
+
+# Multiple elements with counters and different colors
+multi = Attachments("https://example.com[select:h1, .important][viewport:1920x1080]")
+```
+
+*Note: Without Playwright, CSS selectors still work for text extraction, but no visual highlighting screenshots are generated.*
+
 ### Advanced Pipeline Processing
 
 For power users, use the full grammar system with composable pipelines:

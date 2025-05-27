@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "attachments"
-version = "0.5.3"  
+version = "0.5.4"  
 authors = [
   { name="Maxime Rivest", email="mrive052@gmail.com" },
 ]
@@ -31,8 +31,9 @@ keywords = ["llm", "ai", "pdf", "document", "multimodal", "openai", "claude" , "
 # Core dependencies for the modular architecture
 dependencies = [
     # Core file processing
-    "requests>=2.25.0",       # HTTP library for URL processing and web content
-    "beautifulsoup4>=4.9.0",  # HTML parsing for web content and HTML files
+    "requests>=2.25.0", # HTTP library for URL processing and web content
+    "beautifulsoup4>=4.9.0", # HTML parsing for web content and HTML files
+    "playwright>=1.52.0",
 ]
 
 [project.urls]

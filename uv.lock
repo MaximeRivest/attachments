@@ -126,6 +126,7 @@ version = "0.5.3"
 source = { editable = "." }
 dependencies = [
     { name = "beautifulsoup4" },
+    { name = "playwright" },
     { name = "requests" },
 ]
 
@@ -239,6 +240,7 @@ requires-dist = [
     { name = "pillow", marker = "extra == 'common'", specifier = ">=10.0.0" },
     { name = "pillow-heif", marker = "extra == 'all'", specifier = ">=0.22.0" },
     { name = "pillow-heif", marker = "extra == 'extended'", specifier = ">=0.22.0" },
+    { name = "playwright", specifier = ">=1.52.0" },
     { name = "playwright", marker = "extra == 'all'", specifier = ">=1.43.0" },
     { name = "playwright", marker = "extra == 'browser'", specifier = ">=1.43.0" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3.6.0" },
