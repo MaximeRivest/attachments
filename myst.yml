@@ -10,6 +10,8 @@ project:
   github: https://github.com/MaximeRivest/attachments
   toc:
     - file: README.md
+    - file: docs/architecture.md
+      title: Architecture Guide
     #- title: AI tutorials with attachments
     #  children:
     #    - file: docs/examples/openai_attachments_tutorial.ipynb
