@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "attachments"
-version = "0.5.0"  # Bump version for new modular architecture
+version = "0.5.1"  
 authors = [
   { name="Maxime Rivest", email="mrive052@gmail.com" },
 ]
