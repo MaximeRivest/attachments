@@ -241,14 +241,33 @@ def dspy(input_obj: Union[Attachment, AttachmentCollection]) -> 'DSPyAttachment'
             metadata=att.metadata
         )
         
-    except ImportError:
-        # Fallback if DSPy/Pydantic is not available - return a simple dict
-        return {
-            "text": att.text,
-            "images": att.images,
-            "audio": att.audio,
-            "path": att.path,
-            "metadata": att.metadata,
-            "_type": "attachment"
-        }
+    except ImportError as e:
+        # Better error handling when DSPy/Pydantic is not available
+        missing_packages = []
+        
+        try:
+            import dspy
+        except ImportError:
+            missing_packages.append("dspy-ai")
+        
+        try:
+            import pydantic
+        except ImportError:
+            missing_packages.append("pydantic")
+        
+        if missing_packages:
+            error_msg = (
+                f"DSPy adapter requires {' and '.join(missing_packages)} to be installed.\n\n"
+                f"Install with:\n"
+                f"  pip install {' '.join(missing_packages)}\n"
+                f"  # or\n"
+                f"  uv add {' '.join(missing_packages)}\n\n"
+                f"If you don't need DSPy integration, use other adapters like:\n"
+                f"  attachment.openai_chat()  # For OpenAI\n"
+                f"  attachment.claude()       # For Claude"
+            )
+        else:
+            error_msg = f"DSPy adapter failed: {e}"
+        
+        raise ImportError(error_msg) from e
 

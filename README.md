@@ -129,20 +129,22 @@ print(msg.content)
 
 ### DSPy Integration
 
+We have a special `dspy` module that allows you to use Attachments with DSPy.
+
 ```bash
 pip install dspy
 ```
 
 ```python
 import dspy
-from attachments import Attachments
+from attachments.dspy import Attachments
 
 dspy.configure(lm=dspy.LM('openai/gpt-4.1-nano'))
 rag = dspy.ChainOfThought("question, document -> answer")
 
 result = rag(
     question="What is the main message of the document?", 
-    document=Attachments("https://github.com/MaximeRivest/attachments/raw/main/src/attachments/data/sample_multipage.pptx[3-5]").dspy()
+    document=Attachments("https://github.com/MaximeRivest/attachments/raw/main/src/attachments/data/sample_multipage.pptx[3-5]")
 )
 print(result.answer)
 ```
