@@ -18,7 +18,7 @@ Most users will not have to learn anything more than: `Attachments("path/to/file
 
 
 Attachments aims to be **the** community funnel from *file → text + base64 images* for LLMs.  
-Stop re-writing that plumbing in every project – contribute your *loader / transform / renderer* plugin instead!
+Stop re-writing that plumbing in every project – contribute your *loader / modifier / presenter / refiner / adapter* plugin instead!
 
 ## Quick-start ⚡
 
@@ -322,27 +322,43 @@ result = (attach("data.csv[limit:500]")
 ## Extending 🧩
 
 ```python
-# my_ocr_renderer.py
-from attachments.plugin_api import register_plugin, requires
-from attachments.core import Renderer
+# my_ocr_presenter.py
+from attachments.core import Attachment, presenter
 
-@register_plugin("renderer_text", priority=50)
-@requires("pytesseract", "PIL")
-class ImageOCR(Renderer):
-    content_type = "text"
-
-    def match(self, obj):
-        from PIL import Image
-        return isinstance(obj, Image.Image)
-
-    def render(self, obj, meta):
+@presenter
+def ocr_text(att: Attachment, pil_image: 'PIL.Image.Image') -> Attachment:
+    """Extract text from images using OCR."""
+    try:
         import pytesseract
-        return pytesseract.image_to_string(obj)
+        
+        # Extract text using OCR
+        extracted_text = pytesseract.image_to_string(pil_image)
+        
+        # Add OCR text to attachment
+        att.text += f"\n## OCR Extracted Text\n\n{extracted_text}\n"
+        
+        # Add metadata
+        att.metadata['ocr_extracted'] = True
+        att.metadata['ocr_text_length'] = len(extracted_text)
+        
+        return att
+        
+    except ImportError:
+        att.text += "\n## OCR Not Available\n\nInstall pytesseract: pip install pytesseract\n"
+        return att
 ```
 
-1. Put the file somewhere on disk.
-2. `export ATTACHMENTS_PLUGIN_PATH=/abs/path/to/dir_or_file`
-3. `import attachments` – your plugin is auto-discovered, no code changes.
+**How it works:**
+1. **Save the file** anywhere in your project
+2. **Import it** before using attachments: `import my_ocr_presenter`
+3. **Use automatically**: `Attachments("scanned_document.png")` will now include OCR text
+
+**Other extension points:**
+- `@loader` - Add support for new file formats
+- `@modifier` - Add new transformations (crop, rotate, etc.)
+- `@presenter` - Add new content extraction methods
+- `@refiner` - Add post-processing steps
+- `@adapter` - Add new API format outputs
 
 ---
 
