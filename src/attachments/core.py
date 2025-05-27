@@ -380,6 +380,7 @@ _modifiers = {}
 _presenters = {}
 _adapters = {}
 _refiners = {}
+_splitters = {}  # Split functions that expand attachments into collections
 
 
 def loader(match: Callable[[Attachment], bool]):
@@ -606,6 +607,28 @@ def refiner(func):
     return func
 
 
+def splitter(func):
+    """Register a splitter function that expands attachments into collections."""
+    import inspect
+    sig = inspect.signature(func)
+    params = list(sig.parameters.values())
+    
+    if len(params) >= 2:
+        type_hint = params[1].annotation
+        if type_hint != inspect.Parameter.empty:
+            key = func.__name__
+            if key not in _splitters:
+                _splitters[key] = []
+            _splitters[key].append((type_hint, func))
+            return func
+    
+    key = func.__name__
+    if key not in _splitters:
+        _splitters[key] = []
+    _splitters[key].append((None, func))
+    return func
+
+
 # --- VERB NAMESPACES ---
 
 class VerbFunction:
@@ -728,6 +751,31 @@ class VerbNamespace:
         
         @wraps(handlers[0][1])
         def wrapper(att: Attachment) -> Union[Attachment, AttachmentCollection]:
+            # Check if this is a splitter function (expects text parameter)
+            import inspect
+            first_handler = handlers[0][1]
+            sig = inspect.signature(first_handler)
+            params = list(sig.parameters.values())
+            
+            # If second parameter is annotated as 'str', this is likely a splitter
+            is_splitter = (len(params) >= 2 and 
+                          params[1].annotation == str)
+            
+            if is_splitter:
+                # For splitters, pass the text content
+                content = att.text if att.text else ""
+                
+                # Try to find a matching handler based on type annotations
+                for expected_type, handler_fn in handlers:
+                    if expected_type is None:
+                        return handler_fn(att, content)
+                    elif expected_type == str:
+                        return handler_fn(att, content)
+                
+                # Fallback to first handler
+                return handlers[0][1](att, content)
+            
+            # Original logic for modifiers/presenters
             if att._obj is None:
                 # Use fallback handler
                 for expected_type, handler_fn in handlers:

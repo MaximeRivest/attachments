@@ -4,8 +4,8 @@ Turn any file into model-ready text + images, in one line."""
 
 from .core import (
     Attachment, AttachmentCollection, attach, A, Pipeline, SmartVerbNamespace, 
-    _loaders, _modifiers, _presenters, _adapters, _refiners, 
-    loader, modifier, presenter, adapter, refiner
+    _loaders, _modifiers, _presenters, _adapters, _refiners, _splitters,
+    loader, modifier, presenter, adapter, refiner, splitter
 )
 from .highest_level_api import process as simple, Attachments
 
@@ -29,7 +29,7 @@ modify = SmartVerbNamespace(_modifiers)
 present = SmartVerbNamespace(_presenters)
 adapt = SmartVerbNamespace(_adapters)
 refine = SmartVerbNamespace(_refiners)
-split = SmartVerbNamespace(_modifiers)  # Split functions are also modifiers
+split = SmartVerbNamespace(_splitters)  # Split functions now have their own registry
 
 # Dynamic version reading from pyproject.toml
 def _get_version():
@@ -97,6 +97,7 @@ __all__ = [
     'presenter', 
     'adapter',
     'refiner',
+    'splitter',
     
     # Module imports
     'loaders',

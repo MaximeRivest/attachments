@@ -4,14 +4,14 @@ Split functions are "expanders" - they take one attachment and return an Attachm
 This follows the pattern of zip_to_images but works on already-loaded content.
 """
 
-from .core import Attachment, AttachmentCollection, modifier
+from .core import Attachment, AttachmentCollection, splitter
 import re
 from typing import List
 
 
 # --- TEXT SPLITTING (works on attachments with text content) ---
 
-@modifier
+@splitter
 def paragraphs(att: Attachment, text: str) -> AttachmentCollection:
     """Split text content into paragraphs."""
     # Use the text from att.text if available, otherwise use passed text parameter
@@ -43,7 +43,7 @@ def paragraphs(att: Attachment, text: str) -> AttachmentCollection:
     return AttachmentCollection(chunks)
 
 
-@modifier
+@splitter
 def sentences(att: Attachment, text: str) -> AttachmentCollection:
     """Split text content into sentences."""
     # Use the text from att.text if available, otherwise use passed text parameter
@@ -75,7 +75,7 @@ def sentences(att: Attachment, text: str) -> AttachmentCollection:
     return AttachmentCollection(chunks)
 
 
-@modifier
+@splitter
 def characters(att: Attachment, text: str) -> AttachmentCollection:
     """Split text content by character count."""
     # Use the text from att.text if available, otherwise use passed text parameter
@@ -108,7 +108,7 @@ def characters(att: Attachment, text: str) -> AttachmentCollection:
     return AttachmentCollection(chunks)
 
 
-@modifier
+@splitter
 def tokens(att: Attachment, text: str) -> AttachmentCollection:
     """Split text content by approximate token count (for LLM contexts)."""
     # Use the text from att.text if available, otherwise use passed text parameter
@@ -164,7 +164,7 @@ def tokens(att: Attachment, text: str) -> AttachmentCollection:
     return AttachmentCollection(chunks)
 
 
-@modifier
+@splitter
 def lines(att: Attachment, text: str) -> AttachmentCollection:
     """Split text content by line count."""
     # Use the text from att.text if available, otherwise use passed text parameter
@@ -201,7 +201,7 @@ def lines(att: Attachment, text: str) -> AttachmentCollection:
 
 # --- OBJECT-BASED SPLITTING (works on specific object types) ---
 
-@modifier  
+@splitter  
 def pages(att: Attachment, pdf: 'pdfplumber.PDF') -> AttachmentCollection:
     """Split PDF into individual page attachments."""
     chunks = []
@@ -223,7 +223,7 @@ def pages(att: Attachment, pdf: 'pdfplumber.PDF') -> AttachmentCollection:
     return AttachmentCollection(chunks)
 
 
-@modifier
+@splitter
 def slides(att: Attachment, pres: 'pptx.Presentation') -> AttachmentCollection:
     """Split PowerPoint into individual slide attachments."""
     chunks = []
@@ -245,7 +245,7 @@ def slides(att: Attachment, pres: 'pptx.Presentation') -> AttachmentCollection:
     return AttachmentCollection(chunks)
 
 
-@modifier
+@splitter
 def rows(att: Attachment, df: 'pandas.DataFrame') -> AttachmentCollection:
     """Split DataFrame into row-based chunks."""
     # Get rows per chunk from DSL commands or default
@@ -274,7 +274,7 @@ def rows(att: Attachment, df: 'pandas.DataFrame') -> AttachmentCollection:
     return AttachmentCollection(chunks)
 
 
-@modifier
+@splitter
 def columns(att: Attachment, df: 'pandas.DataFrame') -> AttachmentCollection:
     """Split DataFrame into column-based chunks."""
     # Get columns per chunk from DSL commands or default
@@ -306,7 +306,7 @@ def columns(att: Attachment, df: 'pandas.DataFrame') -> AttachmentCollection:
     return AttachmentCollection(chunks)
 
 
-@modifier
+@splitter
 def sections(att: Attachment, soup: 'bs4.BeautifulSoup') -> AttachmentCollection:
     """Split HTML content by sections (h1, h2, etc. headings)."""
     try:
@@ -360,7 +360,7 @@ def sections(att: Attachment, soup: 'bs4.BeautifulSoup') -> AttachmentCollection
 
 # --- CUSTOM SPLITTING ---
 
-@modifier
+@splitter
 def custom(att: Attachment, text: str) -> AttachmentCollection:
     """Split text content by custom separator."""
     # Use the text from att.text if available, otherwise use passed text parameter
