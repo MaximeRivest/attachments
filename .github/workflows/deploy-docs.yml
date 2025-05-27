@@ -22,23 +22,15 @@ jobs:
         with:
           python-version: '3.11' # Match your project's Python version
 
-      - name: Install uv
-        run: pip install uv
-
-      - name: Create virtual environment with uv
-        run: uv venv
-
-      - name: Install dependencies
-        # This will use the .venv created by "uv venv"
-        run: uv pip install -e '.[dev]'
+      - name: Install MyST
+        run: pip install mystmd
 
       - name: Clean previous build (if any)
         run: rm -rf _build
 
       - name: Build MyST documentation
-        # Ensure myst is run from the virtual environment
         # Explicitly set BASE_URL for correct asset path generation in subdirectories
-        run: source .venv/bin/activate && BASE_URL=/attachments/ myst build --html
+        run: BASE_URL=/attachments/ myst build --html
 
       - name: Upload GitHub Pages artifact
         uses: actions/upload-pages-artifact@v3
