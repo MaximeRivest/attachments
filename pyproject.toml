@@ -75,6 +75,13 @@ common = [
     "pypdfium2>=4.0.0",       # PDF rendering for images (DOCX, PDF visual conversion)
 ]
 
+# Microsoft Office formats
+office = [
+    "python-pptx>=0.6.0",     # PowerPoint (.pptx) processing
+    "python-docx>=1.1.0",     # Word (.docx) processing  
+    "openpyxl>=3.1.0",        # Excel (.xlsx) processing
+]
+
 # PDF processing (MIT-compatible)
 pdf = [
     "pdfplumber>=0.7.0",      # Primary PDF library

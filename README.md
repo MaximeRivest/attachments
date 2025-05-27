@@ -185,6 +185,33 @@ multi = Attachments("https://example.com[select:h1, .important][viewport:1920x10
 
 *Note: Without Playwright, CSS selectors still work for text extraction, but no visual highlighting screenshots are generated.*
 
+### Optional: Microsoft Office Support 📄
+
+For dedicated Microsoft Office format processing:
+
+```bash
+# Install just Office format support
+pip install attachments[office]
+
+# Or with uv
+uv add attachments[office]
+```
+
+**What this enables:**
+- 📊 PowerPoint (.pptx) slide extraction and processing
+- 📝 Word (.docx) document text and formatting extraction  
+- 📈 Excel (.xlsx) spreadsheet data analysis
+- 🎯 Lightweight installation for Office-only workflows
+
+```python
+# Office format examples
+presentation = Attachments("slides.pptx[1-5]")  # Extract specific slides
+document = Attachments("report.docx")           # Word document processing
+spreadsheet = Attachments("data.xlsx[summary:true]")  # Excel with summary
+```
+
+*Note: Office formats are also included in the `common` and `all` dependency groups.*
+
 ### Advanced Pipeline Processing
 
 For power users, use the full grammar system with composable pipelines:
