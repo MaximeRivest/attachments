@@ -392,5 +392,10 @@ def ocr_text(att: Attachment, pil_image: 'PIL.Image.Image') -> Attachment:
 ---
 
 ### Roadmap
+- [ ] **Documentation**: Architecture, Grammar, How to extend, examples (at least 1 per pipeline), DSL, API reference
+- [ ] **Test coverage**: 100% for pipelines, 100% for DSL.
+- [ ] **More pipelines**: Google Suite, Google Drive, Email(!?), Youtube url, X link, ChatGPT url, Slack url (?), data (parquet, duckdb, arrow, sqlite), etc.
+- [ ] **More adapters**: Bedrock, Azure, Openrouter, Ollama (?),  Litellm, Langchain, vllm(?), sglang(?), cossette, claudette, etc.
+- [ ] **Add .audio and .video**: and corresponding pipelines.
 
 Join us – file an issue or open a PR! 🚀
