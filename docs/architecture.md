@@ -41,11 +41,126 @@ Attachments is built on a **modular, pipeline-based architecture** that transfor
 
 ### Architecture at a Glance
 
+**The Five-Stage Data Transformation Pipeline + Split System:**
+
 ```
-Input File → [LOAD] → [MODIFY] → [PRESENT] → [REFINE] → [ADAPT] → LLM API
-     ↓           ↓         ↓          ↓         ↓         ↓
-   DSL      File Object  Transform   Extract   Polish   Format
-  Parser    (PDF, etc.)  (Pages)     (Text)   (Headers) (Claude)
+String → [LOAD] → [MODIFY] → [PRESENT] → [REFINE] → [ADAPT] → APIs
+  ↓         ↓         ↓          ↓         ↓         ↓
+Path     Object    Object    Content   Content   Format
++ DSL    (PDF)     (pages)   .text     .text     (Claude)
+         (CSV)     (rows)    .images   .images   (OpenAI)
+         (IMG)     (crop)    .metadata .metadata (DSPy)
+
+           ↓ [SPLIT] ↓ [SPLIT] ↓ [SPLIT]
+         
+         Collection → Vectorized → Reduced
+         (chunks)     (parallel)   (combined)
+```
+
+**Split Integration Points:**
+
+- **Object-level**: `split.pages(pdf)` → page collection
+- **Content-level**: `split.paragraphs(text)` → semantic chunks
+- **Structure-level**: `split.sections(html)` → logical sections
+
+**Split Example - Semantic Document Analysis:**
+```python
+# Traditional: entire document as one blob
+result = attach("report.pdf") | load.pdf_to_pdfplumber | present.markdown
+
+# Split-enabled: semantic analysis of each section
+insights = (attach("report.pdf") 
+           | load.pdf_to_pdfplumber 
+           | split.pages                     # 1 PDF → individual pages
+           | present.markdown                # Vectorized: each page → markdown
+           | split.paragraphs                # Pages → semantic paragraphs  
+           | refine.add_headers              # Vectorized: context for each chunk
+           | adapt.claude("Extract key insights from this section"))
+
+# Result: Detailed insights from each semantic unit, not just summary
+```
+
+**Split Example - Multi-Modal Presentation Analysis:**
+```python
+# Analyze each slide individually for detailed feedback
+slide_analysis = (attach("deck.pptx")
+                 | load.pptx_to_python_pptx
+                 | split.slides              # 1 presentation → individual slides
+                 | present.markdown + present.images  # Each slide: text + visuals
+                 | adapt.claude("Analyze this slide's effectiveness and suggest improvements"))
+
+# Result: Slide-by-slide detailed feedback instead of general overview
+```
+
+**Precise Data Flow Patterns:**
+
+1. **LOAD**: `string` → `att._obj` (file path → structured object)
+   - `"document.pdf"` → `pdfplumber.PDF` object
+   - `"data.csv"` → `pandas.DataFrame` object  
+   - `"image.jpg"` → `PIL.Image` object
+
+2. **MODIFY**: `att._obj` → `att._obj` (object transformation)
+   - PDF object → PDF object (specific pages selected)
+   - DataFrame → DataFrame (rows limited, columns filtered)
+   - Image → Image (cropped, rotated, resized)
+
+3. **SPLIT**: `att` → `AttachmentCollection` (expansion to multiple chunks)
+   - Single attachment → Multiple semantic/structural units
+   - Enables granular analysis and vectorized processing
+   - Can split by: pages, slides, paragraphs, sections, rows, columns
+   - Focus: Meaningful decomposition for deeper insights
+
+4. **PRESENT**: `att._obj` → `att.{text,images,audio,metadata}` (content extraction)
+   - PDF object → `att.text` (markdown), `att.images` (base64 PNGs)
+   - DataFrame → `att.text` (formatted table), `att.metadata` (shape info)
+   - Image → `att.images` (base64 data URL), `att.metadata` (dimensions)
+
+5. **REFINE**: `att.attributes` → `att.attributes` (content polishing)
+   - `att.text` → `att.text` (headers added, truncated)
+   - `att.images` → `att.images` (tiled, resized)
+   - `att.metadata` → `att.metadata` (enriched)
+
+6. **ADAPT**: `att.attributes` → `external format` (API formatting)
+   - `att.{text,images}` → `[{"role": "user", "content": [...]}]` (OpenAI)
+   - `att.{text,images}` → `[{"role": "user", "content": [...]}]` (Claude)
+   - `att.{text,images}` → `DSPyAttachment` object (DSPy)
+
+### Attachment Data Structure
+
+**Core Attributes** (populated by presenters):
+```python
+class Attachment:
+    # Input parsing
+    attachy: str                    # Original input: "file.pdf[pages:1-5]"
+    path: str                       # Extracted path: "file.pdf"  
+    commands: Dict[str, str]        # Parsed DSL: {"pages": "1-5"}
+    
+    # Processing state
+    _obj: Optional[Any]             # Loaded object (PDF, DataFrame, etc.)
+    pipeline: List[str]             # Processing history
+    
+    # Content attributes (LLM-ready)
+    text: str                       # Extracted text content
+    images: List[str]               # Base64-encoded images (data URLs)
+    audio: List[str]                # Audio content (future)
+    metadata: Dict[str, Any]        # Processing metadata
+```
+
+**Content Population Examples:**
+```python
+# PDF processing
+att.text = "# PDF Document\n\n## Page 1\n\nContent here..."
+att.images = ["data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."]
+att.metadata = {"pdf_pages_rendered": 3, "is_likely_scanned": False}
+
+# Image processing  
+att.text = "# Image: photo.jpg\n\n- **Size**: (1920, 1080)\n- **Format**: JPEG"
+att.images = ["data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."]
+att.metadata = {"image_format": "JPEG", "image_size": (1920, 1080)}
+
+# Data processing
+att.text = "## Data from data.csv\n\n| Name | Age |\n|------|-----|\n| John | 25 |"
+att.metadata = {"csv_shape": (100, 5), "csv_columns": ["Name", "Age", ...]}
 ```
 
 ---
@@ -762,54 +877,88 @@ def academic_xyz_to_llm(att):
 
 ---
 
-## DSL Grammar Engine
+## Grammar of File Processing
 
-### Command Parsing
+### Overview
 
-**Location**: `src/attachments/core.py` - `Attachment._parse_attachy()`
+Attachments provides a **grammar of file processing** - a consistent set of verbs that compose naturally to solve common file-to-LLM challenges, inspired by dplyr's grammar of data manipulation.
 
-**Supported Patterns:**
+### Core Verbs
+
+**Data Verbs** (like dplyr):
+- `load.*` - Import files into structured objects
+- `modify.*` - Transform objects (filter, select, reshape)  
+- `split.*` - Decompose into semantic units
+- `present.*` - Extract content (text, images, metadata)
+- `refine.*` - Polish and enhance content
+- `adapt.*` - Format for external APIs
+
+**Composition Patterns**:
 ```python
-# Page/slide selection
-"document.pdf[1,3-5,-1]"     # Pages 1, 3-5, and last
-"slides.pptx[3-5]"           # Slides 3 through 5
+# Sequential composition with |
+result = (attach("data.csv") 
+         | load.csv_to_pandas 
+         | modify.limit 
+         | present.markdown)
 
-# Named commands  
-"image.jpg[rotate:90]"       # Rotate 90 degrees
-"data.csv[limit:100]"        # Limit to 100 rows
-"page.html[select:h1]"       # CSS selector
+# Additive composition with +  
+content = attachment | (present.text + present.images + present.metadata)
 
-# Chained commands
-"doc.pdf[pages:1-5][format:markdown][images:false]"
+# Grouping with split (like group_by)
+insights = (attach("report.pdf")
+           | load.pdf_to_pdfplumber
+           | split.pages              # "group by" pages
+           | present.markdown         # apply to each page
+           | adapt.claude("analyze")) # reduce to insights
 ```
 
-**Parsing Algorithm:**
-1. **Right-to-left parsing**: Commands parsed from end of string
-2. **Shorthand expansion**: `[1-5]` → `[pages:1-5]`
-3. **Command dictionary**: Preserves order, last command wins for duplicates
-4. **Path extraction**: Remaining string becomes file path
+### Grammar Benefits
 
-### Command Processing
-
-**Smart Filtering in Presenters:**
+**Consistency**: Same verb patterns across all file types
 ```python
-@presenter
-def smart_presenter_wrapper(att: Attachment, *args, **kwargs):
-    """Smart presenter wrapper that filters based on DSL commands."""
-    
-    # Check format preference
-    if 'format' in att.commands:
-        preferred_format = att.commands['format']
-        if preferred_format == 'plain' and presenter_name != 'text':
-            return att  # Skip non-text presenters
-    
-    # Check content filtering
-    if att.commands.get('images', 'true').lower() == 'false':
-        if presenter_category == 'image':
-            return att  # Skip image presenters
-    
-    # Apply presenter
-    return func(att, *args, **kwargs)
+# Same pattern works for any file type
+attach("file.pdf") | load.pdf_to_pdfplumber | present.markdown
+attach("file.csv") | load.csv_to_pandas | present.markdown  
+attach("file.jpg") | load.image_to_pil | present.markdown
+```
+
+**Composability**: Verbs combine naturally
+```python
+# Build complex pipelines from simple verbs
+academic_processor = (load.pdf_to_pdfplumber 
+                     | modify.pages 
+                     | present.markdown + present.images
+                     | refine.add_headers | refine.truncate
+                     | adapt.claude)
+```
+
+**Extensibility**: Add new verbs that fit the grammar
+```python
+@loader(match=lambda att: att.path.endswith('.xyz'))
+def xyz_to_custom(att): ...  # New verb follows same pattern
+
+@presenter  
+def academic_format(att, obj): ...  # Composes with existing verbs
+```
+
+### DSL Commands
+
+**Declarative Syntax**: Simple commands modify verb behavior
+```python
+# Commands modify how verbs operate
+"document.pdf[pages:1-5]"        # modify.pages uses 1-5
+"image.jpg[rotate:90]"           # modify.rotate uses 90°  
+"data.csv[limit:100]"            # modify.limit uses 100 rows
+"url[select:h1][format:markdown]" # modify.select + present.markdown
+```
+
+**Command Processing**: Verbs read relevant commands
+```python
+@modifier
+def pages(att: Attachment, pdf: 'pdfplumber.PDF') -> Attachment:
+    pages_cmd = att.commands.get('pages', 'all')  # Read DSL command
+    # Apply page selection based on command
+    return att
 ```
 
 ---
