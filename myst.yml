@@ -12,6 +12,10 @@ project:
     - file: README.md
     - file: docs/architecture.md
       title: Architecture Guide
+    - title: Examples & Tutorials
+      children:
+        - file: docs/examples/pptx_split_demo.ipynb
+          title: PowerPoint Processing Demo
     #- title: AI tutorials with attachments
     #  children:
     #    - file: docs/examples/openai_attachments_tutorial.ipynb
