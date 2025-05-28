@@ -2,170 +2,170 @@
 
 > **The modular, extensible architecture behind the Python funnel for LLM context**
 
-> **🚧 Work in Progress** - This document is actively being developed and refined.
-> 
-> **🤖 AI + Human Generated** - This documentation was collaboratively created by AI and human contributors to ensure accuracy and completeness.
-
-## Table of Contents
-
-1. [Overview](#overview)
-2. [Core Architecture](#core-architecture)
-3. [The Five-Stage Pipeline](#the-five-stage-pipeline)
-4. [The Split/Chunking System](#the-splitchunking-system)
-5. [Vectorization & Collections](#vectorization--collections)
-6. [Match System](#match-system)
-7. [Component Deep Dive](#component-deep-dive)
-8. [Extension System](#extension-system)
-9. [DSL Grammar Engine](#dsl-grammar-engine)
-10. [High-Level API Design](#high-level-api-design)
-11. [Pipeline Processor System](#pipeline-processor-system)
-12. [Error Handling & Fallbacks](#error-handling--fallbacks)
-13. [Performance & Memory Management](#performance--memory-management)
-14. [Contributing New Components](#contributing-new-components)
-15. [Namespace System](#namespace-system)
-
----
-
 ## Overview
 
-Attachments is built on a **modular, pipeline-based architecture** that transforms any file into LLM-ready context through five distinct stages. The system is designed for **extensibility**, **composability**, and **ease of use**.
+Attachments transforms **any file into LLM-ready context** through a simple but powerful architecture. At its core, it's a **grammar of composable verbs** that work consistently across all file types.
 
-### Design Principles
+### The Big Picture
 
-- **🔧 Modular**: Each component has a single responsibility
-- **🔗 Composable**: Components can be chained and combined
-- **📈 Extensible**: New file types and transformations via plugins
-- **🎯 Declarative**: DSL grammar for non-programmers
-- **🛡️ Robust**: Graceful fallbacks and error handling
-- **⚡ Performance**: Lazy loading and efficient memory usage
+The Attachments architecture was designed to support a single goal: create the `Attachments` object without losing my mind while doing it. `Attachments`' role is simple—take any string that represents a path or URL and return an object that has `.text` ready to f-string into a prompt and base64 images (in a list) ready to be sent to an LLM. The difficulty comes from the fact that Attachments does everything from a simple string. Under the hood, it has to decide a lot of things, and there are inevitably lots of possible pipelines because Attachments' goal is to process **any** string and URL. Oh, and `Attachments` must also elegantly deliver its output to any LLM library (or non-LLM library). To achieve this, we designed a grammar of file processing (inspired by dplyr and ggplot2). This consists of 6 composable verbs, each with a very specific role. We also designed a DSL (Domain Specific Language) that allows users to specify how they want their files to be processed. We could have used dictionaries, but this DSL is entirely optional. When using the verbs directly to compose your own pipeline, you do not need to use the DSL—you can just pass your parameters to the functions directly.
 
-### Architecture at a Glance
-
-**The Five-Stage Data Transformation Pipeline + Split System:**
-
-```
-String → [LOAD] → [MODIFY] → [PRESENT] → [REFINE] → [ADAPT] → APIs
-  ↓         ↓         ↓          ↓         ↓         ↓
-Path     Object    Object    Content   Content   Format
-+ DSL    (PDF)     (pages)   .text     .text     (Claude)
-         (CSV)     (rows)    .images   .images   (OpenAI)
-         (IMG)     (crop)    .metadata .metadata (DSPy)
-
-           ↓ [SPLIT] ↓ [SPLIT] ↓ [SPLIT]
-         
-         Collection → Vectorized → Reduced
-         (chunks)     (parallel)   (combined)
-```
-
-**Split Integration Points:**
-
-- **Object-level**: `split.pages(pdf)` → page collection
-- **Content-level**: `split.paragraphs(text)` → semantic chunks
-- **Structure-level**: `split.sections(html)` → logical sections
-
-**Split Example - Semantic Document Analysis:**
+**One API, Any File:**
 ```python
-# Traditional: entire document as one blob
-result = attach("report.pdf") | load.pdf_to_pdfplumber | present.markdown
-
-# Split-enabled: semantic analysis of each section
-insights = (attach("report.pdf") 
-           | load.pdf_to_pdfplumber 
-           | split.pages                     # 1 PDF → individual pages
-           | present.markdown                # Vectorized: each page → markdown
-           | split.paragraphs                # Pages → semantic paragraphs  
-           | refine.add_headers              # Vectorized: context for each chunk
-           | adapt.claude("Extract key insights from this section"))
-
-# Result: Detailed insights from each semantic unit, not just summary
+# Simple API - works for any file type
+ctx = Attachments("document.pdf", "data.csv", "image.jpg")
+print(ctx.text)      # All content as text
+print(ctx.images)    # All images as base64
+ctx.claude("Analyze this content")  # Ready for AI
 ```
 
-**Split Example - Multi-Modal Presentation Analysis:**
+**Grammar API - Full Control:**
 ```python
-# Analyze each slide individually for detailed feedback
-slide_analysis = (attach("deck.pptx")
-                 | load.pptx_to_python_pptx
-                 | split.slides              # 1 presentation → individual slides
-                 | present.markdown + present.images  # Each slide: text + visuals
-                 | adapt.claude("Analyze this slide's effectiveness and suggest improvements"))
-
-# Result: Slide-by-slide detailed feedback instead of general overview
+# Composable verbs for complex workflows
+insights = (attach("report.pdf")
+           | load.pdf_to_pdfplumber    # File → Object
+           | split.pages               # Object → Collection  
+           | present.markdown          # Extract content
+           | refine.add_headers        # Polish content
+           | adapt.claude("Analyze"))  # Format for AI
 ```
 
-**Precise Data Flow Patterns:**
+**Pipeline Operators:**
+- **`|` (pipe)**: Sequential processing - each step **overwrites/transforms** the attachment
+- **`+` (plus)**: Additive composition - **combines** multiple presenters' outputs
+  ```python
+  # Sequential: each step transforms the result
+  result = attach("doc.pdf") | load.pdf_to_pdfplumber | present.markdown
+  
+  # Additive: combines text + images + metadata into one attachment
+  content = attach("doc.pdf") | load.pdf_to_pdfplumber | (present.text + present.images + present.metadata)
+  ```
 
-1. **LOAD**: `string` → `att._obj` (file path → structured object)
-   - `"document.pdf"` → `pdfplumber.PDF` object
-   - `"data.csv"` → `pandas.DataFrame` object  
-   - `"image.jpg"` → `PIL.Image` object
+### The Grammar of File Processing
 
-2. **MODIFY**: `att._obj` → `att._obj` (object transformation)
-   - PDF object → PDF object (specific pages selected)
-   - DataFrame → DataFrame (rows limited, columns filtered)
-   - Image → Image (cropped, rotated, resized)
+**Six Composable Verbs** (inspired by dplyr):
 
-3. **SPLIT**: `att` → `AttachmentCollection` (expansion to multiple chunks)
-   - Single attachment → Multiple semantic/structural units
-   - Enables granular analysis and vectorized processing
-   - Can split by: pages, slides, paragraphs, sections, rows, columns
-   - Focus: Meaningful decomposition for deeper insights
+| Verb | Purpose | Example | Result |
+|------|---------|---------|--------|
+| `load.*` | File → Object | `load.pdf_to_pdfplumber` | PDF → pdfplumber.PDF |
+| `modify.*` | Object → Object | `modify.pages` | Extract pages 1-5 |
+| `split.*` | Object → Collection | `split.paragraphs` | 1 doc → N chunks |
+| `present.*` | Object → text/images/video(future)/audio(future) | `present.markdown` | Object → text/images |
+| `refine.*` | text/images/video(future)/audio(future) → text/images/video(future)/audio(future) | `refine.add_headers` | Add structure |
+| `adapt.*` | text/images/video(future)/audio(future) → external API format | `adapt.claude()` | → Claude messages |
 
-4. **PRESENT**: `att._obj` → `att.{text,images,audio,metadata}` (content extraction)
-   - PDF object → `att.text` (markdown), `att.images` (base64 PNGs)
-   - DataFrame → `att.text` (formatted table), `att.metadata` (shape info)
-   - Image → `att.images` (base64 data URL), `att.metadata` (dimensions)
+**Why This Works:**
+- **Consistency**: Same pattern for PDFs, CSVs, images, URLs
+- **Composability**: Verbs chain naturally with `|` and `+` or stack (the pipe is not mandatory)
+- **Extensibility**: Add new file types by implementing the verbs
 
-5. **REFINE**: `att.attributes` → `att.attributes` (content polishing)
-   - `att.text` → `att.text` (headers added, truncated)
-   - `att.images` → `att.images` (tiled, resized)
-   - `att.metadata` → `att.metadata` (enriched)
+### DSL Commands: Declarative Control
 
-6. **ADAPT**: `att.attributes` → `external format` (API formatting)
-   - `att.{text,images}` → `[{"role": "user", "content": [...]}]` (OpenAI)
-   - `att.{text,images}` → `[{"role": "user", "content": [...]}]` (Claude)
-   - `att.{text,images}` → `DSPyAttachment` object (DSPy)
+**Embedded in file paths** for non-programmers, for llms using attachments as tool (? :) ):
+```python
+"document.pdf[pages:1-5]"           # Extract specific pages
+"image.jpg[rotate:90][crop:100,100,400,300]"  # Transform image
+"data.csv[limit:1000][summary:true]"          # Limit and summarize
+"url[select:h1][format:markdown]"             # CSS selector + format
+```
 
-### Attachment Data Structure
+Commands modify how verbs behave without changing the grammar structure.
 
-**Core Attributes** (populated by presenters):
+### Architecture: Five Stages + Split
+
+**Linear Pipeline:**
+```
+attach("file.pdf[pages:1-5]")
+  ↓ LOAD     → pdfplumber.PDF object
+  ↓ MODIFY   → pages 1-5 selected  
+  ↓ PRESENT  → .text + .images extracted
+  ↓ REFINE   → headers added, content polished
+  ↓ ADAPT    → Claude API format
+```
+
+**Split Branch - Vectorized Processing:**
+```
+attach("report.pdf")
+  ↓ LOAD     → pdfplumber.PDF
+  ↓ SPLIT    → [page1, page2, page3, ...]  # AttachmentCollection
+  ↓ PRESENT  → [text1, text2, text3, ...]  # Vectorized
+  ↓ ADAPT    → Combined AI messages
+```
+
+**Key Insight**: Split enables **granular analysis** instead of just **holistic summaries**.
+
+### The Attachment Data Container
+
+**Core Structure** (`src/attachments/core.py`):
 ```python
 class Attachment:
-    # Input parsing
-    attachy: str                    # Original input: "file.pdf[pages:1-5]"
-    path: str                       # Extracted path: "file.pdf"  
-    commands: Dict[str, str]        # Parsed DSL: {"pages": "1-5"}
+    # Input
+    attachy: str = "file.pdf[pages:1-5]"  # Original with DSL
+    path: str = "file.pdf"                # Parsed path
+    commands: Dict = {"pages": "1-5"}     # Parsed commands
     
-    # Processing state
-    _obj: Optional[Any]             # Loaded object (PDF, DataFrame, etc.)
-    pipeline: List[str]             # Processing history
+    # Processing
+    _obj: Any = None                      # Loaded object (PDF, DataFrame, etc.)
     
-    # Content attributes (LLM-ready)
-    text: str                       # Extracted text content
-    images: List[str]               # Base64-encoded images (data URLs)
-    audio: List[str]                # Audio content (future)
-    metadata: Dict[str, Any]        # Processing metadata
+    # Output (LLM-ready)
+    text: str = ""                        # Extracted text
+    images: List[str] = []                # Base64 images
+    metadata: Dict = {}                   # Processing info
 ```
 
-**Content Population Examples:**
+**Content flows through the pipeline**, getting richer at each stage.
+
+### Registration System: How It All Connects
+
+**Decorators register functions** (`src/attachments/core.py`):
 ```python
-# PDF processing
-att.text = "# PDF Document\n\n## Page 1\n\nContent here..."
-att.images = ["data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."]
-att.metadata = {"pdf_pages_rendered": 3, "is_likely_scanned": False}
+@loader(match=lambda att: att.path.endswith('.pdf'))
+def pdf_to_pdfplumber(att): ...
 
-# Image processing  
-att.text = "# Image: photo.jpg\n\n- **Size**: (1920, 1080)\n- **Format**: JPEG"
-att.images = ["data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."]
-att.metadata = {"image_format": "JPEG", "image_size": (1920, 1080)}
+@modifier  
+def pages(att, pdf_obj): ...
 
-# Data processing
-att.text = "## Data from data.csv\n\n| Name | Age |\n|------|-----|\n| John | 25 |"
-att.metadata = {"csv_shape": (100, 5), "csv_columns": ["Name", "Age", ...]}
+@presenter
+def markdown(att, obj): ...
+
+@splitter
+def paragraphs(att, text): ...
 ```
+
+**Namespaces provide access** (`src/attachments/__init__.py`):
+```python
+load = SmartVerbNamespace(_loaders)      # load.pdf_to_pdfplumber
+modify = SmartVerbNamespace(_modifiers)  # modify.pages  
+present = SmartVerbNamespace(_presenters) # present.markdown
+split = SmartVerbNamespace(_splitters)   # split.paragraphs
+```
+
+**Type dispatch connects them**:
+- Loaders use match functions: `att.path.endswith('.pdf')`
+- Others use type hints: `pdf_obj: 'pdfplumber.PDF'`
+
+### Why This Architecture?
+
+**For Users:**
+- **Simple**: `Attachments("file.pdf")` just works
+- **Powerful**: Grammar system for complex workflows
+- **Consistent**: Same patterns across all file types
+
+**For Contributors:**
+- **Modular**: Add one verb at a time
+- **Extensible**: New file types via decorators
+- **Testable**: Each component isolated
+
+**For the Ecosystem:**
+- **Composable**: Verbs work together naturally
+- **Discoverable**: IDE autocomplete for all functions
+- **Maintainable**: Clear separation of concerns
 
 ---
 
 ## Core Architecture
+
+The core architecture centers on one simple data container (`Attachment`) and six registries that hold functions. Each registry serves a specific purpose in the pipeline, and the registration system uses decorators to automatically organize functions by type. The `VerbNamespace` classes provide clean access to registered functions, while type dispatch ensures the right function gets called for each object type.
 
 ### The Attachment Class
 
@@ -182,7 +182,7 @@ class Attachment:
         self.path, self.commands = self._parse_attachy()  # Parsed path and DSL
         
         self._obj: Optional[Any] = None  # Loaded file object (PDF, DataFrame, etc.)
-        self.text: str = ""              # Extracted text content
+        self.text: str = ""              # Extracted text
         self.images: List[str] = []      # Base64-encoded images
         self.audio: List[str] = []       # Audio content (future)
         self.metadata: Dict[str, Any] = {}  # Processing metadata
@@ -271,6 +271,8 @@ def claude(att: Attachment, prompt: str = "") -> List[Dict]:
 
 ## Namespace System
 
+The namespace system solves a practical problem: how do you organize 50+ functions across 6 different categories and make them discoverable? The solution is `SmartVerbNamespace` objects that provide clean access (`load.pdf_to_pdfplumber`) while supporting IDE autocomplete (sometimes, this is not resolved for some language servers and ideas -.-). Functions are automatically registered into namespaces when their modules are imported, and type dispatch ensures the right function gets called.
+
 ### Overview
 
 **Location**: `src/attachments/__init__.py`
@@ -291,12 +293,17 @@ split = SmartVerbNamespace(_splitters)   # Split functions that expand attachmen
 
 | Namespace | Purpose | Example Functions | Count |
 |-----------|---------|-------------------|-------|
-| `load.*` | File format → objects | `pdf_to_pdfplumber`, `csv_to_pandas`, `image_to_pil`, `html_to_bs4` | 10+ |
-| `modify.*` | Transform objects | `pages`, `limit`, `crop`, `rotate`, `select`, `watermark` | 8 |
-| `present.*` | Extract content | `text`, `markdown`, `images`, `csv`, `html`, `metadata` | 10+ |
-| `adapt.*` | Format for APIs | `claude`, `openai_chat`, `openai_responses`, `dspy` | 6 |
-| `refine.*` | Post-process | `add_headers`, `truncate`, `tile_images`, `resize_images` | 7 |
-| `split.*` | Expand to collections | `paragraphs`, `sentences`, `tokens`, `pages`, `slides` | 12 |
+| `load.*` | File → Object | `pdf_to_pdfplumber`, `csv_to_pandas`, `image_to_pil`, `html_to_bs4` | 10+ |
+| `modify.*` | Object → Object | `pages`, `limit`, `crop`, `rotate`, `select`, `watermark` | 8 |
+| `split.*` | Object → Collection | `paragraphs`, `sentences`, `tokens`, `pages`, `slides` | 12 |
+| `present.*` | Object → text/images/video(future)/audio(future) | `markdown`, `images`, `csv`, `html`, `metadata` | 10+ |
+| `refine.*` | text/images/video(future)/audio(future) → text/images/video(future)/audio(future) | `add_headers`, `truncate`, `tile_images`, `resize_images` | 7 |
+| `adapt.*` | text/images/video(future)/audio(future) → external API format | `claude`, `openai_chat`, `openai_responses`, `dspy` | 6 |
+
+**Why This Works:**
+- **Consistency**: Same pattern for PDFs, CSVs, images, URLs
+- **Composability**: Verbs chain naturally with `|` and `+` or stack (the pipe is not mandatory)
+- **Extensibility**: Add new file types by implementing the verbs
 
 ### Usage Patterns
 
@@ -368,6 +375,8 @@ load.pdf_to_pdfplumber("file.pdf")  # Auto-creates attachment
 ---
 
 ## The Five-Stage Pipeline
+
+The five-stage pipeline exists because file processing has natural stages that need to happen in order. You can't extract text before loading the file, and you can't format for APIs before extracting content. Each stage has a clear input/output contract, which makes the system predictable and allows stages to be developed independently.
 
 ### 1. LOAD Stage
 **Purpose**: Convert files into structured objects  
@@ -458,36 +467,21 @@ Polished Content → API-Specific Format
 
 ## The Split/Chunking System
 
+The split system exists because sometimes you need granular analysis instead of holistic summaries. Instead of asking "what's in this document?", you can ask "what insights can I extract from each section?" The split functions in `src/attachments/split.py` transform single attachments into `AttachmentCollection` objects, enabling vectorized processing where operations automatically apply to each chunk.
+
 ### Overview
 
 **Location**: `src/attachments/split.py`
 
-The Split system **expands** single attachments into `AttachmentCollection` objects. This enables **vectorized processing** and **LLM-friendly chunking**.
+The Split system **expands** single attachments into `AttachmentCollection` objects for **vectorized processing** and **LLM-friendly chunking**.
 
 ```
 Single Attachment → AttachmentCollection (Multiple Chunks)
 ```
 
-### Split Categories
+### Split Functions
 
-#### Text Splitting
-**Purpose**: Break text into semantic or size-based chunks
-
-```python
-# Semantic splitting
-chunks = attach("doc.txt") | load.text_to_string | split.paragraphs
-chunks = attach("doc.txt") | load.text_to_string | split.sentences
-
-# Size-based splitting (LLM-friendly)
-chunks = attach("doc.txt[tokens:500]") | load.text_to_string | split.tokens
-chunks = attach("doc.txt[characters:1000]") | load.text_to_string | split.characters
-chunks = attach("doc.txt[lines:50]") | load.text_to_string | split.lines
-
-# Custom splitting
-chunks = attach("doc.txt[custom:---BREAK---]") | load.text_to_string | split.custom
-```
-
-**Available Splitters:**
+**Text Splitting:**
 - `paragraphs`: Split on double newlines
 - `sentences`: Split on sentence boundaries (`.!?`)
 - `tokens`: Split by approximate token count (~4 chars/token)
@@ -495,54 +489,33 @@ chunks = attach("doc.txt[custom:---BREAK---]") | load.text_to_string | split.cus
 - `lines`: Split by line count
 - `custom`: Split by custom separator from DSL commands
 
-#### Document Splitting
-**Purpose**: Break documents into structural units
+**Document Splitting:**
+- `pages`: Extract pages from PDFs/presentations
+- `slides`: Extract slides from PowerPoint
+- `sections`: Split HTML by headings
 
-```python
-# PDF pages
-pages = attach("report.pdf") | load.pdf_to_pdfplumber | split.pages
-
-# PowerPoint slides  
-slides = attach("deck.pptx") | load.pptx_to_python_pptx | split.slides
-
-# HTML sections (by headings)
-sections = attach("article.html") | load.html_to_bs4 | split.sections
-```
-
-#### Data Splitting
-**Purpose**: Break large datasets into manageable chunks
-
-```python
-# DataFrame row chunks
-row_chunks = attach("data.csv[rows:100]") | load.csv_to_pandas | split.rows
-
-# DataFrame column chunks
-col_chunks = attach("data.csv[columns:5]") | load.csv_to_pandas | split.columns
-```
+**Data Splitting:**
+- `rows`: Split DataFrames by row chunks
+- `columns`: Split DataFrames by column chunks
 
 ### Split Architecture
 
-**Registration**: Split functions use the `@splitter` decorator and have their own `_splitters` registry:
-
+**Registration Pattern:**
 ```python
 @splitter
 def paragraphs(att: Attachment, text: str) -> AttachmentCollection:
     """Split text content into paragraphs."""
     content = att.text if att.text else text
-    
-    # Split on double newlines
     paragraphs = re.split(r'\n\s*\n', content.strip())
     
     chunks = []
     for i, paragraph in enumerate(paragraphs):
         chunk = Attachment(f"{att.path}#paragraph-{i+1}")
         chunk.text = paragraph
-        chunk.commands = att.commands.copy()  # Propagate DSL commands
         chunk.metadata = {
             **att.metadata,
             'chunk_type': 'paragraph',
             'chunk_index': i,
-            'total_chunks': len(paragraphs),
             'original_path': att.path
         }
         chunks.append(chunk)
@@ -550,23 +523,17 @@ def paragraphs(att: Attachment, text: str) -> AttachmentCollection:
     return AttachmentCollection(chunks)
 ```
 
-**Architectural Pattern**: Split functions follow a distinct pattern:
-
+**Key Differences from Modifiers:**
 - **Input**: `(att: Attachment, content: str)` or `(att: Attachment, obj: ObjectType)`
 - **Output**: `AttachmentCollection` (multiple chunks)
 - **Registry**: `_splitters` (separate from modifiers)
-- **Namespace**: `split.*` functions
-- **Type Dispatch**: Based on second parameter type annotation
-
-**Key Differences from Modifiers**:
-- **Modifiers**: `att._obj → modified att._obj` (transform in place)
-- **Splitters**: `att → AttachmentCollection` (expand to multiple attachments)
-
-This maintains architectural clarity and proper separation of concerns.
+- **Purpose**: Expand single attachment into multiple chunks
 
 ---
 
 ## Vectorization & Collections
+
+The `AttachmentCollection` class solves the problem of applying operations to multiple chunks efficiently. When you split a document, you get a collection that automatically vectorizes operations—`chunks | present.markdown` extracts markdown from every chunk, while `chunks | adapt.claude()` intelligently combines everything for the AI. The `_is_reducer()` method determines whether an operation should vectorize (apply to each item) or reduce (combine items).
 
 ### AttachmentCollection Architecture
 
@@ -639,6 +606,8 @@ def _is_reducer(self, operation) -> bool:
 ---
 
 ## Match System
+
+The match system centralizes file type detection logic in reusable predicates. Instead of scattering `att.path.endswith('.pdf')` checks throughout the codebase, match functions in `src/attachments/matchers.py` provide consistent, testable logic for determining which loaders handle which files. This includes complex cases like distinguishing between downloadable URLs and web pages.
 
 ### Overview
 
@@ -718,6 +687,8 @@ def pdf_to_llm(att):
 
 ## Component Deep Dive
 
+Each component type has specific patterns and challenges. Loaders deal with import errors and file corruption, presenters handle type dispatch and content extraction, modifiers read DSL commands and transform objects. Understanding these patterns helps when extending the system or debugging issues.
+
 ### Loaders Architecture
 
 **Directory Structure:**
@@ -770,10 +741,12 @@ def images(att: Attachment, pil_image: 'PIL.Image.Image') -> Attachment:
 @modifier
 def pages(att: Attachment, pdf_obj: 'pdfplumber.PDF') -> Attachment:
     """Extract specific pages based on DSL commands."""
-    pages_cmd = att.commands.get('pages')
-    if pages_cmd:
-        # Parse page ranges: "1,3-5,-1"
-        # Extract specified pages
+    if 'pages' not in att.commands:
+        return att
+    
+    pages_spec = att.commands['pages']
+    # Parse page ranges: "1,3-5,-1"
+    # Extract specified pages
     return att
 ```
 
@@ -782,9 +755,15 @@ def pages(att: Attachment, pdf_obj: 'pdfplumber.PDF') -> Attachment:
 - Runtime type checking prevents errors
 - Graceful skipping when commands don't apply
 
+**DSL Command Usage:**
+- Modifiers read DSL commands from `att.commands` (parsed earlier by `Attachment._parse_attachy()`)
+- Other component types also read DSL commands: presenters (`format`, `images`), splitters (`tokens`, `characters`), refiners (`truncate`, `tile`), loaders (`ignore`, `files`), and adapters (`prompt`)
+
 ---
 
 ## Extension System
+
+The extension system is designed around the principle that adding a new component should feel natural, not like fighting the framework. The decorator-based registration means your function automatically gets type dispatch, error handling, namespace organization, and IDE support. The key insight is that once you implement one verb for a file type, it immediately works with all the other verbs.
 
 ### Creating New Loaders
 
@@ -877,93 +856,9 @@ def academic_xyz_to_llm(att):
 
 ---
 
-## Grammar of File Processing
-
-### Overview
-
-Attachments provides a **grammar of file processing** - a consistent set of verbs that compose naturally to solve common file-to-LLM challenges, inspired by dplyr's grammar of data manipulation.
-
-### Core Verbs
-
-**Data Verbs** (like dplyr):
-- `load.*` - Import files into structured objects
-- `modify.*` - Transform objects (filter, select, reshape)  
-- `split.*` - Decompose into semantic units
-- `present.*` - Extract content (text, images, metadata)
-- `refine.*` - Polish and enhance content
-- `adapt.*` - Format for external APIs
-
-**Composition Patterns**:
-```python
-# Sequential composition with |
-result = (attach("data.csv") 
-         | load.csv_to_pandas 
-         | modify.limit 
-         | present.markdown)
-
-# Additive composition with +  
-content = attachment | (present.text + present.images + present.metadata)
-
-# Grouping with split (like group_by)
-insights = (attach("report.pdf")
-           | load.pdf_to_pdfplumber
-           | split.pages              # "group by" pages
-           | present.markdown         # apply to each page
-           | adapt.claude("analyze")) # reduce to insights
-```
-
-### Grammar Benefits
-
-**Consistency**: Same verb patterns across all file types
-```python
-# Same pattern works for any file type
-attach("file.pdf") | load.pdf_to_pdfplumber | present.markdown
-attach("file.csv") | load.csv_to_pandas | present.markdown  
-attach("file.jpg") | load.image_to_pil | present.markdown
-```
-
-**Composability**: Verbs combine naturally
-```python
-# Build complex pipelines from simple verbs
-academic_processor = (load.pdf_to_pdfplumber 
-                     | modify.pages 
-                     | present.markdown + present.images
-                     | refine.add_headers | refine.truncate
-                     | adapt.claude)
-```
-
-**Extensibility**: Add new verbs that fit the grammar
-```python
-@loader(match=lambda att: att.path.endswith('.xyz'))
-def xyz_to_custom(att): ...  # New verb follows same pattern
-
-@presenter  
-def academic_format(att, obj): ...  # Composes with existing verbs
-```
-
-### DSL Commands
-
-**Declarative Syntax**: Simple commands modify verb behavior
-```python
-# Commands modify how verbs operate
-"document.pdf[pages:1-5]"        # modify.pages uses 1-5
-"image.jpg[rotate:90]"           # modify.rotate uses 90°  
-"data.csv[limit:100]"            # modify.limit uses 100 rows
-"url[select:h1][format:markdown]" # modify.select + present.markdown
-```
-
-**Command Processing**: Verbs read relevant commands
-```python
-@modifier
-def pages(att: Attachment, pdf: 'pdfplumber.PDF') -> Attachment:
-    pages_cmd = att.commands.get('pages', 'all')  # Read DSL command
-    # Apply page selection based on command
-    return att
-```
-
----
-
 ## High-Level API Design
+
+The `Attachments` class in `src/attachments/highest_level_api.py` is where all the complexity gets hidden behind a simple interface. It automatically detects file types, selects appropriate processors, handles errors gracefully, and formats output for LLM consumption. The `_auto_process()` method tries specialized processors first, then falls back to a universal pipeline that works for any file type.
 
 ### The Attachments Class
 
@@ -1045,6 +940,8 @@ dspy_obj = ctx.dspy()
 
 ## Pipeline Processor System
 
+The processor system provides pre-built, battle-tested pipelines for common file types. Located in `src/attachments/pipelines/`, these processors handle the edge cases and optimizations that come from real-world usage. The `find_primary_processor()` function automatically selects the best processor for each file type, while named processors allow specialized workflows.
+
 ### Processor Registry
 
 **Location**: `src/attachments/pipelines/__init__.py`
@@ -1109,6 +1006,8 @@ match=lambda att: (att.path.endswith('.txt') and
 
 ## Error Handling & Fallbacks
 
+File processing fails in predictable ways: missing dependencies, corrupted files, network issues. The error handling system in `src/attachments/core.py` provides helpful error messages with installation instructions, graceful fallbacks to simpler processing methods, and automatic cleanup of temporary resources. The goal is software that bends rather than breaks.
+
 ### Graceful Degradation
 
 **Loader Fallbacks:**
@@ -1168,67 +1067,9 @@ def _execute_steps(self, result: Attachment, steps: List[Callable]):
 
 ---
 
-## Performance & Memory Management
-
-### Lazy Loading
-
-**Object Loading:**
-```python
-class Attachment:
-    def __init__(self, attachy: str = ""):
-        self._obj: Optional[Any] = None  # Not loaded until needed
-        
-    @property
-    def obj(self):
-        """Lazy load the file object when first accessed."""
-        if self._obj is None:
-            self._obj = self._load_object()
-        return self._obj
-```
-
-**Image Processing:**
-```python
-@presenter
-def images(att: Attachment, pil_image: 'PIL.Image.Image') -> Attachment:
-    """Extract images with memory-efficient processing."""
-    
-    # Process images in chunks to avoid memory issues
-    if hasattr(pil_image, 'n_frames') and pil_image.n_frames > 10:
-        # For large multi-frame images, sample frames
-        frames_to_process = min(10, pil_image.n_frames)
-    
-    # Convert to base64 with size limits
-    max_size = (1024, 1024)  # Resize large images
-    if pil_image.size[0] > max_size[0] or pil_image.size[1] > max_size[1]:
-        pil_image = pil_image.resize(max_size, Image.Resampling.LANCZOS)
-```
-
-### Resource Cleanup
-
-**Automatic Cleanup:**
-```python
-class Attachment:
-    def cleanup(self):
-        """Clean up temporary resources."""
-        # Clean up temporary files
-        if 'temp_pdf_path' in self.metadata:
-            os.unlink(self.metadata['temp_pdf_path'])
-        
-        # Close file objects
-        if hasattr(self._obj, 'close'):
-            self._obj.close()
-    
-    def __del__(self):
-        """Destructor ensures cleanup."""
-        try:
-            self.cleanup()
-        except Exception:
-            pass  # Ignore errors during cleanup
-```
-
----
-
 ## Contributing New Components
+
+The architecture is designed to make contributing feel natural. Each component type follows consistent patterns, gets automatic integration with the existing infrastructure, and benefits from shared functionality like error handling and type dispatch. The key is understanding which verb category your function belongs to and following the established patterns.
 
 ### Quick Start Checklist
 
@@ -1236,29 +1077,43 @@ class Attachment:
 - [ ] Create loader function with `@loader` decorator
 - [ ] Add match function for file type detection
 - [ ] Handle import errors gracefully
-- [ ] Add type hints for presenter dispatch
+- [ ] Set `att._obj` to the loaded object (type dispatch happens automatically)
 - [ ] Test with various file formats
 
 **Adding a New Presenter:**
 - [ ] Create presenter function with `@presenter` decorator
-- [ ] Specify category (`text`, `image`, or auto-detect)
-- [ ] Handle multiple object types if needed
-- [ ] Preserve existing content (additive)
-- [ ] Add relevant metadata
+- [ ] Add type hints for the object parameter (enables type dispatch)
+- [ ] Use `att.text +=` to preserve existing content (supports `+` additive operator)
+- [ ] Add relevant metadata to `att.metadata`
+- [ ] Handle exceptions gracefully
 
 **Adding a New Modifier:**
 - [ ] Create modifier function with `@modifier` decorator
-- [ ] Read DSL commands from `att.commands`
-- [ ] Add type dispatch for different object types
+- [ ] Add type hints for the object parameter (enables type dispatch)
+- [ ] Read DSL commands from `att.commands` if needed
+- [ ] Modify `att._obj` in place and return the attachment
 - [ ] Handle edge cases gracefully
-- [ ] Document supported command syntax
+
+**Adding a New Splitter:**
+- [ ] Create splitter function with `@splitter` decorator
+- [ ] Add type hints for the content parameter (text or object)
+- [ ] Return `AttachmentCollection` with multiple chunks
+- [ ] Copy metadata and commands to each chunk
+- [ ] Add chunk-specific metadata (index, type, etc.)
 
 **Adding a New Adapter:**
 - [ ] Create adapter function with `@adapter` decorator
-- [ ] Handle both single attachments and collections
+- [ ] Handle both `Attachment` and `AttachmentCollection` inputs
+- [ ] Use `_handle_collection()` helper to convert collections
 - [ ] Format according to target API specification
-- [ ] Include proper error handling
-- [ ] Add usage examples
+- [ ] Include proper error handling for missing dependencies
+
+**Key Operator Behaviors:**
+- **`|` (pipe) operator**: Overwrites/replaces content - each step transforms the attachment
+- **`+` (plus) operator**: Additive composition - combines multiple presenters
+  - Presenters **must use `att.text +=`** to append content (not `att.text =`)
+  - Example: `present.text + present.images + present.metadata` combines all outputs
+  - Loaders and refiners can use `att.text =` since they're not typically used with `+`
 
 ### Testing Your Components
 
@@ -1284,28 +1139,482 @@ result = (attach("test_file.xyz")
 2. **Type Safety**: Use type hints for proper dispatch
 3. **Documentation**: Include docstrings with examples
 4. **Testing**: Test with edge cases and malformed files
-5. **Performance**: Consider memory usage for large files
-6. **Compatibility**: Support multiple versions of dependencies
 
 ---
 
 ## Advanced Topics
 
+> [!NOTE]
+> This section is a work in progress.
+
 ### Custom Pipeline Composition
 
-[TODO: Add examples of complex pipeline composition]
+The pipeline system supports sophisticated composition patterns that enable reusable, modular processing workflows. Based on the codebase patterns in `src/attachments/core.py` and `src/attachments/pipelines/`, here are the key composition techniques:
+
+#### **Reusable Pipeline Functions**
+```python
+# Create callable pipeline functions by assigning to variables
+csv_analyzer = (load.csv_to_pandas 
+               | modify.limit 
+               | present.head + present.summary + present.metadata
+               | refine.add_headers)
+
+# Use as function with any CSV file
+result = csv_analyzer("sales_data.csv[limit:100]")
+analysis = result.claude("What patterns do you see?")
+
+# Apply to multiple files
+for file in ["q1.csv", "q2.csv", "q3.csv"]:
+    quarterly_data = csv_analyzer(file)
+    insights = quarterly_data.openai_chat("Summarize key metrics")
+```
+
+#### **Conditional Pipeline Branching**
+```python
+# Smart pipeline that adapts based on file type
+universal_processor = (
+    load.pdf_to_pdfplumber |     # Try PDF first
+    load.csv_to_pandas |         # Then CSV
+    load.image_to_pil |          # Then images
+    load.text_to_string          # Finally text fallback
+)
+
+# Different presentation based on content type
+def smart_presenter(att):
+    if hasattr(att._obj, 'columns'):  # DataFrame
+        return present.head + present.summary
+    elif hasattr(att._obj, 'size'):  # PIL Image
+        return present.images + present.metadata
+    else:  # Text or other
+        return present.markdown + present.metadata
+
+# Combine into adaptive pipeline
+adaptive = universal_processor | smart_presenter | refine.add_headers
+```
+
+#### **Pipeline Composition with Fallbacks**
+```python
+# Primary pipeline with fallback chain (from src/attachments/core.py)
+robust_pdf = Pipeline(
+    steps=[load.pdf_to_pdfplumber, present.markdown, refine.add_headers],
+    fallback_pipelines=[
+        Pipeline([load.text_to_string, present.text]),  # Text fallback
+        Pipeline([load.image_to_pil, present.images])   # Image fallback
+    ]
+)
+
+# If PDF processing fails, automatically tries text then image processing
+result = robust_pdf("document.pdf")
+```
+
+#### **Vectorized Collection Processing**
+```python
+# Split documents into chunks for granular analysis
+chunked_analysis = (attach("large_document.pdf")
+                   | load.pdf_to_pdfplumber
+                   | split.pages                    # → AttachmentCollection
+                   | present.markdown               # Vectorized: each page
+                   | refine.add_headers             # Vectorized: each page
+                   | adapt.claude("Analyze each page separately"))
+
+# Process ZIP archives with vectorization
+image_batch = (attach("photos.zip")
+              | load.zip_to_images               # → AttachmentCollection
+              | present.images                   # Vectorized: each image
+              | refine.tile_images)              # Reducer: combine into grid
+```
+
+#### **Method-Style Pipeline API**
+```python
+# Pipelines automatically expose adapter methods (from highest_level_api.py)
+document_processor = (load.pdf_to_pdfplumber 
+                     | present.markdown + present.images
+                     | refine.add_headers)
+
+# All these work automatically:
+claude_result = document_processor.claude("report.pdf", "Summarize key points")
+openai_result = document_processor.openai_chat("report.pdf", "Extract action items")
+dspy_result = document_processor.dspy("report.pdf")
+```
 
 ### Performance Optimization
 
-[TODO: Add profiling and optimization techniques]
+The codebase implements several performance optimization strategies, particularly for memory management and large file handling:
+
+#### **Lazy Loading and Memory Management**
+
+**Size-Based Early Exit** (from `src/attachments/loaders/repositories/`):
+```python
+# Repositories check total size before processing files
+size_limit_mb = 500
+size_limit_bytes = size_limit_mb * 1024 * 1024
+
+# Early exit prevents memory issues during file collection
+if total_size > size_limit_bytes:
+    if not force_process:
+        # Return size warning instead of processing
+        return create_size_warning_attachment(att, total_size, file_count)
+```
+
+**Efficient File Collection** (from `src/attachments/loaders/repositories/utils.py`):
+```python
+# Binary file detection prevents loading problematic files
+def is_likely_binary(file_path: str) -> bool:
+    problematic_extensions = {
+        '.exe', '.dll', '.so', '.dylib', '.bin', '.obj', '.o',
+        '.pyc', '.pyo', '.pyd', '.class', '.woff', '.woff2'
+    }
+    
+    # Check first 1024 bytes for null bytes (binary indicator)
+    with open(file_path, 'rb') as f:
+        chunk = f.read(1024)
+        if b'\x00' in chunk:
+            return True
+```
+
+**Namespace Caching** (from `src/attachments/highest_level_api.py`):
+```python
+# Global cache prevents repeated namespace imports
+_cached_namespaces = None
+
+def _get_cached_namespaces():
+    global _cached_namespaces
+    if _cached_namespaces is None:
+        _cached_namespaces = _get_namespaces()
+    return _cached_namespaces
+```
+
+#### **Image Processing Optimization**
+
+**Efficient Image Tiling** (from `src/attachments/refine.py`):
+```python
+# Resize to smallest common dimensions for memory efficiency
+min_width = min(img.size[0] for img in tile_images_subset)
+min_height = min(img.size[1] for img in tile_images_subset)
+
+# Don't make images too small
+min_width = max(min_width, 100)
+min_height = max(min_height, 100)
+
+resized_images = [img.resize((min_width, min_height)) for img in tile_images_subset]
+```
+
+**Smart Truncation** (from `src/attachments/highest_level_api.py`):
+```python
+# Apply truncation only for very long text
+if hasattr(processed, 'text') and processed.text and len(processed.text) > 5000:
+    processed = processed | refine.truncate(3000)
+```
+
+#### **Performance Best Practices**
+
+1. **Use DSL Commands for Filtering**:
+   ```python
+   # Efficient: Filter at load time
+   small_data = Attachments("large_file.csv[limit:1000]")
+   
+   # Less efficient: Load everything then filter
+   all_data = Attachments("large_file.csv") | modify.limit
+   ```
+
+2. **Leverage Repository Ignore Patterns**:
+   ```python
+   # Efficient: Skip unnecessary files
+   codebase = Attachments("./project[ignore:standard]")
+   
+   # Inefficient: Process all files including build artifacts
+   codebase = Attachments("./project")
+   ```
+
+3. **Use Appropriate Processing Modes**:
+   ```python
+   # Structure only (fast)
+   structure = Attachments("./large-repo[mode:structure]")
+   
+   # Full content processing (slower)
+   content = Attachments("./large-repo[mode:content]")
+   ```
 
 ### Debugging and Introspection
 
-[TODO: Add debugging tools and techniques]
+The architecture provides several debugging and introspection capabilities:
+
+#### **Pipeline Tracking**
+
+**Automatic Pipeline History** (from `src/attachments/core.py`):
+```python
+# Each attachment tracks its processing pipeline
+att = attach("document.pdf")
+result = att | load.pdf_to_pdfplumber | present.markdown | refine.add_headers
+
+print(result.pipeline)  # ['pdf_to_pdfplumber', 'markdown', 'add_headers']
+```
+
+**Detailed Repr for Debugging**:
+```python
+# Attachment.__repr__ shows processing state
+att = Attachment("document.pdf")
+print(repr(att))
+# Attachment(path='document.pdf', text=1234 chars, images=[2 imgs: data:image/png;base64,iVBOR...], pipeline=['pdf_to_pdfplumber', 'markdown'])
+```
+
+#### **Error Handling and Fallbacks**
+
+**Graceful Error Recovery** (from `src/attachments/core.py`):
+```python
+def _execute_steps(self, result: 'Attachment', steps: List[Callable]) -> Any:
+    for step in steps:
+        try:
+            result = step(result)
+        except Exception as e:
+            # Log error but continue pipeline
+            result.metadata['errors'] = result.metadata.get('errors', [])
+            result.metadata['errors'].append(f"{step.__name__}: {str(e)}")
+    return result
+```
+
+**Helpful Error Messages** (from `src/attachments/core.py`):
+```python
+def _create_helpful_error_attachment(att: Attachment, import_error: ImportError, loader_name: str):
+    dependency_map = {
+        'pdf_to_pdfplumber': 'pip install pdfplumber',
+        'csv_to_pandas': 'pip install pandas',
+        'image_to_pil': 'pip install Pillow',
+    }
+    
+    install_cmd = dependency_map.get(loader_name, 'pip install attachments[all]')
+    att.text = f"⚠️ Missing dependency for {att.path}\n\nInstall: {install_cmd}"
+```
+
+#### **Processor Discovery and Introspection**
+
+**List Available Processors** (from `src/attachments/pipelines/__init__.py`):
+```python
+from attachments.pipelines import list_available_processors
+
+# Get all registered processors
+processors = list_available_processors()
+print(processors['primary_processors'])    # Auto-selected processors
+print(processors['named_processors'])      # Specialized processors
+
+# Find processors for specific files
+from attachments.pipelines import _processor_registry
+matching = _processor_registry.list_processors_for_file(attach("document.pdf"))
+```
+
+**Registry Inspection**:
+```python
+from attachments.core import _loaders, _presenters, _modifiers
+
+# Inspect registered components
+print("Available loaders:", list(_loaders.keys()))
+print("Available presenters:", list(_presenters.keys()))
+print("Available modifiers:", list(_modifiers.keys()))
+
+# Check type dispatch for presenters
+for name, handlers in _presenters.items():
+    print(f"{name}: {[h[0] for h in handlers]}")  # Show type annotations
+```
+
+#### **Debugging Utilities**
+
+**Metadata Inspection**:
+```python
+# Check processing metadata
+result = Attachments("document.pdf")
+print(result.attachments[0].metadata)
+# Shows: file info, processing steps, errors, performance metrics
+
+# Check for processing errors
+if 'errors' in result.attachments[0].metadata:
+    print("Processing errors:", result.attachments[0].metadata['errors'])
+```
+
+**Pipeline State Inspection**:
+```python
+# Create pipeline and inspect state at each step
+att = attach("document.pdf")
+
+# Step by step debugging
+loaded = att | load.pdf_to_pdfplumber
+print(f"After loading: {type(loaded._obj)}")
+
+presented = loaded | present.markdown
+print(f"After presenting: {len(presented.text)} chars")
+
+refined = presented | refine.add_headers
+print(f"After refining: {refined.text[:100]}...")
+```
 
 ### Integration Patterns
 
-[TODO: Add common integration patterns with other libraries]
+The architecture supports integration with major LLM libraries and frameworks:
+
+#### **OpenAI Integration**
+
+**Chat Completions API** (from `src/attachments/adapt.py`):
+```python
+from openai import OpenAI
+from attachments import Attachments
+
+# Direct integration
+client = OpenAI()
+doc = Attachments("report.pdf")
+
+# Method 1: Using adapter
+messages = doc.openai_chat("Analyze this document")
+response = client.chat.completions.create(
+    model="gpt-4-turbo",
+    messages=messages
+)
+
+# Method 2: Using pipeline
+response = (attach("report.pdf")
+           | load.pdf_to_pdfplumber
+           | present.markdown + present.images
+           | adapt.openai_chat("Analyze this document"))
+```
+
+**Responses API** (newer OpenAI format):
+```python
+# OpenAI Responses API format
+response_input = doc.openai_responses("Analyze this document")
+response = client.responses.create(
+    input=response_input,
+    model="gpt-4-turbo"
+)
+```
+
+#### **Anthropic Claude Integration**
+
+**Message Format** (from `src/attachments/adapt.py`):
+```python
+import anthropic
+from attachments import Attachments
+
+# Direct integration
+client = anthropic.Anthropic()
+doc = Attachments("presentation.pptx")
+
+# Claude format with image support
+messages = doc.claude("Analyze these slides")
+response = client.messages.create(
+    model="claude-3-5-sonnet-20241022",
+    max_tokens=4000,
+    messages=messages
+)
+
+# Pipeline approach
+analysis = (attach("presentation.pptx")
+           | load.pptx_to_python_pptx
+           | present.markdown + present.images
+           | adapt.claude("What are the key insights?"))
+```
+
+#### **DSPy Integration**
+
+**Seamless DSPy Compatibility** (from `src/attachments/dspy.py`):
+```python
+import dspy
+from attachments.dspy import Attachments  # Special DSPy-optimized import
+
+# Configure DSPy
+dspy.configure(lm=dspy.LM('openai/gpt-4-turbo'))
+
+# Direct usage in DSPy signatures
+rag = dspy.ChainOfThought("question, document -> answer")
+
+# No .dspy() call needed with special import
+doc = Attachments("research_paper.pdf")
+result = rag(question="What are the main findings?", document=doc)
+
+# Alternative: Regular import with explicit adapter
+from attachments import Attachments
+doc = Attachments("research_paper.pdf").dspy()
+result = rag(question="What are the main findings?", document=doc)
+```
+
+**DSPy BaseType Compatibility**:
+```python
+# The DSPy adapter creates Pydantic models compatible with DSPy
+dspy_obj = doc.dspy()
+print(dspy_obj.model_dump())  # Pydantic serialization
+print(dspy_obj.serialize_model())  # DSPy serialization
+```
+
+#### **Custom LLM Library Integration**
+
+**Creating Custom Adapters**:
+```python
+from attachments.core import adapter, Attachment
+
+@adapter
+def custom_llm(att: Attachment, prompt: str = "") -> dict:
+    """Adapter for custom LLM library."""
+    return {
+        'prompt': prompt,
+        'content': att.text,
+        'images': att.images,
+        'metadata': att.metadata,
+        'format': 'custom_format_v1'
+    }
+
+# Use immediately after registration
+result = Attachments("document.pdf").custom_llm("Analyze this")
+```
+
+#### **Langchain Integration Pattern**
+
+```python
+# Example integration with Langchain (not built-in)
+from langchain.schema import Document
+from attachments import Attachments
+
+def attachments_to_langchain(attachments_obj):
+    """Convert Attachments to Langchain Documents."""
+    documents = []
+    for att in attachments_obj.attachments:
+        doc = Document(
+            page_content=att.text,
+            metadata={
+                **att.metadata,
+                'source': att.path,
+                'images': att.images
+            }
+        )
+        documents.append(doc)
+    return documents
+
+# Usage
+docs = Attachments("document.pdf", "data.csv")
+langchain_docs = attachments_to_langchain(docs)
+```
+
+#### **Streaming and Async Patterns**
+
+```python
+# Async processing pattern
+import asyncio
+from attachments import Attachments
+
+async def process_documents_async(file_paths):
+    """Process multiple documents asynchronously."""
+    tasks = []
+    for path in file_paths:
+        task = asyncio.create_task(process_single_doc(path))
+        tasks.append(task)
+    
+    results = await asyncio.gather(*tasks)
+    return results
+
+async def process_single_doc(path):
+    """Process single document (run in thread pool for CPU-bound work)."""
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, lambda: Attachments(path))
+
+# Usage
+results = asyncio.run(process_documents_async(["doc1.pdf", "doc2.pdf"]))
+```
 
 ---
 
@@ -1317,8 +1626,6 @@ Key architectural strengths:
 - **Modularity**: Each component has a single, clear responsibility
 - **Extensibility**: New file types and transformations via simple decorators
 - **Composability**: Components can be mixed and matched
-- **Robustness**: Graceful fallbacks and error handling throughout
-- **Performance**: Lazy loading and efficient resource management
 
 Whether you're using the simple `Attachments("file.pdf")` API or building complex pipelines, the architecture scales to meet your needs while maintaining consistency and reliability.
 
