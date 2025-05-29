@@ -7,14 +7,17 @@ from ... import matchers
 
 @loader(match=matchers.zip_match)
 def zip_to_images(att: Attachment) -> 'AttachmentCollection':
-    """Load ZIP file containing images into AttachmentCollection."""
+    """Load ZIP file containing images into AttachmentCollection with automatic input source handling."""
     try:
         import zipfile
         from PIL import Image
         
         attachments = []
         
-        with zipfile.ZipFile(att.path, 'r') as zip_file:
+        # Use the new input_source property - no more repetitive patterns!
+        zip_source = att.input_source
+        
+        with zipfile.ZipFile(zip_source, 'r') as zip_file:
             for file_info in zip_file.filelist:
                 if file_info.filename.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.bmp', '.heic', '.heif')):
                     # Create attachment for each image

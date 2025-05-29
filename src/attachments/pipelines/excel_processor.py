@@ -94,10 +94,11 @@ def excel_to_llm(att: Attachment) -> Attachment:
         # Empty pipeline that does nothing
         image_pipeline = lambda att: att
     
-    # Enhanced pipeline with URL support and format control
+    # Build the complete pipeline
     return (att 
-           | load.url_to_file          # Handle URLs first - download if needed
-           | load.excel_to_openpyxl    # Then load as Excel
-           | modify.pages  # Handles pages:1-5,10 DSL command (treats pages as sheets)
+           | load.url_to_response      # Handle URLs with new morphing architecture
+           | modify.morph_to_detected_type  # Smart detection replaces hardcoded url_to_file
+           | load.excel_to_openpyxl     # Then load as openpyxl Workbook
+           | modify.pages               # Apply sheet selection if specified  
            | text_presenter + image_pipeline + present.metadata
            | refine.tile_images | refine.resize_images | refine.add_headers) 

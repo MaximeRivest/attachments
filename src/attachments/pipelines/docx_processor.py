@@ -90,10 +90,21 @@ def docx_to_llm(att: Attachment) -> Attachment:
         # Empty pipeline that does nothing
         image_pipeline = lambda att: att
     
-    # Enhanced pipeline with URL support and format control
-    return (att 
-           | load.url_to_file          # Handle URLs first - download if needed
-           | load.docx_to_python_docx  # Then load as DOCX
-           | modify.pages  # Handles pages:1-5,10 DSL command
-           | text_presenter + image_pipeline + present.metadata
-           | refine.tile_images | refine.resize_images | refine.add_headers) 
+    # Build the complete pipeline based on format
+    if format_cmd == 'plain':
+        return (att 
+               | load.url_to_response      # Handle URLs with new morphing architecture
+               | modify.morph_to_detected_type  # Smart detection replaces hardcoded url_to_file
+               | load.docx_to_python_docx 
+               | modify.pages  # Optional - only acts if [pages:...] present
+               | text_presenter + image_pipeline + present.metadata
+               | refine.tile_images | refine.resize_images )
+    else:
+        # Default to markdown
+        return (att 
+               | load.url_to_response      # Handle URLs with new morphing architecture
+               | modify.morph_to_detected_type  # Smart detection replaces hardcoded url_to_file
+               | load.docx_to_python_docx 
+               | modify.pages  # Optional - only acts if [pages:...] present
+               | text_presenter + image_pipeline + present.metadata
+               | refine.tile_images | refine.resize_images ) 

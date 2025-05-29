@@ -203,6 +203,232 @@ class Attachment:
         self.metadata: Dict[str, Any] = {}
         
         self.pipeline: List[str] = []
+        
+        # Cache for content analysis (avoid repeated reads)
+        self._content_cache: Dict[str, Any] = {}
+    
+    @property
+    def content_type(self) -> str:
+        """Get the Content-Type header from URL responses, or empty string."""
+        return self.metadata.get('content_type', '').lower()
+    
+    @property
+    def has_content(self) -> bool:
+        """Check if attachment has downloadable content (from URLs)."""
+        return (hasattr(self, '_file_content') and self._file_content is not None) or \
+               (hasattr(self, '_response') and self._response is not None)
+    
+    def get_magic_bytes(self, num_bytes: int = 20) -> bytes:
+        """
+        Get the first N bytes of content for magic number detection.
+        
+        Returns empty bytes if no content is available or on error.
+        Uses caching to avoid repeated reads.
+        """
+        cache_key = f"magic_bytes_{num_bytes}"
+        if cache_key in self._content_cache:
+            return self._content_cache[cache_key]
+        
+        magic_bytes = b''
+        
+        try:
+            if hasattr(self, '_file_content') and self._file_content:
+                original_pos = self._file_content.tell()
+                self._file_content.seek(0)
+                magic_bytes = self._file_content.read(num_bytes)
+                self._file_content.seek(original_pos)
+            elif hasattr(self, '_response') and self._response:
+                magic_bytes = self._response.content[:num_bytes]
+        except Exception:
+            # If reading fails, return empty bytes
+            magic_bytes = b''
+        
+        # Cache the result
+        self._content_cache[cache_key] = magic_bytes
+        return magic_bytes
+    
+    def get_content_sample(self, num_bytes: int = 1000) -> bytes:
+        """
+        Get a larger sample of content for analysis.
+        
+        Returns empty bytes if no content is available or on error.
+        Uses caching to avoid repeated reads.
+        """
+        cache_key = f"content_sample_{num_bytes}"
+        if cache_key in self._content_cache:
+            return self._content_cache[cache_key]
+        
+        content_sample = b''
+        
+        try:
+            if hasattr(self, '_file_content') and self._file_content:
+                original_pos = self._file_content.tell()
+                self._file_content.seek(0)
+                content_sample = self._file_content.read(num_bytes)
+                self._file_content.seek(original_pos)
+            elif hasattr(self, '_response') and self._response:
+                content_sample = self._response.content[:num_bytes]
+        except Exception:
+            content_sample = b''
+        
+        # Cache the result
+        self._content_cache[cache_key] = content_sample
+        return content_sample
+    
+    def get_text_sample(self, num_chars: int = 500, encoding: str = 'utf-8') -> str:
+        """
+        Get a text sample of content for text-based analysis.
+        
+        Returns empty string if content cannot be decoded as text.
+        """
+        cache_key = f"text_sample_{num_chars}_{encoding}"
+        if cache_key in self._content_cache:
+            return self._content_cache[cache_key]
+        
+        text_sample = ''
+        
+        try:
+            # Get more bytes than characters since some chars are multi-byte
+            content_sample = self.get_content_sample(num_chars * 2)
+            if content_sample:
+                text_sample = content_sample.decode(encoding, errors='ignore')[:num_chars]
+        except Exception:
+            text_sample = ''
+        
+        # Cache the result
+        self._content_cache[cache_key] = text_sample
+        return text_sample
+    
+    def has_magic_signature(self, signatures: Union[bytes, List[bytes]]) -> bool:
+        """
+        Check if content starts with any of the given magic number signatures.
+        
+        Args:
+            signatures: Single signature (bytes) or list of signatures to check
+            
+        Returns:
+            True if content starts with any of the signatures
+        """
+        if isinstance(signatures, bytes):
+            signatures = [signatures]
+        
+        magic_bytes = self.get_magic_bytes(max(len(sig) for sig in signatures) if signatures else 20)
+        
+        for signature in signatures:
+            if magic_bytes.startswith(signature):
+                return True
+        
+        return False
+    
+    def contains_in_content(self, patterns: Union[bytes, str, List[Union[bytes, str]]], 
+                           max_search_bytes: int = 2000) -> bool:
+        """
+        Check if content contains any of the given patterns.
+        
+        Useful for checking ZIP-based Office formats (e.g., word/, ppt/, xl/).
+        
+        Args:
+            patterns: Pattern(s) to search for (bytes or strings)
+            max_search_bytes: How many bytes to search in
+            
+        Returns:
+            True if any pattern is found in the content
+        """
+        if not isinstance(patterns, list):
+            patterns = [patterns]
+        
+        content_sample = self.get_content_sample(max_search_bytes)
+        if not content_sample:
+            return False
+        
+        # Convert content to string for mixed pattern searching
+        try:
+            content_str = content_sample.decode('latin-1', errors='ignore')
+        except:
+            content_str = ''
+        
+        for pattern in patterns:
+            if isinstance(pattern, bytes):
+                if pattern in content_sample:
+                    return True
+            elif isinstance(pattern, str):
+                if pattern in content_str:
+                    return True
+        
+        return False
+    
+    def is_likely_text(self, sample_size: int = 1000) -> bool:
+        """
+        Heuristic to determine if content is likely text-based.
+        
+        Returns True if content can be decoded as UTF-8 and doesn't look like binary.
+        """
+        cache_key = f"is_text_{sample_size}"
+        if cache_key in self._content_cache:
+            return self._content_cache[cache_key]
+        
+        try:
+            content_sample = self.get_content_sample(sample_size)
+            if not content_sample:
+                return False
+            
+            # Try to decode as UTF-8
+            content_sample.decode('utf-8')
+            
+            # Check if it doesn't start with known binary signatures
+            is_text = not self.has_magic_signature([
+                b'%PDF',           # PDF
+                b'PK',             # ZIP-based formats
+                b'\xff\xd8\xff',   # JPEG
+                b'\x89PNG',        # PNG
+                b'GIF8',           # GIF
+                b'BM',             # BMP
+                b'RIFF'            # RIFF (WebP, etc.)
+            ])
+            
+            self._content_cache[cache_key] = is_text
+            return is_text
+            
+        except UnicodeDecodeError:
+            self._content_cache[cache_key] = False
+            return False
+        except Exception:
+            return False
+    
+    def clear_content_cache(self):
+        """Clear the content analysis cache (useful when content changes)."""
+        self._content_cache.clear()
+    
+    @property
+    def input_source(self):
+        """
+        Get the appropriate input source for loaders.
+        
+        Returns _file_content (BytesIO) if available from URL downloads,
+        otherwise returns the file path. This eliminates the need for
+        repetitive getattr patterns in loaders.
+        """
+        return getattr(self, '_file_content', None) or self.path
+    
+    @property
+    def text_content(self):
+        """
+        Get text content for text-based loaders.
+        
+        Returns _prepared_text if available from URL downloads,
+        otherwise reads from file path. This eliminates the need for
+        repetitive patterns in text loaders.
+        """
+        if hasattr(self, '_prepared_text'):
+            return self._prepared_text
+        else:
+            # Read from file path with proper encoding handling
+            try:
+                with open(self.path, 'r', encoding='utf-8') as f:
+                    return f.read()
+            except UnicodeDecodeError:
+                with open(self.path, 'r', encoding='latin-1', errors='ignore') as f:
+                    return f.read()
     
     def _parse_attachy(self) -> tuple[str, Dict[str, str]]:
         if not self.attachy:
@@ -388,9 +614,11 @@ def loader(match: Callable[[Attachment], bool]):
     def decorator(func):
         @wraps(func)
         def wrapper(att: Attachment) -> Attachment:
-            """Wrapper that provides centralized error handling for all loaders."""
+            """Wrapper that provides centralized error handling and input source handling for all loaders."""
             try:
-                return func(att)
+                # Enhanced: Automatically handle input source detection and preparation
+                prepared_att = _prepare_loader_input(att, func.__name__)
+                return func(prepared_att)
             except ImportError as e:
                 return _create_helpful_error_attachment(att, e, func.__name__)
             except Exception as e:
@@ -404,6 +632,85 @@ def loader(match: Callable[[Attachment], bool]):
         _loaders[func.__name__] = (match, wrapper)
         return wrapper
     return decorator
+
+
+def _prepare_loader_input(att: Attachment, loader_name: str) -> Attachment:
+    """
+    Prepare input for loaders by detecting source and setting up appropriate input.
+    
+    This eliminates repetitive input source detection code from every loader.
+    """
+    from io import BytesIO
+    import tempfile
+    import os
+    
+    # If we have in-memory content from URL morphing, prepare it
+    if hasattr(att, '_file_content') and att._file_content:
+        att._file_content.seek(0)  # Reset position
+        att.metadata[f'{_get_loader_type(loader_name)}_loaded_from'] = 'in_memory_url_content'
+        
+        # For text loaders, check if content is actually text before trying to decode
+        if _is_text_loader(loader_name):
+            # Only try to decode if it's likely text content (not binary like images)
+            if att.metadata.get('is_binary', False):
+                # Don't try to decode binary content as text - this prevents replacement character warnings
+                # Let the text loader handle it appropriately (it will likely skip or error)
+                att._prepared_text = ''
+            else:
+                # Convert to text and store in a temporary attribute
+                try:
+                    content_text = att._file_content.read().decode('utf-8')
+                    att._file_content.seek(0)  # Reset for the actual loader
+                    att._prepared_text = content_text
+                except UnicodeDecodeError:
+                    # Only fallback to latin-1 if it's not known binary content
+                    att._file_content.seek(0)
+                    content_text = att._file_content.read().decode('latin-1', errors='ignore')
+                    att._file_content.seek(0)
+                    att._prepared_text = content_text
+        
+        return att
+    
+    # If we have a response object, prepare it
+    elif hasattr(att, '_response') and att._response:
+        att.metadata[f'{_get_loader_type(loader_name)}_loaded_from'] = 'response_object'
+        
+        # Create _file_content from response for binary loaders
+        if not _is_text_loader(loader_name):
+            att._file_content = BytesIO(att._response.content)
+        else:
+            # For text loaders, use response.text for proper encoding (this handles encoding correctly)
+            att._prepared_text = att._response.text
+        
+        return att
+    
+    # Traditional file path - no preparation needed
+    else:
+        att.metadata[f'{_get_loader_type(loader_name)}_loaded_from'] = 'file_path'
+        return att
+
+
+def _get_loader_type(loader_name: str) -> str:
+    """Extract the loader type from the function name for metadata."""
+    # Extract the type from loader function names like 'pdf_to_pdfplumber' -> 'pdf'
+    type_mappings = {
+        'pdf_to_pdfplumber': 'pdf',
+        'pptx_to_python_pptx': 'pptx', 
+        'docx_to_python_docx': 'docx',
+        'excel_to_openpyxl': 'excel',
+        'csv_to_pandas': 'csv',
+        'text_to_string': 'text',
+        'html_to_bs4': 'html',
+        'image_to_pil': 'image',
+        'zip_to_images': 'zip'
+    }
+    return type_mappings.get(loader_name, loader_name.split('_')[0])
+
+
+def _is_text_loader(loader_name: str) -> bool:
+    """Check if this is a text-based loader that needs string input."""
+    text_loaders = {'text_to_string', 'html_to_bs4', 'csv_to_pandas'}
+    return loader_name in text_loaders
 
 
 def modifier(func):

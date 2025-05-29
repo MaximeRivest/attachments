@@ -28,9 +28,40 @@ def url_to_bs4(att: Attachment) -> Attachment:
     return att
 
 
+@loader(match=lambda att: att.path.startswith(('http://', 'https://')))
+def url_to_response(att: Attachment) -> Attachment:
+    """
+    Download URL content and store as response object for smart morphing.
+    
+    This is the new approach that avoids hardcoded file extension lists
+    and enables the morph_to_detected_type modifier to handle dispatch.
+    """
+    import requests
+    
+    response = requests.get(att.path, timeout=30)
+    response.raise_for_status()
+    
+    # Store the response object for morphing
+    att._obj = response
+    att.metadata.update({
+        'original_url': att.path,
+        'content_type': response.headers.get('content-type', ''),
+        'content_length': len(response.content),
+        'status_code': response.status_code,
+        'is_downloaded_url': True
+    })
+    
+    return att
+
+
 @loader(match=lambda att: att.path.startswith(('http://', 'https://')) and any(att.path.lower().endswith(ext) for ext in ['.pdf', '.pptx', '.ppt', '.docx', '.doc', '.xlsx', '.xls', '.csv', '.jpg', '.jpeg', '.png', '.gif', '.bmp']))
 def url_to_file(att: Attachment) -> Attachment:
-    """Download file from URL and delegate to appropriate loader based on file extension."""
+    """
+    Download file from URL and delegate to appropriate loader based on file extension.
+    
+    DEPRECATED: This is the old hardcoded approach. Use url_to_response + morph_to_detected_type instead.
+    Keeping for backward compatibility during transition.
+    """
     import requests
     import tempfile
     import os

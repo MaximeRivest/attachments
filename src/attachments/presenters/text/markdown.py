@@ -18,7 +18,9 @@ def markdown(att: Attachment, df: 'pandas.DataFrame') -> Attachment:
 @presenter
 def markdown(att: Attachment, pdf: 'pdfplumber.PDF') -> Attachment:
     """Convert PDF to markdown with text extraction. Handles scanned PDFs gracefully."""
-    att.text += f"# PDF Document: {att.path}\n\n"
+    # Use display_url from metadata if available (for URLs), otherwise use path
+    display_path = att.metadata.get('display_url', att.path)
+    att.text += f"# PDF Document: {display_path}\n\n"
     
     try:
         # Process ALL pages by default, or only selected pages if specified

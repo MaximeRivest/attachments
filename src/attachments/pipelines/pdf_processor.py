@@ -95,7 +95,8 @@ def pdf_to_llm(att: Attachment) -> Attachment:
     if ocr_setting == 'true':
         # Force OCR regardless of text extraction quality
         return (att 
-               | load.url_to_file          # Handle URLs first - download if needed
+               | load.url_to_response      # Handle URLs with new morphing architecture
+               | modify.morph_to_detected_type  # Smart detection replaces hardcoded url_to_file
                | load.pdf_to_pdfplumber 
                | modify.pages  # Optional - only acts if [pages:...] present
                | text_presenter + image_pipeline + present.ocr + present.metadata  # Include OCR
@@ -103,7 +104,8 @@ def pdf_to_llm(att: Attachment) -> Attachment:
     elif ocr_setting == 'false':
         # Never use OCR
         return (att 
-               | load.url_to_file          # Handle URLs first - download if needed
+               | load.url_to_response      # Handle URLs with new morphing architecture
+               | modify.morph_to_detected_type  # Smart detection replaces hardcoded url_to_file
                | load.pdf_to_pdfplumber 
                | modify.pages  # Optional - only acts if [pages:...] present
                | text_presenter + image_pipeline + present.metadata  # No OCR
@@ -112,7 +114,8 @@ def pdf_to_llm(att: Attachment) -> Attachment:
         # Auto mode (default): First extract text, then conditionally add OCR
         # Process with standard pipeline first
         processed = (att 
-                    | load.url_to_file          # Handle URLs first - download if needed
+                    | load.url_to_response      # Handle URLs with new morphing architecture
+                    | modify.morph_to_detected_type  # Smart detection replaces hardcoded url_to_file
                     | load.pdf_to_pdfplumber 
                     | modify.pages  # Optional - only acts if [pages:...] present
                     | text_presenter + image_pipeline + present.metadata  # Standard extraction

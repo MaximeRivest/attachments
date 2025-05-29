@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="300" height="200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="100%" height="100%" fill="#f0f8ff"/>
+  
+  <!-- Title -->
+  <text x="150" y="30" text-anchor="middle" font-family="Arial, sans-serif" 
+        font-size="18" font-weight="bold" fill="#2c3e50">
+    Attachments Library Demo
+  </text>
+  
+  <!-- Circle -->
+  <circle cx="80" cy="100" r="30" fill="#3498db" stroke="#2980b9" stroke-width="2"/>
+  
+  <!-- Rectangle -->
+  <rect x="130" y="70" width="60" height="60" fill="#e74c3c" stroke="#c0392b" 
+        stroke-width="2" rx="5"/>
+  
+  <!-- Triangle -->
+  <polygon points="220,130 240,80 260,130" fill="#2ecc71" stroke="#27ae60" 
+           stroke-width="2"/>
+  
+  <!-- Description -->
+  <text x="150" y="170" text-anchor="middle" font-family="Arial, sans-serif" 
+        font-size="12" fill="#7f8c8d">
+    SVG with both code and visual representation
+  </text>
+</svg> 

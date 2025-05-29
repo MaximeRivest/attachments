@@ -6,22 +6,23 @@ from ... import matchers
 
 @loader(match=matchers.text_match)
 def text_to_string(att: Attachment) -> Attachment:
-    """Load text files as strings."""
-    with open(att.path, 'r', encoding='utf-8') as f:
-        content = f.read()
-        att._obj = content
-        att.text = content
+    """Load text files as strings with automatic input source handling."""
+    # Use the new text_content property - no more repetitive patterns!
+    content = att.text_content
+    
+    att._obj = content
+    att.text = content
     return att
 
 
 @loader(match=lambda att: att.path.lower().endswith(('.html', '.htm')))
 def html_to_bs4(att: Attachment) -> Attachment:
-    """Load HTML files and parse with BeautifulSoup."""
+    """Load HTML files and parse with BeautifulSoup with automatic input source handling."""
     try:
         from bs4 import BeautifulSoup
         
-        with open(att.path, 'r', encoding='utf-8') as f:
-            content = f.read()
+        # Use the new text_content property - no more repetitive patterns!
+        content = att.text_content
         
         # Parse with BeautifulSoup
         soup = BeautifulSoup(content, 'html.parser')

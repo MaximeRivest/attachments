@@ -279,6 +279,7 @@ source = { editable = "." }
 dependencies = [
     { name = "beautifulsoup4" },
     { name = "dspy-ai" },
+    { name = "ipykernel" },
     { name = "jupytext" },
     { name = "pdfplumber" },
     { name = "pillow" },
@@ -380,6 +381,7 @@ requires-dist = [
     { name = "coverage", extras = ["toml"], marker = "extra == 'test'", specifier = ">=7.4.0" },
     { name = "dspy-ai", specifier = ">=2.6.24" },
     { name = "flake8", marker = "extra == 'dev'", specifier = ">=7.0.0" },
+    { name = "ipykernel", specifier = ">=6.29.5" },
     { name = "jupyter", marker = "extra == 'docs'", specifier = ">=1.0.0" },
     { name = "jupytext", specifier = ">=1.17.1" },
     { name = "jupytext", marker = "extra == 'docs'", specifier = ">=1.16.0" },

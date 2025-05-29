@@ -40,6 +40,7 @@ dependencies = [
     "pydantic>=2.11.5",
     "pdfplumber>=0.11.6",
     "python-pptx>=1.0.2",
+    "ipykernel>=6.29.5",
 ]
 
 [project.urls]

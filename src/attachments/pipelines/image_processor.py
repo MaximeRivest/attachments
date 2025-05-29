@@ -39,10 +39,11 @@ def image_to_llm(att: Attachment) -> Attachment:
     # Import namespaces properly to get VerbFunction wrappers
     from .. import load, modify, present, refine
     
-    # Enhanced pipeline with URL support and image control
+    # Build the pipeline for image processing with DSL support
     return (att 
-           | load.url_to_file          # Handle URLs first - download if needed
-           | load.image_to_pil         # Then load as PIL Image
+           | load.url_to_response      # Handle URLs with new morphing architecture
+           | modify.morph_to_detected_type  # Smart detection replaces hardcoded url_to_file
+           | load.image_to_pil          # Load image with PIL
            | modify.watermark          # Apply auto watermark by default
            | present.images + present.metadata
-           | refine.resize_images | refine.add_headers)
+           | refine.resize_images)      # Apply final resize if needed

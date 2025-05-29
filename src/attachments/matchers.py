@@ -3,7 +3,9 @@ import re
 import os
 import glob
 
-# --- MATCHERS ---
+# --- ENHANCED MATCHERS ---
+# These matchers now check file extensions, Content-Type headers, and magic numbers
+# This makes them work seamlessly with both file paths and URL responses
 
 def url_match(att: 'Attachment') -> bool:
     """Check if the attachment path looks like a URL."""
@@ -22,29 +24,150 @@ def webpage_match(att: 'Attachment') -> bool:
     return not any(att.path.lower().endswith(ext) for ext in file_extensions)
 
 def csv_match(att: 'Attachment') -> bool:
-    return att.path.endswith('.csv')
+    """Enhanced CSV matcher: checks file extension, Content-Type, and magic numbers."""
+    # File extension check
+    if att.path.endswith('.csv'):
+        return True
+    
+    # Content-Type check for URL responses
+    if 'text/csv' in att.content_type:
+        return True
+    
+    # Magic number check (CSV files often start with headers)
+    if att.has_content:
+        text_sample = att.get_text_sample(200)
+        if text_sample and ',' in text_sample and '\n' in text_sample:
+            lines = text_sample.split('\n')[:2]
+            if len(lines) >= 1 and lines[0].count(',') >= 1:
+                return True
+    
+    return False
 
 def pdf_match(att: 'Attachment') -> bool:
-    return att.path.endswith('.pdf')
+    """Enhanced PDF matcher: checks file extension, Content-Type, and magic numbers."""
+    # File extension check
+    if att.path.endswith('.pdf'):
+        return True
+    
+    # Content-Type check for URL responses
+    if 'pdf' in att.content_type:
+        return True
+    
+    # Magic number check (PDF files start with %PDF)
+    if att.has_content and att.has_magic_signature(b'%PDF'):
+        return True
+    
+    return False
 
 def pptx_match(att: 'Attachment') -> bool:
-    return att.path.endswith(('.pptx', '.ppt'))
+    """Enhanced PowerPoint matcher: checks file extension, Content-Type, and magic numbers."""
+    # File extension check
+    if att.path.endswith(('.pptx', '.ppt')):
+        return True
+    
+    # Content-Type check for URL responses
+    if any(x in att.content_type for x in ['powerpoint', 'presentation', 'vnd.ms-powerpoint']):
+        return True
+    
+    # Magic number check (ZIP-based Office files start with PK and contain ppt/)
+    if att.has_content:
+        if att.has_magic_signature(b'PK') and att.contains_in_content(b'ppt/'):
+            return True
+    
+    return False
 
 def docx_match(att: 'Attachment') -> bool:
-    return att.path.endswith(('.docx', '.doc'))
+    """Enhanced Word matcher: checks file extension, Content-Type, and magic numbers."""
+    # File extension check
+    if att.path.endswith(('.docx', '.doc')):
+        return True
+    
+    # Content-Type check for URL responses
+    if any(x in att.content_type for x in ['msword', 'document', 'wordprocessingml']):
+        return True
+    
+    # Magic number check (ZIP-based Office files start with PK and contain word/)
+    if att.has_content:
+        if att.has_magic_signature(b'PK') and att.contains_in_content(b'word/'):
+            return True
+    
+    return False
 
 def excel_match(att: 'Attachment') -> bool:
-    return att.path.endswith(('.xlsx', '.xls'))
+    """Enhanced Excel matcher: checks file extension, Content-Type, and magic numbers."""
+    # File extension check
+    if att.path.endswith(('.xlsx', '.xls')):
+        return True
+    
+    # Content-Type check for URL responses
+    if any(x in att.content_type for x in ['excel', 'spreadsheet', 'vnd.ms-excel']):
+        return True
+    
+    # Magic number check (ZIP-based Office files start with PK and contain xl/)
+    if att.has_content:
+        if att.has_magic_signature(b'PK') and att.contains_in_content(b'xl/'):
+            return True
+    
+    return False
 
 def image_match(att: 'Attachment') -> bool:
-    return att.path.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.bmp', '.heic', '.heif'))
+    """Enhanced image matcher: checks file extension, Content-Type, and magic numbers."""
+    # File extension check
+    if att.path.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.bmp', '.heic', '.heif', '.webp')):
+        return True
+    
+    # Content-Type check for URL responses
+    if att.content_type.startswith('image/'):
+        return True
+    
+    # Magic number check for common image formats
+    if att.has_content:
+        image_signatures = [
+            b'\xff\xd8\xff',  # JPEG
+            b'\x89PNG',       # PNG
+            b'GIF8',          # GIF
+            b'BM',            # BMP
+        ]
+        if att.has_magic_signature(image_signatures):
+            return True
+        
+        # Special case for WebP (RIFF format with WEBP)
+        if att.has_magic_signature(b'RIFF') and att.contains_in_content(b'WEBP', max_search_bytes=20):
+            return True
+    
+    return False
 
 def text_match(att: 'Attachment') -> bool:
-    return att.path.endswith(('.txt', '.md', '.log', '.json', '.py'))
+    """Enhanced text matcher: checks file extension, Content-Type, and content analysis."""
+    # File extension check
+    if att.path.endswith(('.txt', '.md', '.log', '.json', '.py', '.svg', '.xml', '.html', '.htm', '.rst')):
+        return True
+    
+    # Content-Type check for URL responses
+    if (att.content_type.startswith('text/') or 
+        'json' in att.content_type or 
+        'xml' in att.content_type):
+        return True
+    
+    # Content analysis for text files
+    if att.has_content and att.is_likely_text():
+        return True
+    
+    return False
 
 def zip_match(att: 'Attachment') -> bool:
-    """Check if the attachment path is a ZIP file."""
-    return att.path.lower().endswith('.zip')
+    """Enhanced ZIP matcher: checks file extension and magic numbers."""
+    # File extension check
+    if att.path.lower().endswith('.zip'):
+        return True
+    
+    # Magic number check (ZIP files start with PK, but exclude Office formats)
+    if att.has_content:
+        if (att.has_magic_signature(b'PK') and 
+            not att.contains_in_content([b'word/', b'ppt/', b'xl/'])):
+            return True
+    
+    return False
 
 def git_repo_match(att: 'Attachment') -> bool:
     """Check if path is a Git repository."""

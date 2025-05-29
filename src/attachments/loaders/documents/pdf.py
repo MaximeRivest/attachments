@@ -6,9 +6,12 @@ from ... import matchers
 
 @loader(match=matchers.pdf_match)
 def pdf_to_pdfplumber(att: Attachment) -> Attachment:
-    """Load PDF using pdfplumber."""
+    """Load PDF using pdfplumber with automatic input source handling."""
     try:
         import pdfplumber
+        
+        # Use the new input_source property - no more repetitive patterns!
+        pdf_source = att.input_source
         
         # Try to create a temporary PDF with CropBox defined to silence warnings
         try:
@@ -17,9 +20,15 @@ def pdf_to_pdfplumber(att: Attachment) -> Attachment:
             import tempfile
             import os
             
-            # Read the original PDF
-            with open(att.path, 'rb') as f:
-                pdf_bytes = f.read()
+            # Read the PDF bytes
+            if isinstance(pdf_source, str):
+                # File path
+                with open(pdf_source, 'rb') as f:
+                    pdf_bytes = f.read()
+            else:
+                # BytesIO or file-like object
+                pdf_source.seek(0)
+                pdf_bytes = pdf_source.read()
             
             # Process with pypdf to add CropBox
             reader = pypdf.PdfReader(BytesIO(pdf_bytes))
@@ -43,8 +52,14 @@ def pdf_to_pdfplumber(att: Attachment) -> Attachment:
             att.metadata['temp_pdf_path'] = temp_path
             
         except (ImportError, Exception):
-            # If CropBox fix fails, fall back to original file
-            att._obj = pdfplumber.open(att.path)
+            # If CropBox fix fails, fall back to direct loading
+            if isinstance(pdf_source, str):
+                # File path
+                att._obj = pdfplumber.open(pdf_source)
+            else:
+                # BytesIO - pdfplumber can handle this directly
+                pdf_source.seek(0)
+                att._obj = pdfplumber.open(pdf_source)
             
     except ImportError:
         raise ImportError("pdfplumber is required for PDF loading. Install with: pip install pdfplumber")

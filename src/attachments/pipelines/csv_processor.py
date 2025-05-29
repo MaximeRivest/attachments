@@ -93,7 +93,8 @@ def csv_to_llm(att: Attachment) -> Attachment:
     
     # Build the complete pipeline
     return (att 
-           | load.url_to_file          # Handle URLs first - download if needed
+           | load.url_to_response      # Handle URLs with new morphing architecture
+           | modify.morph_to_detected_type  # Smart detection replaces hardcoded url_to_file
            | load.csv_to_pandas        # Then load as pandas DataFrame
            | modify.limit              # Apply row limiting if specified
            | combined_presenter        # Apply all selected presenters

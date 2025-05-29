@@ -142,12 +142,13 @@ class Attachments:
         # Get the proper namespaces
         load, present, refine, split, modify = _get_cached_namespaces()
         
-        # Smart loader chain - order matters for proper fallback
-        # Put URL loaders first to handle URLs before file-specific loaders
+        # NEW: Smart URL processing with morphing (replaces hardcoded url_to_file)
+        # Order matters for proper fallback - URL processing comes first
         try:
             loaded = (att 
-                     | load.url_to_file             # URLs with file extensions → download and process
-                     | load.url_to_bs4              # Other URLs → BeautifulSoup
+                     | load.url_to_response         # URLs → response object (new architecture)
+                     | modify.morph_to_detected_type # response → morphed path (triggers matchers)
+                     | load.url_to_bs4              # Non-file URLs → BeautifulSoup (fallback)
                      | load.git_repo_to_structure   # Git repos → structure object
                      | load.directory_to_structure  # Directories/globs → structure object
                      | load.pdf_to_pdfplumber       # PDF → pdfplumber object

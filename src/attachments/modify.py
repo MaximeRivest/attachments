@@ -359,3 +359,70 @@ def watermark(att: Attachment, img: 'PIL.Image.Image') -> Attachment:
             'error': str(e)
         })
     return att
+
+
+# --- URL MORPHING MODIFIER ---
+
+@modifier
+def morph_to_detected_type(att: Attachment, response: 'requests.Response') -> Attachment:
+    """
+    Intelligently detect file type from URL response using enhanced matchers.
+    
+    This modifier leverages the enhanced matcher system which checks file extensions,
+    Content-Type headers, and magic numbers. No hardcoded lists needed!
+    
+    Usage: attach(url) | load.url_to_response | modify.morph_to_detected_type | [existing matchers]
+    """
+    from pathlib import Path
+    from urllib.parse import urlparse
+    from io import BytesIO
+    
+    # Preserve original URL for display purposes
+    original_url = att.metadata.get('original_url', att.path)
+    parsed_url = urlparse(original_url)
+    
+    # Keep the original URL as the path for display, but also save it in metadata
+    att.path = original_url
+    
+    # Store content in memory - matchers need this for Content-Type and magic number detection!
+    att._file_content = BytesIO(response.content)
+    att._file_content.seek(0)
+    att._response = response
+    
+    # Clear _obj so subsequent loaders can properly load the detected type
+    att._obj = None
+    
+    # Update metadata with detection info AND preserve display URL
+    att.metadata.update({
+        'detection_method': 'enhanced_matcher_based',
+        'response_content_type': response.headers.get('content-type', ''),
+        'content_length': len(response.content),
+        'is_binary': _is_likely_binary(response.content[:1024]),  # Check first 1KB
+        'display_url': original_url,  # Preserve for presenters to use instead of temp paths
+    })
+    
+    return att
+
+
+def _is_likely_binary(content_sample: bytes) -> bool:
+    """Check if content appears to be binary (has non-text bytes)."""
+    if not content_sample:
+        return False
+    
+    # Check for null bytes (strong indicator of binary)
+    if b'\x00' in content_sample:
+        return True
+    
+    # Check percentage of non-printable characters
+    try:
+        # Try to decode as UTF-8
+        content_sample.decode('utf-8')
+        # If successful, it's likely text
+        return False
+    except UnicodeDecodeError:
+        # If decode fails, it's likely binary
+        return True
+
+
+# Removed all the old hardcoded detection functions - they are no longer needed!
+# The enhanced matchers in matchers.py now handle all the intelligence.

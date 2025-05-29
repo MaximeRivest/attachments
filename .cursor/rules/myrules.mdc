@@ -7,9 +7,33 @@ The [README.md](mdc:README.md) is the ground truth  on the interface we aim to i
 
 use uv and .venv (my uv virtual environment).
 
+ALWAYS USE :    uv run python ....py
+
 ### Content Fidelity First
 **Users input is sacred.** Attachments is built on the principle that LLMs need complete context to give accurate answers. We preserve 100% of users content by default:
 
 - **No silent truncations** – If content is limited, it's because users explicitly requested it
 - **No arbitrary limits** – We don't decide what's "too much" content for user's use case  
 - **Full extraction** – When user ask for a PDF, they get the whole PDF (all pages, all text, all images)
+
+
+If you run uv and python in cursor inproperly:
+
+THIS IS WRONG:
+source .venv/bin/activate && python docs/scripts/how_to_load_and_morph.py
+
+
+YOU GET ISSUES AROUND THOSE THINGS:
+env | grep -i cursor
+
+unset LD_LIBRARY_PATH
+
+python -c "import sys; print('sys.executable:', sys.executable); print('sys.base_executable:', sys.base_executable)"
+
+
+python3 -c "import sys; print('sys.executable:', sys.executable)"
+
+(attachments) ➜  attachments git:(main) ✗ deactivate
+<; print('sys.executable:', sys.executable)"
+sys.executable: /home/maxime/Applications/Cursor-0.50.5-x86_64.AppImage
+➜  attachments git:(main) ✗ 
