@@ -701,6 +701,45 @@ src/attachments/loaders/
 └── repositories/ # Git repo, directory loaders
 ```
 
+**Enhanced URL Processing (v0.8.0+):**
+The URL morphing architecture provides intelligent file type detection without hardcoded lists:
+
+```python
+# New intelligent URL processing pattern
+result = (attach("https://example.com/document.pdf")
+         | load.url_to_response         # Download content as response object
+         | modify.morph_to_detected_type # Smart detection via enhanced matchers
+         | load.pdf_to_pdfplumber       # Automatically triggered by enhanced matcher
+         | present.markdown)
+```
+
+**Enhanced Matchers System:**
+All matchers now intelligently check multiple detection strategies:
+
+```python
+def pdf_match(att: 'Attachment') -> bool:
+    """Enhanced PDF detection using multiple strategies."""
+    # Check file extension (traditional)
+    if att.path.lower().endswith('.pdf'):
+        return True
+    
+    # Check Content-Type header (for URLs)
+    if 'pdf' in att.content_type:
+        return True
+    
+    # Check magic number signature (for binary content)
+    if att.has_magic_signature(b'%PDF'):
+        return True
+    
+    return False
+```
+
+**URL Morphing Process:**
+1. **Download**: `url_to_response` fetches content and preserves metadata
+2. **Detect**: `morph_to_detected_type` uses enhanced matchers for type detection
+3. **Transform**: Original URL preserved for display, content prepared for loaders
+4. **Load**: Appropriate loader automatically triggered by enhanced matcher
+
 **Match Function Pattern:**
 ```python
 @loader(match=lambda att: att.path.endswith('.pdf'))
@@ -895,11 +934,17 @@ def _universal_pipeline(self, att: Attachment):
     
     # Smart loader chain
     loaded = (att 
-             | load.url_to_file             # URLs first
-             | load.pdf_to_pdfplumber       # Then file types
-             | load.csv_to_pandas 
-             | load.image_to_pil
-             | load.text_to_string)         # Text as fallback
+             | load.url_to_response         # URLs → response object (new architecture)
+             | modify.morph_to_detected_type # response → morphed path (triggers matchers)
+             | load.url_to_bs4              # Non-file URLs → BeautifulSoup (fallback)
+             | load.git_repo_to_structure   # Git repos → structure object
+             | load.directory_to_structure  # Directories/globs → structure object
+             | load.pdf_to_pdfplumber       # PDF → pdfplumber object
+             | load.csv_to_pandas           # CSV → pandas DataFrame  
+             | load.image_to_pil            # Images → PIL Image
+             | load.html_to_bs4             # HTML → BeautifulSoup
+             | load.text_to_string          # Text → string
+             | load.zip_to_images)          # ZIP → AttachmentCollection (last)
     
     # Smart presenter selection
     text_presenter = _get_smart_text_presenter(loaded)
