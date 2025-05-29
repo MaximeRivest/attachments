@@ -240,7 +240,7 @@ csv_analyzer = (load.csv_to_pandas
                | refine.add_headers)
 
 # Use as function
-result = csv_analyzer("data.csv[limit:100]")
+result = csv_analyzer("data.csv[limit:1000]")
 analysis = result.claude("What patterns do you see?")
 ```
 
@@ -260,6 +260,11 @@ analysis = result.claude("What patterns do you see?")
 | **Image processing**      | `image.jpg[crop:100,100,400,300][rotate:45]` | Chain multiple transformations |
 | **Content filtering**     | `doc.pdf[format:plain][images:false]` | Control text/image extraction |
 | **Repository processing** | `repo[files:false][ignore:standard]` | Smart codebase analysis |
+| **Content Control**       | `doc.pdf[truncate:5000]`  | *Explicit* truncation when needed (user choice) |
+| **Repository Filtering**  | `repo[max_files:100]`     | Limit file processing (performance, not content) |
+| **Processing Limits**     | `data.csv[limit:1000]`    | Row limits for large datasets (explicit) |
+
+> 🔒 **Default Philosophy**: All content preserved unless you explicitly request limits
 
 ---
 

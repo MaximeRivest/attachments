@@ -101,47 +101,42 @@ def images(att: Attachment, doc: 'docx.Document') -> Attachment:
             pdf_doc = pdfium.PdfDocument(pdf_path)
             num_pages = len(pdf_doc)
             
-            # Get selected pages (respects pages DSL command)
-            page_indices = att.metadata.get('selected_pages', range(1, num_pages + 1))
-            
-            # Convert to 0-based indices if they're 1-based
-            if isinstance(page_indices, range):
-                page_indices = [i - 1 for i in page_indices if 1 <= i <= num_pages]
+            # Process all pages (no artificial limits) - respect selected_pages if set
+            if hasattr(att, 'metadata') and 'selected_pages' in att.metadata:
+                # Use user-specified pages
+                selected_pages = att.metadata['selected_pages']
+                page_indices = [p - 1 for p in selected_pages if 1 <= p <= num_pages]  # Convert to 0-based
             else:
-                page_indices = [i - 1 for i in page_indices if 1 <= i <= num_pages]
-            
-            # Limit to reasonable number of pages
-            max_pages = min(num_pages, 20)
-            page_indices = page_indices[:max_pages]
+                # Process all pages by default
+                page_indices = range(num_pages)
             
             for page_idx in page_indices:
-                if 0 <= page_idx < num_pages:
-                    page = pdf_doc[page_idx]
-                    
-                    # Render at 2x scale for better quality (like PDF processor)
-                    pil_image = page.render(scale=2).to_pil()
-                    
-                    # Apply resize if specified
-                    if resize:
-                        if 'x' in resize:
-                            # Format: 800x600
-                            w, h = map(int, resize.split('x'))
-                            pil_image = pil_image.resize((w, h), pil_image.Resampling.LANCZOS)
-                        elif resize.endswith('%'):
-                            # Format: 50%
-                            scale = int(resize[:-1]) / 100
-                            new_width = int(pil_image.width * scale)
-                            new_height = int(pil_image.height * scale)
-                            pil_image = pil_image.resize((new_width, new_height), pil_image.Resampling.LANCZOS)
-                    
-                    # Convert to PNG bytes
-                    img_byte_arr = io.BytesIO()
-                    pil_image.save(img_byte_arr, format='PNG')
-                    png_bytes = img_byte_arr.getvalue()
-                    
-                    # Encode as base64 data URL (consistent with PDF processor)
-                    b64_string = base64.b64encode(png_bytes).decode('utf-8')
-                    images.append(f"data:image/png;base64,{b64_string}")
+                page = pdf_doc[page_idx]
+                
+                # Render at 2x scale for better quality (like PDF processor)
+                pil_image = page.render(scale=2).to_pil()
+                
+                # Apply resize if specified
+                if resize:
+                    if 'x' in resize:
+                        # Format: 800x600
+                        w, h = map(int, resize.split('x'))
+                        pil_image = pil_image.resize((w, h), pil_image.Resampling.LANCZOS)
+                    elif resize.endswith('%'):
+                        # Format: 50%
+                        scale = int(resize[:-1]) / 100
+                        new_width = int(pil_image.width * scale)
+                        new_height = int(pil_image.height * scale)
+                        pil_image = pil_image.resize((new_width, new_height), pil_image.Resampling.LANCZOS)
+                
+                # Convert to PNG bytes
+                img_byte_arr = io.BytesIO()
+                pil_image.save(img_byte_arr, format='PNG')
+                png_bytes = img_byte_arr.getvalue()
+                
+                # Encode as base64 data URL (consistent with PDF processor)
+                b64_string = base64.b64encode(png_bytes).decode('utf-8')
+                images.append(f"data:image/png;base64,{b64_string}")
             
             # Clean up PDF document
             pdf_doc.close()
@@ -226,15 +221,16 @@ def images(att: Attachment, pdf_reader: 'pdfplumber.PDF') -> Attachment:
         pdf_doc = pdfium.PdfDocument(pdf_bytes)
         num_pages = len(pdf_doc)
         
-        # Limit to reasonable number of pages (respect pages command if present)
-        if 'pages' in att.commands:
-            # If pages are specified, use those
-            max_pages = min(num_pages, 20)  # Still cap at 20 for safety
+        # Process all pages (no artificial limits) - respect selected_pages if set
+        if hasattr(att, 'metadata') and 'selected_pages' in att.metadata:
+            # Use user-specified pages
+            selected_pages = att.metadata['selected_pages']
+            page_indices = [p - 1 for p in selected_pages if 1 <= p <= num_pages]  # Convert to 0-based
         else:
-            # Default limit
-            max_pages = min(num_pages, 10)
+            # Process all pages by default
+            page_indices = range(num_pages)
         
-        for page_idx in range(max_pages):
+        for page_idx in page_indices:
             page = pdf_doc[page_idx]
             
             # Render at 2x scale for better quality
@@ -373,48 +369,42 @@ def images(att: Attachment, pres: 'pptx.Presentation') -> Attachment:
             pdf_doc = pdfium.PdfDocument(pdf_path)
             num_pages = len(pdf_doc)
             
-            # Get selected slides (respects pages DSL command)
-            slide_indices = att.metadata.get('selected_slides', range(num_pages))
-            
-            # Convert slide indices to page indices (slides are 1-based, pages are 0-based)
-            if isinstance(slide_indices, range):
-                page_indices = list(slide_indices)
+            # Process all pages (no artificial limits) - respect selected_pages if set
+            if hasattr(att, 'metadata') and 'selected_pages' in att.metadata:
+                # Use user-specified pages
+                selected_pages = att.metadata['selected_pages']
+                page_indices = [p - 1 for p in selected_pages if 1 <= p <= num_pages]  # Convert to 0-based
             else:
-                # Convert 1-based slide numbers to 0-based page indices
-                page_indices = [idx if isinstance(slide_indices, range) else idx for idx in slide_indices]
-            
-            # Limit to reasonable number of slides
-            max_slides = min(num_pages, 20)
-            page_indices = page_indices[:max_slides]
+                # Process all pages by default
+                page_indices = range(num_pages)
             
             for page_idx in page_indices:
-                if 0 <= page_idx < num_pages:
-                    page = pdf_doc[page_idx]
-                    
-                    # Render at 2x scale for better quality (like PDF processor)
-                    pil_image = page.render(scale=2).to_pil()
-                    
-                    # Apply resize if specified
-                    if resize:
-                        if 'x' in resize:
-                            # Format: 800x600
-                            w, h = map(int, resize.split('x'))
-                            pil_image = pil_image.resize((w, h), pil_image.Resampling.LANCZOS)
-                        elif resize.endswith('%'):
-                            # Format: 50%
-                            scale = int(resize[:-1]) / 100
-                            new_width = int(pil_image.width * scale)
-                            new_height = int(pil_image.height * scale)
-                            pil_image = pil_image.resize((new_width, new_height), pil_image.Resampling.LANCZOS)
-                    
-                    # Convert to PNG bytes
-                    img_byte_arr = io.BytesIO()
-                    pil_image.save(img_byte_arr, format='PNG')
-                    png_bytes = img_byte_arr.getvalue()
-                    
-                    # Encode as base64 data URL (consistent with PDF processor)
-                    b64_string = base64.b64encode(png_bytes).decode('utf-8')
-                    images.append(f"data:image/png;base64,{b64_string}")
+                page = pdf_doc[page_idx]
+                
+                # Render at 2x scale for better quality (like PDF processor)
+                pil_image = page.render(scale=2).to_pil()
+                
+                # Apply resize if specified
+                if resize:
+                    if 'x' in resize:
+                        # Format: 800x600
+                        w, h = map(int, resize.split('x'))
+                        pil_image = pil_image.resize((w, h), pil_image.Resampling.LANCZOS)
+                    elif resize.endswith('%'):
+                        # Format: 50%
+                        scale = int(resize[:-1]) / 100
+                        new_width = int(pil_image.width * scale)
+                        new_height = int(pil_image.height * scale)
+                        pil_image = pil_image.resize((new_width, new_height), pil_image.Resampling.LANCZOS)
+                
+                # Convert to PNG bytes
+                img_byte_arr = io.BytesIO()
+                pil_image.save(img_byte_arr, format='PNG')
+                png_bytes = img_byte_arr.getvalue()
+                
+                # Encode as base64 data URL (consistent with PDF processor)
+                b64_string = base64.b64encode(png_bytes).decode('utf-8')
+                images.append(f"data:image/png;base64,{b64_string}")
             
             # Clean up PDF document
             pdf_doc.close()
@@ -512,47 +502,42 @@ def images(att: Attachment, workbook: 'openpyxl.Workbook') -> Attachment:
             pdf_doc = pdfium.PdfDocument(pdf_path)
             num_pages = len(pdf_doc)
             
-            # Get selected sheets (respects pages DSL command, treating pages as sheets)
-            sheet_indices = att.metadata.get('selected_sheets', range(num_pages))
-            
-            # Convert to 0-based indices if they're 1-based
-            if isinstance(sheet_indices, range):
-                page_indices = [i for i in sheet_indices if 0 <= i < num_pages]
+            # Process all pages (no artificial limits) - respect selected_pages if set
+            if hasattr(att, 'metadata') and 'selected_pages' in att.metadata:
+                # Use user-specified pages
+                selected_pages = att.metadata['selected_pages']
+                page_indices = [p - 1 for p in selected_pages if 1 <= p <= num_pages]  # Convert to 0-based
             else:
-                page_indices = [i - 1 for i in sheet_indices if 1 <= i <= num_pages]
-            
-            # Limit to reasonable number of sheets
-            max_sheets = min(num_pages, 20)
-            page_indices = page_indices[:max_sheets]
+                # Process all pages by default
+                page_indices = range(num_pages)
             
             for page_idx in page_indices:
-                if 0 <= page_idx < num_pages:
-                    page = pdf_doc[page_idx]
-                    
-                    # Render at 2x scale for better quality (like PDF processor)
-                    pil_image = page.render(scale=2).to_pil()
-                    
-                    # Apply resize if specified
-                    if resize:
-                        if 'x' in resize:
-                            # Format: 800x600
-                            w, h = map(int, resize.split('x'))
-                            pil_image = pil_image.resize((w, h), pil_image.Resampling.LANCZOS)
-                        elif resize.endswith('%'):
-                            # Format: 50%
-                            scale = int(resize[:-1]) / 100
-                            new_width = int(pil_image.width * scale)
-                            new_height = int(pil_image.height * scale)
-                            pil_image = pil_image.resize((new_width, new_height), pil_image.Resampling.LANCZOS)
-                    
-                    # Convert to PNG bytes
-                    img_byte_arr = io.BytesIO()
-                    pil_image.save(img_byte_arr, format='PNG')
-                    png_bytes = img_byte_arr.getvalue()
-                    
-                    # Encode as base64 data URL (consistent with PDF processor)
-                    b64_string = base64.b64encode(png_bytes).decode('utf-8')
-                    images.append(f"data:image/png;base64,{b64_string}")
+                page = pdf_doc[page_idx]
+                
+                # Render at 2x scale for better quality (like PDF processor)
+                pil_image = page.render(scale=2).to_pil()
+                
+                # Apply resize if specified
+                if resize:
+                    if 'x' in resize:
+                        # Format: 800x600
+                        w, h = map(int, resize.split('x'))
+                        pil_image = pil_image.resize((w, h), pil_image.Resampling.LANCZOS)
+                    elif resize.endswith('%'):
+                        # Format: 50%
+                        scale = int(resize[:-1]) / 100
+                        new_width = int(pil_image.width * scale)
+                        new_height = int(pil_image.height * scale)
+                        pil_image = pil_image.resize((new_width, new_height), pil_image.Resampling.LANCZOS)
+                
+                # Convert to PNG bytes
+                img_byte_arr = io.BytesIO()
+                pil_image.save(img_byte_arr, format='PNG')
+                png_bytes = img_byte_arr.getvalue()
+                
+                # Encode as base64 data URL (consistent with PDF processor)
+                b64_string = base64.b64encode(png_bytes).decode('utf-8')
+                images.append(f"data:image/png;base64,{b64_string}")
             
             # Clean up PDF document
             pdf_doc.close()

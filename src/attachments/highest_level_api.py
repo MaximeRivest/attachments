@@ -191,10 +191,6 @@ class Attachments:
                             | (text_presenter + present.images + present.metadata)
                             | refine.tile_images | refine.add_headers)
                 
-                # Apply truncation only if text is very long (>5000 chars)
-                if hasattr(processed, 'text') and processed.text and len(processed.text) > 5000:
-                    processed = processed | refine.truncate(3000)
-                
                 return processed
     
     def __str__(self) -> str:

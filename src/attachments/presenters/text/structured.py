@@ -42,7 +42,7 @@ def xml(att: Attachment, pres: 'pptx.Presentation') -> Attachment:
             
             # List all XML files in the PPTX
             xml_files = [f for f in pptx_zip.namelist() if f.endswith('.xml')]
-            att.text += f"<!-- XML Files: {', '.join(xml_files[:10])}{'...' if len(xml_files) > 10 else ''} -->\n\n"
+            att.text += f"<!-- XML Files: {', '.join(xml_files)} -->\n\n"
             
             # Extract slide XML content
             for slide_idx in slide_indices:
@@ -62,9 +62,7 @@ def xml(att: Attachment, pres: 'pptx.Presentation') -> Attachment:
                             lines = lines[1:]  # Remove XML declaration
                         
                         att.text += f"<!-- Slide {slide_idx + 1} XML -->\n"
-                        att.text += '\n'.join(lines[:50])  # Limit to first 50 lines per slide
-                        if len(lines) > 50:
-                            att.text += f"\n<!-- ... truncated ({len(lines) - 50} more lines) -->\n"
+                        att.text += '\n'.join(lines)
                         att.text += "\n\n"
                         
                     except Exception as e:
@@ -83,9 +81,7 @@ def xml(att: Attachment, pres: 'pptx.Presentation') -> Attachment:
                         lines = lines[1:]
                     
                     att.text += "<!-- Presentation Structure XML -->\n"
-                    att.text += '\n'.join(lines[:30])  # Limit presentation XML
-                    if len(lines) > 30:
-                        att.text += f"\n<!-- ... truncated ({len(lines) - 30} more lines) -->\n"
+                    att.text += '\n'.join(lines)
                     
                 except Exception as e:
                     att.text += f"<!-- Error parsing presentation XML: {e} -->\n"
@@ -115,7 +111,7 @@ def xml(att: Attachment, doc: 'docx.Document') -> Attachment:
             
             # List all XML files in the DOCX
             xml_files = [f for f in docx_zip.namelist() if f.endswith('.xml')]
-            att.text += f"<!-- XML Files: {', '.join(xml_files[:10])}{'...' if len(xml_files) > 10 else ''} -->\n\n"
+            att.text += f"<!-- XML Files: {', '.join(xml_files)} -->\n\n"
             
             # Extract main document XML content
             if "word/document.xml" in docx_zip.namelist():
@@ -132,9 +128,7 @@ def xml(att: Attachment, doc: 'docx.Document') -> Attachment:
                         lines = lines[1:]  # Remove XML declaration
                     
                     att.text += f"<!-- Main Document XML -->\n"
-                    att.text += '\n'.join(lines[:100])  # Limit to first 100 lines
-                    if len(lines) > 100:
-                        att.text += f"\n<!-- ... truncated ({len(lines) - 100} more lines) -->\n"
+                    att.text += '\n'.join(lines)
                     att.text += "\n\n"
                     
                 except Exception as e:
@@ -151,9 +145,7 @@ def xml(att: Attachment, doc: 'docx.Document') -> Attachment:
                         lines = lines[1:]
                     
                     att.text += "<!-- Styles XML -->\n"
-                    att.text += '\n'.join(lines[:50])  # Limit styles XML
-                    if len(lines) > 50:
-                        att.text += f"\n<!-- ... truncated ({len(lines) - 50} more lines) -->\n"
+                    att.text += '\n'.join(lines)
                     
                 except Exception as e:
                     att.text += f"<!-- Error parsing styles XML: {e} -->\n"

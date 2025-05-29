@@ -3,17 +3,13 @@ description:
 globs: 
 alwaysApply: true
 ---
-The [README.md](mdc:README.md) is the ground truth on the interface we aim to implement.
-
-We aim for a clean and robust architectural design outline, adhering closely to your goals of modularity, extensibility, ease of use, and flexibility in rendering.
-
-Refactor as soon as you see a need to it to make the code easier for you to work with!
+The [README.md](mdc:README.md) is the ground truth  on the interface we aim to implement and [architecture.md](mdc:docs/architecture.md) is a great place for a height level understandings of the library archeticture.
 
 use uv and .venv (my uv virtual environment).
 
-use:
-uv run pytest
+### Content Fidelity First
+**Users input is sacred.** Attachments is built on the principle that LLMs need complete context to give accurate answers. We preserve 100% of users content by default:
 
-run the unit tests before claiming your changes are done!
-
-always use the scientific method: 1) state your assumptions, 2) make testable predictions and 3) check them to confirm the code and system is in the state you believe and it works as you believe.Allocate bayesian believes and update them maybe even store them in your own .mdc rule file?!
+- **No silent truncations** – If content is limited, it's because users explicitly requested it
+- **No arbitrary limits** – We don't decide what's "too much" content for user's use case  
+- **Full extraction** – When user ask for a PDF, they get the whole PDF (all pages, all text, all images)

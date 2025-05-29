@@ -262,7 +262,7 @@ def _format_directory_map(base_path: str, files: list) -> str:
         result += f"{'Permissions':<11} {'Owner':<8} {'Group':<8} {'Size':<8} {'Modified':<19} File\n"
         result += f"{'-' * 11} {'-' * 8} {'-' * 8} {'-' * 8} {'-' * 19} {'-' * 40}\n"
         
-        for file_path in sorted(files[:50]):  # Show first 50 files with details
+        for file_path in sorted(files):  # Show all files with details
             rel_path = os.path.relpath(file_path, base_path)
             try:
                 stat_info = os.stat(file_path)
@@ -285,9 +285,6 @@ def _format_directory_map(base_path: str, files: list) -> str:
                 result += f"?--------- {'unknown':<8} {'unknown':<8} {'0B':>8} {'unknown':<19} {rel_path}\n"
         
         result += "```\n\n"
-        
-        if len(files) > 50:
-            result += f"*... and {len(files) - 50} more files*\n\n"
     
     return result
 

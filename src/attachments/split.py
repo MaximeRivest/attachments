@@ -345,7 +345,7 @@ def sections(att: Attachment, soup: 'bs4.BeautifulSoup') -> AttachmentCollection
                 **att.metadata,
                 'chunk_type': 'section',
                 'section_index': i,
-                'section_heading': heading.get_text().strip()[:100],
+                'section_heading': heading.get_text().strip(),
                 'heading_level': heading.name,
                 'total_sections': len(headings),
                 'original_path': att.path

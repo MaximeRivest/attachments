@@ -38,7 +38,7 @@ def test_import_works():
 
 def test_version_is_correct():
     """Test that version matches expected value."""
-    assert attachments.__version__ == "0.5.0"
+    assert attachments.__version__ == "0.7.0"
 
 
 def test_text_file_processing():

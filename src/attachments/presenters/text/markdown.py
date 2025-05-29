@@ -96,7 +96,7 @@ def markdown(att: Attachment, pres: 'pptx.Presentation') -> Attachment:
     att.text += f"# Presentation: {att.path}\n\n"
     
     try:
-        slide_indices = att.metadata.get('selected_slides', range(min(5, len(pres.slides))))
+        slide_indices = att.metadata.get('selected_slides', range(len(pres.slides)))
         
         for i, slide_idx in enumerate(slide_indices):
             if 0 <= slide_idx < len(pres.slides):
@@ -179,38 +179,30 @@ def markdown(att: Attachment, workbook: 'openpyxl.Workbook') -> Attachment:
                 max_col = sheet.max_column
                 att.text += f"**Dimensions**: {max_row} rows × {max_col} columns\n\n"
                 
-                # Create a markdown table preview (first 5 rows, first 5 columns)
-                preview_rows = min(6, max_row + 1)  # +1 to include header
-                preview_cols = min(5, max_col)
-                
+                # Create a markdown table with all data
                 if max_row > 0 and max_col > 0:
-                    att.text += "**Preview**:\n\n"
+                    att.text += "**Data**:\n\n"
                     
-                    # Build markdown table
+                    # Build markdown table with all data
                     table_rows = []
-                    for row_idx in range(1, preview_rows):
+                    for row_idx in range(1, max_row + 1):
                         row_data = []
-                        for col_idx in range(1, preview_cols + 1):
+                        for col_idx in range(1, max_col + 1):
                             cell = sheet.cell(row=row_idx, column=col_idx)
+                            # Format cell value for markdown table
                             value = str(cell.value) if cell.value is not None else ""
-                            # Clean value for markdown table
-                            value = value.replace("|", "\\|").replace("\n", " ")[:30]
+                            value = value.replace("|", "\\|").replace("\n", " ")
                             row_data.append(value)
                         table_rows.append(row_data)
                     
                     if table_rows:
                         # Create markdown table
-                        header = table_rows[0] if table_rows else ["Col1", "Col2", "Col3", "Col4", "Col5"]
-                        att.text += "| " + " | ".join(header[:preview_cols]) + " |\n"
-                        att.text += "|" + "---|" * preview_cols + "\n"
+                        header = table_rows[0] if table_rows else [f"Col{i+1}" for i in range(max_col)]
+                        att.text += "| " + " | ".join(header) + " |\n"
+                        att.text += "|" + "---|" * max_col + "\n"
                         
                         for row in table_rows[1:]:
-                            att.text += "| " + " | ".join(row[:preview_cols]) + " |\n"
-                        
-                        if max_row > preview_rows - 1:
-                            att.text += f"\n*... and {max_row - (preview_rows - 1)} more rows*\n"
-                        if max_col > preview_cols:
-                            att.text += f"*... and {max_col - preview_cols} more columns*\n"
+                            att.text += "| " + " | ".join(row) + " |\n"
                     
                     att.text += "\n"
                 else:
@@ -275,19 +267,17 @@ def markdown(att: Attachment, soup: 'bs4.BeautifulSoup') -> Attachment:
             links = soup.find_all('a', href=True)
             if links:
                 att.text += "\n## Links\n\n"
-                for link in links[:10]:  # Limit to first 10 links
+                for link in links:  # Show all links
                     link_text = link.get_text().strip()
                     href = link.get('href')
                     if link_text and href:
                         att.text += f"- [{link_text}]({href})\n"
-                if len(links) > 10:
-                    att.text += f"- ... and {len(links) - 10} more links\n"
                 att.text += "\n"
                 
     except Exception as e:
         # Ultimate fallback
         att.text += f"# {att.path}\n\n"
-        att.text += soup.get_text()[:1000] + "...\n\n"
+        att.text += soup.get_text() + "\n\n"
         att.text += f"*Error converting to markdown: {e}*\n"
     
     return att
@@ -297,5 +287,5 @@ def markdown(att: Attachment, soup: 'bs4.BeautifulSoup') -> Attachment:
 def markdown(att: Attachment) -> Attachment:
     """Fallback markdown presenter for unknown types."""
     att.text += f"# {att.path}\n\n*Object type: {type(att._obj)}*\n\n"
-    att.text += f"```\n{str(att._obj)[:500]}\n```\n\n"
+    att.text += f"```\n{str(att._obj)}\n```\n\n"
     return att 

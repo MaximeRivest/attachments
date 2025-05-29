@@ -240,10 +240,7 @@ def tile_images(input_obj: Union['AttachmentCollection', Attachment]) -> Attachm
                     # Get the document path for watermark
                     if isinstance(input_obj, Attachment) and input_obj.path:
                         # Extract just the filename for cleaner watermark
-                        import os
                         doc_name = os.path.basename(input_obj.path)
-                        if len(doc_name) > 25:  # Truncate long filenames
-                            doc_name = doc_name[:22] + "..."
                         
                         # Create drawing context for this tile section
                         draw = ImageDraw.Draw(tiled_img)

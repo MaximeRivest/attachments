@@ -181,18 +181,15 @@ def text(att: Attachment, workbook: 'openpyxl.Workbook') -> Attachment:
                 max_col = sheet.max_column
                 att.text += f"Dimensions: {max_row} rows × {max_col} columns\n"
                 
-                # Show first few rows as preview
-                preview_rows = min(5, max_row)
-                for row_idx in range(1, preview_rows + 1):
+                # Show all rows
+                for row_idx in range(1, max_row + 1):
                     row_data = []
-                    for col_idx in range(1, min(6, max_col + 1)):  # First 5 columns
+                    for col_idx in range(1, max_col + 1):
                         cell = sheet.cell(row=row_idx, column=col_idx)
                         value = str(cell.value) if cell.value is not None else ""
-                        row_data.append(value[:20])  # Truncate long values
+                        row_data.append(value)
                     att.text += f"Row {row_idx}: {' | '.join(row_data)}\n"
                 
-                if max_row > preview_rows:
-                    att.text += f"... ({max_row - preview_rows} more rows)\n"
                 att.text += "\n"
         
         att.text += f"*Workbook processed: {len(sheet_indices)} sheets*\n\n"
@@ -206,5 +203,5 @@ def text(att: Attachment, workbook: 'openpyxl.Workbook') -> Attachment:
 @presenter
 def text(att: Attachment) -> Attachment:
     """Fallback text presenter for unknown types."""
-    att.text += f"{att.path}: {str(att._obj)[:500]}\n\n"
+    att.text += f"{att.path}: {str(att._obj)}\n\n"
     return att 
