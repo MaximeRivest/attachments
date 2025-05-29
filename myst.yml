@@ -28,5 +28,5 @@ site:
       url: https://github.com/MaximeRivest/attachments
   domains: [] # Add any custom domains here later
   options:
-    base_url: /attachments/
+    base_url: /attachments
     logo_text: A simple python library and some AI tutorials # Text to display next to/as the logo
