@@ -1105,6 +1105,15 @@ class VerbNamespace:
                         # Use exact match only to avoid false positives like "Document" matching "SVGDocument"
                         if obj_type_name == expected_class_name:
                             return handler_fn(att, att._obj)
+
+                        # NEW: For PIL.Image.Image, also try isinstance check for subclasses
+                        if expected_type == 'PIL.Image.Image':
+                            try:
+                                from PIL import Image
+                                if isinstance(att._obj, Image.Image):
+                                    return handler_fn(att, att._obj)
+                            except ImportError:
+                                pass  # PIL not available, skip isinstance check
                     elif isinstance(att._obj, expected_type):
                         return handler_fn(att, att._obj)
                 except (TypeError, AttributeError):
