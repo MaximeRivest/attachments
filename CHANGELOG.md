@@ -5,6 +5,92 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2025-01-29
+
+### 🚀 Major Features
+
+- **Complete DSPy Integration Overhaul**: Fixed critical recursion bug and enhanced type annotation support
+  - Fixed infinite recursion issue causing 56M+ character text outputs with repeated `<DSPY_TEXT_START>` markers
+  - Implemented proper Pydantic core schema protocol (`__get_pydantic_core_schema__`) for seamless type annotations
+  - `Attachments` objects now work directly as type annotations in DSPy signatures: `document: Attachments = dspy.InputField()`
+  - Zero adapter calls needed - DSPy framework automatically calls `serialize_model()` when needed
+
+- **In-Memory Content Processing**: Elegant data URL approach for dynamic content workflows
+  - Process AI-generated content without disk I/O using `data:image/svg+xml;base64,{content}` URLs
+  - Complete cycle: Load → AI Analysis → AI Generation → In-Memory Reload → Comparison
+  - Perfect for iterative AI-powered content improvement workflows
+
+### ✨ Improvements
+
+- **Enhanced Demo**: New comprehensive "Vector Graphics and LLMs" tutorial
+  - Demonstrates full AI workflow: SVG analysis → improvement generation → in-memory reload
+  - Shows elegant DSPy signature usage with `Attachments` type annotations
+  - R vignette style literate programming with detailed explanations
+  - Uses latest OpenAI models (o3, gpt-4.1-nano) for optimal performance
+
+- **Robust DSPy Architecture**: Clean separation between normal usage and DSPy integration
+  - Normal `.text` and `.images` access works exactly like regular Attachments
+  - DSPy-specific methods (`serialize_model()`, `model_dump()`) only activated when needed
+  - Proper error handling when DSPy dependencies are missing
+  - Duck-typing compatibility with DSPy BaseType protocol
+
+### 🐛 Bug Fixes
+
+- **Critical DSPy Recursion Fix**: Resolved the massive text duplication issue
+  - Fixed `__str__` method that was causing infinite recursion in DSPy contexts
+  - Normal text access now returns expected content length (17,894 chars vs 56M+)
+  - Proper DSPy serialization only occurs when objects are passed to DSPy signatures
+
+- **Pydantic Schema Compatibility**: Fixed schema generation errors for DSPy signatures
+  - Implemented correct `pydantic_core.core_schema.plain_serializer_function_ser_schema()` usage
+  - Supports both validation (string → Attachments) and serialization (Attachments → string)
+  - Compatible with both Pydantic v1 and v2 APIs
+
+### 📚 Documentation
+
+- **Enhanced Vector Graphics Tutorial**: Complete end-to-end demonstration
+  - Step-by-step progression from file loading to AI-powered improvement
+  - Jupyter notebook compatible format with MyST/Jupytext
+  - Visual comparisons between original and AI-improved content
+  - Best practices for multimodal AI workflows
+
+### 🔧 Technical Changes
+
+- **DSPy Integration Module**: New `attachments.dspy` module for clean separation
+  - `from attachments.dspy import Attachments` - DSPy-optimized version
+  - `from attachments import Attachments` - Regular version (backward compatible)
+  - Optional dependency handling with clear error messages
+  - Factory functions: `make_dspy()` and `from_attachments()` for migration
+
+- **Improved Error Handling**: Better error messages and graceful degradation
+  - Clear guidance when DSPy dependencies are missing
+  - Helpful installation instructions with both pip and uv commands
+  - Warnings instead of hard failures for better developer experience
+
+### ⚠️ Breaking Changes
+
+None - All changes are backward compatible.
+
+### 🔄 Migration Guide
+
+**For DSPy Users**: Switch to the optimized import for better experience:
+
+```python
+# New recommended approach
+from attachments.dspy import Attachments
+import dspy
+
+class AnalyzeDoc(dspy.Signature):
+    document: Attachments = dspy.InputField()  # ✅ Now works perfectly!
+    analysis: str = dspy.OutputField()
+
+# Old approach still works
+from attachments import Attachments
+doc = Attachments("file.pdf").dspy()  # Still supported
+```
+
+**For Regular Users**: No changes needed - everything works exactly the same.
+
 ## [0.8.0] - 2025-01-23
 
 ### 🚀 Major Features
