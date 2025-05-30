@@ -709,7 +709,7 @@ def _get_loader_type(loader_name: str) -> str:
 
 def _is_text_loader(loader_name: str) -> bool:
     """Check if this is a text-based loader that needs string input."""
-    text_loaders = {'text_to_string', 'html_to_bs4', 'csv_to_pandas'}
+    text_loaders = {'text_to_string', 'html_to_bs4', 'csv_to_pandas', 'svg_to_svgdocument', 'eps_to_epsdocument'}
     return loader_name in text_loaders
 
 
@@ -1102,7 +1102,8 @@ class VerbNamespace:
                     if isinstance(expected_type, str):
                         # Generic type name matching - extract the class name from module.ClassName
                         expected_class_name = expected_type.split('.')[-1]
-                        if expected_class_name in obj_type_name or obj_type_name == expected_class_name:
+                        # Use exact match only to avoid false positives like "Document" matching "SVGDocument"
+                        if obj_type_name == expected_class_name:
                             return handler_fn(att, att._obj)
                     elif isinstance(att._obj, expected_type):
                         return handler_fn(att, att._obj)

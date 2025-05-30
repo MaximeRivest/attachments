@@ -90,28 +90,3 @@ att | load.url_to_response | modify.morph_to_detected_type | load.pdf_to_pdfplum
 from attachments.pipelines import processors
 result = processors.pdf_to_llm(attach("https://example.com/doc.pdf"))
 ```
-
-## [0.7.0] - Previous Release
-
-### Features
-- Modular architecture with loaders, modifiers, presenters, and refiners
-- Support for PDF, Office documents, images, CSV, and web content
-- DSL commands for file processing customization
-- Processor system for optimized file type handling
-- Comprehensive test suite and documentation
-
----
-
-## Future Releases
-
-### Planned for v0.9.0
-- Enhanced OCR integration with automatic fallback
-- Improved error handling and user feedback
-- Performance optimizations for large files
-- Additional file format support
-
-### Planned for v1.0.0
-- API stabilization
-- Removal of deprecated features
-- Production-ready performance optimizations
-- Comprehensive migration guide 

@@ -4,13 +4,19 @@ from ...core import Attachment, loader
 from ... import matchers
 
 
-@loader(match=matchers.url_match)
+# Standard headers for web requests to avoid 403 errors
+DEFAULT_HEADERS = {
+    'User-Agent': 'Attachments-Library/1.0 (https://github.com/MaximeRivest/attachments) Python-requests'
+}
+
+
+@loader(match=matchers.webpage_match)
 def url_to_bs4(att: Attachment) -> Attachment:
-    """Load URL content and parse with BeautifulSoup."""
+    """Load webpage URL content and parse with BeautifulSoup."""
     import requests
     from bs4 import BeautifulSoup
     
-    response = requests.get(att.path, timeout=10)
+    response = requests.get(att.path, headers=DEFAULT_HEADERS, timeout=10)
     response.raise_for_status()
     
     # Parse with BeautifulSoup
@@ -38,7 +44,7 @@ def url_to_response(att: Attachment) -> Attachment:
     """
     import requests
     
-    response = requests.get(att.path, timeout=30)
+    response = requests.get(att.path, headers=DEFAULT_HEADERS, timeout=30)
     response.raise_for_status()
     
     # Store the response object for morphing
@@ -82,7 +88,7 @@ def url_to_file(att: Attachment) -> Attachment:
     file_ext = Path(url_path).suffix.lower()
     
     # Download the file
-    response = requests.get(att.path, timeout=30)
+    response = requests.get(att.path, headers=DEFAULT_HEADERS, timeout=30)
     response.raise_for_status()
     
     # Create temporary file with correct extension

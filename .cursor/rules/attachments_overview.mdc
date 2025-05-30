@@ -1,0 +1,73 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+Here is the distilled, most important element for developers to always keep in mind about the Attachments library:
+
+---
+
+## **Core Principle: One Object, Any File**
+
+The **Attachments library** is built around a single goal:
+
+**"Turn any path or URL into an LLM-ready object (`Attachment`) containing `.text` for prompts and `.images` as base64."**
+
+### **Key Concepts**
+
+1. **Attachment Object**: Central, simple container that carries data through the pipeline:
+
+   ```python
+   Attachment:
+       path       # Original path or URL
+       commands   # DSL commands extracted from input
+       _obj       # Loaded content (PDF object, DataFrame, etc.)
+       text       # Text ready for prompt
+       images     # Images ready for LLMs (base64)
+       metadata   # Additional info
+   ```
+
+2. **Pipeline Stages** (Always follow this sequence):
+
+   ```plaintext
+   LOAD → MODIFY → PRESENT → REFINE → ADAPT
+   ```
+
+3. **Composable Grammar** (inspired by `dplyr`):
+
+   * **`|`**: Sequentially transforms the attachment.
+   * **`+`**: Combines multiple presenter outputs.
+
+   ```python
+   result = attach("doc.pdf") | load.pdf | present.markdown
+   content = attach("doc.pdf") | load.pdf | (present.text + present.images)
+   ```
+
+4. **Split & Vectorization**:
+
+   * `SPLIT`: Breaks attachments into granular chunks.
+   * **Automatic vectorization** of subsequent steps.
+
+   ```python
+   chunks = attach("doc.pdf") | load.pdf | split.pages | present.markdown
+   ```
+
+5. **Match System**:
+
+   * Centralized logic to decide file handling (e.g., file extensions, URL patterns).
+   * Reusable and extensible.
+
+6. **Registries and Namespaces**:
+
+   * Functions are organized into clear namespaces (`load`, `modify`, `present`, `refine`, `adapt`, `split`).
+   * Functions are automatically registered and discoverable.
+
+---
+
+## **Always Remember:**
+
+* **Consistency**: Same patterns for any file type.
+* **Composability**: Verbs chain naturally.
+* **Extensibility**: Easily add support for new files or transformations.
+
+> **"If your new code isn't consistent, composable, and extensible, reconsider it!"**

@@ -17,9 +17,11 @@ def webpage_match(att: 'Attachment') -> bool:
     if not att.path.startswith(('http://', 'https://')):
         return False
     
-    # Exclude URLs that end with file extensions (those go to url_to_file)
+    # Exclude URLs that end with file extensions (those go to url_to_response + morphing)
     file_extensions = ['.pdf', '.pptx', '.ppt', '.docx', '.doc', '.xlsx', '.xls', 
-                      '.csv', '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.zip']
+                      '.csv', '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.zip',
+                      '.svg', '.svgz', '.eps', '.epsf', '.epsi',  # Vector graphics
+                      '.heic', '.heif', '.webp']  # Additional image formats
     
     return not any(att.path.lower().endswith(ext) for ext in file_extensions)
 
@@ -140,7 +142,7 @@ def image_match(att: 'Attachment') -> bool:
 def text_match(att: 'Attachment') -> bool:
     """Enhanced text matcher: checks file extension, Content-Type, and content analysis."""
     # File extension check
-    if att.path.endswith(('.txt', '.md', '.log', '.json', '.py', '.svg', '.xml', '.html', '.htm', '.rst')):
+    if att.path.endswith(('.txt', '.md', '.log', '.json', '.py', '.xml', '.html', '.htm', '.rst')):
         return True
     
     # Content-Type check for URL responses
@@ -152,6 +154,45 @@ def text_match(att: 'Attachment') -> bool:
     # Content analysis for text files
     if att.has_content and att.is_likely_text():
         return True
+    
+    return False
+
+def svg_match(att: 'Attachment') -> bool:
+    """Enhanced SVG matcher: checks file extension, Content-Type, and SVG content signatures."""
+    # File extension check
+    if att.path.lower().endswith(('.svg', '.svgz')):
+        return True
+    
+    # Content-Type check for URL responses
+    if 'svg' in att.content_type or att.content_type == 'image/svg+xml':
+        return True
+    
+    # Content analysis for SVG files (check for SVG root element)
+    if att.has_content:
+        text_sample = att.get_text_sample(500)
+        if text_sample and '<svg' in text_sample.lower() and 'xmlns' in text_sample.lower():
+            return True
+    
+    return False
+
+def eps_match(att: 'Attachment') -> bool:
+    """Enhanced EPS matcher: checks file extension, Content-Type, and EPS content signatures."""
+    # File extension check
+    if att.path.lower().endswith(('.eps', '.epsf', '.epsi')):
+        return True
+    
+    # Content-Type check for URL responses
+    if any(x in att.content_type for x in ['postscript', 'eps', 'application/postscript']):
+        return True
+    
+    # Content analysis for EPS files (check for EPS header)
+    if att.has_content:
+        text_sample = att.get_text_sample(200)
+        if text_sample:
+            # EPS files typically start with %!PS-Adobe and contain %%BoundingBox
+            if (text_sample.startswith('%!PS-Adobe') or 
+                ('%%BoundingBox:' in text_sample and '%!' in text_sample)):
+                return True
     
     return False
 

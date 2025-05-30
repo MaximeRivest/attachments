@@ -576,6 +576,263 @@ def images(att: Attachment, workbook: 'openpyxl.Workbook') -> Attachment:
 
 
 @presenter
+def images(att: Attachment, svg_doc: 'SVGDocument') -> Attachment:
+    """Render SVG to PNG image using cairosvg or wand (ImageMagick)."""
+    import base64
+    
+    try:
+        # Get resize parameter from DSL commands
+        resize = att.commands.get('resize_images') or att.commands.get('resize')
+        
+        # Get the raw SVG content from SVGDocument
+        svg_content = svg_doc.content
+        
+        # Try cairosvg first (preferred for SVG rendering)
+        try:
+            import cairosvg
+            from PIL import Image
+            import io
+            
+            # Simple, robust approach: feed SVG directly to CairoSVG
+            # This is what works in the example script - no complex pre-processing
+            png_bytes = cairosvg.svg2png(bytestring=svg_content.encode('utf-8'))
+            
+            # Load as PIL Image for potential resizing and quality checking
+            pil_image = Image.open(io.BytesIO(png_bytes))
+            
+            # Check if the rendered image is problematic (uniform color indicates rendering issue)
+            def is_uniform_color(img):
+                """Check if image is all the same color."""
+                if img.mode != 'RGB':
+                    img = img.convert('RGB')
+                colors = img.getcolors(maxcolors=256*256*256)
+                return colors and len(colors) == 1
+            
+            # If CairoSVG produced a problematic image, try Playwright as fallback
+            if is_uniform_color(pil_image):
+                try:
+                    # Try Playwright for better SVG rendering with CSS support
+                    import asyncio
+                    import tempfile
+                    import os
+                    
+                    async def render_svg_with_playwright():
+                        from playwright.async_api import async_playwright
+                        
+                        # Create a temporary HTML file that displays the SVG
+                        html_content = f"""
+                        <!DOCTYPE html>
+                        <html>
+                        <head>
+                            <meta charset="utf-8">
+                            <style>
+                                body {{ margin: 0; padding: 20px; background: white; }}
+                                svg {{ max-width: 100%; height: auto; }}
+                            </style>
+                        </head>
+                        <body>
+                            {svg_content}
+                        </body>
+                        </html>
+                        """
+                        
+                        with tempfile.NamedTemporaryFile(mode='w', suffix='.html', delete=False) as f:
+                            f.write(html_content)
+                            temp_html_path = f.name
+                        
+                        try:
+                            # Use Playwright to render the SVG
+                            async with async_playwright() as p:
+                                browser = await p.chromium.launch()
+                                page = await browser.new_page()
+                                await page.goto(f"file://{temp_html_path}")
+                                await page.wait_for_timeout(500)  # Let it render
+                                
+                                # Take screenshot of the SVG
+                                png_bytes = await page.screenshot(full_page=True)
+                                await browser.close()
+                                return png_bytes
+                            
+                        finally:
+                            # Clean up temp file
+                            try:
+                                os.unlink(temp_html_path)
+                            except:
+                                pass
+                    
+                    # Handle async execution properly
+                    try:
+                        # Check if we're already in an event loop
+                        loop = asyncio.get_running_loop()
+                        # We're in an event loop, use nest_asyncio or thread
+                        try:
+                            import nest_asyncio
+                            nest_asyncio.apply()
+                            playwright_png_bytes = asyncio.run(render_svg_with_playwright())
+                        except ImportError:
+                            # nest_asyncio not available, use thread approach
+                            import concurrent.futures
+                            import threading
+                            
+                            def run_in_thread():
+                                new_loop = asyncio.new_event_loop()
+                                asyncio.set_event_loop(new_loop)
+                                try:
+                                    return new_loop.run_until_complete(render_svg_with_playwright())
+                                finally:
+                                    new_loop.close()
+                            
+                            with concurrent.futures.ThreadPoolExecutor() as executor:
+                                future = executor.submit(run_in_thread)
+                                playwright_png_bytes = future.result(timeout=30)
+                                
+                    except RuntimeError:
+                        # No event loop running, safe to use asyncio.run()
+                        playwright_png_bytes = asyncio.run(render_svg_with_playwright())
+                    
+                    # Load the Playwright-rendered image
+                    playwright_image = Image.open(io.BytesIO(playwright_png_bytes))
+                    
+                    # Check if Playwright version is better
+                    if not is_uniform_color(playwright_image):
+                        # Playwright rendered successfully!
+                        att.metadata['svg_renderer'] = 'playwright_fallback'
+                        att.metadata['svg_cairo_failed'] = True
+                        # Use Playwright result
+                        pil_image = playwright_image
+                        png_bytes = playwright_png_bytes
+                    else:
+                        # Both failed, add helpful message
+                        att.metadata['svg_both_renderers_failed'] = True
+                            
+                except ImportError:
+                    # Playwright not available, stick with CairoSVG result
+                    att.metadata['svg_playwright_unavailable'] = True
+                    # Add helpful message about Playwright for better SVG rendering
+                    if is_uniform_color(pil_image):
+                        warning_msg = (
+                            f"\n\n⚠️  **SVG Rendering Issue Detected**\n"
+                            f"CairoSVG rendered this as a uniform color image, likely due to complex CSS styling.\n"
+                            f"For better SVG rendering with full CSS support, install Playwright:\n\n"
+                            f"  pip install playwright\n"
+                            f"  playwright install chromium\n\n"
+                            f"  # With uv:\n"
+                            f"  uv add playwright\n"
+                            f"  uv run playwright install chromium\n\n"
+                            f"  # With attachments browser extras:\n"
+                            f"  pip install attachments[browser]\n"
+                            f"  playwright install chromium\n\n"
+                            f"Playwright provides browser-grade SVG rendering with full CSS and JavaScript support.\n"
+                        )
+                        att.text += warning_msg
+                except Exception as e:
+                    # Playwright failed, stick with CairoSVG result
+                    att.metadata['svg_playwright_error'] = str(e)
+            
+            # Apply resize if specified
+            if resize:
+                if 'x' in resize:
+                    # Format: 800x600
+                    w, h = map(int, resize.split('x'))
+                    pil_image = pil_image.resize((w, h), Image.Resampling.LANCZOS)
+                elif resize.endswith('%'):
+                    # Format: 50%
+                    scale = int(resize[:-1]) / 100
+                    new_width = int(pil_image.width * scale)
+                    new_height = int(pil_image.height * scale)
+                    pil_image = pil_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+            
+            # Convert final image to PNG bytes
+            img_byte_arr = io.BytesIO()
+            pil_image.save(img_byte_arr, format='PNG')
+            final_png_bytes = img_byte_arr.getvalue()
+            
+            # Encode as base64 data URL
+            b64_string = base64.b64encode(final_png_bytes).decode('utf-8')
+            att.images.append(f"data:image/png;base64,{b64_string}")
+            
+            # Add metadata
+            att.metadata.update({
+                'svg_rendered': True,
+                'svg_renderer': att.metadata.get('svg_renderer', 'cairosvg'),
+                'rendered_size': pil_image.size,
+                'svg_resize_applied': resize if resize else None,
+                'svg_original_size': Image.open(io.BytesIO(png_bytes)).size if 'svg_renderer' not in att.metadata else pil_image.size
+            })
+            
+            return att
+            
+        except ImportError:
+            # Try wand (ImageMagick) as fallback
+            try:
+                from wand.image import Image as WandImage
+                from PIL import Image
+                import io
+                import base64
+                
+                # Convert SVG to PNG using ImageMagick
+                with WandImage(blob=svg_content.encode('utf-8'), format='svg') as img:
+                    img.format = 'png'
+                    png_bytes = img.make_blob()
+                
+                # Load as PIL Image for potential resizing
+                pil_image = Image.open(io.BytesIO(png_bytes))
+                
+                # Apply resize if specified
+                if resize:
+                    if 'x' in resize:
+                        # Format: 800x600
+                        w, h = map(int, resize.split('x'))
+                        pil_image = pil_image.resize((w, h), Image.Resampling.LANCZOS)
+                    elif resize.endswith('%'):
+                        # Format: 50%
+                        scale = int(resize[:-1]) / 100
+                        new_width = int(pil_image.width * scale)
+                        new_height = int(pil_image.height * scale)
+                        pil_image = pil_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+                
+                # Convert back to PNG bytes
+                img_byte_arr = io.BytesIO()
+                pil_image.save(img_byte_arr, format='PNG')
+                png_bytes = img_byte_arr.getvalue()
+                
+                # Encode as base64 data URL
+                b64_string = base64.b64encode(png_bytes).decode('utf-8')
+                att.images.append(f"data:image/png;base64,{b64_string}")
+                
+                # Add metadata
+                att.metadata.update({
+                    'svg_rendered': True,
+                    'svg_renderer': 'wand/imagemagick',
+                    'rendered_size': pil_image.size,
+                    'svg_resize_applied': resize if resize else None
+                })
+                
+                return att
+                
+            except ImportError:
+                # No SVG rendering libraries available
+                error_msg = (
+                    "SVG rendering not available. Install cairosvg or wand for SVG to PNG conversion:\n"
+                    "  pip install cairosvg  # Recommended\n"
+                    "  # OR\n"
+                    "  pip install Wand  # Requires ImageMagick system installation"
+                )
+                att.metadata['svg_images_error'] = error_msg
+                
+                # Add visible warning to text output so users see it
+                warning = f"\n\n⚠️  **SVG Image Rendering Not Available**\n{error_msg}\n"
+                att.text += warning
+                
+                return att
+                
+    except Exception as e:
+        # Add error info to metadata instead of failing
+        att.metadata['svg_images_error'] = f"Error rendering SVG: {e}"
+        return att
+
+
+@presenter
 def images(att: Attachment, soup: 'bs4.BeautifulSoup') -> Attachment:
     """Capture webpage screenshot using Playwright with JavaScript rendering and CSS selector highlighting."""
     # First check if Playwright is available
@@ -869,4 +1126,168 @@ def images(att: Attachment, soup: 'bs4.BeautifulSoup') -> Attachment:
         
     except Exception as e:
         att.metadata['screenshot_error'] = f"Error setting up screenshot: {str(e)}"
+        return att
+
+
+@presenter
+def images(att: Attachment, eps_doc: 'EPSDocument') -> Attachment:
+    """Render EPS to PNG image using ImageMagick (wand) or Ghostscript."""
+    import io
+    import base64
+    
+    try:
+        # Get resize parameter from DSL commands
+        resize = att.commands.get('resize_images') or att.commands.get('resize')
+        
+        # Get the raw EPS content from EPSDocument
+        eps_content = eps_doc.content
+        
+        # Try wand (ImageMagick) first (preferred for EPS rendering)
+        try:
+            from wand.image import Image as WandImage
+            from PIL import Image
+            
+            # Convert EPS to PNG using ImageMagick
+            with WandImage(blob=eps_content.encode('utf-8'), format='eps') as img:
+                img.format = 'png'
+                png_bytes = img.make_blob()
+            
+            # Load as PIL Image for potential resizing
+            pil_image = Image.open(io.BytesIO(png_bytes))
+            
+            # Apply resize if specified
+            if resize:
+                if 'x' in resize:
+                    # Format: 800x600
+                    w, h = map(int, resize.split('x'))
+                    pil_image = pil_image.resize((w, h), Image.Resampling.LANCZOS)
+                elif resize.endswith('%'):
+                    # Format: 50%
+                    scale = int(resize[:-1]) / 100
+                    new_width = int(pil_image.width * scale)
+                    new_height = int(pil_image.height * scale)
+                    pil_image = pil_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+            
+            # Convert back to PNG bytes
+            img_byte_arr = io.BytesIO()
+            pil_image.save(img_byte_arr, format='PNG')
+            png_bytes = img_byte_arr.getvalue()
+            
+            # Encode as base64 data URL
+            b64_string = base64.b64encode(png_bytes).decode('utf-8')
+            att.images.append(f"data:image/png;base64,{b64_string}")
+            
+            # Add metadata
+            att.metadata.update({
+                'eps_rendered': True,
+                'eps_renderer': 'wand/imagemagick',
+                'rendered_size': pil_image.size,
+                'eps_resize_applied': resize if resize else None
+            })
+            
+            return att
+            
+        except ImportError:
+            # Try Ghostscript as fallback (via subprocess)
+            try:
+                import subprocess
+                import tempfile
+                import os
+                from PIL import Image
+                
+                # Create temporary files
+                with tempfile.NamedTemporaryFile(mode='w', suffix='.eps', delete=False) as eps_file:
+                    eps_file.write(eps_content)
+                    eps_temp_path = eps_file.name
+                
+                with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as png_file:
+                    png_temp_path = png_file.name
+                
+                try:
+                    # Use Ghostscript to convert EPS to PNG
+                    gs_command = [
+                        'gs',
+                        '-dNOPAUSE',
+                        '-dBATCH',
+                        '-dSAFER',
+                        '-sDEVICE=png16m',
+                        '-r300',  # 300 DPI for good quality
+                        f'-sOutputFile={png_temp_path}',
+                        eps_temp_path
+                    ]
+                    
+                    result = subprocess.run(gs_command, capture_output=True, text=True, timeout=30)
+                    
+                    if result.returncode == 0 and os.path.exists(png_temp_path):
+                        # Load the generated PNG
+                        pil_image = Image.open(png_temp_path)
+                        
+                        # Apply resize if specified
+                        if resize:
+                            if 'x' in resize:
+                                # Format: 800x600
+                                w, h = map(int, resize.split('x'))
+                                pil_image = pil_image.resize((w, h), Image.Resampling.LANCZOS)
+                            elif resize.endswith('%'):
+                                # Format: 50%
+                                scale = int(resize[:-1]) / 100
+                                new_width = int(pil_image.width * scale)
+                                new_height = int(pil_image.height * scale)
+                                pil_image = pil_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+                        
+                        # Convert to PNG bytes
+                        img_byte_arr = io.BytesIO()
+                        pil_image.save(img_byte_arr, format='PNG')
+                        png_bytes = img_byte_arr.getvalue()
+                        
+                        # Encode as base64 data URL
+                        b64_string = base64.b64encode(png_bytes).decode('utf-8')
+                        att.images.append(f"data:image/png;base64,{b64_string}")
+                        
+                        # Add metadata
+                        att.metadata.update({
+                            'eps_rendered': True,
+                            'eps_renderer': 'ghostscript',
+                            'rendered_size': pil_image.size,
+                            'eps_resize_applied': resize if resize else None
+                        })
+                        
+                        return att
+                    else:
+                        raise RuntimeError(f"Ghostscript conversion failed: {result.stderr}")
+                        
+                finally:
+                    # Clean up temporary files
+                    try:
+                        os.unlink(eps_temp_path)
+                        if os.path.exists(png_temp_path):
+                            os.unlink(png_temp_path)
+                    except:
+                        pass  # Ignore cleanup errors
+                        
+            except (ImportError, FileNotFoundError, subprocess.TimeoutExpired, subprocess.CalledProcessError):
+                # No EPS rendering libraries/tools available
+                error_msg = (
+                    "EPS rendering not available. Install ImageMagick with Wand or Ghostscript for EPS to PNG conversion:\n"
+                    "  # Option 1: ImageMagick + Wand (recommended)\n"
+                    "  pip install Wand  # Requires ImageMagick system installation\n"
+                    "  # On Ubuntu/Debian: sudo apt-get install imagemagick libmagickwand-dev\n"
+                    "  # On macOS: brew install imagemagick\n"
+                    "  # On Windows: Download from https://imagemagick.org/\n\n"
+                    "  # Option 2: Ghostscript\n"
+                    "  # On Ubuntu/Debian: sudo apt-get install ghostscript\n"
+                    "  # On macOS: brew install ghostscript\n"
+                    "  # On Windows: Download from https://www.ghostscript.com/"
+                )
+                att.metadata['eps_images_error'] = error_msg
+                
+                # Add visible warning to text output so users see it
+                warning = f"\n\n⚠️  **EPS Image Rendering Not Available**\n{error_msg}\n"
+                att.text += warning
+                
+                return att
+                
+    except Exception as e:
+        # Add error info to metadata instead of failing
+        att.metadata['eps_images_error'] = f"Error rendering EPS: {e}"
         return att 

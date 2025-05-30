@@ -197,6 +197,7 @@ from . import pptx_processor
 from . import excel_processor
 from . import webpage_processor
 from . import csv_processor
+from . import vector_graphics_processor
 from . import example_processors
 
 __all__ = [

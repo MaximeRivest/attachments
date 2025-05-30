@@ -151,6 +151,8 @@ class Attachments:
                      | load.url_to_bs4              # Non-file URLs → BeautifulSoup (fallback)
                      | load.git_repo_to_structure   # Git repos → structure object
                      | load.directory_to_structure  # Directories/globs → structure object
+                     | load.svg_to_svgdocument      # SVG → SVGDocument object
+                     | load.eps_to_epsdocument      # EPS → EPSDocument object
                      | load.pdf_to_pdfplumber       # PDF → pdfplumber object
                      | load.csv_to_pandas           # CSV → pandas DataFrame  
                      | load.image_to_pil            # Images → PIL Image

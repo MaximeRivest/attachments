@@ -205,5 +205,7 @@ def text(att: Attachment, workbook: 'openpyxl.Workbook') -> Attachment:
 @presenter
 def text(att: Attachment) -> Attachment:
     """Fallback text presenter for unknown types."""
+    # Append to existing text instead of overwriting it
+    # This preserves warnings and other content added by previous presenters
     att.text += f"{att.path}: {str(att._obj)}\n\n"
     return att 

@@ -2,11 +2,11 @@
 DSPy Integration Module
 ======================
 
-Clean DSPy integration following the thread discussion:
+Clean DSPy integration following the DSPy BaseType pattern:
 - Separate import path: from attachments.dspy import Attachments
-- Duck-typing approach without complex inheritance
-- No .dspy() calls needed in user code
-- Optional dependency handling
+- Proper Pydantic BaseModel implementation
+- serialize_model() method for DSPy integration
+- Normal string behavior preserved
 
 Usage:
     # For DSPy users - cleaner import
@@ -15,13 +15,9 @@ Usage:
     # Works directly in DSPy signatures
     doc = Attachments("report.pdf")
     result = rag(question="What are the key findings?", document=doc)
-    
-    # For regular users - unchanged
-    from attachments import Attachments
-    doc = Attachments("report.pdf").dspy()  # Still works
 """
 
-from typing import Any, Union
+from typing import Any, Union, Dict, List
 from .highest_level_api import Attachments as BaseAttachments
 
 
@@ -76,22 +72,88 @@ class DSPyNotAvailableError(ImportError):
     pass
 
 
+def _create_dspy_class():
+    """Create the DSPy-compatible class when DSPy is available."""
+    if not _check_dspy_availability():
+        return None
+    
+    import pydantic
+    
+    class DSPyAttachment(pydantic.BaseModel):
+        """DSPy-compatible wrapper for Attachment objects following DSPy patterns."""
+        
+        text: str = ""
+        images: List[str] = []
+        audio: List[str] = []
+        path: str = ""
+        metadata: Dict[str, Any] = {}
+        
+        # Pydantic v2 configuration
+        model_config = pydantic.ConfigDict(
+            frozen=True,
+            str_strip_whitespace=True,
+            validate_assignment=True,
+            extra='forbid',
+        )
+        
+        @pydantic.model_serializer
+        def serialize_model(self):
+            """Serialize for DSPy compatibility - called by DSPy framework."""
+            content_parts = []
+            
+            if self.text:
+                content_parts.append(f"<DSPY_TEXT_START>{self.text}<DSPY_TEXT_END>")
+            
+            if self.images:
+                # Process images - ensure they're properly formatted
+                valid_images = []
+                for img in self.images:
+                    if img and isinstance(img, str) and len(img) > 10:
+                        # Check if it's already a data URL
+                        if img.startswith('data:image/'):
+                            valid_images.append(img)
+                        elif not img.endswith('_placeholder'):
+                            # It's raw base64, add the data URL prefix
+                            valid_images.append(f"data:image/png;base64,{img}")
+                
+                if valid_images:
+                    for img in valid_images:
+                        content_parts.append(f"<DSPY_IMAGE_START>{img}<DSPY_IMAGE_END>")
+            
+            if content_parts:
+                return "".join(content_parts)
+            else:
+                return f"<DSPY_ATTACHMENT_START>Attachment: {self.path}<DSPY_ATTACHMENT_END>"
+        
+        def __str__(self):
+            # For normal usage, just return the text content
+            return self.text if self.text else f"Attachment: {self.path}"
+        
+        def __repr__(self):
+            if self.text:
+                text_preview = self.text[:50] + "..." if len(self.text) > 50 else self.text
+                return f"DSPyAttachment(text='{text_preview}', images={len(self.images)})"
+            elif self.images:
+                return f"DSPyAttachment(images={len(self.images)}, path='{self.path}')"
+            else:
+                return f"DSPyAttachment(path='{self.path}')"
+    
+    return DSPyAttachment
+
+
 class Attachments(BaseAttachments):
     """
     DSPy-optimized Attachments that works seamlessly in DSPy signatures.
     
     This class provides the same interface as regular Attachments but
-    automatically works with DSPy without requiring .dspy() calls.
+    creates a DSPy-compatible object when passed to DSPy signatures.
     
-    Requires DSPy to be installed. If DSPy is not available, consider using
-    the regular Attachments class instead:
-        from attachments import Attachments
+    Normal usage (text, images properties) works exactly like regular Attachments.
+    DSPy usage (in signatures) automatically converts to proper DSPy format.
     """
     
     def __init__(self, *paths):
         """Initialize with same interface as base Attachments."""
-        # Check DSPy availability early but allow object creation
-        # This allows for better error messages when methods are actually called
         if not _check_dspy_availability():
             import warnings
             warnings.warn(
@@ -103,49 +165,100 @@ class Attachments(BaseAttachments):
             )
         
         super().__init__(*paths)
+        self._dspy_class = _create_dspy_class()
         self._dspy_obj = None
     
-    def _ensure_dspy_obj(self):
-        """Lazily create the DSPy object when needed."""
+    @classmethod
+    def __get_pydantic_core_schema__(cls, source_type, handler):
+        """Implement Pydantic core schema for DSPy compatibility."""
+        if not _check_dspy_availability():
+            # Fallback to string schema if DSPy not available
+            import pydantic_core
+            return pydantic_core.core_schema.str_schema()
+        
+        import pydantic_core
+        
+        # Create a schema that validates Attachments objects and serializes them properly
+        def validate_attachments(value):
+            if isinstance(value, cls):
+                return value
+            elif isinstance(value, BaseAttachments):
+                # Convert regular Attachments to DSPy-compatible version
+                dspy_attachments = cls()
+                dspy_attachments.attachments = value.attachments
+                return dspy_attachments
+            elif isinstance(value, str):
+                # Allow string input, create Attachments from it
+                return cls(value)
+            else:
+                raise ValueError(f"Expected Attachments object or string, got {type(value)}")
+        
+        def serialize_attachments(value):
+            if hasattr(value, 'serialize_model'):
+                return value.serialize_model()
+            return str(value)
+        
+        return pydantic_core.core_schema.with_info_plain_validator_function(
+            validate_attachments,
+            serialization=pydantic_core.core_schema.plain_serializer_function_ser_schema(
+                serialize_attachments,
+                return_schema=pydantic_core.core_schema.str_schema(),
+            )
+        )
+    
+    def _get_dspy_obj(self):
+        """Get or create the DSPy object representation."""
         if not _check_dspy_availability():
             raise DSPyNotAvailableError(_DSPY_ERROR_MSG)
         
-        if self._dspy_obj is None:
-            # Use the exact same pattern as the working adapt.py
-            from .adapt import dspy as dspy_adapter
-            
-            # Convert to single attachment using the base class method
+        if self._dspy_obj is None and self._dspy_class is not None:
+            # Convert to single attachment
             single_attachment = self._to_single_attachment()
-            self._dspy_obj = dspy_adapter(single_attachment)
+            
+            # Clean up images
+            clean_images = []
+            for img in single_attachment.images:
+                if img and isinstance(img, str) and len(img) > 10:
+                    if img.startswith('data:image/') or not img.endswith('_placeholder'):
+                        clean_images.append(img)
+            
+            self._dspy_obj = self._dspy_class(
+                text=single_attachment.text,
+                images=clean_images,
+                audio=single_attachment.audio,
+                path=single_attachment.path,
+                metadata=single_attachment.metadata
+            )
+        
         return self._dspy_obj
     
-    def __str__(self):
-        """
-        String representation that works for both contexts.
+    # Implement the DSPy protocol methods that are called by the framework
+    def serialize_model(self):
+        """DSPy serialization method - called by DSPy framework."""
+        if not _check_dspy_availability():
+            raise DSPyNotAvailableError(f"Cannot serialize model - {_DSPY_ERROR_MSG}")
         
-        In DSPy contexts, this returns the serialized model.
-        In regular contexts, this returns the formatted text.
-        """
-        # Try DSPy serialization first if available
-        if _check_dspy_availability():
-            try:
-                dspy_obj = self._ensure_dspy_obj()
-                if hasattr(dspy_obj, 'serialize_model'):
-                    return dspy_obj.serialize_model()
-                elif hasattr(dspy_obj, '__str__'):
-                    return str(dspy_obj)
-            except Exception:
-                # Fall back to regular string representation
-                pass
+        dspy_obj = self._get_dspy_obj()
+        if dspy_obj and hasattr(dspy_obj, 'serialize_model'):
+            return dspy_obj.serialize_model()
+        return str(self)  # Fallback to normal string representation
+    
+    def model_dump(self):
+        """Pydantic v2 compatibility - used by DSPy framework."""
+        if not _check_dspy_availability():
+            raise DSPyNotAvailableError(f"Cannot dump model - {_DSPY_ERROR_MSG}")
         
-        return super().__str__()
+        dspy_obj = self._get_dspy_obj()
+        if dspy_obj and hasattr(dspy_obj, 'model_dump'):
+            return dspy_obj.model_dump()
+        return {'text': self.text, 'images': self.images, 'metadata': self.metadata}
+    
+    def dict(self):
+        """Pydantic v1 compatibility."""
+        return self.model_dump()
     
     def __getattr__(self, name: str):
-        """
-        Forward DSPy-specific attributes to the DSPy object.
-        
-        This enables duck-typing compatibility with DSPy BaseType.
-        """
+        """Forward DSPy-specific attributes to the DSPy object."""
         # Try parent class first
         try:
             return super().__getattr__(name)
@@ -154,52 +267,20 @@ class Attachments(BaseAttachments):
         
         # Check if it's a DSPy/Pydantic attribute
         dspy_attrs = {
-            'serialize_model', 'model_validate', 'model_dump', 'model_config',
-            'model_fields', 'dict', 'json', 'schema', 'copy', 'parse_obj'
+            'model_validate', 'model_config', 'model_fields', 
+            'json', 'schema', 'copy', 'parse_obj'
         }
         
         if name in dspy_attrs:
             if not _check_dspy_availability():
-                raise DSPyNotAvailableError(
-                    f"Cannot access '{name}' - {_DSPY_ERROR_MSG}"
-                )
+                raise DSPyNotAvailableError(f"Cannot access '{name}' - {_DSPY_ERROR_MSG}")
             
-            dspy_obj = self._ensure_dspy_obj()
-            if hasattr(dspy_obj, name):
+            dspy_obj = self._get_dspy_obj()
+            if dspy_obj and hasattr(dspy_obj, name):
                 return getattr(dspy_obj, name)
         
         # If not found, raise the original error
         raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
-    
-    def serialize_model(self):
-        """DSPy serialization method."""
-        if not _check_dspy_availability():
-            raise DSPyNotAvailableError(
-                f"Cannot serialize model - {_DSPY_ERROR_MSG}"
-            )
-        
-        dspy_obj = self._ensure_dspy_obj()
-        if hasattr(dspy_obj, 'serialize_model'):
-            return dspy_obj.serialize_model()
-        return str(self)
-    
-    def model_dump(self):
-        """Pydantic v2 compatibility."""
-        if not _check_dspy_availability():
-            raise DSPyNotAvailableError(
-                f"Cannot dump model - {_DSPY_ERROR_MSG}"
-            )
-        
-        dspy_obj = self._ensure_dspy_obj()
-        if hasattr(dspy_obj, 'model_dump'):
-            return dspy_obj.model_dump()
-        elif hasattr(dspy_obj, 'dict'):
-            return dspy_obj.dict()
-        return {'text': self.text, 'images': self.images, 'metadata': self.metadata}
-    
-    def dict(self):
-        """Pydantic v1 compatibility."""
-        return self.model_dump()
 
 
 # Factory function for explicit DSPy object creation
