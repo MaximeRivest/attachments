@@ -271,3 +271,40 @@ def dspy(input_obj: Union[Attachment, AttachmentCollection]) -> 'DSPyAttachment'
         
         raise ImportError(error_msg) from e
 
+@adapter
+def agno(input_obj: Union[Attachment, AttachmentCollection], prompt: str = "") -> Dict[str, Any]:
+    """Adapt for agno Agent.run() method."""
+    att = _handle_collection(input_obj)
+    
+    try:
+        from agno.media import Image as AgnoImage
+    except ImportError as e:
+        raise ImportError(
+            "agno adapter requires agno to be installed.\n\n"
+            "Install with:\n"
+            "  pip install agno\n"
+            "  # or\n"
+            "  uv add agno\n\n"
+            "If you don't need agno integration, use other adapters like:\n"
+            "  attachment.openai_chat()  # For OpenAI\n"
+            "  attachment.claude()       # For Claude"
+        ) from e
+    
+    # Handle prompt - check DSL commands first, then parameter
+    dsl_prompt = att.commands.get('prompt', '')
+    effective_prompt = prompt or dsl_prompt
+    
+    # Combine prompt and text content
+    message_parts = []
+    if effective_prompt:
+        message_parts.append(effective_prompt)
+    if att.text:
+        message_parts.append(att.text)
+    
+    result = {
+        "message": " ".join(message_parts) if message_parts else "",
+        "images": [AgnoImage(url=img) for img in att.images if img and not img.endswith('_placeholder')]
+    }
+    
+    return result
+
