@@ -183,3 +183,63 @@ client.responses.create(
 - `openai_chat` → Chat Completions API format
 - `openai_responses` → Responses API format  
 - These must NEVER be mixed or call each other
+
+## Accessing User's Jupyter Kernel Context
+
+**CRITICAL**: When the user is working in VSCode Jupyter and you need to see their current kernel state, In/Out history, or debug issues, use the **Kernel Inspector** script:
+
+### Quick Start
+```bash
+# Basic inspection (most common use case)
+uv run python docs/scripts/kernel_inspector.py
+
+# Get help and see all options
+uv run python docs/scripts/kernel_inspector.py --help
+```
+
+### Common Debugging Scenarios
+
+**🔍 Debug specific variables:**
+```bash
+# Inspect the 'agent' object
+uv run python docs/scripts/kernel_inspector.py --var agent
+
+# Check what's in 'response'
+uv run python docs/scripts/kernel_inspector.py --var response
+```
+
+**❌ Find errors quickly:**
+```bash
+# Look for recent errors/exceptions
+uv run python docs/scripts/kernel_inspector.py --errors-only
+```
+
+**🧪 Test code in their kernel:**
+```bash
+# Execute custom code to understand their environment
+uv run python docs/scripts/kernel_inspector.py --exec "print(type(agent))"
+uv run python docs/scripts/kernel_inspector.py --exec "list(agent.__dict__.keys())"
+```
+
+**📜 See more context:**
+```bash
+# Show last 10 inputs/outputs instead of 4
+uv run python docs/scripts/kernel_inspector.py --history 10
+```
+
+### What You Get
+- **In[N] history**: Code cells the user executed
+- **Out[N] history**: Results and outputs
+- **Current variables**: All objects with their types
+- **Error detection**: Recent exceptions and failures
+- **Custom execution**: Run code in their environment
+
+### Pro Workflow
+1. **Start basic**: `uv run python docs/scripts/kernel_inspector.py`
+2. **Focus on issues**: Use `--var` for specific objects or `--errors-only` for problems
+3. **Test hypotheses**: Use `--exec` to run quick tests
+4. **Get more context**: Use `--history 10` if you need more background
+
+See `docs/scripts/KERNEL_INSPECTOR_GUIDE.md` for complete usage guide.
+
+This approach gives you complete visibility into the user's Jupyter session without manual copy/paste.

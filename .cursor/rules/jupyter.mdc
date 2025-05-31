@@ -1,0 +1,41 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+**Kernel Inspector – ultra-compact cheat-sheet**
+
+```bash
+# default: inspect latest live kernel
+uv run python scripts/kernel_inspector.py
+```
+
+### Key flags
+
+| long / short        | action                 | example                   |
+| ------------------- | ---------------------- | ------------------------- |
+| `--var,-v`          | print variable         | `-v agent`                |
+| `--history,-h`      | N recent In/Out        | `-h 10`                   |
+| `--errors-only,-e`  | show recent exceptions | `-e`                      |
+| `--exec,-x`         | run code in kernel     | `-x "print(type(agent))"` |
+| `--list-kernels,-l` | enumerate kernels      | `-l`                      |
+| `--kernel-index,-k` | pick kernel by index   | `-k 1`                    |
+
+### Minimal recipes
+
+```bash
+# inspect variable
+uv run python scripts/kernel_inspector.py -v response
+
+# see 10 last cells
+uv run python scripts/kernel_inspector.py -history 10
+
+# run quick test
+uv run python scripts/kernel_inspector.py -x "len(In)"
+
+# watch only errors
+uv run python scripts/kernel_inspector.py -e
+```
+
+Tip: stale kernels live in `~/.local/share/jupyter/runtime/`; prune with
+`find … -name "kernel-*.json" -mtime +1 -delete` for a clean list.

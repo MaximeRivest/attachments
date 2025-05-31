@@ -16,6 +16,10 @@ project:
           title: Architecture Guide
         - file: docs/architecture/type_dispatch_system.md
           title: Type Dispatch System
+    - title: Extending and Contributing to Attachments
+      children:
+        - file: docs/extending_attachments/how_to_add_an_adapter.ipynb
+          title: How to add an adapter
     - title: Examples & Tutorials
       children:
         - file: docs/examples/how_to_load_and_morph.ipynb
