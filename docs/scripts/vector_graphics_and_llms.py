@@ -16,7 +16,7 @@ import dspy
 # %% [markdown]
 # We configure DSPy with a capable model for multimodal analysis.
 # %%
-dspy.configure(lm=dspy.LM('openai/gpt-4.1-nano', max_tokens=16000))
+dspy.configure(lm=dspy.LM('openai/o3', max_tokens=16000))
 
 # %% [markdown]
 # We create an `Attachments` context for the SVG URL. The DSPy-optimized version automatically handles fetching, parsing, and presenting both text and images in a format ready for DSPy signatures.

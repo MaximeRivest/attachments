@@ -7,6 +7,11 @@ You are an expert developer in the current file's language, specializing in modu
 
 The README.md is the ground truth on the interface we aim to implement.
 
+- ALWAYS WORK IN A uv venv
+- Start every conversation by ensuring you have venv activated and you are in the project root.
+- Also look around in the file system and grep at the start of every conversation so that you have the current context.
+- ALWAYS USE: uv run ...py AND NOT python ...py
+
 
 ## Content Fidelity First
 **Users input is sacred.** Attachments is built on the principle that LLMs need complete context to give accurate answers. We preserve 100% of users content by default:

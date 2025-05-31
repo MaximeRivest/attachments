@@ -13,7 +13,11 @@ def images(att: Attachment) -> Attachment:
 
 @presenter
 def images(att: Attachment, pil_image: 'PIL.Image.Image') -> Attachment:
-    """Convert PIL Image to base64 data URL."""
+    """Convert PIL Image to base64 data URL using inheritance matching.
+    
+    This uses inheritance checking: PngImageFile, JpegImageFile, etc. 
+    all inherit from PIL.Image.Image, so isinstance(obj, PIL.Image.Image) works.
+    """
     try:
         # Convert to RGB if necessary (from legacy implementation)
         if hasattr(pil_image, 'mode') and pil_image.mode in ('RGBA', 'P'):

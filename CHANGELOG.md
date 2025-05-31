@@ -5,6 +5,90 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2025-01-30
+
+### 🚀 Major Features
+
+- **Enhanced Type Dispatch System**: Complete overhaul of type matching for presenters, modifiers, and splitters
+  - **Fixed PIL Image Loading**: Resolved critical issue where PIL Image objects (PngImageFile, JpegImageFile, etc.) weren't being processed by image presenters
+  - **Inheritance-Based Matching**: Proper `isinstance()` checking for type annotations like `'PIL.Image.Image'`
+  - **Regex Pattern Support**: Contributors can now use regex patterns in type annotations: `r'.*ImageFile$'`
+  - **Smart Pattern Detection**: Automatically distinguishes between module paths (`'PIL.Image.Image'`) and regex patterns (`r'.*ImageFile$'`)
+
+### ✨ Improvements
+
+- **Robust Image Processing**: All image formats now work correctly with the type dispatch system
+  - PNG, JPEG, GIF, BMP, WEBP images properly converted to base64
+  - HEIC/HEIF support with `pillow-heif` dependency
+  - SVG rendering with cairosvg/playwright fallback
+  - Consistent inheritance checking across all PIL Image subclasses
+
+- **Multiple Matching Strategies**: Enhanced type dispatch with fallback chain
+  1. Exact full module.class match (`PIL.PngImagePlugin.PngImageFile == 'PIL.PngImagePlugin.PngImageFile'`)
+  2. Class name match (`PngImageFile == 'Image'`)  
+  3. Inheritance checking (`isinstance(obj, PIL.Image.Image)`)
+  4. Regex pattern matching (`r'.*ImageFile$'`)
+
+- **Developer Experience**: Better error handling and meaningful function wrapping
+  - Fixed `@wraps` decorator to use meaningful handlers instead of fallback functions
+  - Clear debug capabilities for troubleshooting type dispatch issues
+  - Automatic detection of regex vs. normal type annotations
+
+### 🐛 Bug Fixes
+
+- **Critical Image Loading Fix**: Resolved [GitHub issue #6](https://github.com/MaximeRivest/attachments/issues/6)
+  - Fixed `present.images` not working with PIL Image objects
+  - Corrected type dispatch logic that was incorrectly treating `'PIL.Image.Image'` as regex pattern
+  - Restored proper inheritance checking for PIL Image subclasses
+  - All image tests now pass: PNG, HEIC, SVG, and multiple image processing
+
+- **Type Annotation Processing**: Fixed regex pattern detection logic
+  - Normal module paths like `'PIL.Image.Image'` no longer treated as regex
+  - Explicit regex patterns (`r'pattern'` or containing metacharacters) properly detected
+  - Improved `_looks_like_module_path()` heuristic for better pattern recognition
+
+### 🔧 Technical Changes
+
+- **Enhanced VerbNamespace**: Improved dispatch wrapper creation
+  - Better function wrapping with meaningful handlers for debugging
+  - Proper inheritance checking with dynamic imports
+  - Support for both string type annotations and actual type objects
+
+- **Flexible Type Matching**: Contributors can choose the best approach
+  - **Inheritance approach** (recommended): `pil_image: 'PIL.Image.Image'`
+  - **Regex approach** (advanced): `pil_image: r'.*ImageFile$'`
+  - **No core modifications needed**: Just add functions with appropriate type annotations
+
+### 📚 Documentation
+
+- **Type Dispatch Examples**: Clear examples of both inheritance and regex approaches
+- **Python Inheritance Tutorial**: Detailed explanation of how inheritance works in the attachments context
+- **Contributor Guidelines**: Best practices for type annotations and when to use each approach
+
+### ⚠️ Breaking Changes
+
+None - All changes are backward compatible and enhance existing functionality.
+
+### 🔄 Migration Guide
+
+**For Contributors**: Enhanced type annotation options:
+
+```python
+# Inheritance approach (recommended) - works automatically
+@presenter
+def images(att: Attachment, pil_image: 'PIL.Image.Image') -> Attachment:
+    # Matches PngImageFile, JpegImageFile, etc. via isinstance()
+    pass
+
+# Regex approach (advanced) - for complex patterns  
+@presenter
+def images(att: Attachment, pil_image: r'.*ImageFile$') -> Attachment:
+    # Matches any class ending with 'ImageFile'
+    pass
+```
+
+**For Users**: No changes needed - all image processing now works correctly out of the box.
+
 ## [0.9.0] - 2025-01-29
 
 ### 🚀 Major Features

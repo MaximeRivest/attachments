@@ -10,8 +10,12 @@ project:
   github: https://github.com/MaximeRivest/attachments
   toc:
     - file: README.md
-    - file: docs/architecture.md
-      title: Architecture Guide
+    - title: Architecture
+      children:
+        - file: docs/architecture/architecture.md
+          title: Architecture Guide
+        - file: docs/architecture/type_dispatch_system.md
+          title: Type Dispatch System
     - title: Examples & Tutorials
       children:
         - file: docs/examples/how_to_load_and_morph.ipynb

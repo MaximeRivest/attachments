@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "attachments"
-version = "0.9.0"  
+version = "0.10.0"  
 authors = [
   { name="Maxime Rivest", email="mrive052@gmail.com" },
 ]
@@ -41,6 +41,7 @@ dependencies = [
     "pdfplumber>=0.11.6",
     "python-pptx>=1.0.2",
     "ipykernel>=6.29.5",
+    "pillow-heif>=0.22.0",
 ]
 
 [project.urls]

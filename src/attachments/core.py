@@ -1056,7 +1056,14 @@ class VerbNamespace:
         """Create a wrapper that dispatches based on object type."""
         handlers = self._registry[name]
         
-        @wraps(handlers[0][1])
+        # Find a meaningful handler for @wraps (not the fallback)
+        meaningful_handler = handlers[0][1]  # Default to first
+        for expected_type, handler_fn in handlers:
+            if expected_type is not None:  # Skip fallback handlers
+                meaningful_handler = handler_fn
+                break
+        
+        @wraps(meaningful_handler)
         def wrapper(att: Attachment) -> Union[Attachment, AttachmentCollection]:
             # Check if this is a splitter function (expects text parameter)
             import inspect
@@ -1091,6 +1098,7 @@ class VerbNamespace:
                 return att
             
             obj_type_name = type(att._obj).__name__
+            obj_type_full_name = f"{type(att._obj).__module__}.{type(att._obj).__name__}"
             
             # Try to find a matching handler based on type annotations
             for expected_type, handler_fn in handlers:
@@ -1098,13 +1106,28 @@ class VerbNamespace:
                     continue
                     
                 try:
-                    # Handle string type annotations
+                    # Handle string type annotations with enhanced matching
                     if isinstance(expected_type, str):
-                        # Generic type name matching - extract the class name from module.ClassName
-                        expected_class_name = expected_type.split('.')[-1]
-                        # Use exact match only to avoid false positives like "Document" matching "SVGDocument"
-                        if obj_type_name == expected_class_name:
-                            return handler_fn(att, att._obj)
+                        # Check if it's a regex pattern (starts with r' or contains regex metacharacters)
+                        if self._is_regex_pattern(expected_type):
+                            if self._match_regex_pattern(obj_type_name, obj_type_full_name, expected_type):
+                                return handler_fn(att, att._obj)
+                        else:
+                            # Try multiple matching strategies for regular type strings
+                            
+                            # 1. Exact full module.class match
+                            if obj_type_full_name == expected_type:
+                                return handler_fn(att, att._obj)
+                            
+                            # 2. Extract class name and try exact match
+                            expected_class_name = expected_type.split('.')[-1]
+                            if obj_type_name == expected_class_name:
+                                return handler_fn(att, att._obj)
+                            
+                            # 3. Try inheritance check for known patterns
+                            if self._check_type_inheritance(att._obj, expected_type):
+                                return handler_fn(att, att._obj)
+                            
                     elif isinstance(att._obj, expected_type):
                         return handler_fn(att, att._obj)
                 except (TypeError, AttributeError):
@@ -1119,6 +1142,94 @@ class VerbNamespace:
         
         return wrapper
     
+    def _check_type_inheritance(self, obj, expected_type_str: str) -> bool:
+        """Check if object inherits from the expected type using dynamic import."""
+        try:
+            # Handle common inheritance patterns
+            if expected_type_str == 'PIL.Image.Image':
+                # Special case for PIL Images - check if it's any PIL Image subclass
+                try:
+                    from PIL import Image
+                    return isinstance(obj, Image.Image)
+                except ImportError:
+                    return False
+            
+            # For other types, try to dynamically import and check
+            if '.' in expected_type_str:
+                module_path, class_name = expected_type_str.rsplit('.', 1)
+                try:
+                    import importlib
+                    module = importlib.import_module(module_path)
+                    expected_class = getattr(module, class_name)
+                    return isinstance(obj, expected_class)
+                except (ImportError, AttributeError):
+                    return False
+            
+            return False
+        except Exception:
+            return False
+    
+    def _is_regex_pattern(self, type_str: str) -> bool:
+        """Check if a type string is intended as a regex pattern."""
+        # Check for explicit regex prefix first
+        if type_str.startswith('r\'') or type_str.startswith('r"'):
+            return True
+        
+        # Don't treat normal module.class.name patterns as regex
+        # These are common patterns like 'PIL.Image.Image', 'pandas.DataFrame'
+        if self._looks_like_module_path(type_str):
+            return False
+            
+        # Check for regex metacharacters that indicate this is actually a regex
+        regex_indicators = [
+            r'\*',  # Asterisks
+            r'\+',  # Plus signs
+            r'\?',  # Question marks
+            r'\[',  # Character classes
+            r'\(',  # Groups
+            r'\|',  # Alternation
+            r'\$',  # End anchors
+            r'\^',  # Start anchors
+        ]
+        
+        # If it contains regex metacharacters, treat as regex
+        import re
+        for indicator in regex_indicators:
+            if re.search(indicator, type_str):
+                return True
+            
+        return False
+    
+    def _looks_like_module_path(self, type_str: str) -> bool:
+        """Check if a string looks like a normal module.class.name path."""
+        # Simple heuristic: if it's just alphanumeric, dots, and underscores,
+        # and doesn't contain obvious regex metacharacters, treat as module path
+        import re
+        # Allow letters, numbers, dots, underscores
+        if re.match(r'^[a-zA-Z_][a-zA-Z0-9_.]*$', type_str):
+            return True
+        return False
+    
+    def _match_regex_pattern(self, obj_type_name: str, obj_type_full_name: str, pattern: str) -> bool:
+        """Match object type against a regex pattern."""
+        try:
+            import re
+            
+            # Clean up the pattern if it has r' prefix
+            clean_pattern = pattern
+            if pattern.startswith('r\'') and pattern.endswith('\''):
+                clean_pattern = pattern[2:-1]
+            elif pattern.startswith('r"') and pattern.endswith('"'):
+                clean_pattern = pattern[2:-1]
+            
+            # Try matching against both short and full type names
+            if re.match(clean_pattern, obj_type_name) or re.match(clean_pattern, obj_type_full_name):
+                return True
+                
+            return False
+        except Exception:
+            return False
+
     def _make_adapter_wrapper(self, name: str):
         """Create a wrapper for adapter functions."""
         adapter_fn = self._registry[name]
