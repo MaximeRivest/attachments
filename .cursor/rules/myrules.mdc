@@ -1,7 +1,7 @@
 ---
 description: 
 globs: 
-alwaysApply: true
+alwaysApply: false
 ---
 You are an expert developer in the current file's language, specializing in modular, maintainable, library development. You are building the attachments python library.
 

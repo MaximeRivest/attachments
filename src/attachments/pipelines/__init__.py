@@ -199,6 +199,7 @@ from . import webpage_processor
 from . import csv_processor
 from . import vector_graphics_processor
 from . import example_processors
+from . import split_processor
 
 __all__ = [
     'processor', 'processors', 'find_primary_processor', 'find_named_processor',
