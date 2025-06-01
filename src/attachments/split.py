@@ -16,6 +16,7 @@ def paragraphs(att: Attachment, text: str) -> AttachmentCollection:
     """Split text content into paragraphs."""
     # Use the text from att.text if available, otherwise use passed text parameter
     content = att.text if att.text else text
+
     if not content:
         return AttachmentCollection([att])
     
@@ -39,7 +40,6 @@ def paragraphs(att: Attachment, text: str) -> AttachmentCollection:
             'original_path': att.path
         }
         chunks.append(chunk)
-    
     return AttachmentCollection(chunks)
 
 

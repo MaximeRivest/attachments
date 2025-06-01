@@ -60,15 +60,66 @@ class Attachments:
         
         self._process_files(tuple(flattened_paths))
     
+    def _apply_splitter_and_add_to_list(self, item: Union[Attachment, AttachmentCollection], 
+                                       splitter_func: callable, target_list: List[Attachment], 
+                                       original_path: str) -> None:
+        """Apply splitter function to item and add results to target list."""
+        if splitter_func is None:
+            # No splitting requested
+            if isinstance(item, Attachment):
+                target_list.append(item)
+            elif isinstance(item, AttachmentCollection):
+                target_list.extend(item.attachments)
+            return
+        
+        try:
+            if isinstance(item, Attachment):
+                # Apply splitter to single attachment
+                split_result = splitter_func(item)
+                if isinstance(split_result, AttachmentCollection):
+                    target_list.extend(split_result.attachments)
+                else:
+                    # Fallback: if splitter doesn't return collection, add original
+                    target_list.append(item)
+            elif isinstance(item, AttachmentCollection):
+                # Apply splitter to each attachment in collection
+                for sub_att in item.attachments:
+                    self._apply_splitter_and_add_to_list(sub_att, splitter_func, target_list, original_path)
+        except Exception as e:
+            # Create error attachment for failed splitting
+            error_att = Attachment(original_path)
+            error_att.text = f"⚠️ Error applying split operation: {str(e)}"
+            error_att.metadata = {'split_error': str(e), 'original_path': original_path}
+            target_list.append(error_att)
+    
+    def _get_splitter_function(self, splitter_name: str):
+        """Get splitter function from split namespace."""
+        if not splitter_name:
+            return None
+        
+        try:
+            load, present, refine, split, modify = _get_cached_namespaces()
+            splitter_func = getattr(split, splitter_name, None)
+            if splitter_func is None:
+                raise AttributeError(f"Unknown splitter: {splitter_name}")
+            return splitter_func
+        except Exception as e:
+            raise ValueError(f"Error getting splitter '{splitter_name}': {e}")
+    
     def _process_files(self, paths: tuple) -> None:
-        """Process all input files through universal pipeline."""
+        """Process all input files through universal pipeline with split support."""
         # Get the proper namespaces
         load, present, refine, split, modify = _get_cached_namespaces()
         
         for path in paths:
             try:
+                # Extract split command from the original path DSL
+                initial_att = attach(path)
+                splitter_name = initial_att.commands.get('split')
+                splitter_func = self._get_splitter_function(splitter_name) if splitter_name else None
+                
                 # Create attachment and apply universal auto-pipeline
-                result = self._auto_process(attach(path))
+                result = self._auto_process(initial_att)
                 
                 # Apply repository/directory presenters based on structure type
                 if (isinstance(result, Attachment) and 
@@ -84,33 +135,36 @@ class Attachments:
                         # This is files mode - expand individual files
                         files = result._obj['files']
                         
-                        # Add directory summary as first attachment
+                        # Add directory summary as first attachment (NO SPLIT on summary)
                         self.attachments.append(result)
                         
-                        # Process individual files
+                        # Process individual files and apply splitter to each
                         for file_path in files:
                             try:
                                 file_result = self._auto_process(attach(file_path))
-                                self.attachments.append(file_result)
+                                # Apply splitter to individual file (inherit from directory DSL)
+                                self._apply_splitter_and_add_to_list(file_result, splitter_func, self.attachments, path)
                             except Exception as e:
                                 # Create error attachment for failed files
                                 error_att = attach(file_path)
                                 error_att.text = f"Error processing {file_path}: {e}"
                                 self.attachments.append(error_att)
                         
-                        return  # Don't add the directory attachment again
+                        continue  # Don't add the directory attachment again
                     else:
-                        # This is structure+metadata only mode - just add the summary
+                        # This is structure+metadata only mode - add the summary (NO SPLIT on summary)
                         self.attachments.append(result)
-                        return
+                        continue
                 
-                # Handle regular collections (like ZIP files)
+                # Check if the processor already applied splitting (returns AttachmentCollection)
                 elif isinstance(result, AttachmentCollection):
+                    # Processor already handled splitting, add all results
                     self.attachments.extend(result.attachments)
-                elif isinstance(result, Attachment):
-                    # Regular attachment (including structure/metadata modes)
-                    # For structure/metadata modes, just add the single attachment with the formatted structure
-                    self.attachments.append(result)
+                    continue
+                
+                # Handle regular single files - apply splitter if requested and not already applied
+                # Apply splitter to the result only if processor didn't already split
+                self._apply_splitter_and_add_to_list(result, splitter_func, self.attachments, path)
                     
             except Exception as e:
                 # Create a fallback attachment with error info

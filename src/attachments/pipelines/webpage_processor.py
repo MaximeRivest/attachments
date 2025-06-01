@@ -13,6 +13,7 @@ DSL Commands:
     [viewport:1280x720] - Browser viewport size (default: 1280x720)
     [fullpage:true|false] - Full page screenshot vs viewport only (default: true)
     [wait:2000] - Wait time in milliseconds for page to settle (default: 200)
+    [split:paragraphs, sentences, tokens, lines, custom] - Content splitting strategy
 
 Usage:
     # Explicit processor access
@@ -46,15 +47,16 @@ Future improvements:
 - Performance metrics capture
 """
 
-from ..core import Attachment
+from ..core import Attachment, AttachmentCollection
 from ..matchers import webpage_match
 from . import processor
+from typing import Union
 
 @processor(
     match=webpage_match,
     description="Primary webpage processor with text extraction, CSS selection, and screenshot capabilities"
 )
-def webpage_to_llm(att: Attachment) -> Attachment:
+def webpage_to_llm(att: Attachment) -> Union[Attachment, AttachmentCollection]:
     """
     Process web pages for LLM consumption.
     
@@ -65,6 +67,7 @@ def webpage_to_llm(att: Attachment) -> Attachment:
     - viewport: 1280x720 for browser viewport size
     - fullpage: true (default), false for viewport-only screenshots
     - wait: 2000 for page settling time in milliseconds
+    - split: paragraphs, sentences, tokens, lines, custom for content splitting
     
     Text formats:
     - plain: Clean text extraction from page content
@@ -80,10 +83,15 @@ def webpage_to_llm(att: Attachment) -> Attachment:
     - Full page screenshots with JavaScript rendering
     - Customizable viewport sizes
     - Configurable wait times for dynamic content
+    
+    Split capabilities:
+    - Split extracted content into chunks using various strategies
+    - Works with all text formats and CSS selection
     """
     
     # Import namespaces properly to get VerbFunction wrappers
-    from .. import load, present, refine, modify
+    from .. import load, present, refine, modify, split
+    from ..core import AttachmentCollection
     
     # Determine text format from DSL commands
     format_cmd = att.commands.get('format', 'markdown')
@@ -128,9 +136,40 @@ def webpage_to_llm(att: Attachment) -> Attachment:
         # Empty pipeline that does nothing
         selection_pipeline = lambda att: att
     
-    # Enhanced pipeline with format, selection, and image control
-    return (att 
-           | load.url_to_bs4          # Load webpage content
-           | selection_pipeline       # Apply CSS selector if specified
-           | text_presenter + image_pipeline + present.metadata
-           | refine.add_headers) 
+    # First, process the content normally through the pipeline
+    processed = (att 
+                | load.url_to_bs4          # Load webpage content
+                | selection_pipeline       # Apply CSS selector if specified
+                | text_presenter + image_pipeline + present.metadata
+                | refine.add_headers)
+    
+    # Check if split operation was requested
+    splitter_name = att.commands.get('split')
+    if splitter_name:
+        try:
+            # Get the splitter function from the split namespace
+            splitter_func = getattr(split, splitter_name, None)
+            if splitter_func is None:
+                # Invalid splitter name - add error to metadata and return original
+                processed.metadata['split_error'] = f"Unknown splitter: {splitter_name}"
+                processed.text += f"\n\n⚠️ Warning: Unknown splitter '{splitter_name}'. Available splitters: paragraphs, sentences, tokens, lines, custom\n"
+                return processed
+            
+            # Apply the splitter to the processed content
+            split_result = splitter_func(processed)
+            
+            # Splitters return AttachmentCollection
+            if isinstance(split_result, AttachmentCollection):
+                return split_result
+            else:
+                # Fallback if splitter doesn't return collection
+                return processed
+                
+        except Exception as e:
+            # Handle splitter errors gracefully
+            processed.metadata['split_error'] = f"Error applying splitter '{splitter_name}': {str(e)}"
+            processed.text += f"\n\n⚠️ Error applying splitter '{splitter_name}': {str(e)}\n"
+            return processed
+    else:
+        # No split requested, return single processed attachment
+        return processed
