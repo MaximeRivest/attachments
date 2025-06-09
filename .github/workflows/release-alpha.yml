@@ -47,6 +47,10 @@ jobs:
           print-hash: true
           verbose: true
 
+      - name: Extract version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
@@ -56,7 +60,7 @@ jobs:
             
             **Installation for alpha testers:**
             ```bash
-            pip install attachments==${{ github.ref_name | replace('v', '') }}
+            pip install attachments==${{ steps.get_version.outputs.VERSION }}
             ```
             
             **What's new:**
