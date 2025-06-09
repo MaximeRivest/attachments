@@ -1,5 +1,4 @@
 name: Deploy MyST Documentation to GitHub Pages
-./release_alpha.sh
 # This workflow deploys documentation for both stable and alpha releases
 # Alpha releases: 0.13.0a1, 0.13.0a2, etc.
 # Stable releases: 0.13.0, 0.14.0, etc.
