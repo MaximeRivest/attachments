@@ -1,8 +1,85 @@
-from .core import Attachment, refiner
+from .core import Attachment, refiner, CommandDict
 from typing import Union
 import os
+from .config import verbose_log
+from .dsl_info import get_dsl_info
+from .dsl_suggestion import find_closest_command
+
+# Cache the DSL info to avoid re-scanning on every call.
+_dsl_info_cache = None
+
+def _get_cached_dsl_info():
+    """Gets the DSL info from a cache or generates it if not present."""
+    global _dsl_info_cache
+    if _dsl_info_cache is None:
+        _dsl_info_cache = get_dsl_info()
+    return _dsl_info_cache
 
 # --- REFINERS ---
+
+@refiner
+def no_op(att: Attachment) -> Attachment:
+    """A no-operation verb that does nothing. Used for clarity in pipelines."""
+    return att
+
+@refiner
+def report_unused_commands(item: Union[Attachment, 'AttachmentCollection']) -> Union[Attachment, 'AttachmentCollection']:
+    """Logs any DSL commands that were not used during processing. Summarizes for collections."""
+    from .core import AttachmentCollection, CommandDict # avoid circular import
+    
+    if isinstance(item, AttachmentCollection):
+        if not item.attachments:
+            return item
+        
+        # For a collection, all items from a split share the same CommandDict.
+        # We can just check the first one.
+        first_att = item.attachments[0]
+        if hasattr(first_att, 'commands') and isinstance(first_att.commands, CommandDict):
+            all_commands = set(first_att.commands.keys())
+            used_commands = first_att.commands.used_keys
+            unused = all_commands - used_commands
+            
+            original_path = first_att.metadata.get('original_path', first_att.path)
+            
+            if unused:
+                dsl_info = _get_cached_dsl_info()
+                valid_commands = dsl_info.keys()
+                
+                suggestion_parts = []
+                for command in sorted(list(unused)):
+                    suggestion = find_closest_command(command, valid_commands)
+                    if suggestion:
+                        suggestion_parts.append(f"'{command}' (did you mean '{suggestion}'?)")
+                    else:
+                        suggestion_parts.append(f"'{command}'")
+                
+                unused_str = ", ".join(suggestion_parts)
+                verbose_log(f"Unused commands for '{original_path}' (split into {len(item.attachments)} chunks): [{unused_str}]")
+    
+    elif isinstance(item, Attachment):
+        # Original logic for single attachment
+        if hasattr(item, 'commands') and isinstance(item.commands, CommandDict):
+            all_commands = set(item.commands.keys())
+            used_commands = item.commands.used_keys
+            unused = all_commands - used_commands
+            if unused:
+                # Only log for standalone attachments. Chunks are handled by the collection logic.
+                if 'original_path' not in item.metadata:
+                    dsl_info = _get_cached_dsl_info()
+                    valid_commands = dsl_info.keys()
+                    
+                    suggestion_parts = []
+                    for command in sorted(list(unused)):
+                        suggestion = find_closest_command(command, valid_commands)
+                        if suggestion:
+                            suggestion_parts.append(f"'{command}' (did you mean '{suggestion}'?)")
+                        else:
+                            suggestion_parts.append(f"'{command}'")
+
+                    unused_str = ", ".join(suggestion_parts)
+                    verbose_log(f"Unused commands for '{item.path}': [{unused_str}]")
+    
+    return item
 
 @refiner
 def truncate(att: Attachment, limit: int = None) -> Attachment:

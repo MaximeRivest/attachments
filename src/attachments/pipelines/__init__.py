@@ -18,12 +18,14 @@ Usage:
 from typing import Callable, List, Optional, Dict, Any
 from dataclasses import dataclass
 from ..core import Attachment
+from ..config import verbose_log, indent, dedent
 
 @dataclass
 class ProcessorInfo:
     """Information about a registered processor."""
     match_fn: Callable[[Attachment], bool]
     process_fn: Callable[[Attachment], Attachment]
+    original_fn: Callable[[Attachment], Attachment]
     name: Optional[str] = None
     is_primary: bool = False
     description: str = ""
@@ -43,9 +45,21 @@ class ProcessorRegistry:
         # Determine if this is a primary processor (no name = primary)
         is_primary = name is None
         
+        # Create a wrapper for logging
+        def logging_wrapper(att: Attachment) -> Attachment:
+            processor_name = name or process_fn.__name__
+            verbose_log(f"Running {'primary' if is_primary else 'named'} processor '{processor_name}' for {att.path}")
+            indent()
+            try:
+                result = process_fn(att)
+            finally:
+                dedent()
+            return result
+        
         proc_info = ProcessorInfo(
             match_fn=match_fn,
-            process_fn=process_fn,
+            process_fn=logging_wrapper,
+            original_fn=process_fn,
             name=name or process_fn.__name__,
             is_primary=is_primary,
             description=description or process_fn.__doc__ or ""
@@ -168,7 +182,7 @@ class ProcessorNamespace:
         
         # Try primary processors by function name
         for proc_info in _processor_registry._primary_processors.values():
-            if proc_info.process_fn.__name__ == name:
+            if proc_info.original_fn.__name__ == name:
                 return proc_info.process_fn
         
         raise AttributeError(f"No processor named '{name}' found")
@@ -182,7 +196,7 @@ class ProcessorNamespace:
         
         # Add primary processor function names
         for proc_info in _processor_registry._primary_processors.values():
-            names.append(proc_info.process_fn.__name__)
+            names.append(proc_info.original_fn.__name__)
         
         return sorted(names)
 

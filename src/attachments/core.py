@@ -5,6 +5,33 @@ import base64
 import io
 from pathlib import Path
 
+from .config import verbose_log, indent, dedent
+
+class CommandDict(dict):
+    """A dictionary that tracks key access for logging purposes."""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.used_keys = set()
+        self.logged_keys = set()
+
+    def get(self, key, default=None):
+        if super().__contains__(key):
+            value = super().__getitem__(key)
+            if key not in self.logged_keys:
+                verbose_log(f"Accessing command: '{key}' = '{value}'")
+                self.logged_keys.add(key)
+            self.used_keys.add(key)
+            return value
+        return default
+
+    def __getitem__(self, key):
+        value = super().__getitem__(key)
+        if key not in self.logged_keys:
+            verbose_log(f"Accessing command: '{key}' = '{value}'")
+            self.logged_keys.add(key)
+        self.used_keys.add(key)
+        return value
+
 class Pipeline:
     """A callable pipeline that can be applied to attachments."""
     
@@ -52,7 +79,28 @@ class Pipeline:
     def _execute_steps(self, result: 'Attachment', steps: List[Callable]) -> Any:
         """Execute a list of steps on an attachment."""
         for step in steps:
-            result = step(result)
+            if isinstance(step, (Pipeline, AdditivePipeline)):
+                # If a step is another pipeline, just call it.
+                # It will manage its own indentation.
+                result = step(result)
+            else:
+                log_this_step = True
+                if isinstance(step, VerbFunction):
+                    step_name = step.full_name
+                    if step.name == 'no_op':
+                        log_this_step = False
+                else:
+                    step_name = getattr(step, '__name__', str(step))
+
+                if log_this_step:
+                    verbose_log(f"Applying step '{step_name}' to {result.path}")
+                
+                indent()
+                try:
+                    result = step(result)
+                finally:
+                    dedent()
+
             if result is None:
                 # If step returns None, keep the previous result
                 continue
@@ -90,17 +138,38 @@ class AdditivePipeline:
     
     def __call__(self, input_: Union[str, 'Attachment']) -> 'Attachment':
         """Apply additive pipeline - each step adds to existing content."""
-        if isinstance(input_, str):
-            result = Attachment(input_)
-        else:
-            result = input_
-        
-        for step in self.steps:
-            # Apply each step to the original attachment
-            # Each presenter should preserve existing content and add new content
-            result = step(result)
-            if result is None:
-                continue
+        verbose_log(f"Running {self!r}")
+        indent()
+        try:
+            if isinstance(input_, str):
+                result = Attachment(input_)
+            else:
+                result = input_
+            
+            for step in self.steps:
+                # Apply each step to the original attachment
+                # Each presenter should preserve existing content and add new content
+                log_this_step = True
+                if isinstance(step, VerbFunction):
+                    step_name = step.full_name
+                    if step.name == 'no_op':
+                        log_this_step = False
+                else:
+                    step_name = getattr(step, '__name__', str(step))
+
+                if log_this_step:
+                    verbose_log(f"Applying additive step '{step_name}' to {result.path}")
+                
+                indent()
+                try:
+                    result = step(result)
+                finally:
+                    dedent()
+                        
+                if result is None:
+                    continue
+        finally:
+            dedent()
         
         return result
     
@@ -116,8 +185,17 @@ class AdditivePipeline:
         return Pipeline([self]) | other
     
     def __repr__(self) -> str:
-        step_names = [getattr(step, '__name__', str(step)) for step in self.steps]
-        return f"AdditivePipeline({' + '.join(step_names)})"
+        step_names = []
+        for step in self.steps:
+            # Don't include no_op in the representation
+            if isinstance(step, VerbFunction) and step.name == 'no_op':
+                continue
+
+            if isinstance(step, VerbFunction):
+                step_names.append(step.full_name)
+            else:
+                step_names.append(getattr(step, '__name__', str(step)))
+        return f"AdditivePipeline({f' + '.join(step_names)})"
 
 class AttachmentCollection:
     """A collection of attachments that supports vectorized operations."""
@@ -156,6 +234,7 @@ class AttachmentCollection:
         if hasattr(operation, 'name'):
             reducing_operations = {
                 'tile_images', 'combine_images', 'merge_text', 
+                'report_unused_commands',
                 'claude', 'openai_chat', 'openai_response'  # Adapters are always reducers
             }
             return operation.name in reducing_operations
@@ -194,7 +273,8 @@ class Attachment:
     
     def __init__(self, attachy: str = ""):
         self.attachy = attachy
-        self.path, self.commands = self._parse_attachy()
+        self.path, commands = self._parse_attachy()
+        self.commands = CommandDict(commands)
         
         self._obj: Optional[Any] = None
         self.text: str = ""
@@ -475,6 +555,9 @@ class Attachment:
         final_commands = dict(reversed(commands_list))
         final_path = temp_path_str.strip()
         
+        if final_commands:
+            verbose_log(f"Parsed commands for '{self.attachy}': {final_commands}")
+        
         # If the final_path is empty AND the original attachy string looked like it was ONLY commands
         # (e.g., "\\"[cmd1:val1][cmd2:val2]\\""), this is typically invalid for a path.
         # In such a case, the original string should be treated as the path, with no commands.
@@ -490,21 +573,12 @@ class Attachment:
     
     def __or__(self, verb: Union[Callable, Pipeline]) -> Union['Attachment', 'AttachmentCollection', Pipeline]:
         """Support both immediate application and pipeline creation."""
-        if isinstance(verb, Pipeline):
-            # Apply pipeline to this attachment
-            return verb(self)
-        else:
-            # Apply single verb
-            result = verb(self)
-            if result is None:
-                result = self
-            if isinstance(result, Attachment):
-                result.pipeline.append(getattr(verb, '__name__', str(verb)))
-            elif isinstance(result, AttachmentCollection):
-                # For collections, add the pipeline step to each attachment
-                for att in result.attachments:
-                    att.pipeline.append(getattr(verb, '__name__', str(verb)))
-            return result
+        # ALWAYS wrap verbs in a pipeline to ensure consistent processing and logging.
+        if not isinstance(verb, Pipeline):
+            verb = Pipeline([verb])
+        
+        # Apply the pipeline to this attachment.
+        return verb(self)
     
     def __getattr__(self, name: str):
         """Allow calling adapters as methods on attachments."""
@@ -916,6 +990,8 @@ def refiner(func):
 
 def splitter(func):
     """Register a splitter function that expands attachments into collections."""
+    # The new CommandDict logic handles the logging, so we just need to
+    # register the function directly without a wrapper.
     import inspect
     sig = inspect.signature(func)
     params = list(sig.parameters.values())
@@ -941,20 +1017,28 @@ def splitter(func):
 class VerbFunction:
     """A wrapper for verb functions that supports both direct calls and pipeline creation."""
     
-    def __init__(self, func: Callable, name: str, args=None, kwargs=None, is_loader=False):
+    def __init__(self, func: Callable, name: str, args=None, kwargs=None, is_loader=False, namespace: str = None):
         self.func = func
         self.name = name
         self.__name__ = name
         self.args = args or ()
         self.kwargs = kwargs or {}
         self.is_loader = is_loader
+        self.namespace = namespace
+
+    @property
+    def full_name(self) -> str:
+        """Return the full name of the verb, including namespace if available."""
+        if self.namespace:
+            return f"{self.namespace}.{self.name}"
+        return self.name
     
     def __call__(self, *args, **kwargs) -> Union[Attachment, 'VerbFunction']:
         """Support both att | verb() and verb(args) | other_verb patterns."""
-        if len(args) == 1 and isinstance(args[0], Attachment) and not kwargs and not self.args and not self.kwargs:
+        if len(args) == 1 and isinstance(args[0], (Attachment, AttachmentCollection)) and not kwargs and not self.args and not self.kwargs:
             # Direct application: verb(attachment)
             return self.func(args[0])
-        elif len(args) == 1 and isinstance(args[0], Attachment) and (kwargs or self.args or self.kwargs):
+        elif len(args) == 1 and isinstance(args[0], (Attachment, AttachmentCollection)) and (kwargs or self.args or self.kwargs):
             # Apply with stored or provided arguments
             return self._apply_with_args(args[0], *(self.args + args[1:]), **{**self.kwargs, **kwargs})
         elif len(args) == 1 and isinstance(args[0], str) and self.is_loader and not kwargs and not self.args and not self.kwargs:
@@ -963,7 +1047,7 @@ class VerbFunction:
             return self.func(att)
         elif args or kwargs:
             # Partial application: verb(arg1, arg2) returns a new VerbFunction with stored args
-            return VerbFunction(self.func, self.name, self.args + args, {**self.kwargs, **kwargs}, self.is_loader)
+            return VerbFunction(self.func, self.name, self.args + args, {**self.kwargs, **kwargs}, self.is_loader, self.namespace)
         else:
             # No args, return self for pipeline creation
             return self
@@ -1009,23 +1093,24 @@ class VerbFunction:
         args_str = ""
         if self.args or self.kwargs:
             args_str = f"({', '.join(map(str, self.args))}{', ' if self.args and self.kwargs else ''}{', '.join(f'{k}={v}' for k, v in self.kwargs.items())})"
-        return f"VerbFunction({self.name}{args_str})"
+        return f"VerbFunction({self.full_name}{args_str})"
 
 class VerbNamespace:
-    def __init__(self, registry):
+    def __init__(self, registry, namespace_name: str = None):
         self._registry = registry
+        self._namespace_name = namespace_name
     
     def __getattr__(self, name: str) -> VerbFunction:
         if name in self._registry:
             if isinstance(self._registry[name], tuple):
                 wrapper = self._make_loader_wrapper(name)
-                return VerbFunction(wrapper, name, is_loader=True)
+                return VerbFunction(wrapper, name, is_loader=True, namespace=self._namespace_name)
             elif isinstance(self._registry[name], list):
                 wrapper = self._make_dispatch_wrapper(name)
-                return VerbFunction(wrapper, name)
+                return VerbFunction(wrapper, name, namespace=self._namespace_name)
             else:
                 wrapper = self._make_adapter_wrapper(name)
-                return VerbFunction(wrapper, name)
+                return VerbFunction(wrapper, name, namespace=self._namespace_name)
         
         raise AttributeError(f"No verb '{name}' registered")
     
@@ -1251,8 +1336,8 @@ class VerbNamespace:
 class SmartVerbNamespace(VerbNamespace):
     """VerbNamespace with __dir__ support for runtime autocomplete."""
     
-    def __init__(self, registry):
-        super().__init__(registry)
+    def __init__(self, registry, namespace_name: str = None):
+        super().__init__(registry, namespace_name)
 
     def __dir__(self):
         """Return list of attributes for IDE autocomplete."""

@@ -1,8 +1,9 @@
 version: 1
 project:
   title: Attachments
-  # description: Optional description of your project
-  # keywords: [keyword1, keyword2]
+  description: A Python library for processing and transforming file attachments with AI-friendly outputs
+  keywords: [python, attachments, documents, ai, llm, processing]
+
   authors:
     - name: Maxime Rivest
       email: mrive052@gmail.com
@@ -20,6 +21,12 @@ project:
       children:
         - file: docs/extending_attachments/how_to_add_an_adapter.ipynb
           title: How to add an adapter
+        - file: docs/extending_attachments/adding_dsl_commands.md
+          title: Adding DSL Commands
+    - title: DSL Reference
+      children:
+        - file: docs/dsl_cheatsheet.md
+          title: DSL Cheatsheet
     - title: Examples & Tutorials
       children:
         - file: docs/examples/how_to_load_and_morph.ipynb
@@ -40,3 +47,17 @@ site:
   options:
     base_url: /attachments
     logo_text: A simple python library and some AI tutorials # Text to display next to/as the logo
+    # MyST parser extensions
+    parse:
+      myst_enable_extensions:
+        - colon_fence
+        - deflist
+        - dollarmath
+        - fieldlist
+        - html_admonition
+        - html_image
+        - linkify
+        - replacements
+        - smartquotes
+        - substitution
+        - tasklist

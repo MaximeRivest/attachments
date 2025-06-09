@@ -9,6 +9,13 @@ from .core import (
 )
 from .highest_level_api import process as simple, Attachments
 
+# Import config
+from . import config
+from .config import set_verbose
+
+# Import DSL introspection tool
+from .dsl_info import get_dsl_info
+
 # Import all loaders and presenters to register them
 from . import loaders
 from . import presenters
@@ -24,12 +31,12 @@ from . import adapt as _adapt_module
 from . import split as _split_module
 
 # Create the namespace instances after functions are registered
-load = SmartVerbNamespace(_loaders)
-modify = SmartVerbNamespace(_modifiers)
-present = SmartVerbNamespace(_presenters)
-adapt = SmartVerbNamespace(_adapters)
-refine = SmartVerbNamespace(_refiners)
-split = SmartVerbNamespace(_splitters)  # Split functions now have their own registry
+load = SmartVerbNamespace(_loaders, 'load')
+modify = SmartVerbNamespace(_modifiers, 'modify')
+present = SmartVerbNamespace(_presenters, 'present')
+adapt = SmartVerbNamespace(_adapters, 'adapt')
+refine = SmartVerbNamespace(_refiners, 'refine')
+split = SmartVerbNamespace(_splitters, 'split')
 
 # Dynamic version reading from pyproject.toml
 def _get_version():
@@ -75,6 +82,13 @@ __all__ = [
     'attach',
     'A',
     'Pipeline',
+    
+    # Config
+    'config',
+    'set_verbose',
+    
+    # DSL Introspection
+    'get_dsl_info',
     
     # High-level API
     'Attachments',

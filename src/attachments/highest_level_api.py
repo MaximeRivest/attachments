@@ -12,6 +12,8 @@ High-level interface that abstracts the grammar complexity:
 from typing import List, Union, Dict, Any
 import os
 from .core import Attachment, AttachmentCollection, attach, _loaders, _modifiers, _presenters, _adapters, _refiners, SmartVerbNamespace
+from .config import verbose_log
+from .dsl_suggestion import find_closest_command, suggest_format_command
 
 # Import the namespace objects, not the raw modules
 # We can't use relative imports for the namespaces since they're created in __init__.py
@@ -59,6 +61,42 @@ class Attachments:
                 flattened_paths.append(path)
         
         self._process_files(tuple(flattened_paths))
+
+        # After all processing, check for unused commands
+        from .config import verbose_log
+        from .core import CommandDict, AttachmentCollection
+        from . import refine
+
+        try:
+            # Group attachments that came from the same split operation
+            command_groups = {} # id(CommandDict) -> list[Attachment]
+            standalone_attachments = []
+
+            for att in self.attachments:
+                if hasattr(att, 'commands') and isinstance(att.commands, CommandDict):
+                    # Check if it looks like a chunk from a split
+                    if 'original_path' in att.metadata:
+                        cmd_id = id(att.commands)
+                        if cmd_id not in command_groups:
+                            command_groups[cmd_id] = []
+                        command_groups[cmd_id].append(att)
+                    else:
+                        standalone_attachments.append(att)
+                else:
+                    # Keep non-command attachments as standalone
+                    standalone_attachments.append(att)
+            
+            # Report for standalone attachments
+            for att in standalone_attachments:
+                refine.report_unused_commands(att)
+            
+            # Report for grouped chunks
+            for group in command_groups.values():
+                collection = AttachmentCollection(group)
+                refine.report_unused_commands(collection)
+
+        except Exception as e:
+            verbose_log(f"Error during final command check: {e}")
     
     def _apply_splitter_and_add_to_list(self, item: Union[Attachment, AttachmentCollection], 
                                        splitter_func: callable, target_list: List[Attachment], 
@@ -101,7 +139,15 @@ class Attachments:
             load, present, refine, split, modify = _get_cached_namespaces()
             splitter_func = getattr(split, splitter_name, None)
             if splitter_func is None:
-                raise AttributeError(f"Unknown splitter: {splitter_name}")
+                # Command was invalid. Let's try to find a suggestion.
+                valid_splitters = [s for s in dir(split) if not s.startswith('_')]
+                suggestion = find_closest_command(splitter_name, valid_splitters)
+                if suggestion:
+                    verbose_log(f"⚠️ Warning: Unknown splitter '{splitter_name}'. Did you mean '{suggestion}'?")
+                else:
+                    verbose_log(f"⚠️ Warning: Unknown splitter '{splitter_name}'. Valid options are: {valid_splitters}")
+                return None # Return None to indicate failure
+                
             return splitter_func
         except Exception as e:
             raise ValueError(f"Error getting splitter '{splitter_name}': {e}")
@@ -117,6 +163,9 @@ class Attachments:
                 initial_att = attach(path)
                 splitter_name = initial_att.commands.get('split')
                 splitter_func = self._get_splitter_function(splitter_name) if splitter_name else None
+                
+                # If splitter was invalid, splitter_func will be None. We should not proceed with a split.
+                # The warning has already been logged.
                 
                 # Create attachment and apply universal auto-pipeline
                 result = self._auto_process(initial_att)
@@ -436,6 +485,12 @@ def _get_smart_text_presenter(att: Attachment):
     # Get format command (default to markdown)
     format_cmd = att.commands.get('format', 'markdown')
     
+    # Check for typos and suggest corrections
+    suggestion = suggest_format_command(format_cmd)
+    if suggestion:
+        verbose_log(f"⚠️ Warning: Unknown format '{format_cmd}'. Did you mean '{suggestion}'? Defaulting to markdown.")
+        format_cmd = 'markdown' # Fallback to default if there was a typo
+
     # Map format commands to presenters
     if format_cmd in ('plain', 'text', 'txt'):
         return present.text

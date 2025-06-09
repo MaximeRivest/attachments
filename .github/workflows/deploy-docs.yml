@@ -1,5 +1,9 @@
 name: Deploy MyST Documentation to GitHub Pages
 
+# This workflow deploys documentation for both stable and alpha releases
+# Alpha releases: 0.13.0a1, 0.13.0a2, etc.
+# Stable releases: 0.13.0, 0.14.0, etc.
+
 on:
   push:
     branches:
@@ -22,15 +26,43 @@ jobs:
         with:
           python-version: '3.11' # Match your project's Python version
 
-      - name: Install MyST
-        run: pip install mystmd
+      - name: Cache Python dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml', '**/uv.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install mystmd
+
+      - name: Generate DSL cheatsheet
+        run: |
+          echo "Generating DSL cheatsheet..."
+          python scripts/generate_dsl_cheatsheet.py
+          echo "✅ DSL cheatsheet generated successfully"
+          
+      - name: Verify DSL cheatsheet was created
+        run: |
+          if [ ! -f "docs/_generated_dsl_cheatsheet.md" ]; then
+            echo "❌ Error: DSL cheatsheet was not generated"
+            exit 1
+          fi
+          echo "✅ DSL cheatsheet file exists"
 
       - name: Clean previous build (if any)
         run: rm -rf _build
 
       - name: Build MyST documentation
-        # Explicitly set BASE_URL for correct asset path generation in subdirectories
-        run: BASE_URL=/attachments myst build --html
+        run: |
+          echo "Building MyST documentation..."
+          # Explicitly set BASE_URL for correct asset path generation in subdirectories
+          BASE_URL=/attachments myst build --html
+          echo "✅ Documentation built successfully"
 
       - name: Upload GitHub Pages artifact
         uses: actions/upload-pages-artifact@v3

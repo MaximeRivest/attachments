@@ -109,3 +109,6 @@ dist/ # Intentionally commented out as it's a standard output dir sometimes comm
 
 # MyST build outputs
 _build
+
+# Auto-generated documentation files
+docs/_generated_dsl_cheatsheet.md

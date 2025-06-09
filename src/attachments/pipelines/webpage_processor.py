@@ -51,6 +51,8 @@ from ..core import Attachment, AttachmentCollection
 from ..matchers import webpage_match
 from . import processor
 from typing import Union
+from ..config import verbose_log
+from ..dsl_suggestion import suggest_format_command
 
 @processor(
     match=webpage_match,
@@ -96,6 +98,12 @@ def webpage_to_llm(att: Attachment) -> Union[Attachment, AttachmentCollection]:
     # Determine text format from DSL commands
     format_cmd = att.commands.get('format', 'markdown')
     
+    # Check for typos and suggest corrections
+    suggestion = suggest_format_command(format_cmd)
+    if suggestion:
+        verbose_log(f"⚠️ Warning: Unknown format '{format_cmd}'. Did you mean '{suggestion}'? Defaulting to markdown.")
+        format_cmd = 'markdown'
+    
     # Handle format aliases
     format_aliases = {
         'text': 'plain',
@@ -126,15 +134,15 @@ def webpage_to_llm(att: Attachment) -> Union[Attachment, AttachmentCollection]:
     if include_images:
         image_pipeline = present.images
     else:
-        # Empty pipeline that does nothing
-        image_pipeline = lambda att: att
+        # Empty pipeline that does nothing, but is now descriptive
+        image_pipeline = refine.no_op
     
     # Build selection pipeline if CSS selector is provided
     if has_selector:
         selection_pipeline = modify.select
     else:
-        # Empty pipeline that does nothing
-        selection_pipeline = lambda att: att
+        # Empty pipeline that does nothing, but is now descriptive
+        selection_pipeline = refine.no_op
     
     # First, process the content normally through the pipeline
     processed = (att 

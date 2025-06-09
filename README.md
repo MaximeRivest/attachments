@@ -435,3 +435,34 @@ Join us – file an issue or open a PR! 🚀
 ## Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=maximerivest/attachments&type=Date)](https://www.star-history.com/#maximerivest/attachments&Date)
+
+## Installation
+
+```bash
+# Stable release (recommended for most users)
+pip install attachments
+
+# Alpha testing (latest features, may have bugs)
+pip install attachments==0.13.0a1
+# or
+pip install --pre attachments
+```
+
+### 🧪 Alpha Testing
+
+We're actively developing new features! If you want to test the latest capabilities:
+
+**Install alpha version:**
+```bash
+pip install attachments==0.13.0a1
+```
+
+**What's new in alpha:**
+- 🔍 Enhanced DSL cheatsheet with types, defaults, and allowable values
+- 📊 Automatic DSL command discovery and documentation
+- 🚀 Improved logging and verbosity system
+- 🛠️ Better error messages and suggestions
+
+**Feedback welcome:** [GitHub Issues](https://github.com/MaximeRivest/attachments/issues)
+
+---

@@ -31,7 +31,7 @@ def paragraphs(att: Attachment, text: str) -> AttachmentCollection:
     for i, paragraph in enumerate(paragraphs):
         chunk = Attachment(f"{att.path}#paragraph-{i+1}")
         chunk.text = paragraph
-        chunk.commands = att.commands.copy()
+        chunk.commands = att.commands
         chunk.metadata = {
             **att.metadata,
             'chunk_type': 'paragraph',
@@ -62,7 +62,7 @@ def sentences(att: Attachment, text: str) -> AttachmentCollection:
     for i, sentence in enumerate(sentences):
         chunk = Attachment(f"{att.path}#sentence-{i+1}")
         chunk.text = sentence
-        chunk.commands = att.commands.copy()
+        chunk.commands = att.commands
         chunk.metadata = {
             **att.metadata,
             'chunk_type': 'sentence',
@@ -93,7 +93,7 @@ def characters(att: Attachment, text: str) -> AttachmentCollection:
         
         chunk = Attachment(f"{att.path}#chars-{i+1}-{min(i+char_limit, len(content))}")
         chunk.text = chunk_text
-        chunk.commands = att.commands.copy()
+        chunk.commands = att.commands
         chunk.metadata = {
             **att.metadata,
             'chunk_type': 'characters',
@@ -145,7 +145,7 @@ def tokens(att: Attachment, text: str) -> AttachmentCollection:
         if chunk_text:
             chunk = Attachment(f"{att.path}#tokens-{chunk_index+1}")
             chunk.text = chunk_text
-            chunk.commands = att.commands.copy()
+            chunk.commands = att.commands
             chunk.metadata = {
                 **att.metadata,
                 'chunk_type': 'tokens',
@@ -184,7 +184,7 @@ def lines(att: Attachment, text: str) -> AttachmentCollection:
         
         chunk = Attachment(f"{att.path}#lines-{i+1}-{min(i+lines_per_chunk, len(text_lines))}")
         chunk.text = chunk_text
-        chunk.commands = att.commands.copy()
+        chunk.commands = att.commands
         chunk.metadata = {
             **att.metadata,
             'chunk_type': 'lines',
@@ -209,7 +209,7 @@ def pages(att: Attachment, pdf: 'pdfplumber.PDF') -> AttachmentCollection:
     for page_num, page in enumerate(pdf.pages, 1):
         chunk = Attachment(f"{att.path}#page-{page_num}")
         chunk._obj = pdf  # Store original PDF object for compatibility with presenters
-        chunk.commands = att.commands.copy()
+        chunk.commands = att.commands
         chunk.metadata = {
             **att.metadata,
             'chunk_type': 'page',
@@ -231,7 +231,7 @@ def slides(att: Attachment, pres: 'pptx.Presentation') -> AttachmentCollection:
     for slide_num, slide in enumerate(pres.slides, 1):
         chunk = Attachment(f"{att.path}#slide-{slide_num}")
         chunk._obj = pres  # Keep original presentation but mark specific slide
-        chunk.commands = att.commands.copy()
+        chunk.commands = att.commands
         chunk.metadata = {
             **att.metadata,
             'chunk_type': 'slide',
@@ -258,7 +258,7 @@ def rows(att: Attachment, df: 'pandas.DataFrame') -> AttachmentCollection:
         
         chunk = Attachment(f"{att.path}#rows-{i+1}-{min(i+rows_per_chunk, len(df))}")
         chunk._obj = chunk_df
-        chunk.commands = att.commands.copy()
+        chunk.commands = att.commands
         chunk.metadata = {
             **att.metadata,
             'chunk_type': 'rows',
@@ -289,7 +289,7 @@ def columns(att: Attachment, df: 'pandas.DataFrame') -> AttachmentCollection:
         
         chunk = Attachment(f"{att.path}#cols-{i+1}-{min(i+cols_per_chunk, len(columns))}")
         chunk._obj = chunk_df
-        chunk.commands = att.commands.copy()
+        chunk.commands = att.commands
         chunk.metadata = {
             **att.metadata,
             'chunk_type': 'columns',
@@ -340,7 +340,7 @@ def sections(att: Attachment, soup: 'bs4.BeautifulSoup') -> AttachmentCollection
             
             chunk = Attachment(f"{att.path}#section-{i+1}")
             chunk._obj = section_soup
-            chunk.commands = att.commands.copy()
+            chunk.commands = att.commands
             chunk.metadata = {
                 **att.metadata,
                 'chunk_type': 'section',
@@ -381,7 +381,7 @@ def custom(att: Attachment, text: str) -> AttachmentCollection:
     for i, part in enumerate(parts):
         chunk = Attachment(f"{att.path}#custom-{i+1}")
         chunk.text = part
-        chunk.commands = att.commands.copy()
+        chunk.commands = att.commands
         chunk.metadata = {
             **att.metadata,
             'chunk_type': 'custom',
