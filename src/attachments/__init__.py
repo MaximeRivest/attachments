@@ -54,7 +54,12 @@ def _get_version():
                 for line in content.split('\n'):
                     if line.strip().startswith('version = '):
                         # Extract version from line like: version = "0.6.0"
-                        version = line.split('=', 1)[1].strip().strip('"').strip("'")
+                        version_part = line.split('=', 1)[1].strip()
+                        # Remove any comments (# and everything after)
+                        if '#' in version_part:
+                            version_part = version_part.split('#', 1)[0].strip()
+                        # Remove quotes
+                        version = version_part.strip('"').strip("'")
                         return version
             except Exception:
                 pass
