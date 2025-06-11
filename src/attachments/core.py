@@ -1138,8 +1138,24 @@ class VerbNamespace:
         return wrapper
     
     def _make_dispatch_wrapper(self, name: str):
-        """Create a wrapper that dispatches based on object type."""
-        handlers = self._registry[name]
+        """
+        Creates a wrapper that dispatches to the correct function based on type hints.
+        This is the core of the polymorphic behavior for verbs like `present.images`.
+
+        How it works:
+        1. It gathers all registered functions for a given verb name (e.g., "images").
+        2. It inspects the type hint of the second argument of each function (e.g., `svg_doc: 'SVGDocument'`).
+        3. At runtime, it checks the type of the `att.data` or `att._obj` object.
+        4. It calls the specific function whose type hint matches the object's type.
+        
+        This allows `present.images` to be called on an attachment, and the system will
+        automatically dispatch to `images(att, pil_image: 'PIL.Image.Image')` or
+        `images(att, svg_doc: 'SVGDocument')` based on the content.
+        """
+        # Find all functions in the registry that match the verb name
+        handlers = self._registry.get(name, [])
+        if not handlers:
+            raise AttributeError(f"No functions registered for verb '{name}'")
         
         # Find a meaningful handler for @wraps (not the fallback)
         meaningful_handler = handlers[0][1]  # Default to first

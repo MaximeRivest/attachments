@@ -10,7 +10,11 @@ def svg_to_svgdocument(att: Attachment) -> Attachment:
     """Load SVG files as SVGDocument objects for type dispatch."""
     
     class SVGDocument:
-        """Minimal wrapper for SVG documents to enable type dispatch."""
+        """
+        Minimal wrapper for SVG documents to enable type dispatch.
+        The `present.images` presenter for `SVGDocument` expects this class
+        to have a `.content` attribute containing the raw SVG string.
+        """
         def __init__(self, root, content):
             self.root = root
             self.content = content

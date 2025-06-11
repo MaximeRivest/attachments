@@ -1,4 +1,12 @@
-"""Image and visual presenters."""
+"""Image and visual presenters.
+
+NOTE: This module uses a polymorphic dispatch pattern for the `images` presenter.
+Multiple functions are intentionally named `images`, each decorated with `@presenter`
+and type-hinted for a different input type (e.g., `PIL.Image.Image`, `SVGDocument`).
+The core dispatch mechanism selects the correct function at runtime based on the
+type of the attachment's data. Do not rename these functions, as that would
+break the `present.images` verb.
+"""
 
 import base64
 import io
