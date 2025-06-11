@@ -6,7 +6,10 @@ Most users will not have to learn anything more than: `Attachments("path/to/file
 
 ## 🎬 Demo
 
-https://github.com/MaximeRivest/attachments/raw/main/demo.mp4
+<video width="100%" controls>
+  <source src="https://github.com/MaximeRivest/attachments/raw/main/demo.mp4" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
 
 > **TL;DR**  
 > ```bash
