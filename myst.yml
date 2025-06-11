@@ -11,6 +11,8 @@ project:
   github: https://github.com/MaximeRivest/attachments
   toc:
     - file: README.md
+    - file: docs/demo.md
+      title: Demo
     - title: Architecture
       children:
         - file: docs/architecture/architecture.md

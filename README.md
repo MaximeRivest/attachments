@@ -4,6 +4,10 @@
 
 Most users will not have to learn anything more than: `Attachments("path/to/file.pdf")`
 
+## 🎬 Demo
+
+https://github.com/MaximeRivest/attachments/raw/main/demo.mp4
+
 > **TL;DR**  
 > ```bash
 > pip install attachments
