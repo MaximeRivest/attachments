@@ -2,11 +2,10 @@
 
 See Attachments in action! This demo shows how to process various file types and extract content for LLM use.
 
-```{raw} html
-<video width="100%" controls>
-  <source src="https://github.com/MaximeRivest/attachments/raw/main/demo.mp4" type="video/mp4">
-  Your browser does not support the video tag.
-</video>
+![Demo](https://github.com/MaximeRivest/attachments/raw/main/demo_full.gif)
+
+```{note}
+The full demo video is also available as an MP4: [demo.mp4](https://github.com/MaximeRivest/attachments/raw/main/demo.mp4)
 ```
 
 ## What you'll see in the demo:

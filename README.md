@@ -6,9 +6,7 @@ Most users will not have to learn anything more than: `Attachments("path/to/file
 
 ## 🎬 Demo
 
-[![Demo Video](https://github.com/MaximeRivest/attachments/raw/main/demo_preview.gif)](https://github.com/MaximeRivest/attachments/raw/main/demo.mp4)
-
-*Click the preview above to watch the full demo video*
+![Demo](https://github.com/MaximeRivest/attachments/raw/main/demo_full.gif)
 
 > **TL;DR**  
 > ```bash
