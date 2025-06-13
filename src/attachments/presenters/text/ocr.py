@@ -10,6 +10,7 @@ def ocr(att: Attachment, pdf_reader: 'pdfplumber.PDF') -> Attachment:
     This presenter is useful for scanned PDFs with no extractable text.
     Requires: pip install pytesseract pillow
     Also requires tesseract binary: apt-get install tesseract-ocr (Ubuntu) or brew install tesseract (Mac)
+    You can specify the language for OCR using the `lang` command, e.g., `[lang:ara]` for Arabic.
     """
     try:
         import pytesseract
@@ -24,6 +25,8 @@ def ocr(att: Attachment, pdf_reader: 'pdfplumber.PDF') -> Attachment:
         att.text += f"pip install pytesseract pypdfium2\n"
         att.text += f"# Ubuntu/Debian:\n"
         att.text += f"sudo apt-get install tesseract-ocr\n"
+        att.text += f"# For other languages (e.g., French):\n"
+        att.text += f"sudo apt-get install tesseract-ocr-fra\n"
         att.text += f"# macOS:\n"
         att.text += f"brew install tesseract\n"
         att.text += f"```\n\n"
@@ -58,6 +61,9 @@ def ocr(att: Attachment, pdf_reader: 'pdfplumber.PDF') -> Attachment:
         total_ocr_text = ""
         successful_pages = 0
         
+        # Get language from commands, default to English
+        ocr_lang = att.commands.get('lang', 'eng')
+        
         for page_num in pages_to_process:
             if 1 <= page_num <= num_pages:
                 try:
@@ -67,7 +73,7 @@ def ocr(att: Attachment, pdf_reader: 'pdfplumber.PDF') -> Attachment:
                     pil_image = page.render(scale=2).to_pil()  # Higher scale for better OCR
                     
                     # Perform OCR
-                    page_text = pytesseract.image_to_string(pil_image, lang='eng')
+                    page_text = pytesseract.image_to_string(pil_image, lang=ocr_lang)
                     
                     if page_text.strip():
                         att.text += f"### Page {page_num} (OCR)\n\n{page_text.strip()}\n\n"
@@ -85,6 +91,7 @@ def ocr(att: Attachment, pdf_reader: 'pdfplumber.PDF') -> Attachment:
         # Add OCR summary
         att.text += f"**OCR Summary**:\n"
         att.text += f"- Pages processed: {len(pages_to_process)}\n"
+        att.text += f"- Language: {ocr_lang}\n"
         att.text += f"- Pages with OCR text: {successful_pages}\n"
         att.text += f"- Total OCR text length: {len(total_ocr_text)} characters\n\n"
         
@@ -92,6 +99,7 @@ def ocr(att: Attachment, pdf_reader: 'pdfplumber.PDF') -> Attachment:
         att.metadata.update({
             'ocr_performed': True,
             'ocr_pages_processed': len(pages_to_process),
+            'ocr_lang': ocr_lang,
             'ocr_pages_successful': successful_pages,
             'ocr_text_length': len(total_ocr_text)
         })

@@ -1,4 +1,4 @@
-from attachments.dspy import Attachments
+from attachments.dspy import Attachment
 import dspy
 
 # Test with attachments
@@ -14,13 +14,6 @@ image_paths = [
     "/home/maxime/Pictures/Screenshots/Screenshot from 2025-06-13 07-06-22.png"
 ]
 
-dsl_variants = [
-    ("default", "{path}"),
-    ("text:false", "{path}[text:false]"),
-    ("images:false", "{path}[images:false]"),
-    ("text:false,images:false", "{path}[text:false][images:false]")
-]
-
 for path in image_paths:
     print(f"\n=== Testing {path} with dspy.Image ===")
     img = dspy.Image.from_file(path)
@@ -28,10 +21,8 @@ for path in image_paths:
     print("dspy.Image result:")
     print(result)
 
-    for label, dsl in dsl_variants:
-        dsl_path = dsl.format(path=path)
-        print(f"\n=== Testing {dsl_path} with Attachments ({label}) ===")
-        att = Attachments(dsl_path)
-        result = weight_extractor(picture=att)
-        print(f"Attachments result ({label}):")
-        print(result) 
+    print(f"\n=== Testing {path} with attachments.dspy.Attachment ===")
+    att = Attachment.from_files(path)
+    result_att = weight_extractor(picture=att)
+    print("attachments.dspy.Attachment result:")
+    print(result_att) 

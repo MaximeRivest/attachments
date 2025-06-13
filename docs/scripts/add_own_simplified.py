@@ -59,9 +59,15 @@ from attachments.pipelines import processor
 def glb_to_llm(att: Attachment) -> Attachment:
     return att | load.three_d | present.images + present.markdown
 #%%
-from attachments import Attachments
+from attachments.dspy import Attachments
+import dspy
 
 att1 = Attachments("/home/maxime/Projects/attachments/src/attachments/data/Llama.glb")
+
+dspy.configure(lm=dspy.LM("openai/gpt-4.1"))
+rag = dspy.Predict("three_d_model -> description_of_3d_object")
+rag(three_d_model=att)
+
 
 #%%
 from IPython.display import HTML
