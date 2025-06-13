@@ -3,11 +3,18 @@ import pyvista as pv, io, base64, openai
 from attachments import attach, load, present
 from attachments.core import Attachment, loader, presenter
 
-@loader(match=lambda a: a.path.lower().endswith((".glb", ".gltf")))
+# Attachments must first must identification criteria. Here we use the file extension.
+def glb_match(a: Attachment):
+    return a.path.lower().endswith((".glb", ".gltf"))
+
+# Then we need to load the attachment. Here we use pyvista to load the file.
+@loader(match=glb_match)
 def three_d(a: Attachment):
     a._obj = pv.read(a.input_source)
     return a
 
+# Then we need to turn the object into llm friendly format. 
+# Here, for image presentation, we use pyvista to render the object into images.
 @presenter
 def images(att: Attachment, mesh: "pyvista.MultiBlock") -> Attachment:
     p = pv.Plotter(off_screen=True)
@@ -25,17 +32,49 @@ def images(att: Attachment, mesh: "pyvista.MultiBlock") -> Attachment:
     p.close()
     return att
 
-
+# Then we need to turn the object into llm friendly format. 
+# Here, for text presentation, we use the path and the bounds of the object.
 @presenter
 def markdown(att: Attachment, mesh: pv.DataSet) -> Attachment:
     att.text = f"{att.path} bounds: {mesh.bounds}"
     return att
 
+# Simple pipeline.
+# This pipeline is a simple pipeline that loads the object, renders it into images,
+# and then renders the object into text.
 pipe = load.three_d | present.images + present.markdown
 att = attach("/home/maxime/Projects/attachments/src/attachments/data/Llama.glb") | pipe
 
 #%%
 print("Number of images:", len(att.images))
+
+
+#%%
+from attachments.pipelines import processor
+
+@processor(
+    match=glb_match,
+    description="A custom GLB processor"
+)
+def glb_to_llm(att: Attachment) -> Attachment:
+    return att | load.three_d | present.images + present.markdown
+#%%
+from attachments import Attachments
+
+att1 = Attachments("/home/maxime/Projects/attachments/src/attachments/data/Llama.glb")
+
+#%%
+from IPython.display import HTML
+
+images_html = ""
+for i, data_url in enumerate(att1.images):
+    style = f"width:150px; display:inline-block; margin:2px; border:1px solid #ddd"
+    images_html += f'<img src="{data_url}" style="{style}" />'
+    if (i + 1) % 4 == 0:
+        images_html += "<br>"
+display(HTML(images_html))
+#%%
+print("Number of images:", len(att1.images))
 
 
 

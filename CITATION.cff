@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+  - family-names: "Rivest"
+    given-names: "Maxime"
+    orcid: "https://orcid.org/0000-0002-7780-2553"
+title: "attachments"
+version: 0.13.0a1
+date-released: 2024-05-15
+url: "https://github.com/MaximeRivest/attachments" 

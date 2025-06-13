@@ -846,10 +846,15 @@ def presenter(func=None, *, category=None):
             
             # Get DSL commands with cleaner approach
             include_images = att.commands.get('images', 'true').lower() != 'false'  # Images on by default
+            suppress_text = att.commands.get('text', 'true').strip().lower() in ('off', 'false', 'no', '0')
             
             # Apply image filtering (images can be turned off)
             if not include_images and presenter_category == 'image':
                 # Skip image presenters if images are disabled
+                return att
+            # Apply text filtering (text can be turned off)
+            if suppress_text and presenter_category == 'text':
+                # Skip text presenters if text is disabled
                 return att
             
             # Apply text format filtering ONLY if format is explicitly specified
