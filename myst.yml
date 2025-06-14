@@ -23,6 +23,8 @@ project:
       children:
         - file: docs/extending_attachments/how_to_add_an_adapter.ipynb
           title: How to add an adapter
+        - file: docs/extending_attachments/how_to_add_a_file_type.ipynb
+          title: How to add a file type
         - file: docs/extending_attachments/adding_dsl_commands.md
           title: Adding DSL Commands
     - title: DSL Reference
