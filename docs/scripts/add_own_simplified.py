@@ -1,9 +1,71 @@
+# %% [markdown]
+# # Adding a file type to attachments
+#
+# On the surface attachments presents itself as a simple one liner library that has the mission of 
+# passing any file to any llm sdk in pythons. This is true and this is how user should think about attachments.
+# Underneath the surface attachments is a set of tools to help developers contribute and grow attachments.
+# A lot of effort want into automating the process of adding new file types to attachments.
+# Now, the hardest part of the work is to write to non-attachment specific code that go from
+# detecting a file type to llm friendly format. Once a developer has done this, they can
+# decorate their function and it will be automatically used by the attachments library.
+# As a user, this is useful to benefit from the adapter system. Or the other way around,
+# If you use a unsupported llm library you only have to define the adapter and get the
+# full benefits of the attachments library. I have covered how to add and adapter [here](https://maximerivest.github.io/attachments/how-to-add-an-adapter).
+#
+#
+# In this tutorial I will show you how to add your own file type to attachments.
+# We will add support for 3D modelling files (.glb) in only 37 lines of code, from matching to 
+# processing.
+#
+# In in a deeper dive, we will go through how to optionally add a splitter, modifier with dsl,
+# and a presenter with dsl.
+#
+# Overview
+#
+# 1. Import the necessary libraries
+# 2. Define the matching function
+# 3. Define the loader function
+# 4. Define the presenters function
+# 5. Create a pipeline
+# 6. Run the pipeline
+#
+# # Attachment verbs are the key to the attachments library
+# The attachments library is built around the concept of attachment verbs [more details](https://maximerivest.github.io/attachments/architecture#the-five-stage-pipeline).
+#
+# Briefly, all attachments most be first loaded, then optionally split and/or modified, then presented and optionally combined.
+# refined and finally passed to the llm manually using `your_att.text` and `your_att.images` or with and adapter like `your_att.openai_responses("hello")`.
+#
+# Let's get started
+#
+# ## A simple example of adding 3D modelling support
+#
+# For attachments we will need:
 #%%
-import pyvista as pv, io, base64, openai
 from attachments import attach, load, present
 from attachments.core import Attachment, loader, presenter
 
-# Attachments must first must identification criteria. Here we use the file extension.
+#%% [markdown]
+# for 3D modelling and loading and rendering we will need:
+#%%
+import pyvista as pv, io, base64
+
+#%% [markdown]
+# Attachments must first match some identification criteria. Here we use the file extension.
+# does can be a complex as you want, this is essentially a filter. Loaders can be stacked
+# like this:
+#
+# ```python
+# my_pipeline = load.three_d | load.pdf | present.images | adapt.openai_responses
+# att = attach("/home/maxime/Projects/attachments/src/attachments/data/Llama.glb[prompt: 'describe the object']") | my_pipeline
+# 
+# from openai import OpenAI
+# resp = OpenAI().responses.create(input=att, model="gpt-4.1-nano").output[0].content[0].text
+# ```
+# The advantage of stacking loaders it that `my_pipeline` is now ready to 
+# take both pdf and glb files and process each appropriately.
+#%% [markdown]
+# Here we define the matching function.
+#%%
 def glb_match(a: Attachment):
     return a.path.lower().endswith((".glb", ".gltf"))
 

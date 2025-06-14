@@ -504,4 +504,200 @@ def _get_smart_text_presenter(att: Attachment):
         return present.csv
     else:
         # Default to markdown for unknown formats
-        return present.markdown 
+        return present.markdown
+
+def auto_attach(prompt: str, root_dir: Union[str, List[str]] = None) -> Attachments:
+    """
+    Automatically detect and attach files mentioned in a prompt.
+    
+    This is the magical function that:
+    1. Parses your prompt to find file references (with DSL support!)
+    2. Automatically attaches those files from multiple root directories/URLs
+    3. Combines the original prompt with extracted content
+    4. Returns an Attachments object ready for any adapter
+    
+    Args:
+        prompt: The prompt text that may contain file references
+        root_dir: Directory/URL or list of directories/URLs to search for files
+    
+    Returns:
+        Attachments object with the original prompt + detected files content
+    
+    Usage:
+        att = auto_attach("describe sample.pdf[pages:1-3] and data.csv", 
+                         root_dir=["/path/to/files", "https://example.com"])
+        result = att.openai_responses()
+    """
+    import os
+    import re
+    from pathlib import Path
+    from typing import Union, List
+    
+    # Normalize root_dir to a list
+    if root_dir is None:
+        root_dirs = [os.getcwd()]
+    elif isinstance(root_dir, str):
+        root_dirs = [root_dir]
+    else:
+        root_dirs = list(root_dir)
+    
+    # Enhanced pattern to detect files with optional DSL commands
+    # Matches: filename.ext[dsl:commands] or just filename.ext
+    file_patterns = [
+        r'\b([a-zA-Z0-9_.-]+\.[a-zA-Z0-9]+(?:\[[^\]]*\])?)\b',  # filename.ext[dsl] or filename.ext
+        r'"([^"]+\.[a-zA-Z0-9]+(?:\[[^\]]*\])?)"',               # "filename.ext[dsl]"
+        r"'([^']+\.[a-zA-Z0-9]+(?:\[[^\]]*\])?)'",               # 'filename.ext[dsl]'
+        r'`([^`]+\.[a-zA-Z0-9]+(?:\[[^\]]*\])?)`',               # `filename.ext[dsl]`
+        # Also detect full URLs with optional DSL - handle spaces in brackets
+        r'(https?://[^\s\[\]]+(?:\[[^\]]*\])?)',                 # https://example.com/path[dsl with spaces]
+    ]
+    
+    detected_references = set()
+    
+    for pattern in file_patterns:
+        matches = re.findall(pattern, prompt)
+        for match in matches:
+            detected_references.add(match)
+    
+    # Process each detected reference
+    valid_attachments = []
+    
+    for reference in detected_references:
+        # Check if it's a URL
+        if reference.startswith(('http://', 'https://')):
+            # For URLs, try to process directly
+            try:
+                test_att = Attachment(reference)
+                valid_attachments.append(reference)
+                continue
+            except Exception:
+                # If direct URL fails, try with root URLs
+                for root in root_dirs:
+                    if root.startswith(('http://', 'https://')):
+                        # Try combining URL roots
+                        try:
+                            # Extract base filename/path from reference
+                            base_ref = reference.split('[')[0]  # Remove DSL for URL construction
+                            if not base_ref.startswith(('http://', 'https://')):
+                                continue
+                            
+                            # Try the reference as-is first
+                            test_att = Attachment(reference)
+                            valid_attachments.append(reference)
+                            break
+                        except Exception:
+                            continue
+        else:
+            # It's a file reference - try with each root directory
+            found = False
+            for root in root_dirs:
+                if root.startswith(('http://', 'https://')):
+                    # Skip URL roots for non-URL references - they don't make sense to combine
+                    continue
+                else:
+                    # Try with file system root
+                    file_path = os.path.join(root, reference)
+                    if os.path.exists(file_path.split('[')[0]):  # Check if base file exists
+                        try:
+                            test_att = Attachment(reference if os.path.isabs(reference) else file_path)
+                            valid_attachments.append(reference if os.path.isabs(reference) else file_path)
+                            found = True
+                            break
+                        except Exception:
+                            continue
+    
+    # Create Attachments object with found files
+    if valid_attachments:
+        attachments_obj = Attachments(*valid_attachments)
+        
+        # Now the magic: prepend the original prompt to the combined text
+        original_text = str(attachments_obj)
+        
+        # Create a new Attachments object that combines everything
+        class MagicalAttachments(Attachments):
+            def __init__(self, original_prompt, base_attachments):
+                # Don't call super().__init__ to avoid reprocessing files
+                self.attachments = base_attachments.attachments.copy()
+                self._original_prompt = original_prompt
+                self._base_text = str(base_attachments)
+            
+            def __str__(self) -> str:
+                """Return the magical combined text: prompt + file content."""
+                return f"{self._original_prompt.strip()}\n\n{self._base_text}"
+            
+            @property
+            def text(self) -> str:
+                """Return the magical combined text."""
+                return str(self)
+            
+            # Override adapter methods to include the prompt
+            def __getattr__(self, name: str):
+                """Automatically expose all adapters with the magical prompt included."""
+                from .core import _adapters
+                
+                if name in _adapters:
+                    def magical_adapter_method(*args, **kwargs):
+                        """Dynamically created adapter method with magical prompt."""
+                        adapter_fn = _adapters[name]
+                        combined_att = self._to_single_attachment()
+                        return adapter_fn(combined_att, *args, **kwargs)
+                    return magical_adapter_method
+                
+                # Fall back to parent behavior
+                return super().__getattr__(name)
+            
+            def _to_single_attachment(self) -> Attachment:
+                """Convert to single attachment with magical combined text."""
+                if not self.attachments:
+                    combined = Attachment("")
+                    combined.text = self._original_prompt
+                    return combined
+                
+                combined = Attachment("")
+                combined.text = str(self)  # Use our magical __str__ method
+                combined.images = self.images
+                combined.metadata = self.metadata
+                
+                return combined
+        
+        return MagicalAttachments(prompt, attachments_obj)
+    else:
+        # No files found, return an Attachments object with just the prompt
+        class PromptOnlyAttachments(Attachments):
+            def __init__(self, prompt_text):
+                # Don't call super().__init__ to avoid file processing
+                self.attachments = []
+                self._prompt_text = prompt_text
+            
+            def __str__(self) -> str:
+                return self._prompt_text
+            
+            @property
+            def text(self) -> str:
+                return self._prompt_text
+            
+            @property
+            def images(self) -> List[str]:
+                return []
+            
+            @property
+            def metadata(self) -> dict:
+                return {'prompt_only': True, 'original_prompt': self._prompt_text}
+            
+            def __getattr__(self, name: str):
+                """Automatically expose all adapters for prompt-only usage."""
+                from .core import _adapters
+                
+                if name in _adapters:
+                    def prompt_adapter_method(*args, **kwargs):
+                        """Adapter method for prompt-only usage."""
+                        adapter_fn = _adapters[name]
+                        # Create a simple attachment with just the prompt
+                        att = Attachment("")
+                        att.text = self._prompt_text
+                        return adapter_fn(att, *args, **kwargs)
+                    return prompt_adapter_method
+                
+                raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
+        
+        return PromptOnlyAttachments(prompt) 

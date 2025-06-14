@@ -7,7 +7,7 @@ from .core import (
     _loaders, _modifiers, _presenters, _adapters, _refiners, _splitters,
     loader, modifier, presenter, adapter, refiner, splitter
 )
-from .highest_level_api import process as simple, Attachments
+from .highest_level_api import process as simple, Attachments, auto_attach
 
 # Import config
 from . import config
@@ -98,6 +98,7 @@ __all__ = [
     # High-level API
     'Attachments',
     'simple',
+    'auto_attach',
     
     # Namespace objects
     'load',

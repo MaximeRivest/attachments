@@ -3,6 +3,21 @@ from .core import Attachment, AttachmentCollection, adapter
 
 # --- ADAPTERS ---
 
+# TODO: Implement additional adapters for popular LLM providers and frameworks
+# Priority adapters from roadmap:
+# - bedrock() - AWS Bedrock API format
+# - azure_openai() - Azure OpenAI API format  
+# - ollama() - Ollama local model API format
+# - litellm() - LiteLLM universal adapter format
+# - langchain() - LangChain message format
+# - openrouter() - OpenRouter API format
+# Each adapter should follow the same pattern as existing ones:
+# 1. Handle both Attachment and AttachmentCollection inputs
+# 2. Use _handle_collection() helper for collections
+# 3. Format text and images according to target API specification
+# 4. Include proper error handling for missing dependencies
+# 5. Add comprehensive docstrings with usage examples
+
 def _handle_collection(input_obj: Union[Attachment, AttachmentCollection]) -> Attachment:
     """Convert AttachmentCollection to single Attachment for adapter processing."""
     if isinstance(input_obj, AttachmentCollection):

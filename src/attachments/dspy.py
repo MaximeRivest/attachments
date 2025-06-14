@@ -233,7 +233,7 @@ def _create_dspy_class():
     
     return DSPyAttachment
 
-
+# TODO: Make it so .text and .images are editable and assignable
 class Attachments(BaseAttachments):
     """
     DSPy-optimized Attachments that works seamlessly in DSPy signatures.
