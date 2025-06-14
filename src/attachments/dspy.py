@@ -7,14 +7,39 @@ Clean DSPy integration following the DSPy BaseType pattern:
 - Proper Pydantic BaseModel implementation
 - serialize_model() method for DSPy integration
 - Normal string behavior preserved
+- Automatic type registration for DSPy signatures
+- Compatible with both DSPy 2.6.25+ (new BaseType) and legacy versions
 
 Usage:
-    # For DSPy users - cleaner import
+    # For DSPy users - cleaner import with automatic type registration
     from attachments.dspy import Attachments
+    import dspy
     
-    # Works directly in DSPy signatures
+    # Both approaches now work seamlessly:
+    
+    # 1. Class-based signatures (recommended)
+    class MySignature(dspy.Signature):
+        document: Attachments = dspy.InputField()
+        summary: str = dspy.OutputField()
+    
+    # 2. String-based signatures (now works automatically!)
+    signature = dspy.Signature("document: Attachments -> summary: str")
+    
+    # Use in DSPy programs
     doc = Attachments("report.pdf")
-    result = rag(question="What are the key findings?", document=doc)
+    result = dspy.ChainOfThought(MySignature)(document=doc)
+
+Automatic Type Registration:
+    When you import from attachments.dspy, the Attachments type is automatically
+    registered with DSPy's signature parser. This means you can use string-based
+    signatures like "document: Attachments -> summary: str" without any additional
+    setup or manual type registration.
+
+Version Compatibility:
+    This module automatically detects your DSPy version and uses the appropriate
+    integration method:
+    - DSPy 2.6.25+: Uses new BaseType class with format() method
+    - Legacy DSPy: Uses traditional Pydantic BaseModel with serialize_model()
 """
 
 from typing import Any, Union, Dict, List
@@ -79,64 +104,132 @@ def _create_dspy_class():
     
     import pydantic
     
-    class DSPyAttachment(pydantic.BaseModel):
-        """DSPy-compatible wrapper for Attachment objects following DSPy patterns."""
-        
-        text: str = ""
-        images: List[str] = []
-        audio: List[str] = []
-        path: str = ""
-        metadata: Dict[str, Any] = {}
-        
-        # Pydantic v2 configuration
-        model_config = pydantic.ConfigDict(
-            frozen=True,
-            str_strip_whitespace=True,
-            validate_assignment=True,
-            extra='forbid',
-        )
-        
-        @pydantic.model_serializer
-        def serialize_model(self):
-            """Serialize for DSPy compatibility - called by DSPy framework."""
-            content_parts = []
+    # Try to import the new BaseType from DSPy 2.6.25+
+    try:
+        from dspy.adapters.types import BaseType
+        use_new_basetype = True
+    except ImportError:
+        # Fallback for older DSPy versions
+        use_new_basetype = False
+    
+    if use_new_basetype:
+        # DSPy 2.6.25+ with new BaseType
+        class DSPyAttachment(BaseType):
+            """DSPy-compatible wrapper for Attachment objects following new BaseType pattern."""
             
-            if self.text:
-                content_parts.append(f"<DSPY_TEXT_START>{self.text}<DSPY_TEXT_END>")
+            text: str = ""
+            images: List[str] = []
+            audio: List[str] = []
+            path: str = ""
+            metadata: Dict[str, Any] = {}
             
-            if self.images:
-                # Process images - ensure they're properly formatted
-                valid_images = []
-                for img in self.images:
-                    if img and isinstance(img, str) and len(img) > 10:
-                        # Check if it's already a data URL
-                        if img.startswith('data:image/'):
-                            valid_images.append(img)
-                        elif not img.endswith('_placeholder'):
-                            # It's raw base64, add the data URL prefix
-                            valid_images.append(f"data:image/png;base64,{img}")
+            # Pydantic v2 configuration
+            model_config = pydantic.ConfigDict(
+                frozen=True,
+                str_strip_whitespace=True,
+                validate_assignment=True,
+                extra='forbid',
+            )
+            
+            def format(self) -> List[Dict[str, Any]]:
+                """Format for DSPy 2.6.25+ - returns list of content dictionaries."""
+                content_parts = []
                 
-                if valid_images:
-                    for img in valid_images:
-                        content_parts.append(f"<DSPY_IMAGE_START>{img}<DSPY_IMAGE_END>")
+                if self.text:
+                    content_parts.append({"type": "text", "text": self.text})
+                
+                if self.images:
+                    # Process images - ensure they're properly formatted
+                    for img in self.images:
+                        if img and isinstance(img, str) and len(img) > 10:
+                            # Check if it's already a data URL
+                            if img.startswith('data:image/'):
+                                content_parts.append({
+                                    "type": "image_url",
+                                    "image_url": {"url": img}
+                                })
+                            elif not img.endswith('_placeholder'):
+                                # It's raw base64, add the data URL prefix
+                                content_parts.append({
+                                    "type": "image_url", 
+                                    "image_url": {"url": f"data:image/png;base64,{img}"}
+                                })
+                
+                return content_parts if content_parts else [{"type": "text", "text": f"Attachment: {self.path}"}]
             
-            if content_parts:
-                return "".join(content_parts)
-            else:
-                return f"<DSPY_ATTACHMENT_START>Attachment: {self.path}<DSPY_ATTACHMENT_END>"
-        
-        def __str__(self):
-            # For normal usage, just return the text content
-            return self.text if self.text else f"Attachment: {self.path}"
-        
-        def __repr__(self):
-            if self.text:
-                text_preview = self.text[:50] + "..." if len(self.text) > 50 else self.text
-                return f"DSPyAttachment(text='{text_preview}', images={len(self.images)})"
-            elif self.images:
-                return f"DSPyAttachment(images={len(self.images)}, path='{self.path}')"
-            else:
-                return f"DSPyAttachment(path='{self.path}')"
+            def __str__(self):
+                # For normal usage, just return the text content
+                return self.text if self.text else f"Attachment: {self.path}"
+            
+            def __repr__(self):
+                if self.text:
+                    text_preview = self.text[:50] + "..." if len(self.text) > 50 else self.text
+                    return f"DSPyAttachment(text='{text_preview}', images={len(self.images)})"
+                elif self.images:
+                    return f"DSPyAttachment(images={len(self.images)}, path='{self.path}')"
+                else:
+                    return f"DSPyAttachment(path='{self.path}')"
+    
+    else:
+        # Legacy DSPy versions - keep old implementation
+        class DSPyAttachment(pydantic.BaseModel):
+            """DSPy-compatible wrapper for Attachment objects following DSPy patterns."""
+            
+            text: str = ""
+            images: List[str] = []
+            audio: List[str] = []
+            path: str = ""
+            metadata: Dict[str, Any] = {}
+            
+            # Pydantic v2 configuration
+            model_config = pydantic.ConfigDict(
+                frozen=True,
+                str_strip_whitespace=True,
+                validate_assignment=True,
+                extra='forbid',
+            )
+            
+            @pydantic.model_serializer
+            def serialize_model(self):
+                """Serialize for DSPy compatibility - called by DSPy framework."""
+                content_parts = []
+                
+                if self.text:
+                    content_parts.append(f"<DSPY_TEXT_START>{self.text}<DSPY_TEXT_END>")
+                
+                if self.images:
+                    # Process images - ensure they're properly formatted
+                    valid_images = []
+                    for img in self.images:
+                        if img and isinstance(img, str) and len(img) > 10:
+                            # Check if it's already a data URL
+                            if img.startswith('data:image/'):
+                                valid_images.append(img)
+                            elif not img.endswith('_placeholder'):
+                                # It's raw base64, add the data URL prefix
+                                valid_images.append(f"data:image/png;base64,{img}")
+                    
+                    if valid_images:
+                        for img in valid_images:
+                            content_parts.append(f"<DSPY_IMAGE_START>{img}<DSPY_IMAGE_END>")
+                
+                if content_parts:
+                    return "".join(content_parts)
+                else:
+                    return f"<DSPY_ATTACHMENT_START>Attachment: {self.path}<DSPY_ATTACHMENT_END>"
+            
+            def __str__(self):
+                # For normal usage, just return the text content
+                return self.text if self.text else f"Attachment: {self.path}"
+            
+            def __repr__(self):
+                if self.text:
+                    text_preview = self.text[:50] + "..." if len(self.text) > 50 else self.text
+                    return f"DSPyAttachment(text='{text_preview}', images={len(self.images)})"
+                elif self.images:
+                    return f"DSPyAttachment(images={len(self.images)}, path='{self.path}')"
+                else:
+                    return f"DSPyAttachment(path='{self.path}')"
     
     return DSPyAttachment
 
@@ -239,9 +332,23 @@ class Attachments(BaseAttachments):
             raise DSPyNotAvailableError(f"Cannot serialize model - {_DSPY_ERROR_MSG}")
         
         dspy_obj = self._get_dspy_obj()
-        if dspy_obj and hasattr(dspy_obj, 'serialize_model'):
-            return dspy_obj.serialize_model()
-        return str(self)  # Fallback to normal string representation
+        if dspy_obj:
+            # Check if this is the new BaseType with format() method
+            if hasattr(dspy_obj, 'format') and callable(getattr(dspy_obj, 'format')):
+                # DSPy 2.6.25+ - use the new format method
+                try:
+                    formatted_content = dspy_obj.format()
+                    # The BaseType's serialize_model will handle the proper wrapping
+                    return dspy_obj.serialize_model()
+                except Exception:
+                    # Fallback to old method if format() fails
+                    pass
+            
+            # Legacy DSPy or fallback - use old serialize_model method
+            if hasattr(dspy_obj, 'serialize_model'):
+                return dspy_obj.serialize_model()
+        
+        return str(self)  # Final fallback to normal string representation
     
     def model_dump(self):
         """Pydantic v2 compatibility - used by DSPy framework."""
@@ -330,4 +437,51 @@ def from_attachments(attachments: BaseAttachments) -> 'Attachments':
     return dspy_attachments
 
 
-__all__ = ['Attachments', 'make_dspy', 'from_attachments', 'DSPyNotAvailableError'] 
+__all__ = ['Attachments', 'make_dspy', 'from_attachments', 'DSPyNotAvailableError']
+
+
+# Automatic type registration for DSPy signature compatibility
+# This makes Attachments available to DSPy's string-based signature parser
+def _register_types_for_dspy():
+    """
+    Automatically register Attachments type for DSPy signature parsing.
+    
+    This function is called when the module is imported, making it so users
+    can use string-based DSPy signatures like:
+    
+        dspy.Signature("document: Attachments -> summary: str")
+    
+    without any additional setup.
+    """
+    try:
+        import typing
+        import sys
+        
+        # Make Attachments available in the typing module namespace
+        # This is where DSPy's signature parser looks for types
+        typing.Attachments = Attachments
+        
+        # Also add to the current module's globals for importlib resolution
+        # DSPy tries importlib.import_module() as a fallback
+        current_module = sys.modules[__name__]
+        if not hasattr(current_module, 'Attachments'):
+            setattr(current_module, 'Attachments', Attachments)
+            
+        # For extra compatibility, also add to builtins if safe to do so
+        # This ensures maximum compatibility across different DSPy versions
+        try:
+            import builtins
+            if not hasattr(builtins, 'Attachments'):
+                builtins.Attachments = Attachments
+        except (ImportError, AttributeError):
+            # If we can't modify builtins, that's okay
+            pass
+            
+    except Exception:
+        # If type registration fails, don't break the import
+        # Users can still use class-based signatures or manual registration
+        pass
+
+
+# Automatically register types when module is imported
+_register_types_for_dspy() 

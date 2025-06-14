@@ -136,22 +136,39 @@ print(msg.content)
 We have a special `dspy` module that allows you to use Attachments with DSPy.
 
 ```bash
-pip install dspy
+pip install dspy-ai
 ```
 
 ```python
+from attachments.dspy import Attachments  # Automatic type registration!
 import dspy
-from attachments.dspy import Attachments
 
+# Configure DSPy
 dspy.configure(lm=dspy.LM('openai/gpt-4.1-nano'))
-rag = dspy.ChainOfThought("question, document -> answer")
 
-result = rag(
-    question="What is the main message of the document?", 
-    document=Attachments("https://github.com/MaximeRivest/attachments/raw/main/src/attachments/data/sample_multipage.pptx[3-5]")
-)
-print(result.answer)
+# Both approaches work seamlessly:
+
+# 1. Class-based signatures (recommended)
+class DocumentAnalyzer(dspy.Signature):
+    """Analyze document content and extract insights."""
+    document: Attachments = dspy.InputField()
+    insights: str = dspy.OutputField()
+
+# 2. String-based signatures (works automatically!)
+analyzer = dspy.Signature("document: Attachments -> insights: str")
+
+# Use with any file type
+doc = Attachments("report.pdf")
+result = dspy.ChainOfThought(DocumentAnalyzer)(document=doc)
+print(result.insights)
 ```
+
+**Key Features:**
+- 🎯 **Automatic Type Registration**: Import from `attachments.dspy` and use `Attachments` in string signatures immediately
+- 🔄 **Seamless Serialization**: Handles complex multimodal content automatically  
+- 🖼️ **Image Support**: Base64 images work perfectly with vision models
+- 📝 **Rich Text**: Preserves formatting and structure
+- 🧩 **Full Compatibility**: Works with all DSPy signatures and programs
 
 ### Optional: CSS Selector Highlighting 🎯
 

@@ -126,8 +126,75 @@ def dspy(input_obj: Union[Attachment, AttachmentCollection]) -> 'DSPyAttachment'
         import dspy
         import pydantic
         
-        # Check if we have Pydantic v2 with ConfigDict
-        if hasattr(pydantic, 'ConfigDict'):
+        # Try to import the new BaseType from DSPy 2.6.25+
+        try:
+            from dspy.adapters.types import BaseType
+            use_new_basetype = True
+        except ImportError:
+            # Fallback for older DSPy versions
+            use_new_basetype = False
+        
+        if use_new_basetype:
+            # DSPy 2.6.25+ with new BaseType
+            class DSPyAttachment(BaseType):
+                """DSPy-compatible wrapper for Attachment objects following new BaseType pattern."""
+                
+                # Store the attachment data
+                text: str = ""
+                images: List[str] = []
+                audio: List[str] = []
+                path: str = ""
+                metadata: Dict[str, Any] = {}
+                
+                # Use new ConfigDict format for Pydantic v2
+                model_config = pydantic.ConfigDict(
+                    frozen=True,
+                    str_strip_whitespace=True,
+                    validate_assignment=True,
+                    extra='forbid',
+                )
+                
+                def format(self) -> List[Dict[str, Any]]:
+                    """Format for DSPy 2.6.25+ - returns list of content dictionaries."""
+                    content_parts = []
+                    
+                    if self.text:
+                        content_parts.append({"type": "text", "text": self.text})
+                    
+                    if self.images:
+                        # Process images - ensure they're properly formatted
+                        for img in self.images:
+                            if img and isinstance(img, str) and len(img) > 10:
+                                # Check if it's already a data URL
+                                if img.startswith('data:image/'):
+                                    content_parts.append({
+                                        "type": "image_url",
+                                        "image_url": {"url": img}
+                                    })
+                                elif not img.endswith('_placeholder'):
+                                    # It's raw base64, add the data URL prefix
+                                    content_parts.append({
+                                        "type": "image_url",
+                                        "image_url": {"url": f"data:image/png;base64,{img}"}
+                                    })
+                    
+                    return content_parts if content_parts else [{"type": "text", "text": f"Attachment: {self.path}"}]
+                
+                def __str__(self):
+                    # For normal usage, just return the text content
+                    return self.text if self.text else f"Attachment: {self.path}"
+                
+                def __repr__(self):
+                    if self.text:
+                        text_preview = self.text[:50] + "..." if len(self.text) > 50 else self.text
+                        return f"DSPyAttachment(text='{text_preview}', images={len(self.images)})"
+                    elif self.images:
+                        return f"DSPyAttachment(images={len(self.images)}, path='{self.path}')"
+                    else:
+                        return f"DSPyAttachment(path='{self.path}')"
+        
+        elif hasattr(pydantic, 'ConfigDict'):
+            # Legacy DSPy with Pydantic v2
             from pydantic import ConfigDict
             
             class DSPyAttachment(pydantic.BaseModel):
