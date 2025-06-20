@@ -85,12 +85,12 @@ pip install openai
 from openai import OpenAI
 from attachments import Attachments
 
-pdf = Attachments("https://github.com/MaximeRivest/attachments/raw/main/src/attachments/data/sample_multipage.pptx[3-5]")
+pptx = Attachments("https://github.com/MaximeRivest/attachments/raw/main/src/attachments/data/sample_multipage.pptx[3-5]")
 
 client = OpenAI()
 resp = client.chat.completions.create(
     model="gpt-4.1-nano",
-    messages=pdf.openai_chat("Analyse the following document:")
+    messages=pptx.openai_chat("Analyse the following document:")
 )
 print(resp.choices[0].message.content)
 ```
@@ -101,11 +101,11 @@ or with the response API
 from openai import OpenAI
 from attachments import Attachments
 
-pdf = Attachments("https://github.com/MaximeRivest/attachments/raw/main/src/attachments/data/sample_multipage.pptx[3-5]")
+pptx = Attachments("https://github.com/MaximeRivest/attachments/raw/main/src/attachments/data/sample_multipage.pptx[3-5]")
 
 client = OpenAI()
 resp = client.responses.create(
-    input=pdf.openai_responses("Analyse the following document:"),
+    input=pptx.openai_responses("Analyse the following document:"),
     model="gpt-4.1-nano"
 )
 print(resp.output[0].content[0].text)
