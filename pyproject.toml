@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "attachments"
-version = "0.19.0"
+version = "0.20.0"
 authors = [
   { name="Maxime Rivest", email="mrive052@gmail.com" },
 ]
@@ -20,7 +20,7 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12", 
+    "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Text Processing",
@@ -73,7 +73,7 @@ common = [
     "Pillow>=10.0.0",          # Image processing and conversion
     "pdfplumber>=0.10.0",      # PDF text and table extraction
     "python-pptx>=1.0.2",      # PowerPoint (.pptx) processing
-    "python-docx>=1.1.0",     # Word (.docx) processing  
+    "python-docx>=1.1.0",     # Word (.docx) processing
     "openpyxl>=3.1.0",        # Excel (.xlsx) processing
     "pypdfium2>=4.0.0",       # PDF rendering for images (DOCX, PDF visual conversion)
 ]
@@ -81,7 +81,7 @@ common = [
 # Microsoft Office formats
 office = [
     "python-pptx>=0.6.0",     # PowerPoint (.pptx) processing
-    "python-docx>=1.1.0",     # Word (.docx) processing  
+    "python-docx>=1.1.0",     # Word (.docx) processing
     "openpyxl>=3.1.0",        # Excel (.xlsx) processing
 ]
 
@@ -117,7 +117,7 @@ most = [
     # Include all common dependencies
     "dspy-ai>=2.6.24",
     "pandas>=1.3.0",
-    "Pillow>=8.0.0", 
+    "Pillow>=8.0.0",
     "pdfplumber>=0.7.0",
     "python-pptx>=0.6.21",
     "python-docx>=0.8.11",
@@ -193,7 +193,7 @@ strict_equality = true
 
 [[tool.mypy.overrides]]
 module = [
-    "PIL.*", 
+    "PIL.*",
     "pandas.*",
     "numpy.*",
     "docx.*",
@@ -210,7 +210,7 @@ testpaths = ["tests"]
 norecursedirs = ["mrplay", ".venv", "dist", "build", "*.egg-info", "_build"]
 addopts = [
     "--strict-markers",
-    "--strict-config", 
+    "--strict-config",
     "--cov=src/attachments",
     "--cov-branch",
     "--cov-report=term-missing",
