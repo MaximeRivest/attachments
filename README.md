@@ -1,3 +1,137 @@
+# attachments
+
+> Turn anything into LLM-ready artifacts.
+
+## Quick Start
+
+```bash
+# Install core (text files work out of the box)
+pip install attachments
+
+# Add format support as needed
+pip install attachments[pdf]         # PDF support
+pip install attachments[xlsx]        # Excel support
+pip install attachments[service]     # API fallback mode
+pip install attachments[all-local]   # Everything
+```
+
+```python
+from attachments import att, configure, check_deps
+
+# See what's available
+check_deps()  # {'pdf': True, 'xlsx': True, 'service': False, ...}
+
+# Process anything
+artifacts = att("document.pdf")
+artifacts = att("data/")                    # Directory
+artifacts = att("github://owner/repo")      # GitHub repo
+artifacts = att("https://example.com/f.pdf") # URL
+
+# Inline options with DSL syntax
+artifacts = att("report.pdf[pages: 1-4]")
+artifacts = att("report.pdf[pages: 1-10, images: true, dpi: 300]")
+artifacts = att("data.xlsx[sheet: Sales, rows: 100]")
+artifacts = att("github://org/repo[branch: develop]")
+
+# With service fallback (when local deps missing)
+configure(api_key="att_...")
+artifacts = att("document.pdf")  # Uses service if pypdf not installed
+```
+
+## DSL Syntax
+
+Specify options inline with `[key: value, ...]`:
+
+```python
+# PDF options
+att("doc.pdf[pages: 1-4]")              # Pages 1-4 (1-based)
+att("doc.pdf[pages: 5-10, images: true]") # With image rendering
+att("doc.pdf[dpi: 300]")                # High-res images
+att("doc.pdf[password: secret]")        # Encrypted PDF
+
+# Excel options
+att("data.xlsx[sheet: Revenue]")        # Specific sheet
+att("data.xlsx[sheet: 0, rows: 50]")    # First sheet, 50 rows
+
+# GitHub options
+att("github://org/repo[branch: main]")  # Specific branch
+att("github://org/repo[ref: v1.0.0]")   # Tag
+
+# Combine with URLs
+att("https://arxiv.org/pdf/2301.00001.pdf[pages: 1-5]")
+```
+
+**Keys:** `pages`, `page`, `sheet`, `rows`, `images`, `dpi`, `password`, `branch`, `ref`
+**Values:** Numbers, booleans (`true`/`false`), ranges (`1-4`), strings
+
+## Hybrid Local/Service Architecture
+
+```
+┌─────────────────────────────────────────────────────┐
+│  att("file.pdf", prefer="local")                    │
+└─────────────────────┬───────────────────────────────┘
+                      │
+         ┌────────────▼────────────┐
+         │ Has local processor?    │
+         │ (pypdf installed?)      │
+         └────────────┬────────────┘
+                ┌─────┴─────┐
+              Yes          No
+                │            │
+         ┌──────▼──────┐    │
+         │ Try local   │    │
+         └──────┬──────┘    │
+                │           │
+         ┌──────▼──────┐    │
+         │ Succeeded?  ├────┤
+         └──────┬──────┘    │
+              Yes          No + has API key
+                │            │
+                │     ┌──────▼──────┐
+                │     │ Try service │
+                │     └──────┬──────┘
+                │            │
+         ┌──────▼────────────▼──────┐
+         │     Return artifact      │
+         └──────────────────────────┘
+```
+
+**Modes:**
+- `prefer="local"` (default): Try local, fall back to service
+- `prefer="service"`: Try service first, fall back to local
+- `prefer="local-only"`: Only local, fail if deps missing
+- `prefer="service-only"`: Only service, requires API key
+
+## Self-Hosted Server
+
+Run your own server with all deps, let others connect with zero deps:
+
+```bash
+# On server (one machine, all deps):
+pip install attachments[server]
+export ATTACHMENTS_SERVER_KEY="team-secret"
+attachments-server --host 0.0.0.0 --port 8000
+
+# On clients (zero deps needed):
+pip install attachments[service]
+```
+
+```python
+from attachments import att, configure
+
+configure(service_url="http://server:8000", api_key="team-secret")
+att("document.pdf")  # Processed on server!
+```
+
+See [examples/self_hosted_server.md](examples/self_hosted_server.md) for:
+- Docker & Docker Compose setup
+- Systemd service configuration
+- CI/CD integration (GitHub Actions)
+- Serverless deployment patterns
+- API reference & troubleshooting
+
+---
+
 # Architecture: The Genius of attachments
 
 ## The Core Insight
@@ -192,3 +326,13 @@ Power = (Sources × Formats) → Unified Artifact → Any Consumer
 **Each new source multiplies with ALL formats. Each new format works with ALL sources.**
 
 That's the genius: **multiplicative extensibility** through two orthogonal registries connected by a universal intermediate representation.
+
+---
+
+## Adding New Processors & Sources
+
+See [DEVELOPMENT.md](DEVELOPMENT.md) for:
+- How to build new format processors
+- How to build new source handlers
+- Dependency management checklist
+- Testing patterns

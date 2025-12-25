@@ -5,39 +5,116 @@ build-backend = "uv_build"
 [project]
 name = "attachments"
 version = "0.1.0"
-description = "A modern Python library."
+description = "Turn anything into LLM-ready artifacts. Universal file and source processing."
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = [
-    "fitz>=0.0.1.dev2",
-    "pymupdf>=1.26.4",
-    "pypdf2>=3.0.1",
-]
+
+# ZERO required dependencies - everything is optional
+dependencies = []
 
 [project.optional-dependencies]
-docs = [
-  "quartodoc>=0.3",
-  "jupyter",
-  "ipykernel",
+# === Individual Processors ===
+pdf = [
+    "pypdf>=4.0",           # Modern pypdf (not pypdf2)
+    "pymupdf>=1.24",        # For image rendering
 ]
-excel = [
-  "pandas>=2.0,<3.0",
-  "openpyxl>=3.1,<4.0",
+pdf-fallback = [
+    "pdfminer.six>=20221105",  # Fallback text extraction
+]
+xlsx = [
+    "openpyxl>=3.1,<4.0",
+]
+xlsx-pandas = [
+    "pandas>=2.0,<3.0",
+    "openpyxl>=3.1,<4.0",
+]
+docx = [
+    "python-docx>=1.0",
+]
+pptx = [
+    "python-pptx>=0.6",
+]
+html = [
+    "beautifulsoup4>=4.12",
+    "lxml>=5.0",
+]
+image = [
+    "pillow>=10.0",
+]
+ocr = [
+    "pytesseract>=0.3",
+    "pillow>=10.0",
+]
+audio = [
+    "openai-whisper>=20231117",
 ]
 
+# === Individual Sources ===
+s3 = [
+    "boto3>=1.34",
+]
+gcs = [
+    "google-cloud-storage>=2.0",
+]
+gdrive = [
+    "google-api-python-client>=2.0",
+    "google-auth-oauthlib>=1.0",
+]
+
+# === Service Mode (minimal - just HTTP client) ===
+service = [
+    "httpx>=0.27",
+]
+
+# === Convenience Bundles ===
+office = [
+    "attachments[xlsx,docx,pptx]",
+]
+cloud = [
+    "attachments[s3,gcs,gdrive]",
+]
+all-processors = [
+    "attachments[pdf,pdf-fallback,xlsx-pandas,docx,pptx,html,image]",
+]
+all-sources = [
+    "attachments[cloud]",
+]
+all-local = [
+    "attachments[all-processors,all-sources]",
+]
+
+# === Self-Hosted Server ===
+# Install this on your server machine to serve all formats to clients
+server = [
+    "attachments[all-local]",
+]
+
+# === Documentation ===
+docs = [
+    "quartodoc>=0.3",
+    "jupyter",
+    "ipykernel",
+]
 
 [dependency-groups]
 dev = [
-  "ruff",
-  "pytest",
-  "pytest-cov",
-  "pre-commit",
-  # Optional processor deps used by tests
-  "pandas>=2.0,<3.0",
-  "openpyxl>=3.1,<4.0",
-  "ipykernel>=6.30.1",
-  "ipynotebook>=0.1.0",
+    "ruff",
+    "pytest",
+    "pytest-cov",
+    "pre-commit",
+    # Service mode for testing
+    "httpx>=0.27",
+    # Common processors for testing
+    "pypdf>=4.0",
+    "pymupdf>=1.24",
+    "openpyxl>=3.1,<4.0",
+    "pandas>=2.0,<3.0",
+    # Dev tools
+    "ipykernel>=6.30.1",
 ]
+
+[project.scripts]
+attachments-server = "attachments.server:main"
 
 [tool.ruff]
 line-length = 88

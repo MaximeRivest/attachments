@@ -12,10 +12,11 @@ from pathlib import Path
 
 # --- Added/changed for HTTP(S) support ---
 # Configurable HTTP limits and UA (can be overridden via env)
-MAX_HTTP_DOWNLOAD_BYTES = int(os.environ.get("ATT_MAX_DOWNLOAD_BYTES", str(256 * 1024 * 1024)))
+MAX_HTTP_DOWNLOAD_BYTES = int(
+    os.environ.get("ATT_MAX_DOWNLOAD_BYTES", str(256 * 1024 * 1024))
+)
 HTTP_USER_AGENT = os.environ.get(
-    "ATT_USER_AGENT",
-    "attachments-unpack/1.0 (+https://github.com/MaximeRivest/att)"
+    "ATT_USER_AGENT", "attachments-unpack/1.0 (+https://github.com/MaximeRivest/att)"
 )
 # --- end ---
 
@@ -24,19 +25,70 @@ extra_unpack_handlers: dict[str, Callable[[str], list[tuple[str, bytes]]]] = {}
 
 
 def register_unpack_handler(
-    prefix: str, handler: Callable[[str], list[tuple[str, bytes]]]
-) -> None:
+    prefix: str,
+    handler: Callable[[str], list[tuple[str, bytes]]] | None = None,
+) -> Callable:
     """Register a custom handler for an input prefix/scheme.
-    The handler must accept the original input string and return a list of
-    ``(filename, bytes)``.
 
-    Example::
+    Can be used as a function or decorator:
 
-        def my_dropbox_handler(url: str) -> list[tuple[str, bytes]]: ...
-
+        # As a function
         register_unpack_handler("dropbox://", my_dropbox_handler)
+
+        # As a decorator
+        @register_unpack_handler("s3://")
+        def s3_handler(url: str) -> list[tuple[str, bytes]]:
+            ...
+
+    The handler must accept the original input string and return a list of
+    ``(filename, bytes)`` tuples.
+
+    Args:
+        prefix: URL scheme or prefix (e.g., "s3://", "dropbox://")
+        handler: Handler function (optional if using as decorator)
+
+    Returns:
+        The registered function (for decorator use)
     """
+
+    def decorator(
+        fn: Callable[[str], list[tuple[str, bytes]]],
+    ) -> Callable[[str], list[tuple[str, bytes]]]:
+        extra_unpack_handlers[prefix] = fn
+        return fn
+
+    # Called as @register_unpack_handler("s3://") - returns decorator
+    if handler is None:
+        return decorator
+
+    # Called as register_unpack_handler("s3://", func) - register directly
     extra_unpack_handlers[prefix] = handler
+    return handler
+
+
+def source(*prefixes: str) -> Callable:
+    """Decorator to register an unpack handler for multiple prefixes.
+
+    Example:
+        @source("s3://", "s3a://", "s3n://")
+        def s3_handler(url: str) -> list[tuple[str, bytes]]:
+            ...
+
+    Args:
+        *prefixes: One or more URL prefixes to register
+
+    Returns:
+        Decorator function
+    """
+
+    def decorator(
+        fn: Callable[[str], list[tuple[str, bytes]]],
+    ) -> Callable[[str], list[tuple[str, bytes]]]:
+        for prefix in prefixes:
+            extra_unpack_handlers[prefix] = fn
+        return fn
+
+    return decorator
 
 
 # Only expand these "raw" archive formats.
@@ -170,18 +222,18 @@ def _walk_directory(path: Path) -> list[tuple[str, bytes]]:
     return out
 
 
-_GITHUB_OWNER_REPO_RE = re.compile(r'^[a-zA-Z0-9][-a-zA-Z0-9_.]*[a-zA-Z0-9]?/[a-zA-Z0-9][-a-zA-Z0-9_.]*[a-zA-Z0-9]?(\.git)?$')
+_GITHUB_OWNER_REPO_RE = re.compile(
+    r"^[a-zA-Z0-9][-a-zA-Z0-9_.]*[a-zA-Z0-9]?/[a-zA-Z0-9][-a-zA-Z0-9_.]*[a-zA-Z0-9]?(\.git)?$"
+)
 
 
 def _validate_github_owner_repo(owner_repo: str) -> None:
     """Validate owner/repo format to prevent command injection."""
-    # Strip trailing .git for validation
-    clean = owner_repo.rstrip('.git') if owner_repo.endswith('.git') else owner_repo
     # Must be exactly owner/repo format with safe characters
     if not _GITHUB_OWNER_REPO_RE.match(owner_repo):
         raise ValueError(f"Invalid GitHub owner/repo format: {owner_repo}")
     # Additional safety: no shell metacharacters or git options
-    dangerous_patterns = ['--', '..', ';', '|', '&', '$', '`', '\n', '\r']
+    dangerous_patterns = ["--", "..", ";", "|", "&", "$", "`", "\n", "\r"]
     for pattern in dangerous_patterns:
         if pattern in owner_repo:
             raise ValueError(f"Invalid characters in GitHub spec: {owner_repo}")
@@ -244,10 +296,14 @@ def _clone_github_to_temp(spec: str) -> Path:
 
 # --- Added for HTTP(S) support ---
 def _is_github_repo_root_url(url: str) -> bool:
-    """Return True if the URL is exactly a GitHub repo root (owner/repo[.git][?ref=...])."""
+    """Return True if URL is exactly a GitHub repo root.
+
+    Matches: owner/repo, owner/repo.git, with optional ?ref=...
+    """
     if not url.startswith("https://github.com/"):
         return False
     from urllib.parse import urlparse
+
     parts = [p for p in urlparse(url).path.split("/") if p]
     return len(parts) == 2  # /owner/repo or /owner/repo.git
 
@@ -257,35 +313,38 @@ def _filename_from_content_disposition(cd: str | None) -> str | None:
     if not cd:
         return None
     # RFC 5987: filename*=UTF-8''encoded%20name.ext
-    m = re.search(r'filename\*\s*=\s*([^;]+)', cd, flags=re.IGNORECASE)
+    m = re.search(r"filename\*\s*=\s*([^;]+)", cd, flags=re.IGNORECASE)
     if m:
-        val = m.group(1).strip().strip('"\'')
+        val = m.group(1).strip().strip("\"'")
         # Split at "''" if present
         if "''" in val:
             _, _, val = val.partition("''")
         try:
             from urllib.parse import unquote
+
             return unquote(val)
         except Exception:
             return val
 
     # filename="name.ext"
-    m = re.search(r'filename\s*=\s*([^;]+)', cd, flags=re.IGNORECASE)
+    m = re.search(r"filename\s*=\s*([^;]+)", cd, flags=re.IGNORECASE)
     if m:
-        val = m.group(1).strip().strip('"\'')
+        val = m.group(1).strip().strip("\"'")
         return val
     return None
 
 
 def _download_http_or_https(url: str) -> tuple[str, bytes]:
     """Download a single HTTP(S) resource, returning (filename, bytes)."""
+    from urllib.parse import unquote, urlparse
     from urllib.request import Request, urlopen
-    from urllib.parse import urlparse, unquote
 
     req = Request(url, headers={"User-Agent": HTTP_USER_AGENT})
     with urlopen(req, timeout=60) as resp:
         # Prefer filename from Content-Disposition
-        filename = _filename_from_content_disposition(resp.headers.get("Content-Disposition"))
+        filename = _filename_from_content_disposition(
+            resp.headers.get("Content-Disposition")
+        )
 
         # Fall back to URL path
         if not filename:
@@ -306,12 +365,13 @@ def _download_http_or_https(url: str) -> tuple[str, bytes]:
                 break
             total += len(chunk)
             if total > MAX_HTTP_DOWNLOAD_BYTES:
-                raise ValueError(
-                    f"Remote file exceeds max size ({MAX_HTTP_DOWNLOAD_BYTES} bytes): {url}"
-                )
+                max_mb = MAX_HTTP_DOWNLOAD_BYTES // (1024 * 1024)
+                raise ValueError(f"Remote file exceeds max size ({max_mb} MB): {url}")
             buf.write(chunk)
 
     return filename, buf.getvalue()
+
+
 # --- end HTTP(S) helpers ---
 
 

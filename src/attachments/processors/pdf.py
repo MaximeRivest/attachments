@@ -2,17 +2,18 @@
 from __future__ import annotations
 
 import io
-from typing import Any, Optional
+from typing import Any
+
 from . import register_processor
 
 
 def _extract_text_with_pypdf_or_pyPDF2(
     data: bytes,
-    password: Optional[str],
+    password: str | None,
     page_start: int,
-    page_end: Optional[int],
-    max_pages: Optional[int],
-) -> tuple[Optional[str], Optional[int], int, Optional[str], dict]:
+    page_end: int | None,
+    max_pages: int | None,
+) -> tuple[str | None, int | None, int, str | None, dict]:
     """
     Returns (text, total_pages, parsed_pages, backend_name, meta_flags)
     If neither pypdf nor PyPDF2 is installed, returns (None, None, 0, None, {...}).
@@ -21,9 +22,11 @@ def _extract_text_with_pypdf_or_pyPDF2(
     try:
         try:
             from pypdf import PdfReader  # preferred modern fork
+
             backend = "pypdf"
         except Exception:
             from PyPDF2 import PdfReader  # fallback
+
             backend = "PyPDF2"
 
         reader = PdfReader(io.BytesIO(data))
@@ -65,11 +68,11 @@ def _extract_text_with_pypdf_or_pyPDF2(
 
 def _extract_text_with_pdfminer(
     data: bytes,
-    password: Optional[str],
+    password: str | None,
     page_start: int,
-    page_end: Optional[int],
-    max_pages: Optional[int],
-) -> tuple[Optional[str], Optional[int], int, Optional[str], dict]:
+    page_end: int | None,
+    max_pages: int | None,
+) -> tuple[str | None, int | None, int, str | None, dict]:
     """
     Returns (text, total_pages, parsed_pages, backend_name, meta_flags)
     If pdfminer.six isn't available, text is None.
@@ -95,20 +98,29 @@ def _extract_text_with_pdfminer(
 
         start = max(0, int(page_start or 0))
         if page_end is None:
-            stop = (total_pages if total_pages is not None else start + (max_pages or 10**9))
+            stop = (
+                total_pages if total_pages is not None else start + (max_pages or 10**9)
+            )
         else:
-            stop = min(int(page_end), total_pages) if total_pages is not None else int(page_end)
+            stop = (
+                min(int(page_end), total_pages)
+                if total_pages is not None
+                else int(page_end)
+            )
 
         if max_pages is not None:
             stop = min(stop, start + int(max_pages))
 
         page_numbers = set(range(start, stop))  # pdfminer expects 0-based indices
 
-        text = extract_text(
-            io.BytesIO(data),
-            password=password or "",
-            page_numbers=page_numbers if page_numbers else None,
-        ) or ""
+        text = (
+            extract_text(
+                io.BytesIO(data),
+                password=password or "",
+                page_numbers=page_numbers if page_numbers else None,
+            )
+            or ""
+        )
         parsed = max(0, stop - start)
         return (text.strip(), total_pages, parsed, "pdfminer.six", meta)
     except Exception as e:
@@ -119,14 +131,14 @@ def _extract_text_with_pdfminer(
 def _render_pages_to_png_with_pymupdf(
     data: bytes,
     page_start: int,
-    page_end: Optional[int],
-    max_pages: Optional[int],
+    page_end: int | None,
+    max_pages: int | None,
     dpi: int,
-    filename: Optional[str],
-) -> tuple[list[dict], Optional[str], dict]:
-    """
-    Returns (images, backend_name, meta_flags)
-    Each image is a dict: {"name": str, "mimetype": "image/png", "bytes": bytes, "page": int}
+    filename: str | None,
+) -> tuple[list[dict], str | None, dict]:
+    """Return (images, backend_name, meta_flags).
+
+    Each image is a dict with keys: name, mimetype, bytes, page.
     """
     meta: dict[str, Any] = {}
     try:
@@ -148,7 +160,7 @@ def _render_pages_to_png_with_pymupdf(
                 pix = page.get_pixmap(matrix=mat, alpha=False)
                 images.append(
                     {
-                        "name": f"{(filename or 'document')}-page-{i+1}.png",
+                        "name": f"{(filename or 'document')}-page-{i + 1}.png",
                         "mimetype": "image/png",
                         "bytes": pix.tobytes("png"),
                         "page": i + 1,
@@ -167,11 +179,11 @@ def _render_pages_to_png_with_pymupdf(
 def _render_pages_to_png_with_pdf2image(
     data: bytes,
     page_start: int,
-    page_end: Optional[int],
-    max_pages: Optional[int],
+    page_end: int | None,
+    max_pages: int | None,
     dpi: int,
-    filename: Optional[str],
-) -> tuple[list[dict], Optional[str], dict]:
+    filename: str | None,
+) -> tuple[list[dict], str | None, dict]:
     """
     Fallback renderer using pdf2image (requires poppler on system).
     """
@@ -182,7 +194,11 @@ def _render_pages_to_png_with_pdf2image(
         start = max(0, int(page_start or 0))
         last = page_end
         if max_pages is not None:
-            last = (start + int(max_pages)) if last is None else min(int(last), start + int(max_pages))
+            last = (
+                (start + int(max_pages))
+                if last is None
+                else min(int(last), start + int(max_pages))
+            )
 
         # pdf2image uses 1-based page indices
         pil_pages = convert_from_bytes(
@@ -215,12 +231,12 @@ def _render_pages_to_png_with_pdf2image(
 def process_pdf(
     data: bytes,
     *,
-    filename: Optional[str] = None,
+    filename: str | None = None,
     # Text options
-    password: Optional[str] = None,
+    password: str | None = None,
     page_start: int = 0,
-    page_end: Optional[int] = None,
-    max_pages: Optional[int] = None,
+    page_end: int | None = None,
+    max_pages: int | None = None,
     # Image rendering options
     render_images: bool | str = "auto",  # False | True/"always" | "auto"
     images_dpi: int = 200,
@@ -247,17 +263,19 @@ def process_pdf(
     images: list[dict] = []
 
     # ---- TEXT extraction ----
-    text1, total_pages, parsed_pages, backend1, meta1 = _extract_text_with_pypdf_or_pyPDF2(
-        data, password, page_start, page_end, max_pages
+    text1, total_pages, parsed_pages, backend1, meta1 = (
+        _extract_text_with_pypdf_or_pyPDF2(
+            data, password, page_start, page_end, max_pages
+        )
     )
     flags.update(meta1)
     if backend1:
         flags["text_backend"] = backend1
 
-    if (text1 is None or text1.strip() == ""):
+    if text1 is None or text1.strip() == "":
         # fallback to pdfminer.six
-        text2, total_pages2, parsed_pages2, backend2, meta2 = _extract_text_with_pdfminer(
-            data, password, page_start, page_end, max_pages
+        text2, total_pages2, parsed_pages2, backend2, meta2 = (
+            _extract_text_with_pdfminer(data, password, page_start, page_end, max_pages)
         )
         flags.update({f"pdfminer_{k}": v for k, v in meta2.items()})
         if backend2:
@@ -281,7 +299,7 @@ def process_pdf(
         if render_images is False:
             return False
         # "auto" or anything else truthy -> only render if no text
-        return (text.strip() == "")
+        return text.strip() == ""
 
     if _should_render():
         imgs, img_backend, meta_img = _render_pages_to_png_with_pymupdf(
@@ -304,7 +322,7 @@ def process_pdf(
     # Final artifact
     artifact = {
         "text": text or "",
-        "images": images,   # list of {"name","mimetype","bytes","page"}
+        "images": images,  # list of {"name","mimetype","bytes","page"}
         "audio": [],
         "video": [],
         "flags": flags,
