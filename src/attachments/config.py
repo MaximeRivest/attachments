@@ -5,10 +5,11 @@ Configuration can be set via:
 2. Global configure() call
 3. Per-call options (highest priority)
 
-Example:
-    >>> import attachments
-    >>> attachments.configure(api_key="att_...", prefer="local")
-    >>> attachments.att("file.pdf")  # Uses local if deps available, else service
+Example::
+
+    import attachments
+    attachments.configure(api_key="att_...", prefer="local")
+    attachments.att("file.pdf")  # Uses local if deps available, else service
 """
 
 from __future__ import annotations
@@ -41,8 +42,23 @@ def configure(**kwargs) -> None:
         service_url: Base URL for attachments service API.
         timeout: Timeout in seconds for service requests.
 
-    Example:
-        >>> configure(api_key="att_...", prefer="local")
+    Examples:
+        >>> reset_config()  # Ensure clean state
+        >>> configure(api_key="test_key", prefer="local")
+        >>> get_config("api_key")
+        'test_key'
+        >>> get_config("prefer")
+        'local'
+
+        >>> configure(prefer="invalid")  # doctest: +IGNORE_EXCEPTION_DETAIL
+        Traceback (most recent call last):
+        ValueError: Invalid prefer value: invalid. Valid: ...
+
+        >>> configure(bad_key="value")  # doctest: +IGNORE_EXCEPTION_DETAIL
+        Traceback (most recent call last):
+        ValueError: Invalid config keys: {'bad_key'}. Valid: ...
+
+        >>> reset_config()  # Clean up
     """
     valid_keys = set(_config.keys())
     invalid_keys = set(kwargs.keys()) - valid_keys
@@ -73,6 +89,19 @@ def get_config(key: str, default=None):
 
     Returns:
         Configuration value
+
+    Examples:
+        >>> reset_config()
+        >>> get_config("prefer")
+        'local'
+        >>> get_config("api_key") is None
+        True
+        >>> get_config("missing_key", "fallback")
+        'fallback'
+        >>> configure(timeout=120)
+        >>> get_config("timeout")
+        120
+        >>> reset_config()
     """
     # Check environment variable first
     env_key = f"ATTACHMENTS_{key.upper()}"
@@ -85,28 +114,79 @@ def get_config(key: str, default=None):
 
 
 def get_api_key(override: str | None = None) -> str | None:
-    """Get API key from override, env, or config."""
+    """Get API key from override, env, or config.
+
+    Examples:
+        >>> reset_config()
+        >>> get_api_key() is None
+        True
+        >>> get_api_key("override_key")
+        'override_key'
+        >>> configure(api_key="configured_key")
+        >>> get_api_key()
+        'configured_key'
+        >>> get_api_key("override_key")  # Override takes priority
+        'override_key'
+        >>> reset_config()
+    """
     if override is not None:
         return override
     return get_config("api_key")
 
 
 def get_prefer(override: str | None = None) -> PreferMode:
-    """Get prefer mode from override, env, or config."""
+    """Get prefer mode from override, env, or config.
+
+    Examples:
+        >>> reset_config()
+        >>> get_prefer()
+        'local'
+        >>> get_prefer("service")
+        'service'
+        >>> configure(prefer="local-only")
+        >>> get_prefer()
+        'local-only'
+        >>> reset_config()
+    """
     if override is not None:
         return override  # type: ignore
     return get_config("prefer", "local")  # type: ignore
 
 
 def get_service_url(override: str | None = None) -> str:
-    """Get service URL from override, env, or config."""
+    """Get service URL from override, env, or config.
+
+    Examples:
+        >>> reset_config()
+        >>> get_service_url()
+        'https://api.attachments.dev/v1'
+        >>> get_service_url("http://localhost:8000")
+        'http://localhost:8000'
+        >>> configure(service_url="https://custom.example.com")
+        >>> get_service_url()
+        'https://custom.example.com'
+        >>> reset_config()
+    """
     if override is not None:
         return override
     return get_config("service_url", "https://api.attachments.dev/v1")
 
 
 def reset_config() -> None:
-    """Reset configuration to defaults. Useful for testing."""
+    """Reset configuration to defaults. Useful for testing.
+
+    Examples:
+        >>> configure(api_key="test", prefer="service", timeout=999)
+        >>> get_config("api_key")
+        'test'
+        >>> reset_config()
+        >>> get_config("api_key") is None
+        True
+        >>> get_config("prefer")
+        'local'
+        >>> get_config("timeout")
+        60
+    """
     global _config
     _config = {
         "api_key": None,

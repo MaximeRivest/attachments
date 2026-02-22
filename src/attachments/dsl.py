@@ -48,7 +48,22 @@ KEY_ALIASES: dict[str, str | tuple[str, str]] = {
 
 
 def _parse_value(value: str) -> Any:
-    """Parse a value string into appropriate Python type."""
+    """Parse a value string into appropriate Python type.
+
+    Examples:
+        >>> _parse_value("42")
+        42
+        >>> _parse_value("true")
+        True
+        >>> _parse_value("false")
+        False
+        >>> _parse_value("1-4")
+        (1, 4)
+        >>> _parse_value('"hello world"')
+        'hello world'
+        >>> _parse_value("Sales")
+        'Sales'
+    """
     value = value.strip()
 
     # Remove surrounding quotes if present
@@ -84,7 +99,20 @@ def _parse_value(value: str) -> Any:
 
 
 def _expand_option(key: str, value: Any) -> dict[str, Any]:
-    """Expand a DSL key-value pair into processor kwargs."""
+    """Expand a DSL key-value pair into processor kwargs.
+
+    Examples:
+        >>> _expand_option("pages", (1, 4))
+        {'page_start': 0, 'page_end': 4}
+        >>> _expand_option("sheet", "Sales")
+        {'sheet': 'Sales'}
+        >>> _expand_option("rows", 100)
+        {'max_rows': 100}
+        >>> _expand_option("images", True)
+        {'render_images': True}
+        >>> _expand_option("dpi", 300)
+        {'images_dpi': 300}
+    """
     # Normalize key
     key_lower = key.lower().replace("-", "_").replace(" ", "_")
 
@@ -132,6 +160,15 @@ def parse_dsl(input: str) -> tuple[str, dict[str, Any]]:
 
         >>> parse_dsl("doc.pdf[images: true, dpi: 300]")
         ('doc.pdf', {'render_images': True, 'images_dpi': 300})
+
+        >>> parse_dsl("github://org/repo[branch: main]")
+        ('github://org/repo', {'ref': 'main'})
+
+        >>> parse_dsl("doc.pdf[password: secret123]")
+        ('doc.pdf', {'password': 'secret123'})
+
+        >>> parse_dsl("doc.pdf[]")
+        ('doc.pdf', {})
     """
     input = input.strip()
 
@@ -188,7 +225,14 @@ def parse_dsl(input: str) -> tuple[str, dict[str, Any]]:
 
 
 def _split_options(options_str: str) -> list[str]:
-    """Split options string by comma, respecting quotes."""
+    """Split options string by comma, respecting quotes.
+
+    Examples:
+        >>> _split_options("a: 1, b: 2")
+        ['a: 1', ' b: 2']
+        >>> _split_options('name: "hello, world", count: 5')
+        ['name: "hello, world"', ' count: 5']
+    """
     parts = []
     current = []
     in_quotes = False

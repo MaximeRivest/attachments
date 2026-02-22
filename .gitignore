@@ -22,3 +22,11 @@ docs/.quarto/
 # If you choose to execute notebooks locally and publish cached results,
 # you may commit docs/_freeze/. Otherwise, ignore it:
 docs/_freeze/
+
+# Local/dev artifacts
+.coverage
+.blueprint/
+index.md
+mrmd.md
+terminal.md
+z-claude.md

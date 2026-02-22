@@ -49,6 +49,18 @@ def register_unpack_handler(
 
     Returns:
         The registered function (for decorator use)
+
+    Examples:
+        >>> # Using as a function
+        >>> def my_handler(url: str) -> list[tuple[str, bytes]]:
+        ...     return [("test.txt", b"hello")]
+        >>> register_unpack_handler("myscheme://", my_handler)  # doctest: +ELLIPSIS
+        <function my_handler at ...>
+        >>> "myscheme://" in extra_unpack_handlers
+        True
+
+        >>> # Clean up
+        >>> del extra_unpack_handlers["myscheme://"]
     """
 
     def decorator(
@@ -106,11 +118,39 @@ RAW_ARCHIVE_SUFFIXES: tuple[str, ...] = (
 
 
 def _is_raw_archive_name(name: str) -> bool:
+    """Check if filename is a raw archive that should be expanded.
+
+    Examples:
+        >>> _is_raw_archive_name("data.zip")
+        True
+        >>> _is_raw_archive_name("backup.tar.gz")
+        True
+        >>> _is_raw_archive_name("spreadsheet.xlsx")  # Not raw - zip-based format
+        False
+        >>> _is_raw_archive_name("document.docx")  # Not raw - zip-based format
+        False
+        >>> _is_raw_archive_name("archive.TGZ")  # Case insensitive
+        True
+    """
     lower = name.lower()
     return any(lower.endswith(suf) for suf in RAW_ARCHIVE_SUFFIXES)
 
 
 def _sanitize_member_name(name: str) -> str:
+    """Sanitize archive member name to prevent path traversal.
+
+    Examples:
+        >>> _sanitize_member_name("normal/path/file.txt")
+        'normal/path/file.txt'
+        >>> _sanitize_member_name("../../../etc/passwd")
+        'etc/passwd'
+        >>> _sanitize_member_name("/absolute/path.txt")
+        'absolute/path.txt'
+        >>> _sanitize_member_name("windows\\\\path\\\\file.txt")
+        'windows/path/file.txt'
+        >>> _sanitize_member_name("./current/./dir/file.txt")
+        'current/dir/file.txt'
+    """
     # Prevent path traversal from archives or remote names.
     name = name.replace("\\", "/")
     while name.startswith("/"):
@@ -124,6 +164,16 @@ def _sanitize_member_name(name: str) -> str:
 
 
 def _is_zip_bytes(data: bytes) -> bool:
+    """Check if data looks like a ZIP file (PK signature).
+
+    Examples:
+        >>> _is_zip_bytes(b"PK\\x03\\x04...")
+        True
+        >>> _is_zip_bytes(b"not a zip")
+        False
+        >>> _is_zip_bytes(b"")
+        False
+    """
     # PK signature
     return data[:2] == b"PK"
 
@@ -299,6 +349,18 @@ def _is_github_repo_root_url(url: str) -> bool:
     """Return True if URL is exactly a GitHub repo root.
 
     Matches: owner/repo, owner/repo.git, with optional ?ref=...
+
+    Examples:
+        >>> _is_github_repo_root_url("https://github.com/owner/repo")
+        True
+        >>> _is_github_repo_root_url("https://github.com/owner/repo.git")
+        True
+        >>> _is_github_repo_root_url("https://github.com/owner/repo?ref=main")
+        True
+        >>> _is_github_repo_root_url("https://github.com/owner/repo/blob/main/file.py")
+        False
+        >>> _is_github_repo_root_url("https://example.com/owner/repo")
+        False
     """
     if not url.startswith("https://github.com/"):
         return False
@@ -309,7 +371,16 @@ def _is_github_repo_root_url(url: str) -> bool:
 
 
 def _filename_from_content_disposition(cd: str | None) -> str | None:
-    """Best-effort extraction of filename from Content-Disposition."""
+    """Best-effort extraction of filename from Content-Disposition.
+
+    Examples:
+        >>> _filename_from_content_disposition('attachment; filename="report.pdf"')
+        'report.pdf'
+        >>> _filename_from_content_disposition("attachment; filename=data.csv")
+        'data.csv'
+        >>> _filename_from_content_disposition(None)
+        >>> _filename_from_content_disposition("")
+    """
     if not cd:
         return None
     # RFC 5987: filename*=UTF-8''encoded%20name.ext

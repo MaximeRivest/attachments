@@ -4,12 +4,14 @@ This module provides utilities to check which optional dependencies are
 available, enabling graceful degradation and helpful error messages.
 
 Example:
+
     >>> from attachments import check_deps
-    >>> check_deps()
-    {'pdf': True, 'xlsx': True, 'docx': False, 'service': True, ...}
+    >>> deps = check_deps()
+    >>> isinstance(deps, dict) and "pdf" in deps
+    True
 
     >>> from attachments.deps import require
-    >>> require("pdf")  # Raises ImportError with install instructions if missing
+    >>> # require("pdf")  # Raises ImportError with install instructions if missing
 """
 
 from __future__ import annotations
@@ -58,6 +60,14 @@ def _can_import(module: str) -> bool:
     """Check if a module can be imported without actually importing it.
 
     Supports alternatives with | syntax: "pypdf|PyPDF2" means either works.
+
+    Examples:
+        >>> _can_import("os")  # stdlib always available
+        True
+        >>> _can_import("nonexistent_module_xyz")
+        False
+        >>> _can_import("os|sys")  # Either works
+        True
     """
     # Handle alternatives (e.g., "pypdf|PyPDF2")
     if "|" in module:
@@ -78,9 +88,18 @@ def check_dep(feature: str) -> DepStatus:
     Returns:
         DepStatus with availability info and install hints
 
-    Example:
-        >>> check_dep("pdf")
-        DepStatus(available=True, modules=('pypdf|PyPDF2', 'pymupdf'), missing=(), ...)
+    Examples:
+        >>> status = check_dep("pdf")
+        >>> status.modules
+        ('pypdf|PyPDF2', 'pymupdf')
+        >>> status.install_hint
+        'pip install attachments[pdf]'
+        >>> isinstance(status.available, bool)
+        True
+
+        >>> check_dep("invalid_feature")  # doctest: +IGNORE_EXCEPTION_DETAIL
+        Traceback (most recent call last):
+        ValueError: Unknown feature: invalid_feature. Valid: ...
     """
     if feature not in DEPENDENCY_MAP:
         valid = list(DEPENDENCY_MAP.keys())
@@ -103,9 +122,14 @@ def check_deps() -> dict[str, bool]:
     Returns:
         Dict mapping feature names to availability boolean
 
-    Example:
-        >>> check_deps()
-        {'pdf': True, 'xlsx': True, 'docx': False, 'service': True, ...}
+    Examples:
+        >>> deps = check_deps()
+        >>> isinstance(deps, dict)
+        True
+        >>> "pdf" in deps and "xlsx" in deps and "service" in deps
+        True
+        >>> all(isinstance(v, bool) for v in deps.values())
+        True
     """
     return {feature: check_dep(feature).available for feature in DEPENDENCY_MAP}
 
@@ -119,8 +143,13 @@ def require(feature: str) -> None:
     Raises:
         ImportError: If dependencies are missing, with install instructions
 
-    Example:
-        >>> require("pdf")  # Raises if pypdf/pymupdf not installed
+    Examples:
+        >>> # This would raise ImportError if pdf deps not installed:
+        >>> # require("pdf")
+
+        >>> require("nonexistent")  # doctest: +IGNORE_EXCEPTION_DETAIL
+        Traceback (most recent call last):
+        ValueError: Unknown feature: nonexistent. Valid: ...
     """
     status = check_dep(feature)
     if not status.available:
@@ -131,12 +160,24 @@ def require(feature: str) -> None:
 
 
 def has_service() -> bool:
-    """Check if service mode is available (httpx installed)."""
+    """Check if service mode is available (httpx installed).
+
+    Examples:
+        >>> isinstance(has_service(), bool)
+        True
+    """
     return check_dep("service").available
 
 
 def has_local(feature: str) -> bool:
-    """Check if local processing is available for a feature."""
+    """Check if local processing is available for a feature.
+
+    Examples:
+        >>> isinstance(has_local("pdf"), bool)
+        True
+        >>> isinstance(has_local("xlsx"), bool)
+        True
+    """
     return check_dep(feature).available
 
 
@@ -149,9 +190,15 @@ def suggest_install(features: list[str]) -> str:
     Returns:
         Combined pip install command
 
-    Example:
+    Examples:
         >>> suggest_install(["pdf", "xlsx", "docx"])
         'pip install attachments[pdf,xlsx,docx]'
+        >>> suggest_install(["pdf"])
+        'pip install attachments[pdf]'
+        >>> suggest_install(["invalid_only"])
+        ''
+        >>> suggest_install([])
+        ''
     """
     valid = [f for f in features if f in DEPENDENCY_MAP]
     if not valid:
@@ -160,5 +207,9 @@ def suggest_install(features: list[str]) -> str:
 
 
 def clear_cache() -> None:
-    """Clear the import check cache. Useful for testing."""
+    """Clear the import check cache. Useful for testing.
+
+    Examples:
+        >>> clear_cache()  # No error, clears LRU cache
+    """
     _can_import.cache_clear()
