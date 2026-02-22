@@ -3,18 +3,22 @@
 When local dependencies aren't available or when explicitly configured,
 attachments can process files via a remote service.
 
-Example:
-    >>> from attachments import configure, att
-    >>> configure(api_key="att_...")
-    >>> att("file.pdf")  # Processed remotely if local deps missing
+Example::
+
+    from attachments import configure, att
+    configure(api_key="att_...")
+    att("file.pdf")  # Processed remotely if local deps missing
 """
 
 from __future__ import annotations
 
 import base64
+import logging
 from typing import Any
 
 from .config import get_api_key, get_config
+
+log = logging.getLogger("attachments.service")
 
 
 class ServiceError(Exception):
@@ -77,6 +81,12 @@ def process_via_service(
     files = {"file": (filename, data)}
     form_data = {k: str(v) for k, v in options.items() if v is not None}
 
+    log.debug(
+        "POST %s/process  filename=%s  size=%d",
+        service_url,
+        filename,
+        len(data),
+    )
     try:
         response = httpx.post(
             f"{service_url}/process",
@@ -90,6 +100,7 @@ def process_via_service(
     except httpx.RequestError as e:
         raise ServiceError(f"Service request failed: {e}") from e
 
+    log.debug("service responded %d", response.status_code)
     if response.status_code == 401:
         raise ServiceError("Invalid API key", status_code=401)
     elif response.status_code == 402:
@@ -186,9 +197,10 @@ def check_service_health(api_key: str | None = None) -> dict:
     Returns:
         Dict with service status info
 
-    Example:
-        >>> check_service_health()
-        {'status': 'ok', 'formats': ['pdf', 'xlsx', ...], 'sources': ['s3', ...]}
+    Example::
+
+        check_service_health()
+        # Returns: {'status': 'ok', 'formats': ['pdf', 'xlsx', ...], ...}
     """
     httpx = _get_client()
 

@@ -109,12 +109,18 @@ dev = [
     "pymupdf>=1.24",
     "openpyxl>=3.1,<4.0",
     "pandas>=2.0,<3.0",
+    "python-docx>=1.0",
+    "beautifulsoup4>=4.12",
+    "lxml>=5.0",
     # Dev tools
     "ipykernel>=6.30.1",
+    "gunicorn>=25.0",
 ]
 
 [project.scripts]
 attachments-server = "attachments.server:main"
+attachments = "attachments.cli:app"
+att = "attachments.cli:app"
 
 [tool.ruff]
 line-length = 88
@@ -129,5 +135,5 @@ docstring-code-format = true
 
 [tool.pytest.ini_options]
 minversion = "6.0"
-addopts = "-ra -q --strict-markers --color=yes --cov=attachments --cov-report=term-missing"
-testpaths = ["tests"]
+addopts = "-ra -q --strict-markers --color=yes --cov=attachments --cov-report=term-missing --doctest-modules"
+testpaths = ["tests", "src"]

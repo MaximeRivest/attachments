@@ -13,6 +13,18 @@ _default_processors: dict[str, Callable[[bytes], dict]] | None = None
 
 
 def _normalize_key(key: str) -> str:
+    """Normalize a processor key to lowercase with leading dot.
+
+    Examples:
+        >>> _normalize_key("PDF")
+        '.pdf'
+        >>> _normalize_key(".TXT")
+        '.txt'
+        >>> _normalize_key("xlsx")
+        '.xlsx'
+        >>> _normalize_key("__text__")  # Sentinel keys preserved
+        '__text__'
+    """
     k = key.strip()
     if k.startswith("__"):
         return k
@@ -50,6 +62,23 @@ def register_processor(
 
     Returns:
         The registered function (for decorator use)
+
+    Examples:
+        >>> # Using a custom registry to avoid global state
+        >>> my_registry = {}
+        >>> def my_proc(data: bytes, **opts) -> dict:
+        ...     return {"text": data.decode(), "images": [], "audio": [], "video": [], "flags": {}}
+        >>> register_processor(".custom", my_proc, registry=my_registry)  # doctest: +ELLIPSIS
+        <function my_proc at ...>
+        >>> ".custom" in my_registry
+        True
+
+        >>> # As decorator
+        >>> @register_processor(".decorated", registry=my_registry)
+        ... def decorated_proc(data: bytes, **opts) -> dict:
+        ...     return {"text": "decorated", "images": [], "audio": [], "video": [], "flags": {}}
+        >>> ".decorated" in my_registry
+        True
     """
     target = registry if registry is not None else processors
 
@@ -69,16 +98,23 @@ def register_processor(
 def processor(*extensions: str) -> Callable:
     """Decorator to register a processor for multiple extensions.
 
-    Example:
-        @processor(".doc", ".docx", ".rtf")
-        def word_processor(data: bytes, **options) -> dict:
-            ...
-
     Args:
         *extensions: One or more file extensions to register
 
     Returns:
         Decorator function
+
+    Examples:
+        >>> # Check that built-in processors exist
+        >>> ".txt" in processors
+        True
+        >>> ".pdf" in processors
+        True
+
+        >>> # The decorator registers for all given extensions
+        >>> # (shown conceptually - actual registration affects global state)
+        >>> # @processor(".doc", ".docx", ".rtf")
+        >>> # def word_processor(data, **opts): ...
     """
 
     def decorator(fn: Callable[[bytes], dict]) -> Callable[[bytes], dict]:
@@ -112,6 +148,15 @@ def get_processors_copy() -> dict[str, Callable[[bytes], dict]]:
     """Return a shallow copy of the current processor registry.
 
     Useful for creating isolated registries for testing or custom pipelines.
+
+    Examples:
+        >>> copy = get_processors_copy()
+        >>> isinstance(copy, dict)
+        True
+        >>> ".txt" in copy
+        True
+        >>> copy is processors  # It's a copy, not the same object
+        False
     """
     return dict(processors)
 
@@ -120,6 +165,8 @@ def get_processors_copy() -> dict[str, Callable[[bytes], dict]]:
 from . import text as _text  # noqa: E402,F401
 from . import xlsx as _xlsx  # noqa: E402,F401
 from . import pdf as _pdf  # noqa: E402,F401
+from . import docx as _docx  # noqa: E402,F401
+from . import html as _html  # noqa: E402,F401
 
 # Capture defaults after built-in processors are registered
 _snapshot_defaults()

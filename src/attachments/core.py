@@ -9,6 +9,7 @@ This module provides the main `att()` function that orchestrates:
 
 from __future__ import annotations
 
+import logging
 import os
 from collections.abc import Callable
 from typing import Any
@@ -18,6 +19,8 @@ from .dsl import parse_dsl
 from .processors import processors
 from .unpack import unpack
 from .utils import is_text_bytes
+
+log = logging.getLogger("attachments.core")
 
 
 def _route_processor(filename: str, data: bytes) -> Callable[..., dict] | None:
@@ -33,7 +36,17 @@ def _route_processor(filename: str, data: bytes) -> Callable[..., dict] | None:
 
 
 def _error_artifact(source: str, error: str) -> dict:
-    """Create a standardized error artifact."""
+    """Create a standardized error artifact.
+
+    Examples:
+        >>> artifact = _error_artifact("test.pdf", "file not found")
+        >>> artifact["flags"]["error"]
+        'file not found'
+        >>> artifact["flags"]["source"]
+        'test.pdf'
+        >>> artifact["text"]
+        ''
+    """
     return {
         "text": "",
         "images": [],
@@ -44,7 +57,15 @@ def _error_artifact(source: str, error: str) -> dict:
 
 
 def _empty_artifact(source: str, note: str) -> dict:
-    """Create an empty artifact with a note."""
+    """Create an empty artifact with a note.
+
+    Examples:
+        >>> artifact = _empty_artifact("test.bin", "no processor available")
+        >>> artifact["flags"]["note"]
+        'no processor available'
+        >>> artifact["text"]
+        ''
+    """
     return {
         "text": "",
         "images": [],
@@ -55,7 +76,18 @@ def _empty_artifact(source: str, note: str) -> dict:
 
 
 def _has_meaningful_error(artifact: dict) -> bool:
-    """Check if artifact has an error indicating missing deps."""
+    """Check if artifact has an error indicating missing deps.
+
+    Examples:
+        >>> _has_meaningful_error({"flags": {"error": "Module not installed"}})
+        True
+        >>> _has_meaningful_error({"flags": {"error": "ImportError: no module"}})
+        True
+        >>> _has_meaningful_error({"flags": {"error": "file not found"}})
+        False
+        >>> _has_meaningful_error({"flags": {}})
+        False
+    """
     flags = artifact.get("flags", {})
     error = flags.get("error", "")
     # Common patterns indicating missing dependencies
@@ -71,7 +103,19 @@ def _has_meaningful_error(artifact: dict) -> bool:
 
 
 def _is_empty_result(artifact: dict) -> bool:
-    """Check if artifact has no meaningful content."""
+    """Check if artifact has no meaningful content.
+
+    Examples:
+        >>> _is_empty_result({"text": "", "images": [], "audio": [], "video": []})
+        True
+        >>> _is_empty_result({"text": "hello", "images": [], "audio": [], "video": []})
+        False
+        >>> _is_empty_result({"text": "", "images": [{"data": "..."}],
+        ...     "audio": [], "video": []})
+        False
+        >>> _is_empty_result({"text": "   ", "images": []})  # Whitespace only
+        True
+    """
     return (
         not artifact.get("text", "").strip()
         and not artifact.get("images", [])
@@ -104,11 +148,13 @@ def _process_single(
     mode = get_prefer(prefer)
 
     proc = _route_processor(filename, data)
+    log.debug("routing %s  mode=%s  processor=%s", filename, mode, proc)
 
     # Determine processing strategy based on mode
     if mode == "service-only":
         # Only use service
         if not key:
+            log.warning("service-only mode but no API key for %s", filename)
             return _error_artifact(
                 filename, "service-only mode but no API key configured"
             )
@@ -117,10 +163,12 @@ def _process_single(
     elif mode == "local-only":
         # Only use local, fail if no processor or deps missing
         if proc is None:
+            log.info("no local processor for %s", filename)
             return _empty_artifact(filename, "no local processor available")
         try:
             return proc(data, filename=filename, **options)
         except Exception as e:
+            log.error("local processing failed for %s: %s", filename, e)
             return _error_artifact(filename, f"local processing failed: {e}")
 
     elif mode == "service":
@@ -131,7 +179,7 @@ def _process_single(
                 if not result.get("flags", {}).get("error"):
                     return result
             except Exception:
-                pass  # Fall through to local
+                log.debug("service failed for %s, falling back to local", filename)
 
         # Fall back to local
         if proc is None:
@@ -139,6 +187,7 @@ def _process_single(
         try:
             return proc(data, filename=filename, **options)
         except Exception as e:
+            log.error("processing failed for %s: %s", filename, e)
             return _error_artifact(filename, f"processing failed: {e}")
 
     else:  # mode == "local" (default)
@@ -149,18 +198,29 @@ def _process_single(
                 # Check if local succeeded or failed due to missing deps
                 if not _has_meaningful_error(result) or not key:
                     return result
-                # Has dep error and we have API key - try service
+                log.info(
+                    "local dep error for %s, falling back to service", filename
+                )
             except Exception as e:
                 if not key:
-                    return _error_artifact(filename, f"local processing failed: {e}")
-                # Fall through to service
+                    return _error_artifact(
+                        filename, f"local processing failed: {e}"
+                    )
+                log.info(
+                    "local exception for %s, falling back to service: %s",
+                    filename,
+                    e,
+                )
 
         # No local processor or local failed - try service if key available
         if key:
             try:
                 return _process_via_service(filename, data, key, **options)
             except Exception as e:
-                return _error_artifact(filename, f"service processing failed: {e}")
+                log.error("service processing failed for %s: %s", filename, e)
+                return _error_artifact(
+                    filename, f"service processing failed: {e}"
+                )
 
         # No processor and no service
         if proc is None:
@@ -179,6 +239,7 @@ def _process_via_service(
     """Process via the attachments service."""
     from .service import ServiceError, process_via_service
 
+    log.debug("sending %s (%d bytes) to service", filename, len(data))
     try:
         result = process_via_service(
             data, filename=filename, api_key=api_key, **options
@@ -187,11 +248,31 @@ def _process_via_service(
         result["flags"]["via"] = "service"
         return result
     except ServiceError as e:
+        log.warning("service error for %s: %s", filename, e.message)
         return _error_artifact(filename, f"service error: {e.message}")
 
 
 def _normalize_artifact(artifact: dict, source: str) -> dict:
-    """Ensure artifact has all required keys with correct types."""
+    """Ensure artifact has all required keys with correct types.
+
+    Examples:
+        >>> result = _normalize_artifact({"text": "hello"}, "test.txt")
+        >>> result["text"]
+        'hello'
+        >>> result["images"]
+        []
+        >>> result["flags"]["source"]
+        'test.txt'
+
+        >>> # Preserves existing values
+        >>> result = _normalize_artifact(
+        ...     {"text": "hi", "flags": {"custom": True}}, "f.txt"
+        ... )
+        >>> result["flags"]["custom"]
+        True
+        >>> result["flags"]["source"]
+        'f.txt'
+    """
     artifact.setdefault("text", "")
     artifact.setdefault("images", [])
     artifact.setdefault("audio", [])
@@ -206,6 +287,16 @@ def _apply_source_options(input: str, options: dict) -> str:
 
     Transforms DSL options into URL parameters for sources that support them.
     For example, adds ?ref=main to GitHub URLs.
+
+    Examples:
+        >>> opts = {"ref": "main", "other": "value"}
+        >>> _apply_source_options("github://org/repo", opts)
+        'github://org/repo?ref=main'
+        >>> opts  # ref is consumed
+        {'other': 'value'}
+
+        >>> _apply_source_options("local/file.txt", {"ref": "ignored"})
+        'local/file.txt'
     """
     # GitHub: add ref as query parameter
     if input.startswith("github://") or (
@@ -297,6 +388,8 @@ def att(
 
     # Handle source-specific options (e.g., GitHub ref)
     input = _apply_source_options(input, merged_options)
+
+    log.info("att(%r)  prefer=%s  options=%s", input, prefer, merged_options or "{}")
 
     # Handle unpack with potential service fallback
     try:

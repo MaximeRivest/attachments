@@ -3,20 +3,24 @@
 A universal file and source processing library with zero required dependencies.
 Install only what you need, or use the service for zero-dep processing.
 
-Quick Start:
-    >>> from attachments import att
-    >>> artifacts = att("document.pdf")
-    >>> print(artifacts[0]["text"])
+Quick Start::
 
-With Service Fallback:
-    >>> from attachments import att, configure
-    >>> configure(api_key="att_...")
-    >>> artifacts = att("document.pdf")  # Uses service if local deps missing
+    from attachments import att
+    artifacts = att("document.pdf")
+    print(artifacts[0]["text"])
+
+With Service Fallback::
+
+    from attachments import att, configure
+    configure(api_key="att_...")
+    artifacts = att("document.pdf")  # Uses service if local deps missing
 
 Check Available Features:
+
     >>> from attachments import check_deps
-    >>> check_deps()
-    {'pdf': True, 'xlsx': False, 'service': True, ...}
+    >>> deps = check_deps()
+    >>> "pdf" in deps and "xlsx" in deps
+    True
 
 Supported Sources (via unpack):
     - Local files and directories
@@ -31,7 +35,8 @@ Supported Formats (via processors):
     - Excel (with openpyxl/pandas)
     - Extensible via register_processor()
 
-Installation Options:
+Installation Options::
+
     pip install attachments              # Core only (text files work)
     pip install attachments[pdf]         # Add PDF support
     pip install attachments[xlsx]        # Add Excel support
@@ -50,6 +55,7 @@ from .processors import (
     register_processor,
     reset_processors,
 )
+from .types import Artifact, ImageItem, make_artifact
 from .unpack import (
     extra_unpack_handlers,
     register_unpack_handler,
@@ -60,6 +66,10 @@ from .unpack import (
 __all__ = [
     # Main entry point
     "att",
+    # Types
+    "Artifact",
+    "ImageItem",
+    "make_artifact",
     # Configuration
     "configure",
     "get_config",
