@@ -80,3 +80,19 @@ class TestProcessorsMissingDeps:
 
         _assert_missing_dep(result)
         assert "pip install attachments[xlsx]" in result["meta"]["error"]["message"]
+
+    def test_pptx_missing_dep_returns_typed_error(self, mask_modules):
+        mask_modules("pptx")
+
+        result = processors[".pptx"](b"fake pptx content")
+
+        _assert_missing_dep(result)
+        assert "pip install attachments[pptx]" in result["meta"]["error"]["message"]
+
+    def test_image_missing_dep_returns_typed_error(self, mask_modules):
+        mask_modules("PIL")
+
+        result = processors[".png"](b"\x89PNG fake image content")
+
+        _assert_missing_dep(result)
+        assert "pip install attachments[image]" in result["meta"]["error"]["message"]

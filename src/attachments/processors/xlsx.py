@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from io import BytesIO
 from typing import Any
 
@@ -7,18 +8,7 @@ from ..options import Option, register_options
 from ..types import ERROR_PARSE, error_artifact, make_artifact, missing_dep_artifact
 from . import register_processor
 
-
-def _sheet_segments(text: str, sheet_name: str) -> list[dict[str, Any]]:
-    """Build meta.segments for the rendered sheet (IR contract: xlsx sheets).
-
-    Both backends render a single chosen sheet, so the segmentation is one
-    sheet segment spanning the whole rendered text.
-
-    Examples:
-        >>> _sheet_segments("a,b\\n1,2", "Sales")
-        [{'kind': 'sheet', 'label': 'Sales', 'start': 0, 'end': 7}]
-    """
-    return [{"kind": "sheet", "label": sheet_name, "start": 0, "end": len(text)}]
+_SHEET_SEPARATOR = "\n\n"
 
 
 def _csv_escape(value: Any) -> str:
@@ -31,115 +21,219 @@ def _csv_escape(value: Any) -> str:
     return s
 
 
-def _xlsx_with_pandas(
-    data: bytes, *, sheet: str | int | None, max_rows: int
-) -> tuple[str, dict[str, Any]]:
-    import pandas as pd  # type: ignore
+def _select_sheet(names: list[str], sheet: str | int | None) -> str | None:
+    """Resolve the ``sheet`` option to a sheet name; ``None`` means "all sheets".
 
-    # Discover sheets
-    xls = pd.ExcelFile(BytesIO(data))
-    sheet_names: list[str] = list(xls.sheet_names)
-    # Choose sheet
-    chosen: str
-    if isinstance(sheet, str) and sheet in sheet_names:
-        chosen = sheet
-    elif isinstance(sheet, int) and 0 <= sheet < len(sheet_names):
-        chosen = sheet_names[sheet]
-    else:
-        chosen = sheet_names[0] if sheet_names else "Sheet1"
+    Unknown names and out-of-range indexes fall back to the first sheet
+    (a single-sheet render), preserving historical behavior.
 
-    df = xls.parse(chosen)
-    # Render as CSV text for broad compatibility
-    head = df.head(max_rows)
-    text = head.to_csv(index=False)
-    extra = {
-        "rows": int(df.shape[0]),
-        "cols": int(df.shape[1]),
-        "sheets": sheet_names,
-        "sheet_used": chosen,
-        "engine": "pandas",
-    }
-    return text, extra
+    Examples:
+        >>> _select_sheet(["A", "B"], None) is None
+        True
+        >>> _select_sheet(["A", "B"], "B")
+        'B'
+        >>> _select_sheet(["A", "B"], 1)
+        'B'
+        >>> _select_sheet(["A", "B"], "Nope")
+        'A'
+        >>> _select_sheet(["A", "B"], 7)
+        'A'
+    """
+    if sheet is None:
+        return None
+    if isinstance(sheet, str) and sheet in names:
+        return sheet
+    if (
+        isinstance(sheet, int)
+        and not isinstance(sheet, bool)
+        and 0 <= sheet < len(names)
+    ):
+        return names[sheet]
+    return names[0] if names else None
+
+
+def _render_sheet_block(
+    name: str, rows: Iterable[tuple[Any, ...]], max_rows: int
+) -> tuple[str, bool]:
+    """Render one sheet as a ``# <name>`` heading plus CSV lines.
+
+    At most ``max_rows`` rows are kept after the first (header) row.
+    Returns ``(block_text, truncated)``.
+
+    Examples:
+        >>> block, truncated = _render_sheet_block("Sales", [("a", "b"), (1, 2)], 200)
+        >>> print(block)
+        # Sales
+        a,b
+        1,2
+        >>> truncated
+        False
+        >>> _render_sheet_block("S", [("h",), (1,), (2,)], 1)
+        ('# S\\nh\\n1', True)
+    """
+    lines = [f"# {name}"]
+    truncated = False
+    for i, row in enumerate(rows):
+        if i > max_rows:
+            truncated = True
+            break
+        lines.append(",".join(_csv_escape(v) for v in row))
+    return "\n".join(lines), truncated
+
+
+def _join_blocks_with_segments(
+    blocks: list[tuple[str, str]],
+) -> tuple[str, list[dict[str, Any]]]:
+    """Join rendered sheet blocks and build ``meta.segments`` (IR: xlsx sheets).
+
+    Each segment slices exactly one sheet's rendered block, heading included.
+
+    Examples:
+        >>> text, segs = _join_blocks_with_segments(
+        ...     [("A", "# A\\n1"), ("B", "# B\\n2")]
+        ... )
+        >>> text
+        '# A\\n1\\n\\n# B\\n2'
+        >>> segs[1]
+        {'kind': 'sheet', 'label': 'B', 'start': 7, 'end': 12}
+        >>> text[segs[0]["start"] : segs[0]["end"]]
+        '# A\\n1'
+    """
+    parts: list[str] = []
+    segments: list[dict[str, Any]] = []
+    offset = 0
+    for label, block in blocks:
+        if parts:
+            offset += len(_SHEET_SEPARATOR)
+        segments.append(
+            {
+                "kind": "sheet",
+                "label": label,
+                "start": offset,
+                "end": offset + len(block),
+            }
+        )
+        parts.append(block)
+        offset += len(block)
+    return _SHEET_SEPARATOR.join(parts), segments
 
 
 def _xlsx_with_openpyxl(
     data: bytes, *, sheet: str | int | None, max_rows: int
-) -> tuple[str, dict[str, Any]]:
+) -> tuple[str, list[dict[str, Any]], dict[str, Any]]:
+    """Primary backend. Returns ``(text, segments, extra)``."""
     from openpyxl import load_workbook  # type: ignore
 
     wb = load_workbook(BytesIO(data), read_only=True, data_only=True)
-    names = list(wb.sheetnames)
+    try:
+        names = list(wb.sheetnames)
+        chosen = _select_sheet(names, sheet)
+        targets = [chosen] if chosen is not None else names
 
-    if isinstance(sheet, str) and sheet in names:
-        chosen = sheet
-    elif isinstance(sheet, int) and 0 <= sheet < len(names):
-        chosen = names[sheet]
-    else:
-        chosen = names[0] if names else "Sheet1"
+        blocks: list[tuple[str, str]] = []
+        truncated = False
+        for name in targets:
+            block, t = _render_sheet_block(
+                name, wb[name].iter_rows(values_only=True), max_rows
+            )
+            truncated = truncated or t
+            blocks.append((name, block))
 
-    ws = wb[chosen]
-    rows = []
-    for i, row in enumerate(ws.iter_rows(values_only=True)):
-        if i > max_rows:
-            break
-        rows.append([_csv_escape(v) for v in row])
-    text = "\n".join([",".join(r) for r in rows])
-    extra = {
-        "rows": ws.max_row,
-        "cols": ws.max_column,
-        "sheets": names,
-        "sheet_used": chosen,
-        "engine": "openpyxl",
-    }
-    return text, extra
+        text, segments = _join_blocks_with_segments(blocks)
+        extra: dict[str, Any] = {"sheets": names, "engine": "openpyxl"}
+        if len(targets) == 1:
+            ws = wb[targets[0]]
+            extra["sheet_used"] = targets[0]
+            extra["rows"] = ws.max_row
+            extra["cols"] = ws.max_column
+        if truncated:
+            extra["rows_truncated"] = True
+        return text, segments, extra
+    finally:
+        wb.close()
+
+
+def _xlsx_with_pandas(
+    data: bytes, *, sheet: str | int | None, max_rows: int
+) -> tuple[str, list[dict[str, Any]], dict[str, Any]]:
+    """Fallback backend; renders the same text layout as the openpyxl path."""
+    import pandas as pd  # type: ignore
+
+    xls = pd.ExcelFile(BytesIO(data))
+    names: list[str] = list(xls.sheet_names)
+    chosen = _select_sheet(names, sheet)
+    targets = [chosen] if chosen is not None else names
+
+    blocks: list[tuple[str, str]] = []
+    truncated = False
+    shape: tuple[int, int] | None = None
+    for name in targets:
+        # header=None keeps the header as a plain first row, matching the
+        # openpyxl path; NaN cells become None so both render as "".
+        df = xls.parse(name, header=None)
+        df = df.astype(object).where(pd.notna(df), None)
+        block, t = _render_sheet_block(
+            name, df.itertuples(index=False, name=None), max_rows
+        )
+        truncated = truncated or t
+        blocks.append((name, block))
+        shape = (int(df.shape[0]), int(df.shape[1]))
+
+    text, segments = _join_blocks_with_segments(blocks)
+    extra: dict[str, Any] = {"sheets": names, "engine": "pandas"}
+    if len(targets) == 1 and shape is not None:
+        extra["sheet_used"] = targets[0]
+        extra["rows"], extra["cols"] = shape
+    if truncated:
+        extra["rows_truncated"] = True
+    return text, segments, extra
 
 
 def xlsx_processor(data: bytes, **options: Any) -> dict[str, Any]:
+    """XLSX -> artifact. No ``sheet`` option: render ALL sheets, each as a
+    ``# <sheet name>`` heading plus CSV rows, joined with a blank line, with
+    one ``meta.segments`` entry per sheet. With ``sheet``: render just that
+    sheet (still with its heading and single segment).
+    """
     sheet = options.get("sheet")
     max_rows = int(options.get("max_rows", 200))
     source = options.get("filename") or "workbook.xlsx"
 
-    pandas_exc = None
     openpyxl_exc = None
+    pandas_exc = None
 
-    # Prefer pandas if available
+    # Primary: openpyxl (segments come straight from the rendered blocks).
     try:
-        text, extra = _xlsx_with_pandas(data, sheet=sheet, max_rows=max_rows)
-        return make_artifact(
-            text=text,
-            meta={
-                "kind": "table",
-                "extra": extra,
-                "segments": _sheet_segments(text, extra["sheet_used"]),
-            },
+        text, segments, extra = _xlsx_with_openpyxl(
+            data, sheet=sheet, max_rows=max_rows
         )
-    except ImportError:  # pragma: no cover - optional dep
-        pass
-    except Exception as e:
-        pandas_exc = str(e)
-
-    # Fallback to openpyxl-only
-    try:
-        text, extra = _xlsx_with_openpyxl(data, sheet=sheet, max_rows=max_rows)
-        return make_artifact(
-            text=text,
-            meta={
-                "kind": "table",
-                "extra": extra,
-                "segments": _sheet_segments(text, extra["sheet_used"]),
-            },
-        )
+        meta: dict[str, Any] = {"kind": "table", "extra": extra}
+        if segments:
+            meta["segments"] = segments
+        return make_artifact(text=text, meta=meta)
     except ImportError:  # pragma: no cover - optional dep
         pass
     except Exception as e:
         openpyxl_exc = str(e)
 
-    # Neither pandas nor openpyxl available
-    if pandas_exc is None and openpyxl_exc is None:
+    # Fallback: pandas, rendering the identical text layout.
+    try:
+        text, segments, extra = _xlsx_with_pandas(data, sheet=sheet, max_rows=max_rows)
+        meta = {"kind": "table", "extra": extra}
+        if segments:
+            meta["segments"] = segments
+        return make_artifact(text=text, meta=meta)
+    except ImportError:  # pragma: no cover - optional dep
+        pass
+    except Exception as e:
+        pandas_exc = str(e)
+
+    # Neither openpyxl nor pandas available
+    if openpyxl_exc is None and pandas_exc is None:
         return missing_dep_artifact(source, "xlsx")
 
     # Backends were importable but the workbook could not be parsed
-    detail = pandas_exc or openpyxl_exc
+    detail = openpyxl_exc or pandas_exc
     artifact = error_artifact(
         source, ERROR_PARSE, f"Failed to parse Excel workbook: {detail}"
     )
@@ -157,7 +251,8 @@ register_options(
         Option(
             "sheet",
             "str_or_int",
-            help="Sheet to render: a sheet name or 0-based index.",
+            help="Sheet to render: a sheet name or 0-based index. "
+            "Omit to render all sheets.",
             example="sheet: Sales",
         ),
         Option(
@@ -166,7 +261,7 @@ register_options(
             aliases=("max_rows",),
             param="max_rows",
             default=200,
-            help="Maximum number of rows rendered as text.",
+            help="Maximum number of rows rendered as text per sheet.",
             example="rows: 100",
         ),
     ),

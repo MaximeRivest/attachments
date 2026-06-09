@@ -48,6 +48,8 @@ Supported Formats (via processors):
     - Text files (20+ extensions)
     - PDF (with pypdf/pymupdf)
     - Excel (with openpyxl/pandas)
+    - PowerPoint (with python-pptx)
+    - Images: png/jpg/gif/webp/bmp/tiff (with Pillow)
     - Extensible via register_processor()
 
 Installation Options::
@@ -70,6 +72,13 @@ from .processors import (
     processors,
     register_processor,
     reset_processors,
+)
+from .render import (
+    chunk,
+    render_text,
+    to_claude_content,
+    to_claude_messages,
+    to_openai_messages,
 )
 from .types import (
     ERROR_INVALID_OPTION,
@@ -136,6 +145,12 @@ __all__ = [
     "check_dep",
     "has_local",
     "has_service",
+    # Last-mile rendering & adapters (attachments.render)
+    "render_text",
+    "to_claude_content",
+    "to_claude_messages",
+    "to_openai_messages",
+    "chunk",
     # Processor registry & decorators
     "processors",
     "register_processor",

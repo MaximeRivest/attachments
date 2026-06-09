@@ -553,15 +553,18 @@ src/attachments/
 ├── cli.py                   # `att` / `attachments` CLI
 ├── dsl.py                   # DSL parsing ("file.pdf[pages: 1-4]")
 ├── types.py                 # Artifact / ImageItem TypedDicts
-├── utils.py                 # Encoding detection, helpers
+├── utils.py                 # Encoding detection, magic-byte detection, helpers
 ├── unpack.py                # Input resolution (local, dirs, archives, http, github)
+├── render.py                # Last mile: render_text, to_claude/openai_messages, chunk
 └── processors/
     ├── __init__.py          # Processor registry & @processor decorator
     ├── text.py              # Text files (no deps)
     ├── pdf.py               # PDF (pypdf, pymupdf)
     ├── xlsx.py              # Excel (openpyxl, pandas)
     ├── docx.py              # Word (python-docx)
-    └── html.py              # HTML (beautifulsoup4, lxml)
+    ├── html.py              # HTML (beautifulsoup4, lxml)
+    ├── pptx.py              # PowerPoint (python-pptx)
+    └── image.py             # Images png/jpg/gif/webp/bmp/tiff (Pillow)
 ```
 
 ---

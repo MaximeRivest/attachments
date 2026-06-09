@@ -181,6 +181,8 @@ from . import xlsx as _xlsx  # noqa: E402,F401
 from . import pdf as _pdf  # noqa: E402,F401
 from . import docx as _docx  # noqa: E402,F401
 from . import html as _html  # noqa: E402,F401
+from . import pptx as _pptx  # noqa: E402,F401
+from . import image as _image  # noqa: E402,F401
 
 # Capture defaults after built-in processors (and their schemas) registered
 _snapshot_defaults()

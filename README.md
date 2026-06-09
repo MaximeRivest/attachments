@@ -189,11 +189,15 @@ att "data.xlsx[sheet: Sales]"   # DSL works here too
 
 ## Status & Contributing
 
-Shipped today: text (20+ extensions), PDF, XLSX, DOCX, HTML processors; local
-files, directories, zip/tar, HTTP(S), and `github://` sources; service client,
-self-hosted server, and CLI.
+Shipped today: text (20+ extensions), PDF, XLSX, DOCX, HTML, PPTX, and image
+(png/jpg/gif/webp/bmp/tiff) processors; local files, directories, zip/tar,
+HTTP(S), and `github://` sources; service client, self-hosted server, and CLI.
+The last mile ships too: `render_text` / `to_claude_messages` /
+`to_openai_messages` / `chunk` turn artifact lists straight into prompts,
+API messages, or RAG chunks. Files with missing or wrong extensions are
+routed by magic-byte content detection, so `att()` still does the right thing.
 
-Everything else (pptx, images/OCR, audio, `s3://`, `gdrive://`, …) is the
+Everything else (OCR, audio, `s3://`, `gdrive://`, …) is the
 long tail we want help with — each new processor is one pure function
 `(bytes, options) -> artifact`. Start with [VISION.md](VISION.md), then
 [DEVELOPMENT.md](DEVELOPMENT.md) for the step-by-step checklist.

@@ -29,7 +29,7 @@ from .types import (
     normalize_artifact,
 )
 from .unpack import unpack
-from .utils import is_text_bytes
+from .utils import detect_extension, is_text_bytes
 
 log = logging.getLogger("attachments.core")
 
@@ -39,14 +39,26 @@ def _route_processor(
 ) -> tuple[Callable[..., dict] | None, str]:
     """Find the appropriate processor (and its registry key) for a file.
 
+    Routing order:
+    1. Filename extension lookup in the processor registry.
+    2. Magic-byte content sniffing (``utils.detect_extension``) — only
+       routes when the sniffed extension has a registered processor.
+    3. Text heuristic fallback (``__text__``).
+
     Returns ``(None, ext)`` if no processor is found (which will trigger
     service fallback). The key is used to look up the declared option
-    schema for this processor.
+    schema for this processor. Routing is pure: nothing is recorded in
+    ``meta`` here.
     """
     ext = os.path.splitext(filename)[1].lower()
     proc = processors.get(ext)
     if proc is not None:
         return proc, ext
+    sniffed = detect_extension(data)
+    if sniffed is not None:
+        proc = processors.get(sniffed)
+        if proc is not None:
+            return proc, sniffed
     if is_text_bytes(data):
         proc = processors.get("__text__")
         if proc is not None:
