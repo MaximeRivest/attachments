@@ -11,6 +11,7 @@ import logging
 import re
 from typing import Any
 
+from ..options import Option, register_options
 from ..types import ERROR_PARSE, error_artifact, make_artifact, missing_dep_artifact
 from . import register_processor
 
@@ -128,5 +129,18 @@ def html_processor(data: bytes, **options: Any) -> dict[str, Any]:
 
 
 # Override the plain-text registration for .html / .htm
+_HTML_OPTIONS = (
+    Option(
+        "images",
+        "bool",
+        aliases=("render",),
+        param="render_images",
+        default=False,
+        help="Extract inline data-URI images.",
+        example="images: true",
+    ),
+)
 register_processor(".html", html_processor)
 register_processor(".htm", html_processor)
+register_options(".html", _HTML_OPTIONS)
+register_options(".htm", _HTML_OPTIONS)

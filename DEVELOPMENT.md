@@ -80,9 +80,18 @@ Processors convert file bytes into artifacts. Each processor handles one or more
 
 ```python
 # my_processors.py
-from attachments import make_artifact, missing_dep_artifact, processor
+from attachments import Option, make_artifact, missing_dep_artifact, processor
 
-@processor(".docx", ".doc")
+@processor(
+    ".docx", ".doc",
+    options=(
+        Option(
+            "images", "bool",
+            help="Extract embedded images.",
+            example="images: true",
+        ),
+    ),
+)
 def word_processor(data: bytes, **options) -> dict:
     """Process Word documents."""
     filename = options.get("filename", "document.docx")
@@ -96,17 +105,37 @@ def word_processor(data: bytes, **options) -> dict:
     return make_artifact(text=extracted_text, meta={"kind": "document"})
 ```
 
-That's it! The decorator registers it automatically.
+That's it! The decorator registers the processor AND its declared option
+schema. The schema powers everything for free: DSL/kwarg resolution with
+"did you mean" warnings for unknown keys, `att.options(".docx")` runtime
+discovery, `att --options`, and the server's `GET /options` export. An
+`Option` declares `name`, `type` (`str`, `int`, `float`, `bool`, `pages`,
+`bool_or_auto`, `str_or_int`), plus optional `aliases`, `param` (the kwarg
+name your function receives, when it differs from the DSL key), `default`,
+`help`, and `example`. Options only reach your processor if they are
+declared in its schema; an empty tuple (`options=()`) documents that your
+format takes none. Either way — undeclared schema or declared-empty — any
+DSL/kwarg option on your format is dropped with an "Unknown option"
+warning in that artifact's `meta.warnings`; it is never passed through.
 
-### Alternative: Function Call
+> **Migration note (pre-schema processors):** processors used to receive
+> ALL raw DSL/kwarg options as `**options`. Since option schemas were
+> introduced, a processor receives ONLY the options declared in its
+> schema (plus `filename`). A third-party processor written against the
+> old pass-through behavior silently stops receiving its options until it
+> declares them via `options=(...)` on `@processor` (or
+> `register_options`).
+
+### Alternative: Function Calls
 
 ```python
-from attachments import register_processor
+from attachments import Option, register_options, register_processor
 
 def my_processor(data: bytes, **options) -> dict:
     ...
 
 register_processor(".myf", my_processor)
+register_options(".myf", (Option("depth", "int", help="Parse depth."),))
 ```
 
 ### Full Example
@@ -120,6 +149,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from ..options import Option
 from ..types import (
     ERROR_PARSE,
     error_artifact,
@@ -129,7 +159,17 @@ from ..types import (
 from . import processor  # Use the decorator
 
 
-@processor(".myf", ".myformat")
+@processor(
+    ".myf",
+    ".myformat",
+    options=(
+        Option(
+            "depth", "int", default=1,
+            help="How many levels to parse.",
+            example="depth: 3",
+        ),
+    ),
+)
 def myformat_processor(data: bytes, **options: Any) -> dict[str, Any]:
     """Convert MyFormat bytes to an artifact.
 

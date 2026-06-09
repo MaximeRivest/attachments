@@ -31,6 +31,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from attachments import att, register_processor
 from attachments.core import (
     _apply_source_options,
@@ -202,6 +204,22 @@ class TestApplySourceOptions:
         assert "ref" not in opts  # Consumed
         assert opts["other"] == "value"  # Preserved
 
+    def test_github_branch_and_tag_aliases(self):
+        """Schema aliases (branch/tag) resolve to ref and are consumed."""
+        opts = {"branch": "dev"}
+        assert (
+            _apply_source_options("github://owner/repo", opts)
+            == "github://owner/repo?ref=dev"
+        )
+        assert opts == {}
+
+        opts = {"tag": "v1.0.0"}
+        assert (
+            _apply_source_options("https://github.com/owner/repo", opts)
+            == "https://github.com/owner/repo?ref=v1.0.0"
+        )
+        assert opts == {}
+
     def test_non_github_unchanged(self):
         opts = {"ref": "ignored"}
         result = _apply_source_options("/local/path.txt", opts)
@@ -239,16 +257,36 @@ class TestAttTextFile:
         assert all(v is not None for v in meta.values())
         assert all(v is not None for v in meta["extra"].values())
 
-    def test_text_file_with_dsl_ignored(self, tmp_path: Path, sample_text_bytes: bytes):
-        """DSL options for text files don't affect processing (no page ranges, etc.)."""
+    def test_text_file_with_dsl_warns_unknown_option(
+        self, tmp_path: Path, sample_text_bytes: bytes
+    ):
+        """The text processor declares no options, so any DSL option is
+        dropped with an unknown-option warning (never silently)."""
         file_path = tmp_path / "hello.txt"
         file_path.write_bytes(sample_text_bytes)
 
-        # DSL options are parsed but text processor doesn't use them
         result = att(f"{file_path}[pages: 1-4]")
 
         assert len(result) == 1
         assert "Hello" in result[0]["text"]
+        assert result[0]["meta"]["warnings"] == ["Unknown option 'pages' for .txt"]
+
+    @pytest.mark.parametrize("key", ["filename", "data", "api_key", "prefer"])
+    def test_internal_parameter_names_as_options_never_raise(
+        self, tmp_path: Path, sample_text_bytes: bytes, key: str
+    ):
+        """Option keys that collide with internal parameter names must be
+        dropped with an unknown-option warning — never a TypeError out of
+        att() (options travel as a plain dict, not **kwargs)."""
+        file_path = tmp_path / "hello.txt"
+        file_path.write_bytes(sample_text_bytes)
+
+        result = att(f"{file_path}[{key}: x]")
+
+        assert len(result) == 1
+        assert "Hello" in result[0]["text"]
+        assert "error" not in result[0]["meta"]
+        assert result[0]["meta"]["warnings"] == [f"Unknown option '{key}' for .txt"]
 
 
 class TestAttDirectory:
@@ -301,6 +339,85 @@ class TestAttDslIntegration:
 
         # Just verify it doesn't crash
         assert len(result) == 1
+
+
+class TestOptionResolutionEndToEnd:
+    """Options resolve per file against the matched processor's schema."""
+
+    @pytest.fixture
+    def two_page_pdf_path(self, tmp_path: Path) -> Path:
+        pymupdf = pytest.importorskip("pymupdf")
+
+        doc = pymupdf.open()
+        for label in ("alpha page", "beta page"):
+            page = doc.new_page()
+            page.insert_text((72, 72), label)
+        path = tmp_path / "doc.pdf"
+        path.write_bytes(doc.tobytes())
+        doc.close()
+        return path
+
+    def test_xlsx_unknown_option_did_you_mean(
+        self, tmp_path: Path, sample_xlsx_bytes: bytes
+    ):
+        file_path = tmp_path / "data.xlsx"
+        file_path.write_bytes(sample_xlsx_bytes)
+
+        result = att(f"{file_path}[sheets: 0]")
+
+        warnings = result[0]["meta"]["warnings"]
+        assert warnings == ["Unknown option 'sheets' for .xlsx — did you mean 'sheet'?"]
+        # The bad key is dropped; processing still succeeds
+        assert "error" not in result[0]["meta"]
+        assert "Alice" in result[0]["text"]
+
+    def test_pdf_dsl_pages_selects_single_page(self, two_page_pdf_path: Path):
+        result = att(f"{two_page_pdf_path}[pages: 1-1, images: false]")
+
+        assert "error" not in result[0]["meta"]
+        assert "alpha page" in result[0]["text"]
+        assert "beta page" not in result[0]["text"]
+
+    def test_explicit_kwargs_override_dsl_pages(self, two_page_pdf_path: Path):
+        result = att(f"{two_page_pdf_path}[pages: 1-1]", pages="2-3", images=False)
+
+        assert "error" not in result[0]["meta"]
+        assert "beta page" in result[0]["text"]
+        assert "alpha page" not in result[0]["text"]
+
+    def test_no_warnings_key_when_options_resolve_cleanly(
+        self, two_page_pdf_path: Path
+    ):
+        """meta.warnings is ABSENT (not empty) when nothing went wrong."""
+        result = att(f"{two_page_pdf_path}[pages: 1-1, images: false]")
+
+        assert "warnings" not in result[0]["meta"]
+
+    def test_mixed_directory_warns_per_file(
+        self, tmp_path: Path, sample_text_bytes: bytes
+    ):
+        """A directory option applies per file: unknown for .txt, even
+        though it would be valid for .pdf — warnings are per-processor."""
+        (tmp_path / "note.txt").write_bytes(sample_text_bytes)
+
+        result = att(f"{tmp_path}[pages: 1-2]")
+
+        by_source = {a["meta"]["source"]: a for a in result}
+        assert by_source["note.txt"]["meta"]["warnings"] == [
+            "Unknown option 'pages' for .txt"
+        ]
+
+    def test_no_processor_means_no_option_warnings(
+        self, tmp_path: Path, sample_binary_bytes: bytes
+    ):
+        file_path = tmp_path / "binary.bin"
+        file_path.write_bytes(sample_binary_bytes)
+
+        result = att(f"{file_path}[pages: 1-2]")
+
+        meta = result[0]["meta"]
+        assert meta["note"] == "no processor available"
+        assert "warnings" not in meta
 
 
 class TestAttErrorCodes:

@@ -10,6 +10,8 @@ import zipfile
 from collections.abc import Callable
 from pathlib import Path
 
+from .options import Option, register_options, snapshot_option_defaults
+
 # --- Added/changed for HTTP(S) support ---
 # Configurable HTTP limits and UA (can be overridden via env)
 MAX_HTTP_DOWNLOAD_BYTES = int(
@@ -275,6 +277,23 @@ def _walk_directory(path: Path) -> list[tuple[str, bytes]]:
 _GITHUB_OWNER_REPO_RE = re.compile(
     r"^[a-zA-Z0-9][-a-zA-Z0-9_.]*[a-zA-Z0-9]?/[a-zA-Z0-9][-a-zA-Z0-9_.]*[a-zA-Z0-9]?(\.git)?$"
 )
+
+# Declared option schema for the built-in github:// source. The resolved
+# `ref` is consumed by core._apply_source_options into a ?ref=... query
+# parameter, which _clone_github_to_temp reads below.
+register_options(
+    "github://",
+    (
+        Option(
+            "ref",
+            "str",
+            aliases=("branch", "tag"),
+            help="Git branch, tag, or ref to clone.",
+            example="ref: main",
+        ),
+    ),
+)
+snapshot_option_defaults()
 
 
 def _validate_github_owner_repo(owner_repo: str) -> None:

@@ -77,7 +77,7 @@ class TestProcessViaService:
             }
         )
 
-        out = process_via_service(b"hello", filename="a.txt", page_start=1)
+        out = process_via_service(b"hello", filename="a.txt", options={"page_start": 1})
 
         assert out["text"] == "ok"
         assert out["images"][0]["bytes"] == b"img-bytes"
@@ -86,6 +86,37 @@ class TestProcessViaService:
         assert (
             dummy_httpx.last_post["kwargs"]["headers"]["Authorization"] == "Bearer key"
         )
+
+    def test_option_types_survive_wire_encoding(self, dummy_httpx):
+        """Every option value is JSON-encoded so the server's json.loads
+        round-trips the exact parsed type: a quoted DSL string like '3'
+        stays a string and never becomes the integer 3 (dsl-grammar rule 1),
+        and 'null' stays a string instead of decoding to None."""
+        import json
+
+        configure(api_key="key", service_url="http://svc")
+        dummy_httpx.next_post = _DummyResponse(payload={"text": "ok"})
+
+        process_via_service(
+            b"hello",
+            filename="data.xlsx",
+            options={
+                "sheet": "3",  # quoted DSL string
+                "rows": 3,  # integer
+                "pages": (1, 4),  # DSL range tuple
+                "images": True,  # boolean
+                "title": "null",  # quoted DSL string
+                "skipped": None,  # None options are dropped
+            },
+        )
+
+        form = dummy_httpx.last_post["kwargs"]["data"]
+        assert json.loads(form["sheet"]) == "3"
+        assert json.loads(form["rows"]) == 3
+        assert json.loads(form["pages"]) == [1, 4]
+        assert json.loads(form["images"]) is True
+        assert json.loads(form["title"]) == "null"
+        assert "skipped" not in form
 
     @pytest.mark.parametrize(
         "status,expected",

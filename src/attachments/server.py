@@ -20,6 +20,7 @@ The server provides:
     POST /unpack   - Unpack a URL/path
     GET  /health   - Health check with available processors
     GET  /formats  - List supported formats
+    GET  /options  - Declared DSL option schemas (dsl_schema())
 """
 
 from __future__ import annotations
@@ -62,6 +63,7 @@ def _make_handler():
     """
     # Import here to avoid circular imports
     from .deps import check_deps
+    from .options import dsl_schema
     from .processors import processors
 
     class AttachmentsHandler(BaseHTTPRequestHandler):
@@ -188,6 +190,10 @@ def _make_handler():
                     }
                 )
 
+            elif parsed.path == "/options":
+                # Same (open) auth policy as /formats: GET routes are public.
+                self._send_json(dsl_schema())
+
             else:
                 self._send_error("Not found", 404)
 
@@ -231,11 +237,13 @@ def _make_handler():
                 from .core import _process_single
                 from .types import normalize_artifact
 
+                # Options travel as a plain dict so a field named "prefer"
+                # or "filename" can never collide with named parameters.
                 artifact = _process_single(
                     filename,
                     file_data,
+                    options=options,
                     prefer="local-only",
-                    **options,
                 )
 
                 # Response body is exactly an Artifact (meta envelope,
@@ -305,6 +313,7 @@ def create_app():
 
     # Import the same deps the handler uses at class scope
     from .deps import check_deps
+    from .options import dsl_schema
     from .processors import processors
 
     def wsgi_app(environ, start_response):
@@ -346,6 +355,9 @@ def create_app():
                         "count": len(processors),
                     }
                 )
+            if path == "/options":
+                # Same (open) auth policy as /formats: GET routes are public.
+                return _json_response(dsl_schema())
             return _error("Not found", 404)
 
         # --- Auth check for POST ---
@@ -393,8 +405,10 @@ def create_app():
             from .types import normalize_artifact
 
             try:
+                # Plain options dict: field names can never collide with
+                # _process_single's named parameters.
                 artifact = _process_single(
-                    filename, file_data, prefer="local-only", **options
+                    filename, file_data, options=options, prefer="local-only"
                 )
             except Exception as exc:
                 log.exception("processing failed for uploaded file")
@@ -537,6 +551,7 @@ def run_server(host: str = "0.0.0.0", port: int = 8000):
 ║    POST /unpack   - Unpack a URL                             ║
 ║    GET  /health   - Health check                             ║
 ║    GET  /formats  - List supported formats                   ║
+║    GET  /options  - DSL option schemas                       ║
 ╚══════════════════════════════════════════════════════════════╝
 """)
 

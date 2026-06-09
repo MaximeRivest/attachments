@@ -3,6 +3,7 @@ from __future__ import annotations
 from io import BytesIO
 from typing import Any
 
+from ..options import Option, register_options
 from ..types import ERROR_PARSE, error_artifact, make_artifact, missing_dep_artifact
 from . import register_processor
 
@@ -150,3 +151,23 @@ def xlsx_processor(data: bytes, **options: Any) -> dict[str, Any]:
 
 
 register_processor(".xlsx", xlsx_processor)
+register_options(
+    ".xlsx",
+    (
+        Option(
+            "sheet",
+            "str_or_int",
+            help="Sheet to render: a sheet name or 0-based index.",
+            example="sheet: Sales",
+        ),
+        Option(
+            "rows",
+            "int",
+            aliases=("max_rows",),
+            param="max_rows",
+            default=200,
+            help="Maximum number of rows rendered as text.",
+            example="rows: 100",
+        ),
+    ),
+)

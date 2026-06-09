@@ -16,6 +16,7 @@ from typing import Any
 
 from .config import get_api_key, get_prefer
 from .dsl import parse_dsl
+from .options import get_options, resolve_options, source_option_schemas
 from .processors import processors
 from .types import (
     ERROR_MISSING_DEPENDENCY,
@@ -33,16 +34,24 @@ from .utils import is_text_bytes
 log = logging.getLogger("attachments.core")
 
 
-def _route_processor(filename: str, data: bytes) -> Callable[..., dict] | None:
-    """Find the appropriate processor for a file.
+def _route_processor(
+    filename: str, data: bytes
+) -> tuple[Callable[..., dict] | None, str]:
+    """Find the appropriate processor (and its registry key) for a file.
 
-    Returns None if no processor found (will trigger service fallback).
+    Returns ``(None, ext)`` if no processor is found (which will trigger
+    service fallback). The key is used to look up the declared option
+    schema for this processor.
     """
     ext = os.path.splitext(filename)[1].lower()
     proc = processors.get(ext)
-    if proc is None and is_text_bytes(data):
+    if proc is not None:
+        return proc, ext
+    if is_text_bytes(data):
         proc = processors.get("__text__")
-    return proc
+        if proc is not None:
+            return proc, "__text__"
+    return None, ext
 
 
 def _empty_artifact(source: str, note: str) -> dict:
@@ -97,31 +106,91 @@ def _artifact_from_exception(source: str, exc: Exception, context: str) -> dict:
     )
 
 
+def _attach_warnings(artifact: dict, warnings: list[str]) -> dict:
+    """Append option-resolution warnings to ``meta.warnings``.
+
+    The list is created only when there is something to report (IR
+    contract: optional meta keys are absent, never empty placeholders).
+
+    Examples:
+        >>> a = make_artifact(text="ok")
+        >>> _attach_warnings(a, [])["meta"]
+        {}
+        >>> _attach_warnings(a, ["Unknown option 'x' for .pdf"])["meta"]["warnings"]
+        ["Unknown option 'x' for .pdf"]
+    """
+    if warnings:
+        meta = artifact.setdefault("meta", {})
+        meta.setdefault("warnings", []).extend(warnings)
+    return artifact
+
+
+def _option_context(filename: str, proc_key: str) -> str:
+    """Human-readable owner name for option warnings.
+
+    Examples:
+        >>> _option_context("report.pdf", ".pdf")
+        '.pdf'
+        >>> _option_context("LICENSE", "__text__")
+        'text'
+    """
+    ext = os.path.splitext(filename)[1].lower()
+    if ext:
+        return ext
+    return "text" if proc_key == "__text__" else proc_key
+
+
 def _process_single(
     filename: str,
     data: bytes,
     *,
+    options: dict[str, Any] | None = None,
     api_key: str | None = None,
     prefer: str | None = None,
-    **options: Any,
 ) -> dict:
     """Process a single file with local/service fallback logic.
+
+    Local processor calls receive options resolved against the processor's
+    declared schema (``attachments.options``); resolution warnings are
+    attached to the resulting artifact's ``meta.warnings``. Service calls
+    receive the RAW options — the service resolves them server-side.
+
+    Options travel as a plain dict (never ``**kwargs``) so that option keys
+    like ``filename`` or ``prefer`` can never collide with this function's
+    own parameters — unknown keys must become ``meta.warnings``, not
+    ``TypeError``.
 
     Args:
         filename: Name of the file (used for extension detection)
         data: File bytes
+        options: Raw options (merged DSL + explicit kwargs)
         api_key: Optional API key for service mode
         prefer: Processing preference (local/service/local-only/service-only)
-        **options: Passed to processor
 
     Returns:
         Artifact dict
     """
+    options = options or {}
     key = get_api_key(api_key)
     mode = get_prefer(prefer)
 
-    proc = _route_processor(filename, data)
+    proc, proc_key = _route_processor(filename, data)
     log.debug("routing %s  mode=%s  processor=%s", filename, mode, proc)
+
+    # Resolve raw options against the matched processor's declared schema.
+    # Files with no processor get no option warnings.
+    resolved: dict[str, Any] = {}
+    warnings: list[str] = []
+    if proc is not None:
+        resolved, warnings = resolve_options(
+            get_options(proc_key),
+            options,
+            context=_option_context(filename, proc_key),
+        )
+
+    def _run_local() -> dict:
+        result = proc(data, filename=filename, **resolved)
+        return _attach_warnings(result, warnings)
 
     # Determine processing strategy based on mode
     if mode == "service-only":
@@ -133,7 +202,7 @@ def _process_single(
                 ERROR_SERVICE,
                 "service-only mode but no API key configured",
             )
-        return _process_via_service(filename, data, key, **options)
+        return _process_via_service(filename, data, key, options=options)
 
     elif mode == "local-only":
         # Only use local, fail if no processor or deps missing
@@ -141,7 +210,7 @@ def _process_single(
             log.info("no local processor for %s", filename)
             return _empty_artifact(filename, "no local processor available")
         try:
-            return proc(data, filename=filename, **options)
+            return _run_local()
         except Exception as e:
             log.error("local processing failed for %s: %s", filename, e)
             return _artifact_from_exception(filename, e, "local")
@@ -150,7 +219,7 @@ def _process_single(
         # Try service first, fall back to local
         if key:
             try:
-                result = _process_via_service(filename, data, key, **options)
+                result = _process_via_service(filename, data, key, options=options)
                 if not result.get("meta", {}).get("error"):
                     return result
             except Exception:
@@ -160,7 +229,7 @@ def _process_single(
         if proc is None:
             return _empty_artifact(filename, "no processor available")
         try:
-            return proc(data, filename=filename, **options)
+            return _run_local()
         except Exception as e:
             log.error("processing failed for %s: %s", filename, e)
             return _artifact_from_exception(filename, e, "local")
@@ -169,7 +238,7 @@ def _process_single(
         # Try local first, fall back to service if deps missing
         if proc is not None:
             try:
-                result = proc(data, filename=filename, **options)
+                result = _run_local()
                 # Typed check: only a missing-dependency result (plus an API
                 # key) may trigger service fallback. Other errors are final.
                 if not key or not is_missing_dependency(result):
@@ -187,7 +256,7 @@ def _process_single(
         # No local processor or local failed - try service if key available
         if key:
             try:
-                return _process_via_service(filename, data, key, **options)
+                return _process_via_service(filename, data, key, options=options)
             except Exception as e:
                 log.error("service processing failed for %s: %s", filename, e)
                 return error_artifact(
@@ -206,7 +275,8 @@ def _process_via_service(
     filename: str,
     data: bytes,
     api_key: str,
-    **options: Any,
+    *,
+    options: dict[str, Any] | None = None,
 ) -> dict:
     """Process via the attachments service."""
     from .service import ServiceError, process_via_service
@@ -214,7 +284,7 @@ def _process_via_service(
     log.debug("sending %s (%d bytes) to service", filename, len(data))
     try:
         result = process_via_service(
-            data, filename=filename, api_key=api_key, **options
+            data, filename=filename, api_key=api_key, options=options
         )
         result.setdefault("meta", {})
         result["meta"]["via"] = "service"
@@ -224,11 +294,27 @@ def _process_via_service(
         return error_artifact(filename, ERROR_SERVICE, f"service error: {e.message}")
 
 
+def _source_schema_for(input: str) -> tuple | None:
+    """Return the declared source option schema matching *input*, if any.
+
+    GitHub repo-root https URLs share the ``github://`` schema.
+    """
+    if input.startswith("https://github.com/") and input.count("/") <= 4:
+        return source_option_schemas.get("github://")
+    for prefix, schema in source_option_schemas.items():
+        if input.startswith(prefix):
+            return schema
+    return None
+
+
 def _apply_source_options(input: str, options: dict) -> str:
     """Apply source-specific options to the input path.
 
-    Transforms DSL options into URL parameters for sources that support them.
-    For example, adds ?ref=main to GitHub URLs.
+    Consumes options declared in ``source_option_schemas`` (matching
+    canonical names, aliases, and param names) and transforms them into
+    URL parameters — e.g. ``ref``/``branch``/``tag`` become ``?ref=...``
+    on GitHub URLs. Unrecognized keys are left untouched WITHOUT warnings:
+    they may be processor options resolved later, per file.
 
     Examples:
         >>> opts = {"ref": "main", "other": "value"}
@@ -237,17 +323,30 @@ def _apply_source_options(input: str, options: dict) -> str:
         >>> opts  # ref is consumed
         {'other': 'value'}
 
+        >>> opts = {"branch": "dev"}  # alias for ref
+        >>> _apply_source_options("github://org/repo", opts)
+        'github://org/repo?ref=dev'
+
         >>> _apply_source_options("local/file.txt", {"ref": "ignored"})
         'local/file.txt'
     """
-    # GitHub: add ref as query parameter
-    if input.startswith("github://") or (
-        input.startswith("https://github.com/") and input.count("/") <= 4
-    ):
-        ref = options.pop("ref", None)
-        if ref:
-            separator = "&" if "?" in input else "?"
-            input = f"{input}{separator}ref={ref}"
+    schema = _source_schema_for(input)
+    if not schema:
+        return input
+
+    consumed: dict[str, Any] = {}
+    for option in schema:
+        names = {option.name, *option.aliases}
+        if option.param:
+            names.add(option.param)
+        for key in [k for k in options if k in names]:
+            consumed[option.param or option.name] = options.pop(key)
+
+    # GitHub: pass ref to the cloner as a query parameter
+    ref = consumed.get("ref")
+    if ref:
+        separator = "&" if "?" in input else "?"
+        input = f"{input}{separator}ref={ref}"
 
     return input
 
@@ -278,30 +377,29 @@ def att(
             - "service": Try service first, fall back to local
             - "local-only": Only use local processing
             - "service-only": Only use service
-        **options: Passed to processors (override DSL options). Common:
-            - password: PDF password
-            - page_start/page_end: PDF page range (0-based)
-            - render_images: PDF image rendering
-            - sheet: Excel sheet selection
-            - max_rows: Excel row limit
+        **options: The kwargs twin of the DSL — every DSL option can be
+            passed as a keyword argument instead, and explicit kwargs
+            override DSL options on collision:
+            ``att("d.pdf[pages: 1-1]", pages="2-3")`` processes pages 2-3.
 
     DSL Syntax:
         path[key: value, key2: value2, ...]
 
-        Keys (with aliases):
-            pages, page     -> page_start, page_end (1-based in DSL)
-            sheet           -> sheet
-            rows            -> max_rows
-            images, render  -> render_images
-            dpi             -> images_dpi
-            password, pw    -> password
-            branch, ref     -> ref (for GitHub)
+        Values: numbers (300), booleans (true/false), ranges (1-4),
+        bare or quoted strings. Keys belong to processors: each processor
+        declares its option schema, discoverable at runtime via
+        ``att.options(".pdf")`` (or all of them via ``att.options()``).
+        Aliases (``page`` -> ``pages``, ``pw`` -> ``password``,
+        ``branch`` -> ``ref``, ...) come from those schemas too.
 
-        Values:
-            - Numbers: 100, 42
-            - Booleans: true, false, yes, no
-            - Ranges: 1-4 (for pages)
-            - Strings: anything else
+        Options are resolved per file against the matched processor's
+        schema. Unknown keys never fail silently: they are dropped with a
+        warning in that artifact's ``meta.warnings`` (e.g. "Unknown option
+        'sheets' for .xlsx — did you mean 'sheet'?"). When a directory
+        unpacks into mixed file types, an option like ``pages`` applies to
+        the PDFs and produces per-file unknown-option warnings on the
+        others — that is expected. Files with no processor at all get no
+        option warnings.
 
     Returns:
         List of artifact dicts, each with:
@@ -322,8 +420,11 @@ def att(
         >>> artifacts = att("document.pdf[pages: 1-4]")
         >>> artifacts = att("report.pdf[pages: 1-10, images: true, dpi: 300]")
         >>> artifacts = att("data.xlsx[sheet: Revenue, rows: 50]")
-        >>> # Explicit options override DSL
-        >>> artifacts = att("doc.pdf[pages: 1-4]", page_end=2)  # pages 1-2
+        >>> # Explicit kwargs override DSL
+        >>> artifacts = att("doc.pdf[pages: 1-4]", pages="1-2")  # pages 1-2
+        >>> # Discover the options a processor declares
+        >>> [o["name"] for o in att.options(".xlsx")]
+        ['sheet', 'rows']
     """
     # Parse DSL options from input string
     input, dsl_options = parse_dsl(input)
@@ -374,9 +475,9 @@ def att(
         artifact = _process_single(
             fname,
             data,
+            options=merged_options,
             api_key=api_key,
             prefer=prefer,
-            **merged_options,
         )
         out.append(normalize_artifact(artifact, fname))
 

@@ -88,11 +88,24 @@ att("github://org/repo[ref: v1.0.0]")   # Tag
 att("https://arxiv.org/pdf/2301.00001.pdf[pages: 1-5]")
 ```
 
-**Keys:** `pages`, `page`, `sheet`, `rows`, `images`, `dpi`, `password`, `branch`, `ref`
+**Keys** belong to processors: each processor declares its option schema
+(with aliases like `page` → `pages`, `pw` → `password`, `branch` → `ref`),
+and everything above resolves through those schemas. Discover them at
+runtime — `att.options(".pdf")` lists one processor's options,
+`att.options()` lists everything (also: `att --options` on the CLI,
+`GET /options` on the server). Unknown keys never fail silently; they are
+dropped with a warning in that artifact's `meta["warnings"]`:
+
+```python
+att("data.xlsx[sheets: 0]")
+# meta["warnings"] == ["Unknown option 'sheets' for .xlsx — did you mean 'sheet'?"]
+```
+
 **Values:** Numbers, booleans (`true`/`false`), ranges (`1-4`), strings
 
 Every DSL option has a keyword-argument twin, and explicit kwargs win:
-`att("doc.pdf[pages: 1-4]")` ≡ `att("doc.pdf", page_start=0, page_end=4)`.
+`att("doc.pdf[pages: 1-4]")` ≡ `att("doc.pdf", pages="1-4")`, and
+`att("doc.pdf[pages: 1-4]", pages="1-2")` processes pages 1–2.
 
 ## Architecture
 

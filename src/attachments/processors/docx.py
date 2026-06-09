@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from ..options import Option, register_options
 from ..types import ERROR_PARSE, error_artifact, make_artifact, missing_dep_artifact
 from . import register_processor
 
@@ -106,3 +107,17 @@ def docx_processor(data: bytes, **options: Any) -> dict[str, Any]:
 
 
 register_processor(".docx", docx_processor)
+register_options(
+    ".docx",
+    (
+        Option(
+            "images",
+            "bool",
+            aliases=("render",),
+            param="render_images",
+            default=False,
+            help="Extract embedded images.",
+            example="images: true",
+        ),
+    ),
+)

@@ -102,6 +102,15 @@ class TestServerEndpoints:
         assert formats["count"] >= 1
         assert ".txt" in formats["formats"]
 
+    def test_options_endpoint(self, live_server):
+        host, port = live_server
+
+        status, schema = _request_json(host, port, "GET", "/options")
+        assert status == 200
+        assert schema["version"] == 1
+        assert any(o["name"] == "pages" for o in schema["processors"][".pdf"])
+        assert any(o["name"] == "ref" for o in schema["sources"]["github://"])
+
     def test_process_multipart_success(self, live_server):
         host, port = live_server
         body, content_type = _build_multipart_body(
@@ -350,6 +359,12 @@ class TestWsgiApp:
         status, body = self._call(app, "GET", "/formats")
         assert status.startswith("200")
         assert ".txt" in body["formats"]
+
+    def test_options(self, app):
+        status, body = self._call(app, "GET", "/options")
+        assert status.startswith("200")
+        assert body["version"] == 1
+        assert any(o["name"] == "sheet" for o in body["processors"][".xlsx"])
 
     def test_process_text(self, app):
         raw, ct = _build_multipart_body(

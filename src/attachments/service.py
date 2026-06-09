@@ -14,6 +14,7 @@ Example::
 from __future__ import annotations
 
 import base64
+import json
 import logging
 from typing import Any
 
@@ -49,15 +50,19 @@ def process_via_service(
     *,
     filename: str = "file",
     api_key: str | None = None,
-    **options: Any,
+    options: dict[str, Any] | None = None,
 ) -> dict:
     """Process a file via the attachments service.
+
+    Options travel as a plain dict (never ``**kwargs``) so option keys like
+    ``filename`` or ``api_key`` can never collide with this function's own
+    parameters.
 
     Args:
         data: File bytes to process
         filename: Original filename (used for format detection)
         api_key: API key (uses configured key if not provided)
-        **options: Processing options passed to the service
+        options: Processing options passed to the service
 
     Returns:
         Artifact dict with text, images, audio, video, meta
@@ -78,9 +83,18 @@ def process_via_service(
     service_url = get_config("service_url")
     timeout = get_config("timeout", 60)
 
-    # Prepare request
+    # Prepare request. Options travel RAW (the server resolves them against
+    # its processor schemas). Every value is JSON-encoded so its parsed type
+    # survives the multipart form encoding: the server decodes each field
+    # with json.loads, and the DSL guarantee that a quoted value stays a
+    # string ('3' vs 3, 'null' vs null) must hold over the wire exactly as
+    # it does locally (spec/dsl-grammar.md, normalization rule 1).
     files = {"file": (filename, data)}
-    form_data = {k: str(v) for k, v in options.items() if v is not None}
+    form_data = {
+        k: json.dumps(v, default=str)
+        for k, v in (options or {}).items()
+        if v is not None
+    }
 
     log.debug(
         "POST %s/process  filename=%s  size=%d",

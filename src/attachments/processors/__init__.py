@@ -3,6 +3,12 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
+from ..options import (
+    Option,
+    register_options,
+    reset_options,
+    snapshot_option_defaults,
+)
 
 # Global registry for processors (extension -> callable)
 # Keys are lowercase extensions like ".pdf" or sentinel keys like "__text__".
@@ -98,11 +104,13 @@ def register_processor(
     return func
 
 
-def processor(*extensions: str) -> Callable:
+def processor(*extensions: str, options: tuple[Option, ...] | None = None) -> Callable:
     """Decorator to register a processor for multiple extensions.
 
     Args:
         *extensions: One or more file extensions to register
+        options: Optional declared option schema, registered for every
+            extension (the ergonomic twin of ``register_options``)
 
     Returns:
         Decorator function
@@ -114,15 +122,16 @@ def processor(*extensions: str) -> Callable:
         >>> ".pdf" in processors
         True
 
-        >>> # The decorator registers for all given extensions
-        >>> # (shown conceptually - actual registration affects global state)
-        >>> # @processor(".doc", ".docx", ".rtf")
+        >>> # The decorator registers extensions and (optionally) a schema:
+        >>> # @processor(".doc", ".docx", options=(Option("images", "bool"),))
         >>> # def word_processor(data, **opts): ...
     """
 
     def decorator(fn: Callable[[bytes], dict]) -> Callable[[bytes], dict]:
         for ext in extensions:
             processors[_normalize_key(ext)] = fn
+            if options is not None:
+                register_options(ext, options)
         return fn
 
     return decorator
@@ -140,11 +149,13 @@ def reset_processors() -> None:
 
     Useful for testing to ensure test isolation. Restores only the
     built-in processors (text, pdf, xlsx) and removes any custom processors.
+    Also resets the declared option schemas (``attachments.options``).
     """
     global processors
     if _default_processors is not None:
         processors.clear()
         processors.update(_default_processors)
+    reset_options()
 
 
 def get_processors_copy() -> dict[str, Callable[[bytes], dict]]:
@@ -171,8 +182,9 @@ from . import pdf as _pdf  # noqa: E402,F401
 from . import docx as _docx  # noqa: E402,F401
 from . import html as _html  # noqa: E402,F401
 
-# Capture defaults after built-in processors are registered
+# Capture defaults after built-in processors (and their schemas) registered
 _snapshot_defaults()
+snapshot_option_defaults()
 
 
 __all__ = [
@@ -181,4 +193,6 @@ __all__ = [
     "processor",
     "reset_processors",
     "get_processors_copy",
+    "Option",
+    "register_options",
 ]

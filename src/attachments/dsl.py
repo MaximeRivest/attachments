@@ -1,20 +1,26 @@
-"""DSL parser for inline options in input strings.
+"""DSL parser for inline options in input strings (spec/dsl-grammar.md).
 
-Allows specifying processing options directly in the input path:
+The DSL embeds processing options in the input string::
 
-    att("report.pdf[pages: 1-4]")
-    att("data.xlsx[sheet: Sales, rows: 100]")
-    att("https://example.com/doc.pdf[pages: 5-10, images: true]")
-    att("github://org/repo[ref: main]")
+    source[key:value, key2:value2, ...]
 
-Syntax:
-    path[key: value, key2: value2, ...]
+This parser is a pure function ``string -> (source, options)`` and performs
+**no alias resolution and no validation** — it returns the source plus raw
+typed options. Mapping keys to processor parameters, alias handling, and
+"did you mean" warnings are the router's job, driven by each processor's
+declared option schema (see ``attachments.options``).
 
-Value types:
-    - Integers: "100", "42"
-    - Booleans: "true", "false", "yes", "no"
-    - Ranges: "1-4" (for page ranges)
-    - Strings: anything else (quotes optional)
+The normative test vectors live in ``spec/dsl-test-vectors.json``; every
+implementation, in any language, must pass all of them.
+
+Value typing (in order):
+    1. Quoted (``"..."``/``'...'``) -> string, no further typing
+    2. Boolean: ``true``/``false``/``yes``/``no``/``on``/``off``
+       (case-insensitive; ``1`` and ``0`` are integers, not booleans)
+    3. Integer: optional leading ``-``, all digits
+    4. Float: digits containing exactly one ``.``
+    5. Range: ``N-M`` with both sides non-negative integers -> ``(N, M)``
+    6. Otherwise: string, verbatim
 """
 
 from __future__ import annotations
@@ -22,268 +28,229 @@ from __future__ import annotations
 import re
 from typing import Any
 
-# Aliases for common option keys
-# Maps DSL key -> processor kwarg(s)
-KEY_ALIASES: dict[str, str | tuple[str, str]] = {
-    # PDF options
-    "pages": ("page_start", "page_end"),  # "1-4" → page_start=0, page_end=4
-    "page": ("page_start", "page_end"),
-    "password": "password",
-    "pw": "password",
-    "dpi": "images_dpi",
-    "images": "render_images",
-    "render": "render_images",
-    # Excel options
-    "sheet": "sheet",
-    "rows": "max_rows",
-    "max_rows": "max_rows",
-    # GitHub options
-    "branch": "ref",
-    "ref": "ref",
-    "tag": "ref",
-    # Generic
-    "start": "page_start",
-    "end": "page_end",
-}
+_INT_RE = re.compile(r"-?[0-9]+")
+_FLOAT_RE = re.compile(r"-?(?:[0-9]+\.[0-9]*|\.[0-9]+)")
+_RANGE_RE = re.compile(r"([0-9]+)\s*-\s*([0-9]+)")
+_KEY_SEPARATORS_RE = re.compile(r"[\s-]+")
 
 
-def _parse_value(value: str) -> Any:
-    """Parse a value string into appropriate Python type.
+def _normalize_key(key: str) -> str:
+    """Normalize an option key: trim, lowercase, ``-``/spaces -> ``_``.
 
     Examples:
-        >>> _parse_value("42")
+        >>> _normalize_key("Max-Rows")
+        'max_rows'
+        >>> _normalize_key("  max rows ")
+        'max_rows'
+    """
+    return _KEY_SEPARATORS_RE.sub("_", key.strip().lower())
+
+
+def _type_value(raw: str) -> Any:
+    """Type a raw option value per the grammar's typing rules.
+
+    Examples:
+        >>> _type_value("42")
         42
-        >>> _parse_value("true")
+        >>> _type_value("-3")
+        -3
+        >>> _type_value("true")
         True
-        >>> _parse_value("false")
+        >>> _type_value("Off")
         False
-        >>> _parse_value("1-4")
+        >>> _type_value("1")  # integer, NOT a boolean
+        1
+        >>> _type_value("1.5")
+        1.5
+        >>> _type_value("1-4")
         (1, 4)
-        >>> _parse_value('"hello world"')
-        'hello world'
-        >>> _parse_value("Sales")
+        >>> _type_value('"42"')  # quoted stays string
+        '42'
+        >>> _type_value("Sales")
         'Sales'
     """
-    value = value.strip()
-
-    # Remove surrounding quotes if present
-    if (value.startswith('"') and value.endswith('"')) or (
-        value.startswith("'") and value.endswith("'")
-    ):
+    value = raw.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
         return value[1:-1]
-
-    # Boolean
-    if value.lower() in ("true", "yes", "on", "1"):
+    lowered = value.lower()
+    if lowered in ("true", "yes", "on"):
         return True
-    if value.lower() in ("false", "no", "off", "0"):
+    if lowered in ("false", "no", "off"):
         return False
-
-    # Integer
-    if value.isdigit() or (value.startswith("-") and value[1:].isdigit()):
+    if _INT_RE.fullmatch(value):
         return int(value)
-
-    # Float
-    try:
-        if "." in value:
-            return float(value)
-    except ValueError:
-        pass
-
-    # Range (e.g., "1-4", "5-10")
-    range_match = re.match(r"^(\d+)\s*-\s*(\d+)$", value)
+    if _FLOAT_RE.fullmatch(value):
+        return float(value)
+    range_match = _RANGE_RE.fullmatch(value)
     if range_match:
         return (int(range_match.group(1)), int(range_match.group(2)))
-
-    # String (default)
     return value
 
 
-def _expand_option(key: str, value: Any) -> dict[str, Any]:
-    """Expand a DSL key-value pair into processor kwargs.
+def _split_outside_quotes(text: str, separator: str) -> list[str]:
+    """Split *text* on *separator*, ignoring separators inside quotes.
 
     Examples:
-        >>> _expand_option("pages", (1, 4))
-        {'page_start': 0, 'page_end': 4}
-        >>> _expand_option("sheet", "Sales")
-        {'sheet': 'Sales'}
-        >>> _expand_option("rows", 100)
-        {'max_rows': 100}
-        >>> _expand_option("images", True)
-        {'render_images': True}
-        >>> _expand_option("dpi", 300)
-        {'images_dpi': 300}
+        >>> _split_outside_quotes("a: 1, b: 2", ",")
+        ['a: 1', ' b: 2']
+        >>> _split_outside_quotes('name: "hello, world", count: 5', ",")
+        ['name: "hello, world"', ' count: 5']
     """
-    # Normalize key
-    key_lower = key.lower().replace("-", "_").replace(" ", "_")
+    parts: list[str] = []
+    current: list[str] = []
+    quote_char: str | None = None
+    for char in text:
+        if quote_char is None and char in "\"'":
+            quote_char = char
+        elif char == quote_char:
+            quote_char = None
+        elif char == separator and quote_char is None:
+            parts.append("".join(current))
+            current = []
+            continue
+        current.append(char)
+    parts.append("".join(current))
+    return parts
 
-    # Check for alias
-    alias = KEY_ALIASES.get(key_lower, key_lower)
 
-    # Handle range values for page options
-    if isinstance(alias, tuple) and isinstance(value, tuple):
-        # e.g., "pages: 1-4" → page_start=0, page_end=4
-        start_key, end_key = alias
-        start_val, end_val = value
-        # Convert to 0-based indexing (user says "1-4", means pages 1,2,3,4)
-        return {start_key: start_val - 1, end_key: end_val}
-
-    # Handle single value for range keys
-    if isinstance(alias, tuple):
-        # e.g., "page: 3" → just that page
-        start_key, end_key = alias
-        if isinstance(value, int):
-            return {start_key: value - 1, end_key: value}
-        return {}  # Can't handle non-int for page
-
-    # Simple key-value
-    return {alias: value}
+def _find_colon_outside_quotes(segment: str) -> int:
+    """Return the index of the first ``:`` outside quotes, or -1."""
+    quote_char: str | None = None
+    for i, char in enumerate(segment):
+        if quote_char is None and char in "\"'":
+            quote_char = char
+        elif char == quote_char:
+            quote_char = None
+        elif char == ":" and quote_char is None:
+            return i
+    return -1
 
 
 def parse_dsl(input: str) -> tuple[str, dict[str, Any]]:
-    """Parse input string with optional DSL options.
+    """Parse an input string into ``(source, raw_options)``.
 
-    Args:
-        input: Input string, optionally with [key: value, ...] suffix
-
-    Returns:
-        Tuple of (clean_path, options_dict)
+    The options block is the final balanced ``[...]`` group, recognized only
+    when the input ends with ``]`` and every comma-separated segment contains
+    a ``:`` outside quotes. Otherwise the whole group stays in the source.
+    Keys are normalized; values are typed but NOT resolved against any
+    processor schema (that happens in ``attachments.options``).
 
     Examples:
         >>> parse_dsl("file.pdf")
         ('file.pdf', {})
-
         >>> parse_dsl("file.pdf[pages: 1-4]")
-        ('file.pdf', {'page_start': 0, 'page_end': 4})
-
+        ('file.pdf', {'pages': (1, 4)})
         >>> parse_dsl("data.xlsx[sheet: Sales, rows: 100]")
-        ('data.xlsx', {'sheet': 'Sales', 'max_rows': 100})
-
-        >>> parse_dsl("doc.pdf[images: true, dpi: 300]")
-        ('doc.pdf', {'render_images': True, 'images_dpi': 300})
-
+        ('data.xlsx', {'sheet': 'Sales', 'rows': 100})
         >>> parse_dsl("github://org/repo[branch: main]")
-        ('github://org/repo', {'ref': 'main'})
-
-        >>> parse_dsl("doc.pdf[password: secret123]")
-        ('doc.pdf', {'password': 'secret123'})
-
-        >>> parse_dsl("doc.pdf[]")
+        ('github://org/repo', {'branch': 'main'})
+        >>> parse_dsl("doc.pdf[password: a:b]")  # later colons join the value
+        ('doc.pdf', {'password': 'a:b'})
+        >>> parse_dsl("doc.pdf[]")  # empty block stripped
         ('doc.pdf', {})
+        >>> parse_dsl("archive[backup]")  # no colon -> not an options block
+        ('archive[backup]', {})
     """
     input = input.strip()
-
-    # Check for DSL suffix
-    if "[" not in input or not input.endswith("]"):
+    if not input.endswith("]"):
         return input, {}
 
-    # Find the last '[' that starts the options
-    # Be careful with URLs that might contain [ ]
-    bracket_depth = 0
-    options_start = -1
-
+    # Find the '[' matching the final ']' (the final balanced group).
+    depth = 0
+    block_start = -1
     for i in range(len(input) - 1, -1, -1):
         if input[i] == "]":
-            bracket_depth += 1
+            depth += 1
         elif input[i] == "[":
-            bracket_depth -= 1
-            if bracket_depth == 0:
-                options_start = i
+            depth -= 1
+            if depth == 0:
+                block_start = i
                 break
-
-    if options_start == -1:
+    if block_start == -1:
         return input, {}
 
-    # Split path and options
-    path = input[:options_start].strip()
-    options_str = input[options_start + 1 : -1].strip()
+    source = input[:block_start].strip()
+    body = input[block_start + 1 : -1]
 
-    if not options_str:
-        return path, {}
+    # An empty group `[]` is an empty options block and is stripped.
+    if not body.strip():
+        return source, {}
 
-    # Parse options
+    segments = _split_outside_quotes(body, ",")
+    # Trailing comma tolerated: drop one final empty segment.
+    if len(segments) > 1 and not segments[-1].strip():
+        segments.pop()
+
+    # Every segment must contain ':' outside quotes, else the whole group
+    # is part of the source.
+    splits: list[tuple[str, str]] = []
+    for segment in segments:
+        colon = _find_colon_outside_quotes(segment)
+        if colon == -1:
+            return input, {}
+        splits.append((segment[:colon], segment[colon + 1 :]))
+
     options: dict[str, Any] = {}
-
-    # Split by comma, but respect quoted strings
-    parts = _split_options(options_str)
-
-    for part in parts:
-        part = part.strip()
-        if not part:
-            continue
-
-        # Split key: value
-        if ":" in part:
-            key, _, value = part.partition(":")
-            key = key.strip()
-            value = value.strip()
-
-            parsed_value = _parse_value(value)
-            expanded = _expand_option(key, parsed_value)
-            options.update(expanded)
-
-    return path, options
+    for raw_key, raw_value in splits:
+        # Duplicate keys: last occurrence wins (plain dict assignment).
+        options[_normalize_key(raw_key)] = _type_value(raw_value)
+    return source, options
 
 
-def _split_options(options_str: str) -> list[str]:
-    """Split options string by comma, respecting quotes.
+def _format_value(value: Any) -> str:
+    """Render a typed option value back to DSL text.
+
+    Strings that would re-parse as another type (or contain delimiters)
+    are quoted so that ``parse_dsl(format_dsl(...))`` round-trips.
 
     Examples:
-        >>> _split_options("a: 1, b: 2")
-        ['a: 1', ' b: 2']
-        >>> _split_options('name: "hello, world", count: 5')
-        ['name: "hello, world"', ' count: 5']
+        >>> _format_value(True)
+        'true'
+        >>> _format_value((1, 4))
+        '1-4'
+        >>> _format_value(300)
+        '300'
+        >>> _format_value("Sales")
+        'Sales'
+        >>> _format_value("42")
+        '"42"'
+        >>> _format_value("hello, world")
+        '"hello, world"'
     """
-    parts = []
-    current = []
-    in_quotes = False
-    quote_char = None
-
-    for char in options_str:
-        if char in ('"', "'") and not in_quotes:
-            in_quotes = True
-            quote_char = char
-            current.append(char)
-        elif char == quote_char and in_quotes:
-            in_quotes = False
-            quote_char = None
-            current.append(char)
-        elif char == "," and not in_quotes:
-            parts.append("".join(current))
-            current = []
-        else:
-            current.append(char)
-
-    if current:
-        parts.append("".join(current))
-
-    return parts
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, tuple) and len(value) == 2:
+        return f"{value[0]}-{value[1]}"
+    if isinstance(value, int | float):
+        return str(value)
+    text = str(value)
+    needs_quotes = (
+        text != text.strip()
+        or text == ""
+        or any(c in text for c in ",[]'\"")
+        or _type_value(text) != text
+    )
+    if needs_quotes:
+        quote = "'" if '"' in text else '"'
+        return f"{quote}{text}{quote}"
+    return text
 
 
-def format_dsl(path: str, options: dict[str, Any]) -> str:
-    """Format a path and options back into DSL string.
+def format_dsl(source: str, options: dict[str, Any]) -> str:
+    """Format a source and raw options back into a DSL string.
 
-    Args:
-        path: The file path or URL
-        options: Options dictionary
+    The inverse of :func:`parse_dsl` for the raw option model (canonical
+    DSL keys, typed values).
 
-    Returns:
-        DSL-formatted string
-
-    Example:
-        >>> format_dsl("file.pdf", {"page_start": 0, "page_end": 4})
-        'file.pdf[page_start: 0, page_end: 4]'
+    Examples:
+        >>> format_dsl("file.pdf", {})
+        'file.pdf'
+        >>> format_dsl("file.pdf", {"pages": (1, 4), "images": True})
+        'file.pdf[pages: 1-4, images: true]'
+        >>> parse_dsl(format_dsl("f.csv", {"name": "a, b", "id": "42"}))
+        ('f.csv', {'name': 'a, b', 'id': '42'})
     """
     if not options:
-        return path
-
-    parts = []
-    for key, value in options.items():
-        if isinstance(value, bool):
-            value_str = "true" if value else "false"
-        elif isinstance(value, str) and ("," in value or ":" in value):
-            value_str = f'"{value}"'
-        else:
-            value_str = str(value)
-        parts.append(f"{key}: {value_str}")
-
-    return f"{path}[{', '.join(parts)}]"
+        return source
+    parts = [f"{key}: {_format_value(value)}" for key, value in options.items()]
+    return f"{source}[{', '.join(parts)}]"

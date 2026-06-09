@@ -4,6 +4,7 @@ from __future__ import annotations
 import io
 from typing import Any
 
+from ..options import Option, register_options
 from ..types import (
     ERROR_MISSING_DEPENDENCY,
     ERROR_PARSE,
@@ -476,3 +477,45 @@ def process_pdf(
 
 
 register_processor(".pdf", process_pdf)
+register_options(
+    ".pdf",
+    (
+        Option(
+            "pages",
+            "pages",
+            aliases=("page",),
+            help="Pages to include: a 1-based page number or range.",
+            example="pages: 1-4",
+        ),
+        Option(
+            "password",
+            "str",
+            aliases=("pw",),
+            help="Password for encrypted PDFs.",
+            example="password: secret",
+        ),
+        Option(
+            "images",
+            "bool_or_auto",
+            aliases=("render",),
+            param="render_images",
+            default="auto",
+            help="Render pages to PNG: true/false, or auto (only when no text).",
+            example="images: true",
+        ),
+        Option(
+            "dpi",
+            "int",
+            param="images_dpi",
+            default=200,
+            help="Resolution for rendered page images.",
+            example="dpi: 300",
+        ),
+        Option(
+            "max_pages",
+            "int",
+            help="Hard cap on the number of pages parsed/rendered.",
+            example="max_pages: 10",
+        ),
+    ),
+)

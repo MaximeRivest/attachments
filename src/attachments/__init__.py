@@ -17,6 +17,19 @@ With Service Fallback::
     configure(api_key="att_...")
     artifacts = att("document.pdf")  # Uses service if local deps missing
 
+Inline DSL Options::
+
+    att("report.pdf[pages: 1-4, images: true]")
+    att("data.xlsx[sheet: Sales, rows: 100]")
+
+Options belong to processors: each processor declares its option schema,
+and unknown keys warn ("did you mean ...?") instead of failing silently.
+Every DSL option has a keyword-argument twin (kwargs win):
+
+    >>> from attachments import att
+    >>> [o["name"] for o in att.options(".pdf")]
+    ['pages', 'password', 'images', 'dpi', 'max_pages']
+
 Check Available Features:
 
     >>> from attachments import check_deps
@@ -50,6 +63,7 @@ from .config import configure, get_config, reset_config
 from .core import att
 from .deps import check_dep, check_deps, has_local, has_service
 from .dsl import format_dsl, parse_dsl
+from .options import Option, dsl_schema, options, register_options
 from .processors import (
     get_processors_copy,
     processor,
@@ -112,6 +126,11 @@ __all__ = [
     # DSL parsing
     "parse_dsl",
     "format_dsl",
+    # Option schemas (per-processor DSL options)
+    "Option",
+    "options",
+    "register_options",
+    "dsl_schema",
     # Dependency checking
     "check_deps",
     "check_dep",
@@ -129,5 +148,8 @@ __all__ = [
     "source",  # Decorator for multiple prefixes
     "extra_unpack_handlers",
 ]
+
+# Runtime discoverability: att.options(".pdf") -> declared option dicts.
+att.options = options  # type: ignore[attr-defined]
 
 __version__ = "1.0.0a0"

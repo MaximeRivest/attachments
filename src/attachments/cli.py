@@ -10,11 +10,13 @@ Examples:
     att report.pdf[pages:1-4] data.xlsx[sheet:Sales,rows:50]
     att . --json
     att README.md --copy --prompt "Summarize this"
+    att --options          # list every declared DSL option
+    att --options .pdf     # options for one processor
 
 Notes:
     - Unknown `--key value` options are converted to DSL options: `[key:value]`.
     - Control options are: `--copy`, `--clipboard`, `--verbose`, `--json`,
-      `--prefer`, `--api-key`, `--prompt`, `--help`.
+      `--prefer`, `--api-key`, `--prompt`, `--options`, `--help`.
 """
 
 from __future__ import annotations
@@ -42,6 +44,7 @@ _CONTROL_KEYS = {
     "prefer",
     "api-key",
     "prompt",
+    "options",
 }
 
 
@@ -159,6 +162,47 @@ def _print_help() -> None:
     print(__doc__ or "att command")
 
 
+def _format_option_rows(entries: list[dict[str, Any]]) -> list[str]:
+    """Render one schema's option dicts as aligned table rows."""
+    if not entries:
+        return ["  (no options)"]
+    rows: list[str] = []
+    for opt in entries:
+        aliases = ", ".join(opt["aliases"])
+        name = opt["name"] + (f" ({aliases})" if aliases else "")
+        detail = opt["help"]
+        if opt["example"]:
+            detail += f"  e.g. [{opt['example']}]"
+        rows.append(f"  {name:<24} {opt['type']:<12} {detail.strip()}")
+    return rows
+
+
+def _print_options(key: str | None) -> int:
+    """Print the declared DSL option table (generated from dsl_schema())."""
+    from .options import dsl_schema
+
+    schema = dsl_schema()
+    sections = {**schema["processors"], **schema["sources"]}
+
+    if key is not None:
+        if not key.startswith((".", "__")) and "://" not in key:
+            key = "." + key
+        entries = sections.get(key.lower() if "://" not in key else key)
+        if entries is None:
+            print(f"No options registered for {key!r}", file=sys.stderr)
+            return 1
+        sections = {key: entries}
+
+    for section_key, entries in sections.items():
+        if key is None and not entries:
+            continue  # keep the full listing focused on processors w/ options
+        print(section_key)
+        for row in _format_option_rows(entries):
+            print(row)
+        print()
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     args = sys.argv[1:] if argv is None else argv
 
@@ -167,6 +211,12 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     paths, opts = _parse_mixed_args(args)
+
+    if "options" in opts:
+        value = opts["options"]
+        key = value if isinstance(value, str) and value != "true" else None
+        return _print_options(key)
+
     if not paths:
         print("Error: no input paths provided", file=sys.stderr)
         print("Tip: use '.' for current directory", file=sys.stderr)

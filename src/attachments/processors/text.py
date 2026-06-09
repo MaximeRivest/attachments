@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from ..options import register_options
 from ..types import make_artifact
 from ..utils import guess_decode
 from . import register_processor
@@ -23,8 +24,11 @@ def text_processor(data: bytes, **options: Any) -> dict[str, Any]:
     )
 
 
-# Register the text catch-all and common text extensions
+# Register the text catch-all and common text extensions.
+# The text processor takes no options (the encoding is auto-detected), so
+# its schema is empty — any DSL option on a text file warns as unknown.
 register_processor("__text__", text_processor)
+register_options("__text__", ())
 for ext in (
     ".txt",
     ".md",
@@ -49,3 +53,4 @@ for ext in (
     ".tex",
 ):
     register_processor(ext, text_processor)
+    register_options(ext, ())

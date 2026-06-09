@@ -46,6 +46,44 @@ def test_main_no_args_prints_help(capsys):
     assert "attachments CLI" in out
 
 
+def test_main_options_lists_all(capsys):
+    code = cli.main(["--options"])
+    out = capsys.readouterr().out
+
+    assert code == 0
+    assert ".pdf" in out
+    assert ".xlsx" in out
+    assert "github://" in out
+    assert "pages (page)" in out
+    assert "ref (branch, tag)" in out
+
+
+def test_main_options_single_extension(capsys):
+    code = cli.main(["--options", ".xlsx"])
+    out = capsys.readouterr().out
+
+    assert code == 0
+    assert "sheet" in out
+    assert "rows (max_rows)" in out
+    assert ".pdf" not in out
+
+
+def test_main_options_extension_without_dot(capsys):
+    code = cli.main(["--options", "pdf"])
+    out = capsys.readouterr().out
+
+    assert code == 0
+    assert "pages (page)" in out
+
+
+def test_main_options_unknown_extension(capsys):
+    code = cli.main(["--options", ".nope"])
+    err = capsys.readouterr().err
+
+    assert code == 1
+    assert "No options registered" in err
+
+
 def test_main_process_text_file(tmp_path: Path, capsys):
     p = tmp_path / "hello.txt"
     p.write_text("Hello CLI!\n", encoding="utf-8")
