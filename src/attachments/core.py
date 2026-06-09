@@ -110,8 +110,9 @@ def _is_empty_result(artifact: dict) -> bool:
         True
         >>> _is_empty_result({"text": "hello", "images": [], "audio": [], "video": []})
         False
-        >>> _is_empty_result({"text": "", "images": [{"data": "..."}],
-        ...     "audio": [], "video": []})
+        >>> _is_empty_result(
+        ...     {"text": "", "images": [{"data": "..."}], "audio": [], "video": []}
+        ... )
         False
         >>> _is_empty_result({"text": "   ", "images": []})  # Whitespace only
         True
@@ -198,14 +199,10 @@ def _process_single(
                 # Check if local succeeded or failed due to missing deps
                 if not _has_meaningful_error(result) or not key:
                     return result
-                log.info(
-                    "local dep error for %s, falling back to service", filename
-                )
+                log.info("local dep error for %s, falling back to service", filename)
             except Exception as e:
                 if not key:
-                    return _error_artifact(
-                        filename, f"local processing failed: {e}"
-                    )
+                    return _error_artifact(filename, f"local processing failed: {e}")
                 log.info(
                     "local exception for %s, falling back to service: %s",
                     filename,
@@ -218,9 +215,7 @@ def _process_single(
                 return _process_via_service(filename, data, key, **options)
             except Exception as e:
                 log.error("service processing failed for %s: %s", filename, e)
-                return _error_artifact(
-                    filename, f"service processing failed: {e}"
-                )
+                return _error_artifact(filename, f"service processing failed: {e}")
 
         # No processor and no service
         if proc is None:

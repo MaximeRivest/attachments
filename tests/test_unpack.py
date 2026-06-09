@@ -28,8 +28,8 @@ NOTES:
 
 from __future__ import annotations
 
-import tarfile
 import io
+import tarfile
 from pathlib import Path
 
 import pytest
@@ -110,7 +110,9 @@ class TestSanitizeMemberName:
         assert _sanitize_member_name("./current/./file.txt") == "current/file.txt"
 
     def test_converts_backslashes(self):
-        assert _sanitize_member_name("windows\\path\\file.txt") == "windows/path/file.txt"
+        assert (
+            _sanitize_member_name("windows\\path\\file.txt") == "windows/path/file.txt"
+        )
 
     def test_complex_traversal_attack(self):
         result = _sanitize_member_name("foo/../../../etc/passwd")
@@ -147,12 +149,15 @@ class TestIsGithubRepoRootUrl:
         assert _is_github_repo_root_url("https://github.com/owner/repo.git") is True
 
     def test_repo_with_query_params(self):
-        assert _is_github_repo_root_url("https://github.com/owner/repo?ref=main") is True
+        assert (
+            _is_github_repo_root_url("https://github.com/owner/repo?ref=main") is True
+        )
 
     def test_file_path_not_repo_root(self):
-        assert _is_github_repo_root_url(
-            "https://github.com/owner/repo/blob/main/file.py"
-        ) is False
+        assert (
+            _is_github_repo_root_url("https://github.com/owner/repo/blob/main/file.py")
+            is False
+        )
 
     def test_non_github_url(self):
         assert _is_github_repo_root_url("https://gitlab.com/owner/repo") is False
@@ -347,9 +352,7 @@ class TestSourceDecorator:
 class TestUnpackIntegration:
     """Integration tests for unpack with directories containing archives."""
 
-    def test_directory_with_zip_expansion(
-        self, sample_directory_with_zip: Path
-    ):
+    def test_directory_with_zip_expansion(self, sample_directory_with_zip: Path):
         result = unpack(str(sample_directory_with_zip))
         names = {name for name, _ in result}
 

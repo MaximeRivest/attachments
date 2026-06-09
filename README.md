@@ -2,6 +2,15 @@
 
 > Turn anything into LLM-ready artifacts.
 
+`att("report.pdf")` → text + images you can put straight into a prompt. One
+function, one output shape, any input. Zero required dependencies — install
+format support as you need it, or let a service/server do the processing.
+
+> 🧭 **This repo is the first stable major version (1.0) of the published
+> [`attachments`](https://pypi.org/project/attachments/) package (currently
+> 0.25.x).** Read [VISION.md](VISION.md) for where the project is going and the
+> roadmap, and [DEVELOPMENT.md](DEVELOPMENT.md) to add processors or sources.
+
 ## Quick Start
 
 ```bash
@@ -11,8 +20,10 @@ pip install attachments
 # Add format support as needed
 pip install attachments[pdf]         # PDF support
 pip install attachments[xlsx]        # Excel support
+pip install attachments[docx]        # Word support
+pip install attachments[html]        # HTML support
 pip install attachments[service]     # API fallback mode
-pip install attachments[all-local]   # Everything
+pip install attachments[all-local]   # Everything currently shipped
 ```
 
 ```python
@@ -24,6 +35,7 @@ check_deps()  # {'pdf': True, 'xlsx': True, 'service': False, ...}
 # Process anything
 artifacts = att("document.pdf")
 artifacts = att("data/")                    # Directory
+artifacts = att("archive.zip")              # Archives (recursive)
 artifacts = att("github://owner/repo")      # GitHub repo
 artifacts = att("https://example.com/f.pdf") # URL
 
@@ -36,6 +48,21 @@ artifacts = att("github://org/repo[branch: develop]")
 # With service fallback (when local deps missing)
 configure(api_key="att_...")
 artifacts = att("document.pdf")  # Uses service if pypdf not installed
+```
+
+## The Artifact
+
+Every input becomes a list of artifacts — the universal output shape every
+processor produces and every consumer can rely on:
+
+```python
+{
+    "text": "...",      # What LLMs read
+    "images": [...],    # What multimodal LLMs see
+    "audio": [],        # Reserved
+    "video": [],        # Reserved
+    "flags": {...}      # Metadata: source, kind, error, via, ...
+}
 ```
 
 ## DSL Syntax
@@ -64,43 +91,57 @@ att("https://arxiv.org/pdf/2301.00001.pdf[pages: 1-5]")
 **Keys:** `pages`, `page`, `sheet`, `rows`, `images`, `dpi`, `password`, `branch`, `ref`
 **Values:** Numbers, booleans (`true`/`false`), ranges (`1-4`), strings
 
-## Hybrid Local/Service Architecture
+Every DSL option has a keyword-argument twin, and explicit kwargs win:
+`att("doc.pdf[pages: 1-4]")` ≡ `att("doc.pdf", page_start=0, page_end=4)`.
+
+## Architecture
+
+Two orthogonal registries connected by a universal intermediate representation:
 
 ```
-┌─────────────────────────────────────────────────────┐
-│  att("file.pdf", prefer="local")                    │
-└─────────────────────┬───────────────────────────────┘
-                      │
-         ┌────────────▼────────────┐
-         │ Has local processor?    │
-         │ (pypdf installed?)      │
-         └────────────┬────────────┘
-                ┌─────┴─────┐
-              Yes          No
-                │            │
-         ┌──────▼──────┐    │
-         │ Try local   │    │
-         └──────┬──────┘    │
-                │           │
-         ┌──────▼──────┐    │
-         │ Succeeded?  ├────┤
-         └──────┬──────┘    │
-              Yes          No + has API key
-                │            │
-                │     ┌──────▼──────┐
-                │     │ Try service │
-                │     └──────┬──────┘
-                │            │
-         ┌──────▼────────────▼──────┐
-         │     Return artifact      │
-         └──────────────────────────┘
+┌─────────────────┐         ┌─────────────────┐
+│  WHERE it comes │         │  WHAT it is     │
+│  from           │         │                 │
+│  unpack handlers│         │  processors     │
+│  - local files  │         │  - .pdf         │
+│  - directories  │         │  - .xlsx        │
+│  - zip/tar      │         │  - .docx        │
+│  - http(s)://   │         │  - .html        │
+│  - github://    │         │  - text (20+)   │
+└────────┬────────┘         └────────┬────────┘
+         │                           │
+         └──────────┬────────────────┘
+                    ▼
+              (filename, bytes)
+                    │
+                    ▼
+               artifact
 ```
 
-**Modes:**
-- `prefer="local"` (default): Try local, fall back to service
-- `prefer="service"`: Try service first, fall back to local
-- `prefer="local-only"`: Only local, fail if deps missing
-- `prefer="service-only"`: Only service, requires API key
+Source and format are decoupled: a PDF from GitHub uses the same processor as
+a PDF from disk, and every new source multiplies with every format. Both
+registries are open:
+
+```python
+from attachments import processor, source
+
+@processor(".myf")
+def myformat_processor(data: bytes, **options) -> dict: ...
+
+@source("myproto://")
+def myproto_handler(url: str) -> list[tuple[str, bytes]]: ...
+```
+
+## Local / Service Fallback
+
+```python
+att("file.pdf", prefer="local")
+```
+
+- `prefer="local"` (default): try local processors, fall back to service
+- `prefer="service"`: try service first, fall back to local
+- `prefer="local-only"`: only local, fail if deps missing
+- `prefer="service-only"`: only service, requires API key
 
 ## Self-Hosted Server
 
@@ -123,216 +164,23 @@ configure(service_url="http://server:8000", api_key="team-secret")
 att("document.pdf")  # Processed on server!
 ```
 
-See [examples/self_hosted_server.md](examples/self_hosted_server.md) for:
-- Docker & Docker Compose setup
-- Systemd service configuration
-- CI/CD integration (GitHub Actions)
-- Serverless deployment patterns
-- API reference & troubleshooting
+See [examples/self_hosted_server.md](examples/self_hosted_server.md) for
+Docker, systemd, CI/CD, and API reference.
 
----
+## CLI
 
-# Architecture: The Genius of attachments
-
-## The Core Insight
-
-The architecture answers one question brilliantly:
-
-> **"How do I turn *anything* into something an LLM can consume?"**
-
-```python
-att("file.pdf")           # local file
-att("data/")              # directory
-att("github://org/repo")  # entire repo
-att("https://...")        # URL
-att("s3://bucket/key")    # extensible to anything
+```bash
+att report.pdf                  # Print extracted text
+att "data.xlsx[sheet: Sales]"   # DSL works here too
 ```
 
-**One function. One output format. Any input.**
+## Status & Contributing
 
-## The Genius: Composable Universality
+Shipped today: text (20+ extensions), PDF, XLSX, DOCX, HTML processors; local
+files, directories, zip/tar, HTTP(S), and `github://` sources; service client,
+self-hosted server, and CLI.
 
-### 1. The Artifact as Universal Currency
-
-```python
-{
-    "text": "...",      # What LLMs read
-    "images": [...],    # What multimodal LLMs see
-    "audio": [],        # Future-ready
-    "video": [],        # Future-ready
-    "flags": {...}      # Metadata for routing/debugging
-}
-```
-
-This isn't just a data structure—it's a **protocol**. Every processor speaks the same language. Every consumer expects the same shape. You can:
-
-- Chain processors
-- Merge artifacts from different sources
-- Build middleware that transforms artifacts
-- Route based on flags
-
-### 2. Two Orthogonal Registries
-
-```
-┌─────────────────┐         ┌─────────────────┐
-│  WHERE it comes │         │  WHAT it is     │
-│  from           │         │                 │
-│                 │         │                 │
-│  unpack_handlers│         │  processors     │
-│  - github://    │         │  - .pdf         │
-│  - s3://        │         │  - .xlsx        │
-│  - dropbox://   │         │  - .docx        │
-└────────┬────────┘         └────────┬────────┘
-         │                           │
-         └──────────┬────────────────┘
-                    ▼
-              (filename, bytes)
-                    │
-                    ▼
-               artifact
-```
-
-**Source and format are decoupled.** A PDF from S3 uses the same processor as a PDF from disk. This is the key insight that makes the system scale.
-
-### 3. The "Unpack" Abstraction
-
-The real genius is that `unpack()` flattens **any hierarchical structure** into a list:
-
-```python
-unpack("repo.zip")
-# → [("repo/src/main.py", bytes), ("repo/README.md", bytes), ...]
-
-unpack("github://org/monorepo")
-# → [("src/app/index.ts", bytes), ("src/lib/utils.ts", bytes), ...]
-```
-
-Archives, repos, directories—all become flat lists. The rest of the pipeline doesn't care about hierarchy.
-
----
-
-## How It Becomes Most Powerful
-
-### 1. LLM Context Assembly
-
-```python
-def build_context(sources: list[str]) -> str:
-    """Turn anything into LLM context."""
-    artifacts = []
-    for src in sources:
-        artifacts.extend(att(src))
-
-    # Smart assembly - fit into context window
-    return assemble_for_context(artifacts, max_tokens=100_000)
-
-# Usage
-context = build_context([
-    "github://company/backend",      # Entire codebase
-    "https://docs.api.com/spec.pdf", # API spec
-    "~/notes/requirements.txt",      # Local notes
-])
-```
-
-### 2. RAG Pipeline Integration
-
-```python
-def ingest_to_vectordb(source: str, db: VectorDB):
-    for artifact in att(source):
-        # Text → chunks → embeddings
-        if artifact["text"]:
-            chunks = chunk_text(artifact["text"])
-            db.add(chunks, metadata=artifact["flags"])
-
-        # Images → vision model → descriptions → embeddings
-        for img in artifact["images"]:
-            description = vision_model.describe(img["bytes"])
-            db.add([description], metadata={**artifact["flags"], "image": img["name"]})
-
-# Ingest entire GitHub org
-for repo in github.org_repos("my-company"):
-    ingest_to_vectordb(f"github://my-company/{repo}", db)
-```
-
-### 3. Middleware Pattern
-
-```python
-def add_middleware(processor_fn):
-    """Wrap any processor with cross-cutting concerns."""
-    def wrapped(data: bytes, **opts) -> dict:
-        artifact = processor_fn(data, **opts)
-
-        # Add token count
-        artifact["flags"]["tokens"] = count_tokens(artifact["text"])
-
-        # Add content hash for dedup
-        artifact["flags"]["hash"] = hashlib.sha256(data).hexdigest()
-
-        # Truncate if too large
-        if artifact["flags"]["tokens"] > 50_000:
-            artifact["text"] = truncate_smart(artifact["text"], 50_000)
-            artifact["flags"]["truncated"] = True
-
-        return artifact
-    return wrapped
-
-# Apply to all processors
-for key in processors:
-    processors[key] = add_middleware(processors[key])
-```
-
-### 4. The Ultimate Vision: Universal Knowledge Ingestion
-
-```python
-# Register ALL the sources
-register_unpack_handler("s3://", s3_handler)
-register_unpack_handler("gdrive://", gdrive_handler)
-register_unpack_handler("notion://", notion_handler)
-register_unpack_handler("slack://", slack_handler)
-register_unpack_handler("confluence://", confluence_handler)
-
-# Register ALL the formats
-register_processor(".docx", docx_processor)
-register_processor(".pptx", pptx_processor)
-register_processor(".eml", email_processor)
-register_processor(".mp3", whisper_transcribe)
-
-# Now THIS works:
-knowledge = att("notion://workspace/Engineering")
-knowledge += att("gdrive://shared/Product Specs")
-knowledge += att("github://company/*")  # All repos
-knowledge += att("slack://channel/announcements?since=2024-01-01")
-
-# Feed to LLM
-llm.chat(f"Given this context:\n{format_artifacts(knowledge)}\n\nAnswer: {question}")
-```
-
----
-
-## The Power Formula
-
-```
-Power = (Sources × Formats) → Unified Artifact → Any Consumer
-```
-
-| Sources (unpack) | Formats (processors) | Consumers |
-|------------------|---------------------|-----------|
-| Local files | PDF | LLM prompts |
-| GitHub | Office docs | Vector DBs |
-| S3/GCS | Code | Search indices |
-| HTTP | Images | Summarizers |
-| Notion | Audio/Video | Analytics |
-| Slack | Email | Knowledge graphs |
-| Confluence | Archives | |
-
-**Each new source multiplies with ALL formats. Each new format works with ALL sources.**
-
-That's the genius: **multiplicative extensibility** through two orthogonal registries connected by a universal intermediate representation.
-
----
-
-## Adding New Processors & Sources
-
-See [DEVELOPMENT.md](DEVELOPMENT.md) for:
-- How to build new format processors
-- How to build new source handlers
-- Dependency management checklist
-- Testing patterns
+Everything else (pptx, images/OCR, audio, `s3://`, `gdrive://`, …) is the
+long tail we want help with — each new processor is one pure function
+`(bytes, options) -> artifact`. Start with [VISION.md](VISION.md), then
+[DEVELOPMENT.md](DEVELOPMENT.md) for the step-by-step checklist.

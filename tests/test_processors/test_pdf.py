@@ -32,7 +32,6 @@ import pytest
 from attachments.deps import check_dep
 from attachments.processors import processors
 
-
 # Skip all tests in this module if PDF deps not available
 pytestmark = pytest.mark.skipif(
     not check_dep("pdf-text").available,
@@ -161,5 +160,7 @@ class TestPdfProcessorWithoutDeps:
         result = processor(b"%PDF-1.4 minimal pdf")
 
         assert "error" in result["flags"]
-        assert "requires" in result["flags"]["error"].lower() or \
-               "install" in result["flags"]["error"].lower()
+        assert (
+            "requires" in result["flags"]["error"].lower()
+            or "install" in result["flags"]["error"].lower()
+        )

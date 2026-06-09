@@ -41,15 +41,9 @@ DEPENDENCY_MAP: dict[str, tuple[tuple[str, ...], str]] = {
     "xlsx": (("openpyxl",), "pip install attachments[xlsx]"),
     "xlsx-pandas": (("pandas", "openpyxl"), "pip install attachments[xlsx-pandas]"),
     "docx": (("docx",), "pip install attachments[docx]"),
-    "pptx": (("pptx",), "pip install attachments[pptx]"),
     "html": (("bs4", "lxml"), "pip install attachments[html]"),
-    "image": (("PIL",), "pip install attachments[image]"),
-    "ocr": (("pytesseract", "PIL"), "pip install attachments[ocr]"),
-    "audio": (("whisper",), "pip install attachments[audio]"),
-    # Sources
-    "s3": (("boto3",), "pip install attachments[s3]"),
-    "gcs": (("google.cloud.storage",), "pip install attachments[gcs]"),
-    "gdrive": (("googleapiclient",), "pip install attachments[gdrive]"),
+    # Future processors/sources (pptx, image, ocr, audio, s3, gcs, gdrive, ...)
+    # are added here together with their processor module and pyproject extra.
     # Service
     "service": (("httpx",), "pip install attachments[service]"),
 }

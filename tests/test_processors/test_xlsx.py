@@ -32,7 +32,6 @@ import pytest
 from attachments.deps import check_dep
 from attachments.processors import processors
 
-
 # Skip all tests if no XLSX deps available
 pytestmark = pytest.mark.skipif(
     not check_dep("xlsx").available,

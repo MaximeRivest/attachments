@@ -31,9 +31,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
-from attachments import att, configure
+from attachments import att
 from attachments.core import (
     _apply_source_options,
     _empty_artifact,
@@ -125,7 +123,11 @@ class TestNormalizeArtifact:
         assert result["flags"]["source"] == "test.txt"
 
     def test_preserves_existing_values(self):
-        artifact = {"text": "hello", "images": [{"data": "img"}], "flags": {"custom": True}}
+        artifact = {
+            "text": "hello",
+            "images": [{"data": "img"}],
+            "flags": {"custom": True},
+        }
         result = _normalize_artifact(artifact, "test.txt")
 
         assert result["text"] == "hello"
@@ -217,7 +219,9 @@ class TestAttZip:
 class TestAttDslIntegration:
     """Integration tests for DSL options in att()."""
 
-    def test_explicit_options_override_dsl(self, tmp_path: Path, sample_text_bytes: bytes):
+    def test_explicit_options_override_dsl(
+        self, tmp_path: Path, sample_text_bytes: bytes
+    ):
         file_path = tmp_path / "test.txt"
         file_path.write_bytes(sample_text_bytes)
 
@@ -271,7 +275,9 @@ class TestAttPreferModes:
         assert len(result) == 1
         assert "Hello" in result[0]["text"]
 
-    def test_prefer_service_only_without_key_errors(self, tmp_path: Path, sample_text_bytes: bytes):
+    def test_prefer_service_only_without_key_errors(
+        self, tmp_path: Path, sample_text_bytes: bytes
+    ):
         file_path = tmp_path / "test.txt"
         file_path.write_bytes(sample_text_bytes)
 
@@ -280,7 +286,10 @@ class TestAttPreferModes:
         assert len(result) == 1
         # Should error because no API key
         assert "error" in result[0]["flags"]
-        assert "API key" in result[0]["flags"]["error"] or "api_key" in result[0]["flags"]["error"].lower()
+        assert (
+            "API key" in result[0]["flags"]["error"]
+            or "api_key" in result[0]["flags"]["error"].lower()
+        )
 
 
 class TestAttWithBinaryFiles:

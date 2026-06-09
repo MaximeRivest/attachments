@@ -6,12 +6,14 @@ Install only what you need, or use the service for zero-dep processing.
 Quick Start::
 
     from attachments import att
+
     artifacts = att("document.pdf")
     print(artifacts[0]["text"])
 
 With Service Fallback::
 
     from attachments import att, configure
+
     configure(api_key="att_...")
     artifacts = att("document.pdf")  # Uses service if local deps missing
 
@@ -95,4 +97,4 @@ __all__ = [
     "extra_unpack_handlers",
 ]
 
-__version__ = "0.1.0"
+__version__ = "1.0.0a0"

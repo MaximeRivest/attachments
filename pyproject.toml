@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "attachments"
-version = "0.1.0"
+version = "1.0.0a0"  # successor to the published `attachments` 0.25.x (see VISION.md)
 description = "Turn anything into LLM-ready artifacts. Universal file and source processing."
 readme = "README.md"
 requires-python = ">=3.12"
@@ -31,34 +31,9 @@ xlsx-pandas = [
 docx = [
     "python-docx>=1.0",
 ]
-pptx = [
-    "python-pptx>=0.6",
-]
 html = [
     "beautifulsoup4>=4.12",
     "lxml>=5.0",
-]
-image = [
-    "pillow>=10.0",
-]
-ocr = [
-    "pytesseract>=0.3",
-    "pillow>=10.0",
-]
-audio = [
-    "openai-whisper>=20231117",
-]
-
-# === Individual Sources ===
-s3 = [
-    "boto3>=1.34",
-]
-gcs = [
-    "google-cloud-storage>=2.0",
-]
-gdrive = [
-    "google-api-python-client>=2.0",
-    "google-auth-oauthlib>=1.0",
 ]
 
 # === Service Mode (minimal - just HTTP client) ===
@@ -67,33 +42,19 @@ service = [
 ]
 
 # === Convenience Bundles ===
+# Only formats with shipped processors belong here. New processors (pptx,
+# images, audio, s3://, gdrive://, ...) are added as they land - see VISION.md.
 office = [
-    "attachments[xlsx,docx,pptx]",
-]
-cloud = [
-    "attachments[s3,gcs,gdrive]",
-]
-all-processors = [
-    "attachments[pdf,pdf-fallback,xlsx-pandas,docx,pptx,html,image]",
-]
-all-sources = [
-    "attachments[cloud]",
+    "attachments[xlsx,docx]",
 ]
 all-local = [
-    "attachments[all-processors,all-sources]",
+    "attachments[pdf,pdf-fallback,xlsx-pandas,docx,html]",
 ]
 
 # === Self-Hosted Server ===
 # Install this on your server machine to serve all formats to clients
 server = [
     "attachments[all-local]",
-]
-
-# === Documentation ===
-docs = [
-    "quartodoc>=0.3",
-    "jupyter",
-    "ipykernel",
 ]
 
 [dependency-groups]

@@ -67,8 +67,16 @@ def register_processor(
         >>> # Using a custom registry to avoid global state
         >>> my_registry = {}
         >>> def my_proc(data: bytes, **opts) -> dict:
-        ...     return {"text": data.decode(), "images": [], "audio": [], "video": [], "flags": {}}
-        >>> register_processor(".custom", my_proc, registry=my_registry)  # doctest: +ELLIPSIS
+        ...     return {
+        ...         "text": data.decode(),
+        ...         "images": [],
+        ...         "audio": [],
+        ...         "video": [],
+        ...         "flags": {},
+        ...     }
+        >>> register_processor(
+        ...     ".custom", my_proc, registry=my_registry
+        ... )  # doctest: +ELLIPSIS
         <function my_proc at ...>
         >>> ".custom" in my_registry
         True
@@ -76,7 +84,13 @@ def register_processor(
         >>> # As decorator
         >>> @register_processor(".decorated", registry=my_registry)
         ... def decorated_proc(data: bytes, **opts) -> dict:
-        ...     return {"text": "decorated", "images": [], "audio": [], "video": [], "flags": {}}
+        ...     return {
+        ...         "text": "decorated",
+        ...         "images": [],
+        ...         "audio": [],
+        ...         "video": [],
+        ...         "flags": {},
+        ...     }
         >>> ".decorated" in my_registry
         True
     """

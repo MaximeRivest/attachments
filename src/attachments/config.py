@@ -8,6 +8,7 @@ Configuration can be set via:
 Example::
 
     import attachments
+
     attachments.configure(api_key="att_...", prefer="local")
     attachments.att("file.pdf")  # Uses local if deps available, else service
 """

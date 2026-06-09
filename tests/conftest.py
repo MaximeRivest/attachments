@@ -36,7 +36,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    pass
 
 
 # =============================================================================
@@ -167,9 +167,7 @@ def sample_directory(tmp_path: Path, sample_text_bytes: bytes) -> Path:
 
 
 @pytest.fixture
-def sample_directory_with_zip(
-    sample_directory: Path, sample_zip_bytes: bytes
-) -> Path:
+def sample_directory_with_zip(sample_directory: Path, sample_zip_bytes: bytes) -> Path:
     """A directory containing a ZIP file that should be expanded."""
     (sample_directory / "archive.zip").write_bytes(sample_zip_bytes)
     return sample_directory
@@ -230,7 +228,6 @@ def sample_pdf_bytes() -> bytes:
     """
     pytest.importorskip("pypdf")
     from pypdf import PdfWriter
-    from pypdf.generic import NameObject, TextStringObject
 
     writer = PdfWriter()
 
@@ -311,7 +308,13 @@ def mock_httpx(monkeypatch):
 
     class MockClient:
         def __init__(self):
-            self.response_data = {"text": "", "images": [], "audio": [], "video": [], "flags": {}}
+            self.response_data = {
+                "text": "",
+                "images": [],
+                "audio": [],
+                "video": [],
+                "flags": {},
+            }
             self.status_code = 200
             self.last_request = None
 

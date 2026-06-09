@@ -55,11 +55,10 @@ def docx_with_table():
 @pytest.fixture
 def docx_with_image():
     """A .docx containing a tiny embedded PNG image."""
-    PIL = pytest.importorskip("PIL")
-    from PIL import Image as PILImage
-
+    pytest.importorskip("PIL")
     from docx import Document
     from docx.shared import Inches
+    from PIL import Image as PILImage
 
     # Create a proper 4x4 red PNG via Pillow
     img = PILImage.new("RGB", (4, 4), color="red")

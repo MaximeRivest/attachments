@@ -16,9 +16,7 @@ from . import register_processor
 log = logging.getLogger("attachments.processors.html")
 
 # Tags whose content is never useful as "text"
-_STRIP_TAGS = frozenset(
-    ["script", "style", "noscript", "svg", "math", "template"]
-)
+_STRIP_TAGS = frozenset(["script", "style", "noscript", "svg", "math", "template"])
 
 
 def _collapse_whitespace(text: str) -> str:
@@ -115,9 +113,7 @@ def html_processor(data: bytes, **options: Any) -> dict[str, Any]:
     import base64
 
     images: list[dict[str, Any]] = []
-    extract_images = bool(
-        options.get("images") or options.get("render_images")
-    )
+    extract_images = bool(options.get("images") or options.get("render_images"))
     if extract_images:
         for i, img_tag in enumerate(soup.find_all("img")):
             src = img_tag.get("src", "")

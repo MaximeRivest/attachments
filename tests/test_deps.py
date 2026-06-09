@@ -110,7 +110,7 @@ class TestCheckDeps:
 
     def test_contains_expected_features(self):
         result = check_deps()
-        expected = ["pdf", "xlsx", "docx", "service", "s3"]
+        expected = ["pdf", "xlsx", "docx", "service", "html"]
         for feature in expected:
             assert feature in result, f"Missing {feature}"
 
@@ -132,20 +132,24 @@ class TestRequire:
         # Clear cache and mock to simulate missing dep
         clear_cache()
 
-        # We can't easily mock find_spec, so we test with a feature
-        # that's definitely not installed in most envs
-        # Skip this test if audio IS installed (unlikely)
-        status = check_dep("audio")
-        if not status.available:
-            with pytest.raises(ImportError, match="Missing dependencies"):
-                require("audio")
+        # Use a fake feature backed by a module that cannot exist
+        monkeypatch.setitem(
+            DEPENDENCY_MAP,
+            "fake-feature",
+            (("definitely_not_a_real_module_xyz",), "pip install attachments[fake]"),
+        )
+        with pytest.raises(ImportError, match="Missing dependencies"):
+            require("fake-feature")
 
     def test_import_error_includes_install_hint(self, monkeypatch):
         """ImportError message includes install instructions."""
-        status = check_dep("audio")
-        if not status.available:
-            with pytest.raises(ImportError, match="pip install"):
-                require("audio")
+        monkeypatch.setitem(
+            DEPENDENCY_MAP,
+            "fake-feature",
+            (("definitely_not_a_real_module_xyz",), "pip install attachments[fake]"),
+        )
+        with pytest.raises(ImportError, match="pip install"):
+            require("fake-feature")
 
 
 class TestHasService:
@@ -246,14 +250,14 @@ class TestDependencyMapCompleteness:
     """Tests to ensure DEPENDENCY_MAP is well-formed."""
 
     def test_all_entries_have_modules(self):
-        for feature, (modules, hint) in DEPENDENCY_MAP.items():
+        for feature, (modules, _hint) in DEPENDENCY_MAP.items():
             assert len(modules) > 0, f"{feature} has no modules"
 
     def test_all_entries_have_hints(self):
-        for feature, (modules, hint) in DEPENDENCY_MAP.items():
+        for feature, (_modules, hint) in DEPENDENCY_MAP.items():
             assert "pip install" in hint, f"{feature} missing pip hint"
 
     def test_no_empty_module_names(self):
-        for feature, (modules, hint) in DEPENDENCY_MAP.items():
+        for feature, (modules, _hint) in DEPENDENCY_MAP.items():
             for module in modules:
                 assert module.strip(), f"{feature} has empty module"

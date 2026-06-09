@@ -6,6 +6,7 @@ attachments can process files via a remote service.
 Example::
 
     from attachments import configure, att
+
     configure(api_key="att_...")
     att("file.pdf")  # Processed remotely if local deps missing
 """

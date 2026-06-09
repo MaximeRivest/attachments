@@ -96,7 +96,7 @@ class TestTextProcessorEncodings:
         assert result["flags"]["encoding"] in ("utf-8", "utf-8-sig")
 
     def test_utf8_unicode_chars(self):
-        data = "Hello 世界 🌍".encode("utf-8")
+        data = "Hello 世界 🌍".encode()
         result = text_processor(data)
 
         assert "世界" in result["text"]

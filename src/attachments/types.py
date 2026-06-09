@@ -11,6 +11,7 @@ Example::
 
     from attachments.types import Artifact
 
+
     def my_processor(data: bytes, **opts) -> Artifact:
         return {
             "text": data.decode(),

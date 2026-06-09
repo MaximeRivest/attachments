@@ -396,9 +396,9 @@ def create_app():
 
                 for img in artifact["images"]:
                     if "bytes" in img and isinstance(img["bytes"], bytes):
-                        img["bytes_b64"] = b64mod.b64encode(
-                            img["bytes"]
-                        ).decode("ascii")
+                        img["bytes_b64"] = b64mod.b64encode(img["bytes"]).decode(
+                            "ascii"
+                        )
                         del img["bytes"]
 
             return _json_response(artifact)

@@ -66,9 +66,8 @@ pip install attachments              # Core only (text files work)
 pip install attachments[pdf]         # Add PDF support
 pip install attachments[xlsx]        # Add Excel support
 pip install attachments[service]     # Add service mode (httpx)
-pip install attachments[office]      # xlsx + docx + pptx
-pip install attachments[cloud]       # s3 + gcs + gdrive
-pip install attachments[all-local]   # Everything local
+pip install attachments[office]      # xlsx + docx
+pip install attachments[all-local]   # Everything currently shipped
 ```
 
 ---
@@ -231,8 +230,8 @@ myformat = [
 ]
 
 # Update bundles if appropriate
-all-processors = [
-    "attachments[pdf,pdf-fallback,xlsx-pandas,docx,pptx,html,image,myformat]",
+all-local = [
+    "attachments[pdf,pdf-fallback,xlsx-pandas,docx,html,myformat]",
 ]
 ```
 
@@ -537,13 +536,19 @@ src/attachments/
 ├── config.py                # Global configuration
 ├── deps.py                  # Dependency detection
 ├── service.py               # Remote API client
+├── server.py                # Self-hosted server
+├── cli.py                   # `att` / `attachments` CLI
+├── dsl.py                   # DSL parsing ("file.pdf[pages: 1-4]")
+├── types.py                 # Artifact / ImageItem TypedDicts
 ├── utils.py                 # Encoding detection, helpers
-├── unpack.py                # Input resolution (local, http, github)
+├── unpack.py                # Input resolution (local, dirs, archives, http, github)
 └── processors/
-    ├── __init__.py          # Processor registry
+    ├── __init__.py          # Processor registry & @processor decorator
     ├── text.py              # Text files (no deps)
     ├── pdf.py               # PDF (pypdf, pymupdf)
-    └── xlsx.py              # Excel (openpyxl, pandas)
+    ├── xlsx.py              # Excel (openpyxl, pandas)
+    ├── docx.py              # Word (python-docx)
+    └── html.py              # HTML (beautifulsoup4, lxml)
 ```
 
 ---
@@ -594,10 +599,9 @@ One team member can set up a server with all dependencies, and everyone else con
 │   api_key="..."          │          │ │ • pypdf, pymupdf (PDF)     │   │
 │ )                        │          │ │ • openpyxl, pandas (Excel) │   │
 │                          │          │ │ • python-docx (Word)       │   │
-│ att("document.pdf")      │  <────   │ │ • python-pptx (PowerPoint) │   │
-│ # Returns artifact!      │ artifact │ │ • whisper (Audio)          │   │
-│                          │          │ │ • tesseract (OCR)          │   │
-└──────────────────────────┘          │ │ • ... everything else      │   │
+│ att("document.pdf")      │  <────   │ │ • bs4, lxml (HTML)         │   │
+│ # Returns artifact!      │ artifact │ │ • ... everything shipped   │   │
+└──────────────────────────┘          │ │                            │   │
                                       │ └────────────────────────────┘   │
                                       └──────────────────────────────────┘
 ```
@@ -655,7 +659,6 @@ configure(
 # Everything works - processed on server!
 artifacts = att("document.pdf")
 artifacts = att("spreadsheet.xlsx")
-artifacts = att("presentation.pptx")
 ```
 
 ### Environment Variables

@@ -62,9 +62,9 @@ _TINY_PNG = base64.b64encode(
 ).decode()
 
 HTML_WITH_DATA_IMG = (
-    b'<html><body><p>See image:</p>'
+    b"<html><body><p>See image:</p>"
     b'<img src="data:image/png;base64,' + _TINY_PNG.encode() + b'"/>'
-    b'</body></html>'
+    b"</body></html>"
 )
 
 
@@ -134,9 +134,7 @@ class TestHtmlProcessor:
         assert result["images"] == []
 
     def test_data_uri_image_extraction(self):
-        result = processors[".html"](
-            HTML_WITH_DATA_IMG, images=True
-        )
+        result = processors[".html"](HTML_WITH_DATA_IMG, images=True)
         assert len(result["images"]) == 1
         img = result["images"][0]
         assert img["mimetype"] == "image/png"
