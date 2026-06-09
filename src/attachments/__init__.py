@@ -57,7 +57,25 @@ from .processors import (
     register_processor,
     reset_processors,
 )
-from .types import Artifact, ImageItem, make_artifact
+from .types import (
+    ERROR_INVALID_OPTION,
+    ERROR_MISSING_DEPENDENCY,
+    ERROR_PARSE,
+    ERROR_PASSWORD_REQUIRED,
+    ERROR_PROCESSING,
+    ERROR_SERVICE,
+    ERROR_UNPACK,
+    Artifact,
+    ErrorInfo,
+    ImageItem,
+    Meta,
+    Segment,
+    error_artifact,
+    is_missing_dependency,
+    make_artifact,
+    missing_dep_artifact,
+    normalize_artifact,
+)
 from .unpack import (
     extra_unpack_handlers,
     register_unpack_handler,
@@ -68,10 +86,25 @@ from .unpack import (
 __all__ = [
     # Main entry point
     "att",
-    # Types
+    # Types & artifact helpers
     "Artifact",
     "ImageItem",
+    "Meta",
+    "Segment",
+    "ErrorInfo",
     "make_artifact",
+    "error_artifact",
+    "missing_dep_artifact",
+    "is_missing_dependency",
+    "normalize_artifact",
+    # Error codes
+    "ERROR_MISSING_DEPENDENCY",
+    "ERROR_PASSWORD_REQUIRED",
+    "ERROR_PARSE",
+    "ERROR_UNPACK",
+    "ERROR_SERVICE",
+    "ERROR_INVALID_OPTION",
+    "ERROR_PROCESSING",
     # Configuration
     "configure",
     "get_config",

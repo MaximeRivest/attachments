@@ -73,7 +73,7 @@ class TestProcessViaService:
                 "images": [{"name": "p1.png", "bytes_b64": img}],
                 "audio": [],
                 "video": [],
-                "flags": {},
+                "meta": {},
             }
         )
 

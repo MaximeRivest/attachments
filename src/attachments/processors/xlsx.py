@@ -3,7 +3,21 @@ from __future__ import annotations
 from io import BytesIO
 from typing import Any
 
+from ..types import ERROR_PARSE, error_artifact, make_artifact, missing_dep_artifact
 from . import register_processor
+
+
+def _sheet_segments(text: str, sheet_name: str) -> list[dict[str, Any]]:
+    """Build meta.segments for the rendered sheet (IR contract: xlsx sheets).
+
+    Both backends render a single chosen sheet, so the segmentation is one
+    sheet segment spanning the whole rendered text.
+
+    Examples:
+        >>> _sheet_segments("a,b\\n1,2", "Sales")
+        [{'kind': 'sheet', 'label': 'Sales', 'start': 0, 'end': 7}]
+    """
+    return [{"kind": "sheet", "label": sheet_name, "start": 0, "end": len(text)}]
 
 
 def _csv_escape(value: Any) -> str:
@@ -37,15 +51,14 @@ def _xlsx_with_pandas(
     # Render as CSV text for broad compatibility
     head = df.head(max_rows)
     text = head.to_csv(index=False)
-    flags = {
-        "kind": "table",
+    extra = {
         "rows": int(df.shape[0]),
         "cols": int(df.shape[1]),
         "sheets": sheet_names,
         "sheet_used": chosen,
         "engine": "pandas",
     }
-    return text, flags
+    return text, extra
 
 
 def _xlsx_with_openpyxl(
@@ -70,54 +83,70 @@ def _xlsx_with_openpyxl(
             break
         rows.append([_csv_escape(v) for v in row])
     text = "\n".join([",".join(r) for r in rows])
-    flags = {
-        "kind": "table",
+    extra = {
         "rows": ws.max_row,
         "cols": ws.max_column,
         "sheets": names,
         "sheet_used": chosen,
         "engine": "openpyxl",
     }
-    return text, flags
+    return text, extra
 
 
 def xlsx_processor(data: bytes, **options: Any) -> dict[str, Any]:
     sheet = options.get("sheet")
     max_rows = int(options.get("max_rows", 200))
+    source = options.get("filename") or "workbook.xlsx"
 
     pandas_exc = None
     openpyxl_exc = None
 
     # Prefer pandas if available
     try:
-        import pandas as _  # noqa: F401
-
-        text, flags = _xlsx_with_pandas(data, sheet=sheet, max_rows=max_rows)
-        return {"text": text, "images": [], "audio": [], "video": [], "flags": flags}
-    except Exception as e:  # pragma: no cover - optional dep
+        text, extra = _xlsx_with_pandas(data, sheet=sheet, max_rows=max_rows)
+        return make_artifact(
+            text=text,
+            meta={
+                "kind": "table",
+                "extra": extra,
+                "segments": _sheet_segments(text, extra["sheet_used"]),
+            },
+        )
+    except ImportError:  # pragma: no cover - optional dep
+        pass
+    except Exception as e:
         pandas_exc = str(e)
 
     # Fallback to openpyxl-only
     try:
-        import openpyxl as _  # noqa: F401
-
-        text, flags = _xlsx_with_openpyxl(data, sheet=sheet, max_rows=max_rows)
-        return {"text": text, "images": [], "audio": [], "video": [], "flags": flags}
-    except Exception as e:  # pragma: no cover - optional dep
+        text, extra = _xlsx_with_openpyxl(data, sheet=sheet, max_rows=max_rows)
+        return make_artifact(
+            text=text,
+            meta={
+                "kind": "table",
+                "extra": extra,
+                "segments": _sheet_segments(text, extra["sheet_used"]),
+            },
+        )
+    except ImportError:  # pragma: no cover - optional dep
+        pass
+    except Exception as e:
         openpyxl_exc = str(e)
 
     # Neither pandas nor openpyxl available
-    return {
-        "text": "",
-        "images": [],
-        "audio": [],
-        "video": [],
-        "flags": {
-            "error": "xlsx processor requires pandas (with openpyxl) or openpyxl",
-            "pandas_exc": pandas_exc,
-            "openpyxl_exc": openpyxl_exc,
-        },
+    if pandas_exc is None and openpyxl_exc is None:
+        return missing_dep_artifact(source, "xlsx")
+
+    # Backends were importable but the workbook could not be parsed
+    detail = pandas_exc or openpyxl_exc
+    artifact = error_artifact(
+        source, ERROR_PARSE, f"Failed to parse Excel workbook: {detail}"
+    )
+    artifact["meta"]["extra"] = {
+        "pandas_exc": pandas_exc,
+        "openpyxl_exc": openpyxl_exc,
     }
+    return artifact
 
 
 register_processor(".xlsx", xlsx_processor)

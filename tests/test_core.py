@@ -9,8 +9,8 @@ GOOD tests for core:
     - Test the full pipeline: input -> unpack -> process -> output
     - Test DSL option parsing integration
     - Test option precedence (explicit > DSL > defaults)
-    - Test error artifact structure
-    - Test multiple files in a directory
+    - Test error artifact structure (typed meta.error codes)
+    - Test routing decisions (typed missing-dependency fallback)
     - Use real files via fixtures (not mocks for integration tests)
 
 BAD tests:
@@ -31,29 +31,23 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from attachments import att
+from attachments import att, register_processor
 from attachments.core import (
     _apply_source_options,
+    _artifact_from_exception,
     _empty_artifact,
-    _error_artifact,
-    _has_meaningful_error,
-    _is_empty_result,
-    _normalize_artifact,
+    _process_single,
 )
-
-
-class TestErrorArtifact:
-    """Tests for _error_artifact helper."""
-
-    def test_structure(self):
-        result = _error_artifact("test.pdf", "file not found")
-
-        assert result["text"] == ""
-        assert result["images"] == []
-        assert result["audio"] == []
-        assert result["video"] == []
-        assert result["flags"]["source"] == "test.pdf"
-        assert result["flags"]["error"] == "file not found"
+from attachments.types import (
+    ERROR_MISSING_DEPENDENCY,
+    ERROR_PARSE,
+    ERROR_PROCESSING,
+    ERROR_SERVICE,
+    ERROR_UNPACK,
+    error_artifact,
+    make_artifact,
+    missing_dep_artifact,
+)
 
 
 class TestEmptyArtifact:
@@ -63,77 +57,138 @@ class TestEmptyArtifact:
         result = _empty_artifact("test.bin", "no processor")
 
         assert result["text"] == ""
-        assert result["flags"]["note"] == "no processor"
+        assert result["meta"]["note"] == "no processor"
+        assert "error" not in result["meta"]
 
 
-class TestHasMeaningfulError:
-    """Tests for _has_meaningful_error - detects dep-related errors."""
+class TestArtifactFromException:
+    """Tests for converting processor exceptions to typed errors."""
 
-    def test_detects_requires(self):
-        artifact = {"flags": {"error": "This feature requires pypdf"}}
-        assert _has_meaningful_error(artifact) is True
+    def test_import_error_is_missing_dependency(self):
+        result = _artifact_from_exception("f.pdf", ImportError("no pypdf"), "local")
+        assert result["meta"]["error"]["code"] == ERROR_MISSING_DEPENDENCY
 
-    def test_detects_not_installed(self):
-        artifact = {"flags": {"error": "Module not installed"}}
-        assert _has_meaningful_error(artifact) is True
-
-    def test_detects_import_error(self):
-        artifact = {"flags": {"error": "ImportError: No module named 'foo'"}}
-        assert _has_meaningful_error(artifact) is True
-
-    def test_ignores_other_errors(self):
-        artifact = {"flags": {"error": "File not found"}}
-        assert _has_meaningful_error(artifact) is False
-
-    def test_no_error_returns_false(self):
-        artifact = {"flags": {}}
-        assert _has_meaningful_error(artifact) is False
+    def test_other_exception_is_processing_error(self):
+        result = _artifact_from_exception("f.pdf", ValueError("boom"), "local")
+        assert result["meta"]["error"]["code"] == ERROR_PROCESSING
+        assert "boom" in result["meta"]["error"]["message"]
 
 
-class TestIsEmptyResult:
-    """Tests for _is_empty_result - checks for meaningful content."""
+class TestTypedFallbackRouting:
+    """The local->service fallback decision is typed (is_missing_dependency)."""
 
-    def test_empty_text_no_media(self):
-        artifact = {"text": "", "images": [], "audio": [], "video": []}
-        assert _is_empty_result(artifact) is True
+    def test_missing_dep_artifact_triggers_service_fallback(self, monkeypatch):
+        @register_processor(".miss")
+        def _local_missing(data: bytes, **_opts):
+            return missing_dep_artifact("a.miss", "pdf")
 
-    def test_whitespace_only_is_empty(self):
-        artifact = {"text": "   \n\t  ", "images": [], "audio": [], "video": []}
-        assert _is_empty_result(artifact) is True
+        # Patch the deep target so the real via-tagging in
+        # core._process_via_service is exercised (not pre-set by the fake).
+        def _service_ok(data, *, filename=None, api_key=None, **_opts):
+            return make_artifact(text="from service")
 
-    def test_has_text_not_empty(self):
-        artifact = {"text": "content", "images": [], "audio": [], "video": []}
-        assert _is_empty_result(artifact) is False
+        monkeypatch.setattr("attachments.service.process_via_service", _service_ok)
 
-    def test_has_images_not_empty(self):
-        artifact = {"text": "", "images": [{"data": "..."}], "audio": [], "video": []}
-        assert _is_empty_result(artifact) is False
+        out = _process_single("a.miss", b"x", prefer="local", api_key="k")
+        assert out["text"] == "from service"
+        assert out["meta"]["via"] == "service"
 
+    def test_missing_dep_without_key_returns_local_result(self, monkeypatch):
+        @register_processor(".miss")
+        def _local_missing(data: bytes, **_opts):
+            return missing_dep_artifact("a.miss", "pdf")
 
-class TestNormalizeArtifact:
-    """Tests for _normalize_artifact - ensures consistent structure."""
+        def _boom(*_args, **_kwargs):
+            raise AssertionError("service must not be called without a key")
 
-    def test_adds_missing_keys(self):
-        artifact = {"text": "hello"}
-        result = _normalize_artifact(artifact, "test.txt")
+        monkeypatch.setattr("attachments.core._process_via_service", _boom)
 
-        assert result["images"] == []
-        assert result["audio"] == []
-        assert result["video"] == []
-        assert result["flags"]["source"] == "test.txt"
+        out = _process_single("a.miss", b"x", prefer="local", api_key=None)
+        assert out["meta"]["error"]["code"] == ERROR_MISSING_DEPENDENCY
 
-    def test_preserves_existing_values(self):
-        artifact = {
-            "text": "hello",
-            "images": [{"data": "img"}],
-            "flags": {"custom": True},
-        }
-        result = _normalize_artifact(artifact, "test.txt")
+    def test_parse_error_does_not_trigger_fallback(self, monkeypatch):
+        """A parse-error result (no exception raised) is final in local mode."""
+        called = {"service": False}
 
-        assert result["text"] == "hello"
-        assert len(result["images"]) == 1
-        assert result["flags"]["custom"] is True
-        assert result["flags"]["source"] == "test.txt"
+        @register_processor(".bad")
+        def _local_parse_error(data: bytes, **_opts):
+            return error_artifact("a.bad", ERROR_PARSE, "corrupt file")
+
+        def _service_ok(filename, data, key, **_opts):
+            called["service"] = True
+            return make_artifact(text="from service")
+
+        monkeypatch.setattr("attachments.core._process_via_service", _service_ok)
+
+        out = _process_single("a.bad", b"x", prefer="local", api_key="k")
+        assert called["service"] is False
+        assert out["meta"]["error"]["code"] == ERROR_PARSE
+
+    def test_local_success_does_not_call_service(self, monkeypatch):
+        called = {"service": False}
+
+        @register_processor(".foo")
+        def _local_ok(data: bytes, **_opts):
+            return make_artifact(text="local")
+
+        def _service(*_args, **_kwargs):
+            called["service"] = True
+            return make_artifact(text="service")
+
+        monkeypatch.setattr("attachments.core._process_via_service", _service)
+
+        out = _process_single("a.foo", b"x", prefer="local", api_key="k")
+        assert out["text"] == "local"
+        assert called["service"] is False
+
+    def test_att_missing_dep_falls_back_to_service_end_to_end(
+        self, tmp_path: Path, monkeypatch
+    ):
+        """The full att() pipeline routes a typed missing-dep result to the
+        service and tags/normalizes the result (via, source)."""
+
+        @register_processor(".miss")
+        def _local_missing(data: bytes, **_opts):
+            return missing_dep_artifact("a.miss", "pdf")
+
+        def _service_ok(data, *, filename=None, api_key=None, **_opts):
+            return make_artifact(text="from service")
+
+        monkeypatch.setattr("attachments.service.process_via_service", _service_ok)
+
+        file_path = tmp_path / "a.miss"
+        file_path.write_bytes(b"x")
+
+        out = att(str(file_path), api_key="k")
+
+        assert len(out) == 1
+        assert out[0]["text"] == "from service"
+        assert out[0]["meta"]["via"] == "service"
+        assert out[0]["meta"]["source"] == "a.miss"
+
+    def test_att_parse_error_with_key_does_not_call_service(
+        self, tmp_path: Path, monkeypatch
+    ):
+        """Even with an API key, a parse-error result is final through att()."""
+        called = {"service": False}
+
+        @register_processor(".bad")
+        def _local_parse_error(data: bytes, **_opts):
+            return error_artifact("a.bad", ERROR_PARSE, "corrupt file")
+
+        def _service(data, *, filename=None, api_key=None, **_opts):
+            called["service"] = True
+            return make_artifact(text="from service")
+
+        monkeypatch.setattr("attachments.service.process_via_service", _service)
+
+        file_path = tmp_path / "a.bad"
+        file_path.write_bytes(b"x")
+
+        out = att(str(file_path), api_key="k")
+
+        assert called["service"] is False
+        assert out[0]["meta"]["error"]["code"] == ERROR_PARSE
 
 
 class TestApplySourceOptions:
@@ -167,7 +222,22 @@ class TestAttTextFile:
 
         assert len(result) == 1
         assert "Hello" in result[0]["text"]
-        assert result[0]["flags"]["source"] == "hello.txt"
+        assert result[0]["meta"]["source"] == "hello.txt"
+
+    def test_happy_path_meta_optional_keys_absent(
+        self, tmp_path: Path, sample_text_bytes: bytes
+    ):
+        """Optional meta keys are ABSENT on success, never None (IR contract)."""
+        file_path = tmp_path / "hello.txt"
+        file_path.write_bytes(sample_text_bytes)
+
+        meta = att(str(file_path))[0]["meta"]
+
+        assert set(meta) == {"source", "kind", "extra"}
+        for key in ("via", "error", "note", "warnings", "segments"):
+            assert key not in meta
+        assert all(v is not None for v in meta.values())
+        assert all(v is not None for v in meta["extra"].values())
 
     def test_text_file_with_dsl_ignored(self, tmp_path: Path, sample_text_bytes: bytes):
         """DSL options for text files don't affect processing (no page ranges, etc.)."""
@@ -191,7 +261,7 @@ class TestAttDirectory:
         assert len(result) >= 2
 
         # Check we got expected files
-        sources = {a["flags"]["source"] for a in result}
+        sources = {a["meta"]["source"] for a in result}
         assert "readme.txt" in sources
         assert "data.json" in sources
 
@@ -199,7 +269,7 @@ class TestAttDirectory:
         result = att(str(sample_directory))
 
         # Should include files from subdirectories
-        sources = [a["flags"]["source"] for a in result]
+        sources = [a["meta"]["source"] for a in result]
         assert any("nested.md" in s or "subdir" in s for s in sources)
 
 
@@ -233,15 +303,41 @@ class TestAttDslIntegration:
         assert len(result) == 1
 
 
-class TestAttErrors:
-    """Tests for error handling in att()."""
+class TestAttErrorCodes:
+    """Errors come back as artifacts with typed meta.error codes."""
 
-    def test_nonexistent_path_returns_error(self):
+    def test_unpack_failure_uses_unpack_error_code(self):
         result = att("/nonexistent/path/file.pdf")
 
         assert len(result) == 1
-        assert "error" in result[0]["flags"]
-        assert "unpack failed" in result[0]["flags"]["error"]
+        error = result[0]["meta"]["error"]
+        assert error["code"] == ERROR_UNPACK
+        assert "unpack failed" in error["message"]
+
+    def test_service_only_without_key_uses_service_error_code(
+        self, tmp_path: Path, sample_text_bytes: bytes
+    ):
+        file_path = tmp_path / "test.txt"
+        file_path.write_bytes(sample_text_bytes)
+
+        result = att(str(file_path), prefer="service-only")
+
+        assert len(result) == 1
+        error = result[0]["meta"]["error"]
+        assert error["code"] == ERROR_SERVICE
+        assert "API key" in error["message"]
+
+    def test_parse_failure_uses_parse_error_code(self, tmp_path: Path):
+        @register_processor(".bad")
+        def _parse_fails(data: bytes, **_opts):
+            return error_artifact("broken.bad", ERROR_PARSE, "cannot parse")
+
+        file_path = tmp_path / "broken.bad"
+        file_path.write_bytes(b"\x00\x01garbage")
+
+        result = att(str(file_path))
+
+        assert result[0]["meta"]["error"]["code"] == ERROR_PARSE
 
     def test_error_artifact_has_correct_structure(self):
         result = att("/nonexistent/path/file.pdf")
@@ -251,7 +347,7 @@ class TestAttErrors:
         assert artifact["images"] == []
         assert artifact["audio"] == []
         assert artifact["video"] == []
-        assert "flags" in artifact
+        assert "meta" in artifact
 
 
 class TestAttPreferModes:
@@ -275,22 +371,6 @@ class TestAttPreferModes:
         assert len(result) == 1
         assert "Hello" in result[0]["text"]
 
-    def test_prefer_service_only_without_key_errors(
-        self, tmp_path: Path, sample_text_bytes: bytes
-    ):
-        file_path = tmp_path / "test.txt"
-        file_path.write_bytes(sample_text_bytes)
-
-        result = att(str(file_path), prefer="service-only")
-
-        assert len(result) == 1
-        # Should error because no API key
-        assert "error" in result[0]["flags"]
-        assert (
-            "API key" in result[0]["flags"]["error"]
-            or "api_key" in result[0]["flags"]["error"].lower()
-        )
-
 
 class TestAttWithBinaryFiles:
     """Tests for att() with binary/non-text files."""
@@ -302,12 +382,11 @@ class TestAttWithBinaryFiles:
         result = att(str(file_path))
 
         assert len(result) == 1
-        # Either has a note about no processor or empty text
-        flags = result[0]["flags"]
-        has_note = "note" in flags
-        has_error = "error" in flags
-        is_empty = result[0]["text"] == ""
-        assert has_note or has_error or is_empty
+        # No processor for .bin: empty artifact with a note (not an error)
+        meta = result[0]["meta"]
+        assert meta["note"] == "no processor available"
+        assert "error" not in meta
+        assert result[0]["text"] == ""
 
 
 class TestAttArtifactValidator:

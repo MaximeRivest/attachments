@@ -6,18 +6,18 @@ from pathlib import Path
 from attachments import cli
 
 
-def test_parse_mixed_args_paths_and_flags():
-    paths, flags = cli._parse_mixed_args(
+def test_parse_mixed_args_paths_and_options():
+    paths, opts = cli._parse_mixed_args(
         ["--copy", "report.pdf", "--pages", "1-4", "--lang=en", "notes.txt"]
     )
     assert paths == ["report.pdf", "notes.txt"]
-    assert flags["copy"] == "true"
-    assert flags["pages"] == "1-4"
-    assert flags["lang"] == "en"
+    assert opts["copy"] == "true"
+    assert opts["pages"] == "1-4"
+    assert opts["lang"] == "en"
 
 
-def test_build_dsl_from_flags_excludes_control():
-    dsl = cli._build_dsl_from_flags(
+def test_build_dsl_from_options_excludes_control():
+    dsl = cli._build_dsl_from_options(
         {
             "copy": "true",
             "pages": "1-4",
@@ -28,6 +28,15 @@ def test_build_dsl_from_flags_excludes_control():
     assert "[pages:1-4]" in dsl
     assert "[sheet:Sales]" in dsl
     assert "copy" not in dsl
+
+
+def test_main_renders_meta_error_to_stderr(tmp_path: Path, capsys):
+    code = cli.main([str(tmp_path / "missing.txt")])
+    captured = capsys.readouterr()
+
+    assert code == 0
+    assert "[unpack-error]" in captured.err
+    assert "unpack failed" in captured.err
 
 
 def test_main_no_args_prints_help(capsys):

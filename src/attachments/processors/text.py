@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from ..types import make_artifact
 from ..utils import guess_decode
 from . import register_processor
 
@@ -9,18 +10,17 @@ from . import register_processor
 def text_processor(data: bytes, **options: Any) -> dict[str, Any]:
     enc, text = guess_decode(data)
     filename = options.get("filename")
-    return {
-        "text": text,
-        "images": [],
-        "audio": [],
-        "video": [],
-        "flags": {
-            "encoding": enc,
-            "chars": len(text),
+    return make_artifact(
+        text=text,
+        meta={
             "kind": "text",
-            "filename": filename,
+            "extra": {
+                "encoding": enc,
+                "chars": len(text),
+                "filename": filename,
+            },
         },
-    }
+    )
 
 
 # Register the text catch-all and common text extensions

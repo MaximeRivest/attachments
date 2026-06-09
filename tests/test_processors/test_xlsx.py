@@ -53,7 +53,7 @@ class TestXlsxProcessor:
         assert "images" in result
         assert "audio" in result
         assert "video" in result
-        assert "flags" in result
+        assert "meta" in result
 
     def test_extracts_text_as_csv(self, sample_xlsx_bytes: bytes):
         processor = processors[".xlsx"]
@@ -68,22 +68,23 @@ class TestXlsxProcessor:
         assert "Alice" in result["text"]
         assert "30" in result["text"]
 
-    def test_flags_include_metadata(self, sample_xlsx_bytes: bytes):
+    def test_meta_includes_metadata(self, sample_xlsx_bytes: bytes):
         processor = processors[".xlsx"]
         result = processor(sample_xlsx_bytes)
 
-        flags = result["flags"]
-        assert flags["kind"] == "table"
-        assert "rows" in flags
-        assert "cols" in flags
-        assert "sheets" in flags
-        assert "engine" in flags
+        meta = result["meta"]
+        assert meta["kind"] == "table"
+        extra = meta["extra"]
+        assert "rows" in extra
+        assert "cols" in extra
+        assert "sheets" in extra
+        assert "engine" in extra
 
-    def test_flags_engine_is_pandas_or_openpyxl(self, sample_xlsx_bytes: bytes):
+    def test_extra_engine_is_pandas_or_openpyxl(self, sample_xlsx_bytes: bytes):
         processor = processors[".xlsx"]
         result = processor(sample_xlsx_bytes)
 
-        assert result["flags"]["engine"] in ("pandas", "openpyxl")
+        assert result["meta"]["extra"]["engine"] in ("pandas", "openpyxl")
 
 
 class TestXlsxProcessorOptions:
@@ -94,7 +95,7 @@ class TestXlsxProcessorOptions:
         result = processor(sample_xlsx_bytes, sheet="Sales")
 
         # Should use the Sales sheet
-        assert result["flags"]["sheet_used"] == "Sales"
+        assert result["meta"]["extra"]["sheet_used"] == "Sales"
         assert "Product" in result["text"]
         assert "Revenue" in result["text"]
 
@@ -102,14 +103,14 @@ class TestXlsxProcessorOptions:
         processor = processors[".xlsx"]
         result = processor(sample_xlsx_bytes, sheet=1)  # Second sheet (Sales)
 
-        assert result["flags"]["sheet_used"] == "Sales"
+        assert result["meta"]["extra"]["sheet_used"] == "Sales"
 
     def test_sheet_selection_invalid_uses_first(self, sample_xlsx_bytes: bytes):
         processor = processors[".xlsx"]
         result = processor(sample_xlsx_bytes, sheet="NonexistentSheet")
 
         # Should fall back to first sheet
-        assert result["flags"]["sheet_used"] == "Sheet1"
+        assert result["meta"]["extra"]["sheet_used"] == "Sheet1"
 
     def test_max_rows_limits_output(self, sample_xlsx_bytes: bytes):
         processor = processors[".xlsx"]
@@ -130,22 +131,21 @@ class TestXlsxProcessorOptions:
 class TestXlsxProcessorErrors:
     """Tests for XLSX processor error handling."""
 
-    def test_corrupt_xlsx_returns_error(self, corrupt_xlsx_bytes: bytes):
+    def test_corrupt_xlsx_returns_parse_error(self, corrupt_xlsx_bytes: bytes):
+        from attachments.types import ERROR_PARSE
+
         processor = processors[".xlsx"]
         result = processor(corrupt_xlsx_bytes)
 
-        # Should return artifact with error, not raise
-        assert "flags" in result
-        # Either has error or empty text
-        has_error = "error" in result["flags"] or "pandas_exc" in result["flags"]
-        is_empty = result["text"] == ""
-        assert has_error or is_empty
+        # Should return artifact with a typed error, not raise
+        assert result["text"] == ""
+        assert result["meta"]["error"]["code"] == ERROR_PARSE
 
     def test_empty_bytes_handled(self):
         processor = processors[".xlsx"]
         result = processor(b"")
 
-        assert "flags" in result
+        assert "meta" in result
 
 
 class TestXlsxSheetDiscovery:
@@ -155,7 +155,7 @@ class TestXlsxSheetDiscovery:
         processor = processors[".xlsx"]
         result = processor(sample_xlsx_bytes)
 
-        sheets = result["flags"]["sheets"]
+        sheets = result["meta"]["extra"]["sheets"]
         assert isinstance(sheets, list)
         assert "Sheet1" in sheets
         assert "Sales" in sheets
@@ -164,7 +164,7 @@ class TestXlsxSheetDiscovery:
         processor = processors[".xlsx"]
         result = processor(sample_xlsx_bytes)
 
-        assert len(result["flags"]["sheets"]) == 2
+        assert len(result["meta"]["extra"]["sheets"]) == 2
 
 
 @pytest.mark.skipif(
@@ -179,18 +179,31 @@ class TestXlsxWithPandas:
         result = processor(sample_xlsx_bytes)
 
         # Should prefer pandas
-        assert result["flags"]["engine"] == "pandas"
+        assert result["meta"]["extra"]["engine"] == "pandas"
 
 
-class TestXlsxProcessorWithoutDeps:
-    """Tests for XLSX processor behavior when deps are missing."""
+class TestXlsxSegments:
+    """meta.segments carries the rendered sheet (IR contract: xlsx sheets)."""
 
-    @pytest.mark.skipif(
-        check_dep("xlsx").available,
-        reason="Test only relevant when XLSX deps missing",
-    )
-    def test_missing_deps_returns_error(self):
+    def test_sheet_segment_covers_rendered_text(self, sample_xlsx_bytes: bytes):
         processor = processors[".xlsx"]
-        result = processor(b"fake xlsx content")
+        result = processor(sample_xlsx_bytes)
 
-        assert "error" in result["flags"]
+        segments = result["meta"]["segments"]
+        assert len(segments) == 1
+        segment = segments[0]
+        assert segment["kind"] == "sheet"
+        assert segment["label"] == result["meta"]["extra"]["sheet_used"]
+        assert segment["start"] == 0
+        assert segment["end"] == len(result["text"])
+
+    def test_sheet_segment_label_follows_selection(self, sample_xlsx_bytes: bytes):
+        processor = processors[".xlsx"]
+        result = processor(sample_xlsx_bytes, sheet="Sales")
+
+        assert result["meta"]["segments"][0]["label"] == "Sales"
+
+
+# Missing-dependency behavior is covered by the always-runnable tests in
+# tests/test_processors/test_missing_deps.py (this module is skipped
+# entirely when XLSX deps are absent, so such tests could never run here).

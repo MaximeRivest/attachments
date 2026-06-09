@@ -65,15 +65,10 @@ def register_processor(
 
     Examples:
         >>> # Using a custom registry to avoid global state
+        >>> from attachments.types import make_artifact
         >>> my_registry = {}
         >>> def my_proc(data: bytes, **opts) -> dict:
-        ...     return {
-        ...         "text": data.decode(),
-        ...         "images": [],
-        ...         "audio": [],
-        ...         "video": [],
-        ...         "flags": {},
-        ...     }
+        ...     return make_artifact(text=data.decode())
         >>> register_processor(
         ...     ".custom", my_proc, registry=my_registry
         ... )  # doctest: +ELLIPSIS
@@ -84,13 +79,7 @@ def register_processor(
         >>> # As decorator
         >>> @register_processor(".decorated", registry=my_registry)
         ... def decorated_proc(data: bytes, **opts) -> dict:
-        ...     return {
-        ...         "text": "decorated",
-        ...         "images": [],
-        ...         "audio": [],
-        ...         "video": [],
-        ...         "flags": {},
-        ...     }
+        ...     return make_artifact(text="decorated")
         >>> ".decorated" in my_registry
         True
     """

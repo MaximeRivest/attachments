@@ -12,8 +12,8 @@ Examples:
     att README.md --copy --prompt "Summarize this"
 
 Notes:
-    - Unknown `--key value` flags are converted to DSL options: `[key:value]`.
-    - Control flags are: `--copy`, `--clipboard`, `--verbose`, `--json`,
+    - Unknown `--key value` options are converted to DSL options: `[key:value]`.
+    - Control options are: `--copy`, `--clipboard`, `--verbose`, `--json`,
       `--prefer`, `--api-key`, `--prompt`, `--help`.
 """
 
@@ -58,19 +58,19 @@ def _extract_dsl_from_path(path: str) -> tuple[str, str]:
     return path, ""
 
 
-def _add_flag_value(flags: dict[str, str | list[str]], key: str, value: str) -> None:
-    if key in flags:
-        if isinstance(flags[key], list):
-            flags[key].append(value)
+def _add_option_value(opts: dict[str, str | list[str]], key: str, value: str) -> None:
+    if key in opts:
+        if isinstance(opts[key], list):
+            opts[key].append(value)
         else:
-            flags[key] = [flags[key], value]
+            opts[key] = [opts[key], value]
     else:
-        flags[key] = value
+        opts[key] = value
 
 
 def _parse_mixed_args(args: list[str]) -> tuple[list[str], dict[str, str | list[str]]]:
     paths: list[str] = []
-    flags: dict[str, str | list[str]] = {}
+    opts: dict[str, str | list[str]] = {}
 
     i = 0
     while i < len(args):
@@ -80,29 +80,29 @@ def _parse_mixed_args(args: list[str]) -> tuple[list[str], dict[str, str | list[
             key = arg.lstrip("-")
             if "=" in key:
                 key, value = key.split("=", 1)
-                _add_flag_value(flags, key, value)
+                _add_option_value(opts, key, value)
             elif key in {"c", "y", "copy", "clipboard"}:
-                flags["copy"] = "true"
+                opts["copy"] = "true"
             elif key in {"v", "verbose"}:
-                flags["verbose"] = "true"
+                opts["verbose"] = "true"
             elif key in {"json"}:
-                flags["json"] = "true"
+                opts["json"] = "true"
             elif i + 1 < len(args) and not args[i + 1].startswith("-"):
-                _add_flag_value(flags, key, args[i + 1])
+                _add_option_value(opts, key, args[i + 1])
                 i += 1
             else:
-                flags[key] = "true"
+                opts[key] = "true"
         else:
             paths.append(arg)
 
         i += 1
 
-    return paths, flags
+    return paths, opts
 
 
-def _build_dsl_from_flags(flags: dict[str, str | list[str]]) -> str:
+def _build_dsl_from_options(opts: dict[str, str | list[str]]) -> str:
     parts: list[str] = []
-    for key, value in flags.items():
+    for key, value in opts.items():
         if key in _CONTROL_KEYS:
             continue
         if isinstance(value, list):
@@ -131,6 +131,20 @@ def _render_text(artifacts: list[dict[str, Any]]) -> str:
     return "\n\n".join(chunks)
 
 
+def _format_errors(artifacts: list[dict[str, Any]]) -> list[str]:
+    """Render meta.error entries as human-readable lines."""
+    lines: list[str] = []
+    for a in artifacts:
+        meta = a.get("meta", {})
+        error = meta.get("error")
+        if error:
+            source = meta.get("source", "?")
+            code = error.get("code", "error")
+            message = error.get("message", "")
+            lines.append(f"{source}: [{code}] {message}")
+    return lines
+
+
 def _copy_to_clipboard(text: str) -> None:
     try:
         import pyperclip
@@ -152,30 +166,30 @@ def main(argv: list[str] | None = None) -> int:
         _print_help()
         return 0
 
-    paths, flags = _parse_mixed_args(args)
+    paths, opts = _parse_mixed_args(args)
     if not paths:
         print("Error: no input paths provided", file=sys.stderr)
         print("Tip: use '.' for current directory", file=sys.stderr)
         return 1
 
-    verbose = flags.get("verbose", "false") == "true"
-    want_json = flags.get("json", "false") == "true"
-    want_copy = flags.get("copy", "false") == "true"
+    verbose = opts.get("verbose", "false") == "true"
+    want_json = opts.get("json", "false") == "true"
+    want_copy = opts.get("copy", "false") == "true"
 
-    prefer = flags.get("prefer") if isinstance(flags.get("prefer"), str) else None
-    api_key = flags.get("api-key") if isinstance(flags.get("api-key"), str) else None
-    prompt = flags.get("prompt") if isinstance(flags.get("prompt"), str) else ""
+    prefer = opts.get("prefer") if isinstance(opts.get("prefer"), str) else None
+    api_key = opts.get("api-key") if isinstance(opts.get("api-key"), str) else None
+    prompt = opts.get("prompt") if isinstance(opts.get("prompt"), str) else ""
 
     if verbose:
         logging.basicConfig(level=logging.DEBUG)
 
-    dsl_from_flags = _build_dsl_from_flags(flags)
+    dsl_from_opts = _build_dsl_from_options(opts)
 
     expanded_inputs: list[str] = []
     for path in paths:
         resolved = _resolve_path(path)
         clean, embedded_dsl = _extract_dsl_from_path(resolved)
-        expanded_inputs.append(clean + embedded_dsl + dsl_from_flags)
+        expanded_inputs.append(clean + embedded_dsl + dsl_from_opts)
 
     all_artifacts: list[dict[str, Any]] = []
 
@@ -189,6 +203,10 @@ def main(argv: list[str] | None = None) -> int:
     if want_json:
         print(json.dumps(_artifact_to_json_safe(all_artifacts), indent=2))
         return 0
+
+    # Surface typed errors (meta.error.code/message) on stderr
+    for line in _format_errors(all_artifacts):
+        print(f"Error: {line}", file=sys.stderr)
 
     output_text = _render_text(all_artifacts)
 

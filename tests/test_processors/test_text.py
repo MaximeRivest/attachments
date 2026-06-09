@@ -41,13 +41,13 @@ class TestTextProcessor:
         assert "images" in result
         assert "audio" in result
         assert "video" in result
-        assert "flags" in result
+        assert "meta" in result
 
     def test_extracts_utf8_text(self, sample_text_bytes: bytes):
         result = text_processor(sample_text_bytes)
 
         assert "Hello, World!" in result["text"]
-        assert result["flags"]["encoding"] == "utf-8"
+        assert result["meta"]["extra"]["encoding"] == "utf-8"
 
     def test_extracts_latin1_text(self, sample_text_latin1: bytes):
         result = text_processor(sample_text_latin1)
@@ -59,23 +59,23 @@ class TestTextProcessor:
         result = text_processor(b"")
 
         assert result["text"] == ""
-        assert result["flags"]["chars"] == 0
+        assert result["meta"]["extra"]["chars"] == 0
 
-    def test_flags_include_char_count(self, sample_text_bytes: bytes):
+    def test_meta_extra_includes_char_count(self, sample_text_bytes: bytes):
         result = text_processor(sample_text_bytes)
 
-        assert "chars" in result["flags"]
-        assert result["flags"]["chars"] == len(result["text"])
+        assert "chars" in result["meta"]["extra"]
+        assert result["meta"]["extra"]["chars"] == len(result["text"])
 
-    def test_flags_include_kind(self, sample_text_bytes: bytes):
+    def test_meta_includes_kind(self, sample_text_bytes: bytes):
         result = text_processor(sample_text_bytes)
 
-        assert result["flags"]["kind"] == "text"
+        assert result["meta"]["kind"] == "text"
 
     def test_filename_passed_through(self, sample_text_bytes: bytes):
         result = text_processor(sample_text_bytes, filename="test.txt")
 
-        assert result["flags"]["filename"] == "test.txt"
+        assert result["meta"]["extra"]["filename"] == "test.txt"
 
     def test_images_audio_video_empty(self, sample_text_bytes: bytes):
         result = text_processor(sample_text_bytes)
@@ -93,7 +93,7 @@ class TestTextProcessorEncodings:
         result = text_processor(data)
 
         assert "Hello with BOM" in result["text"]
-        assert result["flags"]["encoding"] in ("utf-8", "utf-8-sig")
+        assert result["meta"]["extra"]["encoding"] in ("utf-8", "utf-8-sig")
 
     def test_utf8_unicode_chars(self):
         data = "Hello 世界 🌍".encode()
@@ -171,7 +171,7 @@ class TestTextProcessorEdgeCases:
 
         # Should work, whitespace is valid text
         assert result["text"].strip() == ""
-        assert result["flags"]["chars"] > 0
+        assert result["meta"]["extra"]["chars"] > 0
 
     def test_json_content(self, sample_json_bytes: bytes):
         result = text_processor(sample_json_bytes)

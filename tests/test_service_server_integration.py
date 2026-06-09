@@ -13,6 +13,7 @@ import pytest
 from attachments import register_processor
 from attachments.core import _process_single
 from attachments.server import _make_handler, create_app
+from attachments.types import make_artifact, missing_dep_artifact
 
 
 def _build_multipart_body(
@@ -121,7 +122,8 @@ class TestServerEndpoints:
 
         assert status == 200
         assert "hello from server test" in payload["text"]
-        assert payload["flags"]["filename"] == "note.txt"
+        assert payload["meta"]["source"] == "note.txt"
+        assert payload["meta"]["extra"]["filename"] == "note.txt"
 
     def test_unpack_success(self, live_server, tmp_path: Path):
         host, port = live_server
@@ -249,23 +251,11 @@ class TestCoreFallbackModes:
 
         @register_processor(".foo")
         def _local_ok(data: bytes, **_opts):
-            return {
-                "text": "local",
-                "images": [],
-                "audio": [],
-                "video": [],
-                "flags": {},
-            }
+            return make_artifact(text="local")
 
         def _no_service(*args, **kwargs):
             called["service"] = True
-            return {
-                "text": "service",
-                "images": [],
-                "audio": [],
-                "video": [],
-                "flags": {},
-            }
+            return make_artifact(text="service")
 
         monkeypatch.setattr("attachments.service.process_via_service", _no_service)
 
@@ -273,42 +263,24 @@ class TestCoreFallbackModes:
         assert out["text"] == "local"
         assert called["service"] is False
 
-    def test_local_dep_error_falls_back_to_service(self, monkeypatch):
+    def test_local_missing_dep_falls_back_to_service(self, monkeypatch):
         @register_processor(".miss")
         def _local_missing(data: bytes, **_opts):
-            return {
-                "text": "",
-                "images": [],
-                "audio": [],
-                "video": [],
-                "flags": {"error": "requires missing-lib"},
-            }
+            return missing_dep_artifact("a.miss", "pdf")
 
         def _service_ok(data: bytes, **_opts):
-            return {
-                "text": "from service",
-                "images": [],
-                "audio": [],
-                "video": [],
-                "flags": {},
-            }
+            return make_artifact(text="from service")
 
         monkeypatch.setattr("attachments.service.process_via_service", _service_ok)
 
         out = _process_single("a.miss", b"x", prefer="local", api_key="k")
         assert out["text"] == "from service"
-        assert out["flags"].get("via") == "service"
+        assert out["meta"].get("via") == "service"
 
     def test_service_mode_falls_back_to_local_on_service_failure(self, monkeypatch):
         @register_processor(".bar")
         def _local_ok(data: bytes, **_opts):
-            return {
-                "text": "local fallback",
-                "images": [],
-                "audio": [],
-                "video": [],
-                "flags": {},
-            }
+            return make_artifact(text="local fallback")
 
         def _boom(*_args, **_kwargs):
             raise RuntimeError("service down")
@@ -324,19 +296,13 @@ class TestCoreFallbackModes:
             raise RuntimeError("boom")
 
         def _service_ok(data: bytes, **_opts):
-            return {
-                "text": "saved by service",
-                "images": [],
-                "audio": [],
-                "video": [],
-                "flags": {},
-            }
+            return make_artifact(text="saved by service")
 
         monkeypatch.setattr("attachments.service.process_via_service", _service_ok)
 
         out = _process_single("a.err", b"x", prefer="local", api_key="k")
         assert out["text"] == "saved by service"
-        assert out["flags"]["via"] == "service"
+        assert out["meta"]["via"] == "service"
 
 
 class TestWsgiApp:

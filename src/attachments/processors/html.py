@@ -1,7 +1,7 @@
 """Processor for HTML files (.html, .htm).
 
 Extracts visible text using BeautifulSoup, stripping scripts/styles.
-Falls back to the plain-text processor when bs4 is not installed.
+Returns a typed missing-dependency artifact when bs4 is not installed.
 Requires ``beautifulsoup4`` + ``lxml``: ``pip install attachments[html]``
 """
 
@@ -11,6 +11,7 @@ import logging
 import re
 from typing import Any
 
+from ..types import ERROR_PARSE, error_artifact, make_artifact, missing_dep_artifact
 from . import register_processor
 
 log = logging.getLogger("attachments.processors.html")
@@ -53,19 +54,7 @@ def html_processor(data: bytes, **options: Any) -> dict[str, Any]:
     try:
         from bs4 import BeautifulSoup
     except ImportError:
-        return {
-            "text": "",
-            "images": [],
-            "audio": [],
-            "video": [],
-            "flags": {
-                "error": (
-                    "HTML processing requires beautifulsoup4. "
-                    "Install with: pip install attachments[html]"
-                ),
-                "filename": filename,
-            },
-        }
+        return missing_dep_artifact(filename, "html")
 
     # Pick the best available parser
     try:
@@ -79,16 +68,7 @@ def html_processor(data: bytes, **options: Any) -> dict[str, Any]:
         soup = BeautifulSoup(data, parser)
     except Exception as e:
         log.warning("failed to parse HTML %s: %s", filename, e)
-        return {
-            "text": "",
-            "images": [],
-            "audio": [],
-            "video": [],
-            "flags": {
-                "error": f"Failed to parse HTML: {e}",
-                "filename": filename,
-            },
-        }
+        return error_artifact(filename, ERROR_PARSE, f"Failed to parse HTML: {e}")
 
     title = _extract_title(soup)
 
@@ -132,19 +112,19 @@ def html_processor(data: bytes, **options: Any) -> dict[str, Any]:
                 except Exception as exc:
                     log.debug("skipping data-URI image %d: %s", i, exc)
 
-    return {
-        "text": text,
-        "images": images,
-        "audio": [],
-        "video": [],
-        "flags": {
+    return make_artifact(
+        text=text,
+        images=images,
+        meta={
             "kind": "html",
-            "filename": filename,
-            "title": title,
-            "parser": parser,
-            "chars": len(text),
+            "extra": {
+                "filename": filename,
+                "title": title,
+                "parser": parser,
+                "chars": len(text),
+            },
         },
-    }
+    )
 
 
 # Override the plain-text registration for .html / .htm

@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/MaximeRivest/attachments/spec/artifact-v1.schema.json",
+  "title": "Artifact",
+  "description": "Universal output of every attachments processor, in wire (JSON) form. In-process artifacts carry raw bytes in images[].bytes instead of bytes_b64; encode before validating against this schema. Version: 1.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["text", "images", "audio", "video", "meta"],
+  "properties": {
+    "text": { "type": "string" },
+    "images": { "type": "array", "items": { "$ref": "#/$defs/imageItem" } },
+    "audio": { "type": "array", "items": { "type": "object" } },
+    "video": { "type": "array", "items": { "type": "object" } },
+    "meta": { "$ref": "#/$defs/meta" }
+  },
+  "$defs": {
+    "imageItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "mimetype", "bytes_b64"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "mimetype": { "type": "string", "pattern": "^[a-z]+/[A-Za-z0-9.+-]+$" },
+        "bytes_b64": { "type": "string", "contentEncoding": "base64" },
+        "page": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "errorInfo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "enum": [
+            "missing-dependency",
+            "password-required",
+            "parse-error",
+            "unpack-error",
+            "service-error",
+            "invalid-option",
+            "processing-error"
+          ]
+        },
+        "message": { "type": "string", "minLength": 1 }
+      }
+    },
+    "segment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "label", "start", "end"],
+      "properties": {
+        "kind": { "type": "string", "enum": ["page", "sheet", "slide", "section"] },
+        "label": { "type": "string" },
+        "start": { "type": "integer", "minimum": 0 },
+        "end": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source"],
+      "properties": {
+        "source": { "type": "string" },
+        "kind": { "type": "string" },
+        "via": { "type": "string", "enum": ["local", "service"] },
+        "error": { "$ref": "#/$defs/errorInfo" },
+        "note": { "type": "string" },
+        "warnings": { "type": "array", "items": { "type": "string" } },
+        "segments": { "type": "array", "items": { "$ref": "#/$defs/segment" } },
+        "extra": { "type": "object" }
+      }
+    }
+  }
+}

@@ -61,7 +61,7 @@ processor produces and every consumer can rely on:
     "images": [...],    # What multimodal LLMs see
     "audio": [],        # Reserved
     "video": [],        # Reserved
-    "flags": {...}      # Metadata: source, kind, error, via, ...
+    "meta": {...}       # Typed metadata: source, kind, error{code,message}, via
 }
 ```
 

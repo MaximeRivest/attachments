@@ -43,7 +43,7 @@ def test_att_text_and_xlsx(tmp_path: Path) -> None:
     from attachments import att
 
     artifacts = att(str(tmp_path))
-    by_source = {a["flags"].get("source"): a for a in artifacts}
+    by_source = {a["meta"].get("source"): a for a in artifacts}
 
     # Assert text files processed via text processor
     assert "hello.txt" in by_source
@@ -52,8 +52,8 @@ def test_att_text_and_xlsx(tmp_path: Path) -> None:
     assert "Title" in by_source["notes.md"]["text"]
 
     # Assert xlsx artifact present; depending on optional deps, either
-    # parsed or a helpful error flag.
+    # parsed or a typed error in meta.
     assert "table.xlsx" in by_source
-    xlsx_flags = by_source["table.xlsx"]["flags"]
-    ok = ("engine" in xlsx_flags) or ("error" in xlsx_flags)
-    assert ok, f"unexpected xlsx flags: {xlsx_flags}"
+    xlsx_meta = by_source["table.xlsx"]["meta"]
+    ok = ("engine" in xlsx_meta.get("extra", {})) or ("error" in xlsx_meta)
+    assert ok, f"unexpected xlsx meta: {xlsx_meta}"

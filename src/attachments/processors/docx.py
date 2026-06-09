@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from ..types import ERROR_PARSE, error_artifact, make_artifact, missing_dep_artifact
 from . import register_processor
 
 log = logging.getLogger("attachments.processors.docx")
@@ -36,19 +37,7 @@ def docx_processor(data: bytes, **options: Any) -> dict[str, Any]:
     try:
         from docx import Document
     except ImportError:
-        return {
-            "text": "",
-            "images": [],
-            "audio": [],
-            "video": [],
-            "flags": {
-                "error": (
-                    "Word document processing requires python-docx. "
-                    "Install with: pip install attachments[docx]"
-                ),
-                "filename": filename,
-            },
-        }
+        return missing_dep_artifact(filename, "docx")
 
     import io
 
@@ -56,16 +45,9 @@ def docx_processor(data: bytes, **options: Any) -> dict[str, Any]:
         doc = Document(io.BytesIO(data))
     except Exception as e:
         log.warning("failed to open docx %s: %s", filename, e)
-        return {
-            "text": "",
-            "images": [],
-            "audio": [],
-            "video": [],
-            "flags": {
-                "error": f"Failed to parse Word document: {e}",
-                "filename": filename,
-            },
-        }
+        return error_artifact(
+            filename, ERROR_PARSE, f"Failed to parse Word document: {e}"
+        )
 
     # --- text extraction (paragraphs + tables in document order) ---
     parts: list[str] = []
@@ -108,19 +90,19 @@ def docx_processor(data: bytes, **options: Any) -> dict[str, Any]:
                 except Exception as exc:
                     log.debug("skipping image %d: %s", i, exc)
 
-    return {
-        "text": full_text,
-        "images": images,
-        "audio": [],
-        "video": [],
-        "flags": {
+    return make_artifact(
+        text=full_text,
+        images=images,
+        meta={
             "kind": "document",
-            "filename": filename,
-            "paragraphs": len(doc.paragraphs),
-            "tables": len(doc.tables),
-            "images_extracted": len(images),
+            "extra": {
+                "filename": filename,
+                "paragraphs": len(doc.paragraphs),
+                "tables": len(doc.tables),
+                "images_extracted": len(images),
+            },
         },
-    }
+    )
 
 
 register_processor(".docx", docx_processor)

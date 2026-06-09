@@ -80,30 +80,20 @@ Processors convert file bytes into artifacts. Each processor handles one or more
 
 ```python
 # my_processors.py
-from attachments import processor
+from attachments import make_artifact, missing_dep_artifact, processor
 
 @processor(".docx", ".doc")
 def word_processor(data: bytes, **options) -> dict:
     """Process Word documents."""
+    filename = options.get("filename", "document.docx")
     try:
         from docx import Document
     except ImportError:
-        return {
-            "text": "",
-            "images": [],
-            "audio": [],
-            "video": [],
-            "flags": {"error": "python-docx not installed"}
-        }
+        # Typed missing-dependency signal (drives service fallback)
+        return missing_dep_artifact(filename, "docx")
 
     # ... process document ...
-    return {
-        "text": extracted_text,
-        "images": [],
-        "audio": [],
-        "video": [],
-        "flags": {"kind": "document"}
-    }
+    return make_artifact(text=extracted_text, meta={"kind": "document"})
 ```
 
 That's it! The decorator registers it automatically.
@@ -130,6 +120,12 @@ from __future__ import annotations
 
 from typing import Any
 
+from ..types import (
+    ERROR_PARSE,
+    error_artifact,
+    make_artifact,
+    missing_dep_artifact,
+)
 from . import processor  # Use the decorator
 
 
@@ -142,7 +138,7 @@ def myformat_processor(data: bytes, **options: Any) -> dict[str, Any]:
         **options: Processing options (filename, custom options, etc.)
 
     Returns:
-        Artifact dict with text, images, audio, video, flags
+        Artifact dict with text, images, audio, video, meta
     """
     filename = options.get("filename", "unknown")
 
@@ -150,18 +146,10 @@ def myformat_processor(data: bytes, **options: Any) -> dict[str, Any]:
     try:
         import myformat_lib
     except ImportError:
-        # Return error artifact - service will handle it
-        return {
-            "text": "",
-            "images": [],
-            "audio": [],
-            "video": [],
-            "flags": {
-                "error": "myformat requires myformat-lib. "
-                         "Install with: pip install attachments[myformat]",
-                "filename": filename,
-            },
-        }
+        # Typed missing-dependency artifact: core routing falls back to
+        # the service when an API key is configured. The install hint is
+        # looked up from deps.DEPENDENCY_MAP automatically.
+        return missing_dep_artifact(filename, "myformat")
 
     # Process the file
     try:
@@ -177,33 +165,17 @@ def myformat_processor(data: bytes, **options: Any) -> dict[str, Any]:
             for i, img in enumerate(parsed.images)
         ]
 
-        return {
-            "text": text,
-            "images": images,
-            "audio": [],
-            "video": [],
-            "flags": {
+        return make_artifact(
+            text=text,
+            images=images,
+            meta={
                 "kind": "myformat",
-                "filename": filename,
-                "version": parsed.version,
+                # Backend/diagnostic details always go under meta.extra
+                "extra": {"filename": filename, "version": parsed.version},
             },
-        }
+        )
     except Exception as e:
-        return {
-            "text": "",
-            "images": [],
-            "audio": [],
-            "video": [],
-            "flags": {
-                "error": f"Failed to parse MyFormat: {e}",
-                "filename": filename,
-            },
-        }
-
-
-# Register for file extensions
-register_processor(".myf", myformat_processor)
-register_processor(".myformat", myformat_processor)
+        return error_artifact(filename, ERROR_PARSE, f"Failed to parse MyFormat: {e}")
 ```
 
 ### Step 2: Import in `processors/__init__.py`
@@ -254,7 +226,7 @@ Create `tests/test_myformat.py`:
 
 ```python
 import pytest
-from attachments import att, check_dep
+from attachments import ERROR_MISSING_DEPENDENCY, att, check_dep
 
 
 def test_myformat_missing_dep():
@@ -262,10 +234,11 @@ def test_myformat_missing_dep():
     if check_dep("myformat").available:
         pytest.skip("myformat-lib is installed")
 
-    # Should return error artifact, not raise
+    # Should return a typed error artifact, not raise
     result = att("test.myf")
-    assert "error" in result[0]["flags"]
-    assert "myformat" in result[0]["flags"]["error"]
+    error = result[0]["meta"]["error"]
+    assert error["code"] == ERROR_MISSING_DEPENDENCY
+    assert "pip install" in error["message"]
 
 
 @pytest.mark.skipif(
@@ -277,7 +250,7 @@ def test_myformat_processing():
     # Create test file or use fixture
     result = att("tests/fixtures/sample.myf")
     assert result[0]["text"]
-    assert result[0]["flags"]["kind"] == "myformat"
+    assert result[0]["meta"]["kind"] == "myformat"
 ```
 
 ---
@@ -448,7 +421,7 @@ def test_s3_missing_dep():
         pytest.skip("boto3 is installed")
 
     result = att("s3://bucket/key.pdf")
-    assert "error" in result[0]["flags"]
+    assert "error" in result[0]["meta"]
 
 
 @pytest.mark.skipif(
@@ -703,53 +676,81 @@ CMD ["gunicorn", "attachments.server:create_app()", "-b", "0.0.0.0:8000"]
 
 ## Service Integration
 
-When local processing fails or isn't available, the library can fall back to a remote service:
+When a local processor is missing an optional dependency, it returns the
+**typed** missing-dependency artifact. Core routing checks the error *code*
+(via `attachments.types.is_missing_dependency`) — never the error message —
+and automatically tries the service when an API key is configured:
 
 ```python
-# In your processor - just return error artifact
-# The core.py routing will handle service fallback automatically
+# In your processor - return the typed missing-dep artifact.
+# The core.py routing handles service fallback automatically.
+from attachments import missing_dep_artifact
+
 
 def my_processor(data: bytes, **options) -> dict:
+    filename = options.get("filename", "file.myf")
     try:
         import mylib
     except ImportError:
-        return {
-            "text": "",
-            "images": [],
-            "audio": [],
-            "video": [],
-            "flags": {
-                "error": "mylib not installed",  # This triggers fallback
-            },
-        }
+        # code == "missing-dependency" — this (and only this) triggers
+        # the local -> service fallback. The pip install hint comes from
+        # deps.DEPENDENCY_MAP.
+        return missing_dep_artifact(filename, "myformat")
+    ...
 ```
 
-The `core.py` checks for error patterns like "not installed", "requires", "ImportError" and automatically tries the service if an API key is configured.
+Other error codes (`parse-error`, `password-required`, ...) are final: a
+file that could not be parsed locally is not retried on the service in the
+default `prefer="local"` mode. String-matching error messages is forbidden
+by the IR contract (`spec/IR-CONTRACT.md`).
 
 ---
 
 ## Artifact Structure
 
-All processors must return this structure:
+All processors must return this structure (see `spec/IR-CONTRACT.md` for the
+binding contract; build it with `attachments.make_artifact`):
 
 ```python
 {
-    "text": str,           # Extracted text content
+    "text": str,           # Extracted text content (may be "")
     "images": [            # List of images
         {
             "name": str,       # e.g., "doc-page-1.png"
             "mimetype": str,   # e.g., "image/png"
-            "bytes": bytes,    # Raw image bytes
+            "bytes": bytes,    # Raw image bytes (bytes_b64 on the wire)
             "page": int,       # Optional: source page number
         }
     ],
     "audio": [],           # Reserved for future
     "video": [],           # Reserved for future
-    "flags": {             # Metadata
+    "meta": {              # Typed metadata envelope (optional keys ABSENT,
+                           # never None)
         "source": str,     # Added automatically by core.py
-        "kind": str,       # Optional: "pdf", "table", "document"
-        "error": str,      # If processing failed
-        # ... processor-specific metadata
+        "kind": str,       # "text" | "pdf" | "table" | "document" | "html" | ...
+        "via": str,        # "service" when processed remotely
+        "error": {         # Present only on failure
+            "code": str,       # e.g. "missing-dependency", "parse-error"
+            "message": str,    # Human-readable, includes remedy when known
+        },
+        "note": str,       # Informational (e.g. "no processor available")
+        "warnings": [str],     # Non-fatal warnings
+        "segments": [dict],    # Structural segmentation (pages/sheets/...)
+        "extra": dict,     # Processor-specific freeform metadata
     },
 }
+```
+
+Error codes are constants in `attachments.types`:
+`ERROR_MISSING_DEPENDENCY`, `ERROR_PASSWORD_REQUIRED`, `ERROR_PARSE`,
+`ERROR_UNPACK`, `ERROR_SERVICE`, `ERROR_INVALID_OPTION`, `ERROR_PROCESSING`.
+
+Helpers in `attachments.types` (also exported from `attachments`):
+
+```python
+make_artifact(text="", images=None, audio=None, video=None, meta=None)
+error_artifact(source, code, message)
+missing_dep_artifact(source, feature)   # looks up install hint from deps.py
+is_missing_dependency(artifact)         # typed check used by core routing
+normalize_artifact(artifact, source)    # fills required keys + meta.source
 ```

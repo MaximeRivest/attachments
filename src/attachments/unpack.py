@@ -384,7 +384,7 @@ def _filename_from_content_disposition(cd: str | None) -> str | None:
     if not cd:
         return None
     # RFC 5987: filename*=UTF-8''encoded%20name.ext
-    m = re.search(r"filename\*\s*=\s*([^;]+)", cd, flags=re.IGNORECASE)
+    m = re.search(r"filename\*\s*=\s*([^;]+)", cd, re.IGNORECASE)
     if m:
         val = m.group(1).strip().strip("\"'")
         # Split at "''" if present
@@ -398,7 +398,7 @@ def _filename_from_content_disposition(cd: str | None) -> str | None:
             return val
 
     # filename="name.ext"
-    m = re.search(r"filename\s*=\s*([^;]+)", cd, flags=re.IGNORECASE)
+    m = re.search(r"filename\s*=\s*([^;]+)", cd, re.IGNORECASE)
     if m:
         val = m.group(1).strip().strip("\"'")
         return val

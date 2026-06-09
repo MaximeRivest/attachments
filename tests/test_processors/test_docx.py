@@ -90,12 +90,12 @@ class TestDocxProcessor:
         assert "Test Document" in result["text"]
         assert "First paragraph" in result["text"]
         assert "Second paragraph" in result["text"]
-        assert result["flags"]["kind"] == "document"
-        assert result["flags"]["filename"] == "test.docx"
+        assert result["meta"]["kind"] == "document"
+        assert result["meta"]["extra"]["filename"] == "test.docx"
 
     def test_artifact_structure(self, simple_docx_bytes):
         result = processors[".docx"](simple_docx_bytes)
-        for key in ("text", "images", "audio", "video", "flags"):
+        for key in ("text", "images", "audio", "video", "meta"):
             assert key in result
         assert isinstance(result["images"], list)
 
@@ -106,7 +106,7 @@ class TestDocxProcessor:
         assert "After table" in result["text"]
         assert "Alice" in result["text"]
         assert "95" in result["text"]
-        assert result["flags"]["tables"] >= 1
+        assert result["meta"]["extra"]["tables"] >= 1
 
     def test_image_extraction_off_by_default(self, docx_with_image):
         result = processors[".docx"](docx_with_image)
@@ -121,9 +121,11 @@ class TestDocxProcessor:
         assert "bytes" in img
         assert len(img["bytes"]) > 0
 
-    def test_corrupt_data_returns_error(self):
+    def test_corrupt_data_returns_parse_error(self):
+        from attachments.types import ERROR_PARSE
+
         result = processors[".docx"](b"not a docx file")
-        assert "error" in result["flags"]
+        assert result["meta"]["error"]["code"] == ERROR_PARSE
         assert result["text"] == ""
 
     def test_empty_document(self):
@@ -134,15 +136,9 @@ class TestDocxProcessor:
         doc.save(buf)
         result = processors[".docx"](buf.getvalue())
         assert isinstance(result["text"], str)
-        assert "error" not in result["flags"]
+        assert "error" not in result["meta"]
 
 
-class TestDocxMissingDep:
-    @pytest.mark.skipif(
-        check_dep("docx").available,
-        reason="Test only relevant when python-docx is missing",
-    )
-    def test_missing_dep_returns_error(self):
-        result = processors[".docx"](b"%fake")
-        assert "error" in result["flags"]
-        assert "python-docx" in result["flags"]["error"]
+# Missing-dependency behavior is covered by the always-runnable tests in
+# tests/test_processors/test_missing_deps.py (this module is skipped
+# entirely when python-docx is absent, so such tests could never run here).

@@ -17,6 +17,16 @@ from typing import Any
 from .config import get_api_key, get_prefer
 from .dsl import parse_dsl
 from .processors import processors
+from .types import (
+    ERROR_MISSING_DEPENDENCY,
+    ERROR_PROCESSING,
+    ERROR_SERVICE,
+    ERROR_UNPACK,
+    error_artifact,
+    is_missing_dependency,
+    make_artifact,
+    normalize_artifact,
+)
 from .unpack import unpack
 from .utils import is_text_bytes
 
@@ -35,93 +45,55 @@ def _route_processor(filename: str, data: bytes) -> Callable[..., dict] | None:
     return proc
 
 
-def _error_artifact(source: str, error: str) -> dict:
-    """Create a standardized error artifact.
-
-    Examples:
-        >>> artifact = _error_artifact("test.pdf", "file not found")
-        >>> artifact["flags"]["error"]
-        'file not found'
-        >>> artifact["flags"]["source"]
-        'test.pdf'
-        >>> artifact["text"]
-        ''
-    """
-    return {
-        "text": "",
-        "images": [],
-        "audio": [],
-        "video": [],
-        "flags": {"source": source, "error": error},
-    }
-
-
 def _empty_artifact(source: str, note: str) -> dict:
-    """Create an empty artifact with a note.
+    """Create an empty artifact with an informational note (not an error).
 
     Examples:
         >>> artifact = _empty_artifact("test.bin", "no processor available")
-        >>> artifact["flags"]["note"]
+        >>> artifact["meta"]["note"]
         'no processor available'
         >>> artifact["text"]
         ''
     """
-    return {
-        "text": "",
-        "images": [],
-        "audio": [],
-        "video": [],
-        "flags": {"source": source, "note": note},
-    }
+    return make_artifact(meta={"source": source, "note": note})
 
 
-def _has_meaningful_error(artifact: dict) -> bool:
-    """Check if artifact has an error indicating missing deps.
+def _artifact_from_exception(source: str, exc: Exception, context: str) -> dict:
+    """Convert a processor exception into a typed error artifact.
+
+    ImportError means a missing optional dependency; anything else is a
+    generic processing error. Missing-dependency messages always include
+    the pip install remedy (IR contract).
 
     Examples:
-        >>> _has_meaningful_error({"flags": {"error": "Module not installed"}})
+        >>> a = _artifact_from_exception("f.xyz", ImportError("no mod"), "local")
+        >>> a["meta"]["error"]["code"]
+        'missing-dependency'
+        >>> "pip install" in a["meta"]["error"]["message"]
         True
-        >>> _has_meaningful_error({"flags": {"error": "ImportError: no module"}})
-        True
-        >>> _has_meaningful_error({"flags": {"error": "file not found"}})
-        False
-        >>> _has_meaningful_error({"flags": {}})
-        False
+        >>> a = _artifact_from_exception("f.xyz", ValueError("bad"), "local")
+        >>> a["meta"]["error"]["code"]
+        'processing-error'
+        >>> a["meta"]["error"]["message"]
+        'local processing failed: bad'
     """
-    flags = artifact.get("flags", {})
-    error = flags.get("error", "")
-    # Common patterns indicating missing dependencies
-    dep_indicators = [
-        "requires",
-        "not installed",
-        "unavailable",
-        "ImportError",
-        "ModuleNotFoundError",
-        "no module",
-    ]
-    return any(ind.lower() in error.lower() for ind in dep_indicators)
-
-
-def _is_empty_result(artifact: dict) -> bool:
-    """Check if artifact has no meaningful content.
-
-    Examples:
-        >>> _is_empty_result({"text": "", "images": [], "audio": [], "video": []})
-        True
-        >>> _is_empty_result({"text": "hello", "images": [], "audio": [], "video": []})
-        False
-        >>> _is_empty_result(
-        ...     {"text": "", "images": [{"data": "..."}], "audio": [], "video": []}
-        ... )
-        False
-        >>> _is_empty_result({"text": "   ", "images": []})  # Whitespace only
-        True
-    """
-    return (
-        not artifact.get("text", "").strip()
-        and not artifact.get("images", [])
-        and not artifact.get("audio", [])
-        and not artifact.get("video", [])
+    if isinstance(exc, ImportError):
+        # exc.name is set when the import machinery raised the error;
+        # fall back to the bundle extra covering all built-in processors.
+        missing = getattr(exc, "name", None)
+        remedy = (
+            f"pip install {missing}"
+            if missing
+            else "pip install attachments[all-local]"
+        )
+        return error_artifact(
+            source,
+            ERROR_MISSING_DEPENDENCY,
+            f"{context} processing failed: {exc}. "
+            f"Missing optional dependency — install with: {remedy}",
+        )
+    return error_artifact(
+        source, ERROR_PROCESSING, f"{context} processing failed: {exc}"
     )
 
 
@@ -156,8 +128,10 @@ def _process_single(
         # Only use service
         if not key:
             log.warning("service-only mode but no API key for %s", filename)
-            return _error_artifact(
-                filename, "service-only mode but no API key configured"
+            return error_artifact(
+                filename,
+                ERROR_SERVICE,
+                "service-only mode but no API key configured",
             )
         return _process_via_service(filename, data, key, **options)
 
@@ -170,14 +144,14 @@ def _process_single(
             return proc(data, filename=filename, **options)
         except Exception as e:
             log.error("local processing failed for %s: %s", filename, e)
-            return _error_artifact(filename, f"local processing failed: {e}")
+            return _artifact_from_exception(filename, e, "local")
 
     elif mode == "service":
         # Try service first, fall back to local
         if key:
             try:
                 result = _process_via_service(filename, data, key, **options)
-                if not result.get("flags", {}).get("error"):
+                if not result.get("meta", {}).get("error"):
                     return result
             except Exception:
                 log.debug("service failed for %s, falling back to local", filename)
@@ -189,20 +163,21 @@ def _process_single(
             return proc(data, filename=filename, **options)
         except Exception as e:
             log.error("processing failed for %s: %s", filename, e)
-            return _error_artifact(filename, f"processing failed: {e}")
+            return _artifact_from_exception(filename, e, "local")
 
     else:  # mode == "local" (default)
         # Try local first, fall back to service if deps missing
         if proc is not None:
             try:
                 result = proc(data, filename=filename, **options)
-                # Check if local succeeded or failed due to missing deps
-                if not _has_meaningful_error(result) or not key:
+                # Typed check: only a missing-dependency result (plus an API
+                # key) may trigger service fallback. Other errors are final.
+                if not key or not is_missing_dependency(result):
                     return result
                 log.info("local dep error for %s, falling back to service", filename)
             except Exception as e:
                 if not key:
-                    return _error_artifact(filename, f"local processing failed: {e}")
+                    return _artifact_from_exception(filename, e, "local")
                 log.info(
                     "local exception for %s, falling back to service: %s",
                     filename,
@@ -215,14 +190,16 @@ def _process_single(
                 return _process_via_service(filename, data, key, **options)
             except Exception as e:
                 log.error("service processing failed for %s: %s", filename, e)
-                return _error_artifact(filename, f"service processing failed: {e}")
+                return error_artifact(
+                    filename, ERROR_SERVICE, f"service processing failed: {e}"
+                )
 
         # No processor and no service
         if proc is None:
             return _empty_artifact(filename, "no processor available")
 
         # Should not reach here, but just in case
-        return _error_artifact(filename, "processing failed")
+        return error_artifact(filename, ERROR_PROCESSING, "processing failed")
 
 
 def _process_via_service(
@@ -239,42 +216,12 @@ def _process_via_service(
         result = process_via_service(
             data, filename=filename, api_key=api_key, **options
         )
-        result.setdefault("flags", {})
-        result["flags"]["via"] = "service"
+        result.setdefault("meta", {})
+        result["meta"]["via"] = "service"
         return result
     except ServiceError as e:
         log.warning("service error for %s: %s", filename, e.message)
-        return _error_artifact(filename, f"service error: {e.message}")
-
-
-def _normalize_artifact(artifact: dict, source: str) -> dict:
-    """Ensure artifact has all required keys with correct types.
-
-    Examples:
-        >>> result = _normalize_artifact({"text": "hello"}, "test.txt")
-        >>> result["text"]
-        'hello'
-        >>> result["images"]
-        []
-        >>> result["flags"]["source"]
-        'test.txt'
-
-        >>> # Preserves existing values
-        >>> result = _normalize_artifact(
-        ...     {"text": "hi", "flags": {"custom": True}}, "f.txt"
-        ... )
-        >>> result["flags"]["custom"]
-        True
-        >>> result["flags"]["source"]
-        'f.txt'
-    """
-    artifact.setdefault("text", "")
-    artifact.setdefault("images", [])
-    artifact.setdefault("audio", [])
-    artifact.setdefault("video", [])
-    artifact.setdefault("flags", {})
-    artifact["flags"].setdefault("source", source)
-    return artifact
+        return error_artifact(filename, ERROR_SERVICE, f"service error: {e.message}")
 
 
 def _apply_source_options(input: str, options: dict) -> str:
@@ -362,7 +309,10 @@ def att(
             - images: List of image dicts
             - audio: List of audio dicts (future)
             - video: List of video dicts (future)
-            - flags: Metadata including source, errors, processing info
+            - meta: Typed metadata (source, kind, error{code,message}, via, ...)
+
+        Errors never raise out of att(); they come back as artifacts with
+        ``meta["error"] = {"code": ..., "message": ...}``.
 
     Example:
         >>> from attachments import att
@@ -401,14 +351,22 @@ def att(
                 pairs = unpack_via_service(input, api_key=key)
             except ServiceError as se:
                 return [
-                    _error_artifact(input, f"unpack failed: {e}; service: {se.message}")
+                    error_artifact(
+                        input,
+                        ERROR_UNPACK,
+                        f"unpack failed: {e}; service: {se.message}",
+                    )
                 ]
             except ImportError:
-                return [_error_artifact(input, f"unpack failed: {e}")]
+                return [error_artifact(input, ERROR_UNPACK, f"unpack failed: {e}")]
             except Exception as se:
-                return [_error_artifact(input, f"unpack failed: {e}; service: {se}")]
+                return [
+                    error_artifact(
+                        input, ERROR_UNPACK, f"unpack failed: {e}; service: {se}"
+                    )
+                ]
         else:
-            return [_error_artifact(input, f"unpack failed: {e}")]
+            return [error_artifact(input, ERROR_UNPACK, f"unpack failed: {e}")]
 
     # Process each file
     out: list[dict] = []
@@ -420,6 +378,6 @@ def att(
             prefer=prefer,
             **merged_options,
         )
-        out.append(_normalize_artifact(artifact, fname))
+        out.append(normalize_artifact(artifact, fname))
 
     return out

@@ -41,6 +41,19 @@ except ImportError:
 log = logging.getLogger("attachments.server")
 
 
+def _encode_artifact_for_wire(artifact: dict) -> dict:
+    """Replace each image's raw ``bytes`` with base64 ``bytes_b64``.
+
+    Per the IR wire format, JSON transport carries ``bytes_b64`` only —
+    never raw ``bytes``. ``meta`` passes through unchanged.
+    """
+    for img in artifact.get("images", []):
+        if "bytes" in img and isinstance(img["bytes"], bytes):
+            img["bytes_b64"] = base64.b64encode(img["bytes"]).decode("ascii")
+            del img["bytes"]
+    return artifact
+
+
 def _make_handler():
     """Build the ``BaseHTTPRequestHandler`` subclass.
 
@@ -216,6 +229,7 @@ def _make_handler():
 
                 # Process with local-only mode
                 from .core import _process_single
+                from .types import normalize_artifact
 
                 artifact = _process_single(
                     filename,
@@ -224,16 +238,10 @@ def _make_handler():
                     **options,
                 )
 
-                # Encode images as base64 for JSON transport
-                if artifact.get("images"):
-                    for img in artifact["images"]:
-                        if "bytes" in img and isinstance(img["bytes"], bytes):
-                            img["bytes_b64"] = base64.b64encode(img["bytes"]).decode(
-                                "ascii"
-                            )
-                            del img["bytes"]
-
-                self._send_json(artifact)
+                # Response body is exactly an Artifact (meta envelope,
+                # images encoded as bytes_b64 for JSON transport).
+                artifact = normalize_artifact(artifact, filename)
+                self._send_json(_encode_artifact_for_wire(artifact))
 
             except ValueError as e:
                 self._send_error(str(e), 400)
@@ -382,6 +390,7 @@ def create_app():
                     options[key] = value
 
             from .core import _process_single
+            from .types import normalize_artifact
 
             try:
                 artifact = _process_single(
@@ -391,17 +400,10 @@ def create_app():
                 log.exception("processing failed for uploaded file")
                 return _error(f"Processing failed: {exc}", 500)
 
-            if artifact.get("images"):
-                import base64 as b64mod
-
-                for img in artifact["images"]:
-                    if "bytes" in img and isinstance(img["bytes"], bytes):
-                        img["bytes_b64"] = b64mod.b64encode(img["bytes"]).decode(
-                            "ascii"
-                        )
-                        del img["bytes"]
-
-            return _json_response(artifact)
+            # Response body is exactly an Artifact (meta envelope,
+            # images encoded as bytes_b64 for JSON transport).
+            artifact = normalize_artifact(artifact, filename)
+            return _json_response(_encode_artifact_for_wire(artifact))
 
         # --- POST /unpack ---
         if path == "/unpack":

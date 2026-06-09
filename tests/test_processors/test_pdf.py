@@ -27,10 +27,13 @@ NOTES:
 
 from __future__ import annotations
 
+import io
+
 import pytest
 
 from attachments.deps import check_dep
 from attachments.processors import processors
+from attachments.types import ERROR_PASSWORD_REQUIRED
 
 # Skip all tests in this module if PDF deps not available
 pytestmark = pytest.mark.skipif(
@@ -53,16 +56,17 @@ class TestPdfProcessor:
         assert "images" in result
         assert "audio" in result
         assert "video" in result
-        assert "flags" in result
+        assert "meta" in result
 
-    def test_flags_include_metadata(self, minimal_pdf_bytes: bytes):
+    def test_meta_includes_kind_and_extra(self, minimal_pdf_bytes: bytes):
         processor = processors[".pdf"]
         result = processor(minimal_pdf_bytes)
 
-        flags = result["flags"]
+        assert result["meta"]["kind"] == "pdf"
+        extra = result["meta"]["extra"]
         # Should include some metadata about processing
         # The PDF processor uses various key names depending on the backend
-        assert "pages" in flags or "total_pages" in flags or "parsed_pages" in flags
+        assert "pages" in extra or "total_pages" in extra or "parsed_pages" in extra
 
     def test_images_audio_video_are_lists(self, minimal_pdf_bytes: bytes):
         processor = processors[".pdf"]
@@ -100,28 +104,32 @@ class TestPdfProcessorOptions:
 class TestPdfProcessorErrors:
     """Tests for PDF processor error handling."""
 
-    def test_corrupt_pdf_returns_error(self, corrupt_pdf_bytes: bytes):
+    def test_corrupt_pdf_returns_parse_error(self, corrupt_pdf_bytes: bytes):
+        from attachments.types import ERROR_PARSE
+
         processor = processors[".pdf"]
         result = processor(corrupt_pdf_bytes)
 
-        # Should return artifact with error, not raise
-        assert "flags" in result
-        # Either has error or empty text
-        has_error = "error" in result["flags"]
-        is_empty = result["text"] == ""
-        assert has_error or is_empty
+        # Should return a typed parse error artifact, not raise and not
+        # masquerade as a successful empty extraction.
+        assert result["text"] == ""
+        assert result["meta"]["error"]["code"] == ERROR_PARSE
 
-    def test_empty_bytes_handled(self):
+    def test_empty_bytes_returns_parse_error(self):
+        from attachments.types import ERROR_PARSE
+
         processor = processors[".pdf"]
         result = processor(b"")
 
-        assert "flags" in result
+        assert result["meta"]["error"]["code"] == ERROR_PARSE
 
-    def test_non_pdf_bytes_handled(self):
+    def test_non_pdf_bytes_returns_parse_error(self):
+        from attachments.types import ERROR_PARSE
+
         processor = processors[".pdf"]
         result = processor(b"This is not a PDF at all")
 
-        assert "flags" in result
+        assert result["meta"]["error"]["code"] == ERROR_PARSE
 
 
 @pytest.mark.skipif(
@@ -145,22 +153,73 @@ class TestPdfImageRendering:
         assert "images" in result
 
 
-class TestPdfProcessorWithoutDeps:
-    """Tests for PDF processor behavior when deps are missing.
+class TestPdfPassword:
+    """Encrypted PDFs return a typed password-required error."""
 
-    These tests run regardless of dep availability.
-    """
+    @pytest.fixture
+    def encrypted_pdf_bytes(self) -> bytes:
+        pytest.importorskip("pypdf")
+        from pypdf import PdfWriter
 
-    @pytest.mark.skipif(
-        check_dep("pdf-text").available,
-        reason="Test only relevant when PDF deps missing",
-    )
-    def test_missing_deps_returns_error(self):
-        processor = processors[".pdf"]
-        result = processor(b"%PDF-1.4 minimal pdf")
+        writer = PdfWriter()
+        writer.add_blank_page(width=72, height=72)
+        writer.encrypt("secret")
+        buf = io.BytesIO()
+        writer.write(buf)
+        return buf.getvalue()
 
-        assert "error" in result["flags"]
-        assert (
-            "requires" in result["flags"]["error"].lower()
-            or "install" in result["flags"]["error"].lower()
+    def test_missing_password_returns_password_required(self, encrypted_pdf_bytes):
+        result = processors[".pdf"](encrypted_pdf_bytes)
+
+        assert result["meta"]["error"]["code"] == ERROR_PASSWORD_REQUIRED
+        assert "password" in result["meta"]["error"]["message"].lower()
+
+    def test_wrong_password_returns_password_required(self, encrypted_pdf_bytes):
+        result = processors[".pdf"](encrypted_pdf_bytes, password="nope")
+
+        assert result["meta"]["error"]["code"] == ERROR_PASSWORD_REQUIRED
+
+    def test_correct_password_succeeds(self, encrypted_pdf_bytes):
+        result = processors[".pdf"](
+            encrypted_pdf_bytes, password="secret", render_images=False
         )
+
+        assert "error" not in result["meta"]
+        assert result["meta"]["kind"] == "pdf"
+
+
+# Missing-dependency behavior is covered by the always-runnable tests in
+# tests/test_processors/test_missing_deps.py (this module is skipped
+# entirely when PDF deps are absent, so such tests could never run here).
+
+
+@pytest.mark.skipif(
+    not check_dep("pdf-images").available,
+    reason="PyMuPDF needed to build a text PDF fixture",
+)
+class TestPdfSegments:
+    """meta.segments carries page boundaries (IR contract: pdf pages)."""
+
+    @pytest.fixture
+    def two_page_text_pdf(self) -> bytes:
+        pymupdf = pytest.importorskip("pymupdf")
+
+        doc = pymupdf.open()
+        for label in ("alpha page", "beta page"):
+            page = doc.new_page()
+            page.insert_text((72, 72), label)
+        data = doc.tobytes()
+        doc.close()
+        return data
+
+    def test_page_segments_cover_text(self, two_page_text_pdf: bytes):
+        result = processors[".pdf"](two_page_text_pdf, render_images=False)
+
+        assert "error" not in result["meta"]
+        segments = result["meta"]["segments"]
+        assert [s["kind"] for s in segments] == ["page", "page"]
+        assert [s["label"] for s in segments] == ["page 1", "page 2"]
+
+        text = result["text"]
+        assert text[segments[0]["start"] : segments[0]["end"]] == "alpha page"
+        assert text[segments[1]["start"] : segments[1]["end"]] == "beta page"

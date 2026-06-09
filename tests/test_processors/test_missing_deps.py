@@ -1,0 +1,82 @@
+"""Always-runnable missing-dependency tests for the built-in processors.
+
+The per-processor test modules skip entirely when a processor's deps are
+NOT installed, which made their "deps missing" tests structurally
+unrunnable (mutually exclusive skip conditions). These tests instead
+simulate the absence of the optional dependencies regardless of what is
+installed, and assert each processor returns the typed missing-dependency
+artifact required by spec/IR-CONTRACT.md — never raising, and always
+including the pip install remedy in the error message.
+
+The simulation masks the relevant modules in ``sys.modules``: a ``None``
+entry makes ``import x`` raise ImportError and makes
+``importlib.util.find_spec`` report the module as unavailable, so both
+guard styles (direct import and ``deps.check_dep``) are covered. The
+deps cache is cleared so ``check_dep`` re-evaluates availability.
+"""
+
+from __future__ import annotations
+
+import sys
+
+import pytest
+
+from attachments.deps import clear_cache
+from attachments.processors import processors
+from attachments.types import ERROR_MISSING_DEPENDENCY, is_missing_dependency
+
+
+@pytest.fixture
+def mask_modules(monkeypatch):
+    """Return a callable that hides modules from the import machinery."""
+
+    def _mask(*names: str) -> None:
+        for name in names:
+            monkeypatch.setitem(sys.modules, name, None)
+        clear_cache()
+
+    yield _mask
+    clear_cache()
+
+
+def _assert_missing_dep(result: dict) -> None:
+    error = result["meta"]["error"]
+    assert error["code"] == ERROR_MISSING_DEPENDENCY
+    assert "pip install" in error["message"]
+    assert is_missing_dependency(result)
+    assert result["text"] == ""
+
+
+class TestProcessorsMissingDeps:
+    """Every processor's missing-dep guard returns the typed artifact."""
+
+    def test_pdf_missing_deps_returns_typed_error(self, mask_modules):
+        mask_modules("pypdf", "PyPDF2", "pdfminer")
+
+        result = processors[".pdf"](b"%PDF-1.4 minimal pdf")
+
+        _assert_missing_dep(result)
+
+    def test_docx_missing_dep_returns_typed_error(self, mask_modules):
+        mask_modules("docx")
+
+        result = processors[".docx"](b"%fake")
+
+        _assert_missing_dep(result)
+        assert "pip install attachments[docx]" in result["meta"]["error"]["message"]
+
+    def test_html_missing_dep_returns_typed_error(self, mask_modules):
+        mask_modules("bs4")
+
+        result = processors[".html"](b"<html></html>")
+
+        _assert_missing_dep(result)
+        assert "pip install attachments[html]" in result["meta"]["error"]["message"]
+
+    def test_xlsx_missing_deps_returns_typed_error(self, mask_modules):
+        mask_modules("pandas", "openpyxl")
+
+        result = processors[".xlsx"](b"fake xlsx content")
+
+        _assert_missing_dep(result)
+        assert "pip install attachments[xlsx]" in result["meta"]["error"]["message"]

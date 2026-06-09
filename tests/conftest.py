@@ -29,6 +29,7 @@ SCOPE GUIDELINES:
 from __future__ import annotations
 
 import io
+import os
 import zipfile
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -42,6 +43,19 @@ if TYPE_CHECKING:
 # =============================================================================
 # CONFIG FIXTURES - Reset global state between tests
 # =============================================================================
+
+
+@pytest.fixture(autouse=True)
+def scrub_attachments_env(monkeypatch):
+    """Remove ATTACHMENTS_* env vars for every test.
+
+    config.get_config() reads environment variables (e.g.
+    ATTACHMENTS_API_KEY) before the config dict, so a developer/CI machine
+    with a real key set would silently flip tests into real network calls.
+    """
+    for var in list(os.environ):
+        if var.startswith("ATTACHMENTS_"):
+            monkeypatch.delenv(var, raising=False)
 
 
 @pytest.fixture(autouse=True)
@@ -280,7 +294,7 @@ def mock_service_response() -> dict:
         "images": [],
         "audio": [],
         "video": [],
-        "flags": {"via": "service", "format": "pdf"},
+        "meta": {"via": "service", "kind": "pdf"},
     }
 
 
@@ -313,7 +327,7 @@ def mock_httpx(monkeypatch):
                 "images": [],
                 "audio": [],
                 "video": [],
-                "flags": {},
+                "meta": {},
             }
             self.status_code = 200
             self.last_request = None
@@ -368,18 +382,20 @@ def assert_artifact():
         assert "images" in artifact, "Artifact missing 'images' key"
         assert "audio" in artifact, "Artifact missing 'audio' key"
         assert "video" in artifact, "Artifact missing 'video' key"
-        assert "flags" in artifact, "Artifact missing 'flags' key"
+        assert "meta" in artifact, "Artifact missing 'meta' key"
 
         # Check types
         assert isinstance(artifact["text"], str)
         assert isinstance(artifact["images"], list)
-        assert isinstance(artifact["flags"], dict)
+        assert isinstance(artifact["meta"], dict)
 
         # Check content expectations
         if has_text:
             assert artifact["text"].strip(), "Expected non-empty text"
         if has_error:
-            assert "error" in artifact["flags"], "Expected error in flags"
+            error = artifact["meta"].get("error")
+            assert error, "Expected error in meta"
+            assert "code" in error and "message" in error
         if has_images:
             assert len(artifact["images"]) > 0, "Expected images"
 

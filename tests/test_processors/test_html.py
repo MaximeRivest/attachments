@@ -90,12 +90,12 @@ class TestHtmlProcessor:
         assert "Hello World" in result["text"]
         assert "First paragraph" in result["text"]
         assert "Second paragraph" in result["text"]
-        assert result["flags"]["kind"] == "html"
-        assert result["flags"]["title"] == "Test Page"
+        assert result["meta"]["kind"] == "html"
+        assert result["meta"]["extra"]["title"] == "Test Page"
 
     def test_artifact_structure(self):
         result = processors[".html"](SIMPLE_HTML)
-        for key in ("text", "images", "audio", "video", "flags"):
+        for key in ("text", "images", "audio", "video", "meta"):
             assert key in result
 
     def test_strips_scripts_and_styles(self):
@@ -143,24 +143,18 @@ class TestHtmlProcessor:
     def test_empty_html(self):
         result = processors[".html"](b"")
         assert isinstance(result["text"], str)
-        assert "error" not in result["flags"]
+        assert "error" not in result["meta"]
 
     def test_non_html_garbage(self):
         result = processors[".html"](b"\x00\x01\x02binary junk")
         # bs4 is lenient — should not error, just produce empty/garbled text
-        assert "error" not in result["flags"]
+        assert "error" not in result["meta"]
 
-    def test_parser_flag(self):
+    def test_parser_in_extra(self):
         result = processors[".html"](SIMPLE_HTML)
-        assert result["flags"]["parser"] in ("lxml", "html.parser")
+        assert result["meta"]["extra"]["parser"] in ("lxml", "html.parser")
 
 
-class TestHtmlMissingDep:
-    @pytest.mark.skipif(
-        check_dep("html").available,
-        reason="Test only relevant when bs4 is missing",
-    )
-    def test_missing_dep_returns_error(self):
-        result = processors[".html"](b"<html></html>")
-        assert "error" in result["flags"]
-        assert "beautifulsoup4" in result["flags"]["error"]
+# Missing-dependency behavior is covered by the always-runnable tests in
+# tests/test_processors/test_missing_deps.py (this module is skipped
+# entirely when bs4 is absent, so such tests could never run here).

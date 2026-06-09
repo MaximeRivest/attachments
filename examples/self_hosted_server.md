@@ -118,7 +118,7 @@ print(artifacts[0]["text"][:500])
 
 # Excel files
 artifacts = att("sales-data.xlsx")
-print(f"Rows: {artifacts[0]['flags']['rows']}")
+print(f"Rows: {artifacts[0]['meta']['extra']['rows']}")
 
 # Even URLs work - server fetches and processes
 artifacts = att("https://arxiv.org/pdf/2301.00001.pdf")
@@ -370,10 +370,10 @@ curl -X POST http://server:8000/process \
   ],
   "audio": [],
   "video": [],
-  "flags": {
+  "meta": {
     "source": "document.pdf",
-    "type": "pdf",
-    "pages": 5
+    "kind": "pdf",
+    "extra": {"pages": 5}
   }
 }
 ```

@@ -60,7 +60,7 @@ def process_via_service(
         **options: Processing options passed to the service
 
     Returns:
-        Artifact dict with text, images, audio, video, flags
+        Artifact dict with text, images, audio, video, meta
 
     Raises:
         ServiceError: If the service returns an error

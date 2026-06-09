@@ -4,7 +4,52 @@ from __future__ import annotations
 import io
 from typing import Any
 
+from ..types import (
+    ERROR_MISSING_DEPENDENCY,
+    ERROR_PARSE,
+    ERROR_PASSWORD_REQUIRED,
+    error_artifact,
+    make_artifact,
+)
 from . import register_processor
+
+_PAGE_SEPARATOR = "\n\n"
+
+
+def _join_pages_with_segments(
+    page_texts: list[str], first_page: int
+) -> tuple[str, list[dict]]:
+    """Join per-page texts and build page segments (IR contract: meta.segments).
+
+    Each segment carries a 1-based page label and start/end offsets into the
+    joined text.
+
+    Examples:
+        >>> text, segs = _join_pages_with_segments(["one", "two"], 0)
+        >>> text
+        'one\\n\\ntwo'
+        >>> segs[0]
+        {'kind': 'page', 'label': 'page 1', 'start': 0, 'end': 3}
+        >>> text[segs[1]["start"] : segs[1]["end"]]
+        'two'
+    """
+    parts: list[str] = []
+    segments: list[dict] = []
+    offset = 0
+    for idx, page_text in enumerate(page_texts):
+        if parts:
+            offset += len(_PAGE_SEPARATOR)
+        segments.append(
+            {
+                "kind": "page",
+                "label": f"page {first_page + idx + 1}",
+                "start": offset,
+                "end": offset + len(page_text),
+            }
+        )
+        parts.append(page_text)
+        offset += len(page_text)
+    return _PAGE_SEPARATOR.join(parts), segments
 
 
 def _extract_text_with_pypdf_or_pyPDF2(
@@ -13,12 +58,14 @@ def _extract_text_with_pypdf_or_pyPDF2(
     page_start: int,
     page_end: int | None,
     max_pages: int | None,
-) -> tuple[str | None, int | None, int, str | None, dict]:
+) -> tuple[str | None, int | None, int, str | None, dict, list[dict]]:
     """
-    Returns (text, total_pages, parsed_pages, backend_name, meta_flags)
-    If neither pypdf nor PyPDF2 is installed, returns (None, None, 0, None, {...}).
+    Returns (text, total_pages, parsed_pages, backend_name, extra, segments)
+    If neither pypdf nor PyPDF2 is installed, returns
+    (None, None, 0, None, {...}, []).
     """
-    meta: dict[str, Any] = {}
+    extra: dict[str, Any] = {}
+    backend: str | None = None
     try:
         try:
             from pypdf import PdfReader  # preferred modern fork
@@ -31,16 +78,24 @@ def _extract_text_with_pypdf_or_pyPDF2(
 
         reader = PdfReader(io.BytesIO(data))
         encrypted = bool(getattr(reader, "is_encrypted", False))
-        meta["encrypted"] = encrypted
+        extra["encrypted"] = encrypted
         if encrypted:
+            decrypted = False
             try:
                 # Try provided password, else empty string
-                if password is not None:
-                    reader.decrypt(password)  # type: ignore[attr-defined]
-                else:
-                    reader.decrypt("")  # type: ignore[attr-defined]
+                result = reader.decrypt(password if password is not None else "")
+                # pypdf returns a PasswordType IntEnum (NOT_DECRYPTED == 0);
+                # PyPDF2 returns an int (0 == failure).
+                decrypted = bool(result)
             except Exception as e:
-                meta["decrypt_error"] = str(e)
+                # A DependencyError here (e.g. AES needs `cryptography`) is a
+                # missing-dependency situation, not a wrong password.
+                if type(e).__name__ == "DependencyError":
+                    raise
+                extra["decrypt_error"] = str(e)
+            if not decrypted:
+                extra["password_required"] = True
+                return (None, None, 0, backend, extra, [])
 
         total_pages = len(reader.pages)
         start = max(0, int(page_start or 0))
@@ -48,22 +103,33 @@ def _extract_text_with_pypdf_or_pyPDF2(
         if max_pages is not None:
             stop = min(stop, start + int(max_pages))
 
-        texts: list[str] = []
+        page_texts: list[str] = []
         parsed = 0
         for i in range(start, stop):
             try:
                 page = reader.pages[i]
                 t = page.extract_text() or ""
-                texts.append(t)
                 parsed += 1
             except Exception:
-                texts.append("")
+                t = ""
+            page_texts.append(t.strip())
 
-        return ("\n\n".join(texts).strip(), total_pages, parsed, backend, meta)
+        text, segments = _join_pages_with_segments(page_texts, start)
+        return (text, total_pages, parsed, backend, extra, segments)
+    except ImportError as e:
+        # Neither pypdf nor PyPDF2 is installed
+        extra["note"] = f"text extraction via pypdf/PyPDF2 unavailable: {e}"
+        return (None, None, 0, None, extra, [])
     except Exception as e:
-        # Neither pypdf nor PyPDF2, or runtime error
-        meta["note"] = f"text extraction via pypdf/PyPDF2 unavailable: {e}"
-        return (None, None, 0, None, meta)
+        # Typed detection (exception class check, never message matching):
+        # pypdf raises DependencyError when an optional runtime dep is
+        # missing (e.g. `cryptography` for AES-encrypted documents).
+        if type(e).__name__ == "DependencyError":
+            extra["dependency_error"] = str(e)
+        else:
+            extra["extract_error"] = str(e)
+        extra["note"] = f"text extraction via pypdf/PyPDF2 unavailable: {e}"
+        return (None, None, 0, None, extra, [])
 
 
 def _extract_text_with_pdfminer(
@@ -72,12 +138,12 @@ def _extract_text_with_pdfminer(
     page_start: int,
     page_end: int | None,
     max_pages: int | None,
-) -> tuple[str | None, int | None, int, str | None, dict]:
+) -> tuple[str | None, int | None, int, str | None, dict, list[dict]]:
     """
-    Returns (text, total_pages, parsed_pages, backend_name, meta_flags)
+    Returns (text, total_pages, parsed_pages, backend_name, extra, segments)
     If pdfminer.six isn't available, text is None.
     """
-    meta: dict[str, Any] = {}
+    extra: dict[str, Any] = {}
     try:
         from pdfminer.high_level import extract_text
         from pdfminer.pdfpage import PDFPage
@@ -113,7 +179,7 @@ def _extract_text_with_pdfminer(
 
         page_numbers = set(range(start, stop))  # pdfminer expects 0-based indices
 
-        text = (
+        raw = (
             extract_text(
                 io.BytesIO(data),
                 password=password or "",
@@ -121,11 +187,27 @@ def _extract_text_with_pdfminer(
             )
             or ""
         )
-        parsed = max(0, stop - start)
-        return (text.strip(), total_pages, parsed, "pdfminer.six", meta)
+        # pdfminer terminates every page with a form feed; split on it to
+        # recover page boundaries, dropping the artificial trailing piece.
+        page_texts = [p.strip() for p in raw.split("\x0c")]
+        if page_texts and page_texts[-1] == "":
+            page_texts.pop()
+        text, segments = _join_pages_with_segments(page_texts, start)
+        parsed = len(page_texts)
+        return (text, total_pages, parsed, "pdfminer.six", extra, segments)
+    except ImportError as e:
+        # pdfminer.six is not installed
+        extra["note"] = f"text extraction via pdfminer.six unavailable: {e}"
+        return (None, None, 0, None, extra, [])
     except Exception as e:
-        meta["note"] = f"text extraction via pdfminer.six unavailable: {e}"
-        return (None, None, 0, None, meta)
+        # Typed detection of an encrypted document with a bad password
+        # (exception class check — never error-message string matching).
+        if type(e).__name__ == "PDFPasswordIncorrect":
+            extra["password_required"] = True
+        else:
+            extra["extract_error"] = str(e)
+        extra["note"] = f"text extraction via pdfminer.six unavailable: {e}"
+        return (None, None, 0, None, extra, [])
 
 
 def _render_pages_to_png_with_pymupdf(
@@ -136,11 +218,11 @@ def _render_pages_to_png_with_pymupdf(
     dpi: int,
     filename: str | None,
 ) -> tuple[list[dict], str | None, dict]:
-    """Return (images, backend_name, meta_flags).
+    """Return (images, backend_name, extra).
 
     Each image is a dict with keys: name, mimetype, bytes, page.
     """
-    meta: dict[str, Any] = {}
+    extra: dict[str, Any] = {}
     try:
         import fitz  # PyMuPDF
 
@@ -166,14 +248,14 @@ def _render_pages_to_png_with_pymupdf(
                         "page": i + 1,
                     }
                 )
-            meta["rendered_pages"] = len(images)
-            meta["total_pages_seen"] = total
-            return images, "pymupdf", meta
+            extra["rendered_pages"] = len(images)
+            extra["total_pages_seen"] = total
+            return images, "pymupdf", extra
         finally:
             doc.close()
     except Exception as e:
-        meta["note"] = f"image rendering via PyMuPDF unavailable: {e}"
-        return [], None, meta
+        extra["note"] = f"image rendering via PyMuPDF unavailable: {e}"
+        return [], None, extra
 
 
 def _render_pages_to_png_with_pdf2image(
@@ -187,7 +269,7 @@ def _render_pages_to_png_with_pdf2image(
     """
     Fallback renderer using pdf2image (requires poppler on system).
     """
-    meta: dict[str, Any] = {}
+    extra: dict[str, Any] = {}
     try:
         from pdf2image import convert_from_bytes
 
@@ -221,11 +303,11 @@ def _render_pages_to_png_with_pdf2image(
                     "page": page_no,
                 }
             )
-        meta["rendered_pages"] = len(images)
-        return images, "pdf2image", meta
+        extra["rendered_pages"] = len(images)
+        return images, "pdf2image", extra
     except Exception as e:
-        meta["note"] = f"image rendering via pdf2image unavailable: {e}"
-        return [], None, meta
+        extra["note"] = f"image rendering via pdf2image unavailable: {e}"
+        return [], None, extra
 
 
 def process_pdf(
@@ -243,7 +325,7 @@ def process_pdf(
     **_opts: Any,
 ) -> dict:
     """
-    PDF -> artifact dict with keys: text, images, audio, video, flags.
+    PDF -> artifact dict with keys: text, images, audio, video, meta.
 
     Options (via att(..., **options)):
       - password: str | None         PDF password for encrypted docs.
@@ -258,39 +340,88 @@ def process_pdf(
       - Text: pypdf (preferred) or PyPDF2; fallback to pdfminer.six.
       - Images: PyMuPDF (fitz) preferred; fallback pdf2image (+poppler).
     """
-    flags: dict[str, Any] = {"type": "pdf"}
+    from ..deps import check_dep
+    from ..types import missing_dep_artifact
+
+    source = filename or "document.pdf"
+
+    # Typed missing-dependency signal: no text backend importable at all.
+    if not (check_dep("pdf-text").available or check_dep("pdf-fallback").available):
+        return missing_dep_artifact(source, "pdf")
+
+    extra: dict[str, Any] = {}
     text: str = ""
     images: list[dict] = []
+    segments: list[dict] = []
 
     # ---- TEXT extraction ----
-    text1, total_pages, parsed_pages, backend1, meta1 = (
+    text1, total_pages, parsed_pages, backend1, extra1, segments1 = (
         _extract_text_with_pypdf_or_pyPDF2(
             data, password, page_start, page_end, max_pages
         )
     )
-    flags.update(meta1)
+    extra.update(extra1)
     if backend1:
-        flags["text_backend"] = backend1
+        extra["text_backend"] = backend1
 
+    if extra.get("password_required"):
+        artifact = error_artifact(
+            source,
+            ERROR_PASSWORD_REQUIRED,
+            "PDF is encrypted and the password is missing or wrong. "
+            "Provide it via password=... or [password: ...].",
+        )
+        artifact["meta"]["kind"] = "pdf"
+        artifact["meta"]["extra"] = extra
+        return artifact
+
+    text2: str | None = None
     if text1 is None or text1.strip() == "":
         # fallback to pdfminer.six
-        text2, total_pages2, parsed_pages2, backend2, meta2 = (
+        text2, total_pages2, parsed_pages2, backend2, extra2, segments2 = (
             _extract_text_with_pdfminer(data, password, page_start, page_end, max_pages)
         )
-        flags.update({f"pdfminer_{k}": v for k, v in meta2.items()})
+        extra.update({f"pdfminer_{k}": v for k, v in extra2.items()})
+        if extra2.get("password_required"):
+            artifact = error_artifact(
+                source,
+                ERROR_PASSWORD_REQUIRED,
+                "PDF is encrypted and the password is missing or wrong. "
+                "Provide it via password=... or [password: ...].",
+            )
+            artifact["meta"]["kind"] = "pdf"
+            artifact["meta"]["extra"] = extra
+            return artifact
         if backend2:
-            flags["text_backend_fallback"] = backend2
+            extra["text_backend_fallback"] = backend2
         if total_pages is None and total_pages2 is not None:
             total_pages = total_pages2
         if parsed_pages == 0:
             parsed_pages = parsed_pages2
         text = text2 or ""
+        segments = segments2 if text2 else []
     else:
         text = text1 or ""
+        segments = segments1
+
+    # Typed missing-dependency signal: a backend was importable but failed
+    # because an optional runtime dep is missing (e.g. `cryptography` for
+    # AES-encrypted PDFs). This must drive the service fallback in core.
+    dep_detail = extra.get("dependency_error")
+    if text1 is None and text2 is None and dep_detail:
+        artifact = error_artifact(
+            source,
+            ERROR_MISSING_DEPENDENCY,
+            f"PDF text extraction requires an optional dependency: "
+            f"{dep_detail}. Install with: pip install cryptography",
+        )
+        artifact["meta"]["kind"] = "pdf"
+        artifact["meta"]["extra"] = extra
+        return artifact
 
     if total_pages is not None:
-        flags["pages"] = int(total_pages)
-    flags["parsed_pages"] = int(parsed_pages)
+        extra["pages"] = int(total_pages)
+    extra["parsed_pages"] = int(parsed_pages)
 
     # ---- IMAGE rendering (optional) ----
     def _should_render() -> bool:
@@ -302,32 +433,46 @@ def process_pdf(
         return text.strip() == ""
 
     if _should_render():
-        imgs, img_backend, meta_img = _render_pages_to_png_with_pymupdf(
+        imgs, img_backend, extra_img = _render_pages_to_png_with_pymupdf(
             data, page_start, page_end, max_pages, images_dpi, filename
         )
-        flags.update({f"render_{k}": v for k, v in meta_img.items()})
+        extra.update({f"render_{k}": v for k, v in extra_img.items()})
         if img_backend:
-            flags["image_backend"] = img_backend
+            extra["image_backend"] = img_backend
             images = imgs
         else:
             # try pdf2image fallback
-            imgs2, img_backend2, meta_img2 = _render_pages_to_png_with_pdf2image(
+            imgs2, img_backend2, extra_img2 = _render_pages_to_png_with_pdf2image(
                 data, page_start, page_end, max_pages, images_dpi, filename
             )
-            flags.update({f"render_fallback_{k}": v for k, v in meta_img2.items()})
+            extra.update({f"render_fallback_{k}": v for k, v in extra_img2.items()})
             if img_backend2:
-                flags["image_backend"] = img_backend2
+                extra["image_backend"] = img_backend2
                 images = imgs2
 
+    # Typed parse failure: every text backend errored out (not merely empty
+    # output) and image rendering produced nothing either.
+    if text1 is None and text2 is None and not images:
+        detail = (
+            extra.get("extract_error")
+            or extra.get("pdfminer_extract_error")
+            or extra.get("note")
+            or "no PDF backend could read the file"
+        )
+        artifact = error_artifact(source, ERROR_PARSE, f"Failed to parse PDF: {detail}")
+        artifact["meta"]["kind"] = "pdf"
+        artifact["meta"]["extra"] = extra
+        return artifact
+
     # Final artifact
-    artifact = {
-        "text": text or "",
-        "images": images,  # list of {"name","mimetype","bytes","page"}
-        "audio": [],
-        "video": [],
-        "flags": flags,
-    }
-    return artifact
+    meta: dict[str, Any] = {"kind": "pdf", "extra": extra}
+    if segments:
+        meta["segments"] = segments
+    return make_artifact(
+        text=text or "",
+        images=images,  # list of {"name","mimetype","bytes","page"}
+        meta=meta,
+    )
 
 
 register_processor(".pdf", process_pdf)
