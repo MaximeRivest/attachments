@@ -72,8 +72,10 @@ pip install attachments[image]       # Add image support (Pillow)
 pip install attachments[service]     # Add service mode (httpx)
 pip install attachments[clipboard]   # CLI clipboard support (`att --copy`)
 pip install attachments[office]      # xlsx + docx + pptx
-pip install attachments[all-local]   # Everything currently shipped
-pip install attachments[server]      # Self-hosted server (= all-local)
+pip install attachments[ocr]         # OCR for scanned PDFs/images (large: pulls onnxruntime)
+pip install attachments[audio]       # Audio transcription (large: pulls faster-whisper/ctranslate2)
+pip install attachments[all-local]   # Everything currently shipped (except ocr/audio — too big)
+pip install attachments[server]      # Self-hosted server (= all-local + ocr + audio)
 ```
 
 ---
@@ -633,7 +635,9 @@ src/attachments/
     ├── pptx.py              # PowerPoint (python-pptx)
     ├── csv.py               # CSV/TSV tables (stdlib; optional pandas summary)
     ├── svg.py               # SVG/SVGZ text (stdlib; optional cairosvg raster)
-    └── image.py             # Images png/jpg/gif/webp/bmp/tiff/heic (Pillow, pillow-heif)
+    ├── image.py             # Images png/jpg/gif/webp/bmp/tiff/heic (Pillow, pillow-heif) + shared OCR layer (rapidocr)
+    ├── ipynb.py             # Jupyter notebooks (stdlib json/base64; optional cell outputs)
+    └── audio.py             # Audio transcription mp3/wav/m4a/flac/ogg/opus (faster-whisper)
 ```
 
 ---

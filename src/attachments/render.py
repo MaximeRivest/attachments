@@ -415,8 +415,19 @@ def _pack_segments(
     return bodies
 
 
+#: Default chunk-body size (characters) when neither cap is given.
+_DEFAULT_MAX_CHARS = 8000
+
+#: Characters assumed per token by the ``max_tokens`` approximation.
+_CHARS_PER_TOKEN = 4
+
+
 def chunk(
-    artifacts: list[dict], *, max_chars: int = 8000, overlap: int = 200
+    artifacts: list[dict],
+    *,
+    max_chars: int | None = None,
+    max_tokens: int | None = None,
+    overlap: int = 200,
 ) -> list[str]:
     """Split artifacts into prompt-sized chunks, respecting structure.
 
@@ -437,9 +448,20 @@ def chunk(
     contribute nothing; an empty list returns ``[]``. Output is fully
     deterministic.
 
+    Token budgets: *max_tokens* expresses the cap in approximate tokens
+    using the fast 4-characters-per-token heuristic (NOT a real
+    tokenizer): ``chunk(a, max_tokens=N)`` is exactly
+    ``chunk(a, max_chars=N * 4)``. When BOTH *max_chars* and *max_tokens*
+    are given, the smaller character budget wins. When neither is given,
+    the default is 8000 characters.
+
     Args:
         artifacts: List of artifact dicts.
         max_chars: Maximum characters per chunk body (must be >= 1).
+            Default 8000 when *max_tokens* is also omitted.
+        max_tokens: Approximate-token cap; converted to a character cap
+            via ``max_tokens * 4`` (must be >= 1). Overrides the default
+            *max_chars*; with both given, the smaller cap wins.
         overlap: Characters repeated between consecutive window chunks
             (clamped to ``[0, max_chars - 1]``).
 
@@ -447,7 +469,7 @@ def chunk(
         List of chunk strings, in artifact order.
 
     Raises:
-        ValueError: If ``max_chars < 1``.
+        ValueError: If the effective character cap is < 1.
 
     Examples:
         >>> from attachments.types import make_artifact
@@ -456,11 +478,21 @@ def chunk(
         ['## a.txt\\nalpha beta gamma']
         >>> chunk([art], max_chars=12, overlap=0)
         ['## a.txt\\nalpha beta ', '## a.txt\\ngamma']
+        >>> chunk([art], max_tokens=3, overlap=0)  # == max_chars=12
+        ['## a.txt\\nalpha beta ', '## a.txt\\ngamma']
+        >>> chunk([art], max_chars=12, max_tokens=1000, overlap=0)  # smaller wins
+        ['## a.txt\\nalpha beta ', '## a.txt\\ngamma']
         >>> chunk([make_artifact()])
         []
         >>> chunk([])
         []
     """
+    caps = []
+    if max_chars is not None:
+        caps.append(max_chars)
+    if max_tokens is not None:
+        caps.append(max_tokens * _CHARS_PER_TOKEN)
+    max_chars = min(caps) if caps else _DEFAULT_MAX_CHARS
     if max_chars < 1:
         raise ValueError(f"max_chars must be >= 1, got {max_chars}")
     overlap = max(0, min(int(overlap), max_chars - 1))

@@ -48,7 +48,18 @@ def _assert_missing_dep(result: dict) -> None:
 
 
 class TestProcessorsMissingDeps:
-    """Every processor's missing-dep guard returns the typed artifact."""
+    """Every processor's missing-dep guard returns the typed artifact.
+
+    Note: the ocr and audio missing-dep guards are NOT duplicated here; their
+    canonical, always-runnable coverage lives with the feature tests:
+
+    - ocr: tests/test_processors/test_image.py (ocr=True typed error,
+      ocr="auto" no-op + hint) and tests/test_processors/test_pdf.py
+      (auto hint/note, forced-OCR typed error), both masking
+      rapidocr_onnxruntime via the same sys.modules pattern used here.
+    - audio: tests/test_processors/test_audio.py (fully mocked
+      faster_whisper, never skips, includes the typed missing-dep test).
+    """
 
     def test_pdf_missing_deps_returns_typed_error(self, mask_modules):
         mask_modules("pypdf", "PyPDF2", "pdfminer")

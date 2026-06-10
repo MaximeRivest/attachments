@@ -88,6 +88,24 @@ See [VISION.md](VISION.md) for the reasoning.
   expansion and a clear error naming the pattern on zero matches.
 - **Magic-byte routing**: files with missing or lying extensions are routed
   by content sniffing (`%PDF`, PNG/JPEG/GIF magic, zip-container types, ...).
+- **OCR for scanned PDFs and images** via RapidOCR (`attachments[ocr]`,
+  kept out of `all-local` because onnxruntime is large): a shared `ocr:`
+  option (`true`/`false`/`auto`) on the PDF and image processors —
+  `auto` (PDF default) kicks in only when a page has no text layer; the
+  engine is cached, and its C++ stderr chatter is silenced at the fd level.
+- **Jupyter notebook processor** (`.ipynb`, stdlib-only): markdown cells
+  verbatim, code cells fenced with the notebook language, optional
+  `outputs: true` to include execution outputs (text fenced and truncated
+  at ~2000 chars each; `image/png` outputs become image items).
+- **Audio transcription processor** (mp3/wav/m4a/flac/ogg/opus) via
+  faster-whisper (`attachments[audio]`, kept out of `all-local` because
+  ctranslate2 is large): `model:` (tiny..large-v3, default base, cached
+  per name, CPU/int8) and `language:` (autodetect by default) options;
+  bytes transcribed in-memory, no temp files.
+- **Token approximation layer**: `Artifacts.tokens` (ceil of chars/4 — a
+  fast approximation, not a tokenizer), a `~N tokens` segment in the
+  `Artifacts` repr/Jupyter summary, and `chunk(..., max_tokens=N)` as the
+  token-budget twin of `max_chars` (`max_tokens=N` == `max_chars=N*4`).
 - **Last mile** (`attachments.render`): `render_text` (prompt string with
   `## <source>` headers), `to_claude_content` / `to_claude_messages` (Claude
   Messages API blocks, plain dicts, no SDK import), `to_openai_messages`
@@ -162,7 +180,8 @@ See [VISION.md](VISION.md) for the reasoning.
 
 ### Migration from 0.25.x
 
-The one-liner maps directly: `Attachments("report.pdf")` becomes
+Full side-by-side guide: [docs/MIGRATION.md](docs/MIGRATION.md). In short:
+the one-liner maps directly: `Attachments("report.pdf")` becomes
 `att("report.pdf")`, and the muscle memory carries over: `str(att(...))`
 (or `.text`) is still the assembled prompt string, and adapter usage
 (`.claude(prompt)`, `.openai(prompt)`) still hangs off the result — they

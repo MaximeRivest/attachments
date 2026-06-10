@@ -28,12 +28,17 @@ NOTES:
 from __future__ import annotations
 
 import io
+import sys
 
 import pytest
 
 from attachments._processors import processors
-from attachments.deps import check_dep
-from attachments.types import ERROR_PASSWORD_REQUIRED
+from attachments.deps import check_dep, clear_cache
+from attachments.types import (
+    ERROR_MISSING_DEPENDENCY,
+    ERROR_PASSWORD_REQUIRED,
+    is_missing_dependency,
+)
 
 # Skip all tests in this module if PDF deps not available
 pytestmark = pytest.mark.skipif(
@@ -243,3 +248,128 @@ class TestPdfSegments:
         text = result["text"]
         assert text[segments[0]["start"] : segments[0]["end"]] == "alpha page"
         assert text[segments[1]["start"] : segments[1]["end"]] == "beta page"
+
+
+@pytest.mark.skipif(
+    not check_dep("pdf-images").available,
+    reason="PyMuPDF needed to build/render the scanned PDF fixture",
+)
+class TestPdfOcr:
+    """ocr option: "auto" (default) | True | False — text layer always wins."""
+
+    @pytest.fixture
+    def mask_ocr(self, monkeypatch):
+        """Simulate rapidocr_onnxruntime being uninstalled."""
+        monkeypatch.setitem(sys.modules, "rapidocr_onnxruntime", None)
+        clear_cache()
+        yield
+        clear_cache()
+
+    @pytest.fixture
+    def scanned_pdf_bytes(self) -> bytes:
+        """An image-only PDF (no text layer): text rendered via PIL, embedded.
+
+        Large clear black-on-white text so CPU OCR is reliable.
+        """
+        pymupdf = pytest.importorskip("pymupdf")
+        PIL_Image = pytest.importorskip("PIL.Image")
+        from PIL import ImageDraw, ImageFont
+
+        img = PIL_Image.new("RGB", (1200, 400), "white")
+        draw = ImageDraw.Draw(img)
+        try:
+            font = ImageFont.load_default(size=120)
+        except TypeError:  # older Pillow: load_default() takes no size kwarg
+            font = ImageFont.load_default()
+        draw.text((40, 120), "HELLO WORLD 42", fill="black", font=font)
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+
+        doc = pymupdf.open()
+        page = doc.new_page(width=600, height=200)
+        page.insert_image(pymupdf.Rect(0, 0, 600, 200), stream=buf.getvalue())
+        data = doc.tobytes()
+        doc.close()
+        return data
+
+    def test_scanned_pdf_has_no_text_layer(self, scanned_pdf_bytes: bytes):
+        result = processors[".pdf"](scanned_pdf_bytes, ocr=False)
+
+        assert "error" not in result["meta"]
+        assert result["text"].strip() == ""
+
+    def test_ocr_false_never_runs(self, scanned_pdf_bytes: bytes):
+        result = processors[".pdf"](scanned_pdf_bytes, ocr=False)
+
+        extra = result["meta"]["extra"]
+        assert "ocr" not in extra
+        assert "ocr_hint" not in extra
+
+    @pytest.mark.skipif(
+        not check_dep("ocr").available, reason="rapidocr_onnxruntime not installed"
+    )
+    def test_auto_ocr_recovers_text_from_scanned_pdf(self, scanned_pdf_bytes: bytes):
+        # Real CPU inference; the first call also loads the model (slow,
+        # but the engine is cached at module level for the whole session).
+        result = processors[".pdf"](scanned_pdf_bytes)  # ocr defaults to "auto"
+
+        assert "error" not in result["meta"]
+        assert "HELLO WORLD 42" in result["text"]
+        extra = result["meta"]["extra"]
+        assert extra["ocr"] is True
+        assert extra["ocr_backend"] == "rapidocr"
+        # Segments are built over the OCR text, like the text path.
+        segments = result["meta"]["segments"]
+        assert segments[0]["kind"] == "page"
+        assert segments[0]["label"] == "page 1"
+        text = result["text"]
+        assert "HELLO WORLD 42" in text[segments[0]["start"] : segments[0]["end"]]
+
+    @pytest.mark.skipif(
+        not check_dep("ocr").available, reason="rapidocr_onnxruntime not installed"
+    )
+    def test_forced_ocr_renders_pages_when_images_disabled(
+        self, scanned_pdf_bytes: bytes
+    ):
+        result = processors[".pdf"](scanned_pdf_bytes, ocr=True, render_images=False)
+
+        assert "error" not in result["meta"]
+        assert "HELLO WORLD 42" in result["text"]
+        assert result["images"] == []  # OCR-only renders are not emitted
+
+    @pytest.mark.skipif(
+        not check_dep("ocr").available, reason="rapidocr_onnxruntime not installed"
+    )
+    def test_text_layer_wins_over_ocr(self):
+        pymupdf = pytest.importorskip("pymupdf")
+        doc = pymupdf.open()
+        page = doc.new_page()
+        page.insert_text((72, 72), "real text layer")
+        data = doc.tobytes()
+        doc.close()
+
+        result = processors[".pdf"](data, ocr=True, render_images=False)
+
+        assert result["text"] == "real text layer"
+        assert "ocr" not in result["meta"]["extra"]
+
+    def test_auto_missing_dep_adds_hint_and_note(
+        self, scanned_pdf_bytes: bytes, mask_ocr
+    ):
+        result = processors[".pdf"](scanned_pdf_bytes)
+
+        assert "error" not in result["meta"]  # never an error under auto
+        assert result["text"].strip() == ""  # still empty, but not silently
+        extra = result["meta"]["extra"]
+        assert extra["ocr_hint"] == "scanned PDF? pip install attachments[ocr]"
+        assert "pip install attachments[ocr]" in result["meta"]["note"]
+
+    def test_forced_ocr_missing_dep_returns_typed_error(
+        self, scanned_pdf_bytes: bytes, mask_ocr
+    ):
+        result = processors[".pdf"](scanned_pdf_bytes, ocr=True)
+
+        assert is_missing_dependency(result)
+        error = result["meta"]["error"]
+        assert error["code"] == ERROR_MISSING_DEPENDENCY
+        assert "pip install attachments[ocr]" in error["message"]

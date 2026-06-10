@@ -190,7 +190,37 @@ def _make_heic() -> bytes:
     return buf.getvalue()
 
 
+def _make_ipynb() -> bytes:
+    notebook = {
+        "cells": [
+            {
+                "cell_type": "markdown",
+                "metadata": {},
+                "source": ["# Sample\n", "hello conformance\n"],
+            },
+            {
+                "cell_type": "code",
+                "execution_count": 1,
+                "metadata": {},
+                "outputs": [
+                    {
+                        "output_type": "stream",
+                        "name": "stdout",
+                        "text": ["42\n"],
+                    }
+                ],
+                "source": ["print(42)\n"],
+            },
+        ],
+        "metadata": {},
+        "nbformat": 4,
+        "nbformat_minor": 5,
+    }
+    return json.dumps(notebook).encode()
+
+
 GENERATORS: dict[str, Callable[[], bytes]] = {
+    ".ipynb": _make_ipynb,
     ".csv": _make_csv,
     ".tsv": _make_tsv,
     ".svg": _make_svg,
@@ -306,6 +336,70 @@ def test_processor_happy_path_artifacts_conform(ext: str, tmp_path: Path):
         assert_conformant(artifact)
         # (7) Optional-keys rule: no None anywhere in meta on the happy path.
         _assert_no_none_in_meta(artifact["meta"])
+
+
+# =============================================================================
+# (1b) Audio processors with a mocked transcription engine
+#
+# Audio extensions are skipped by the generator-based happy path because real
+# transcription needs model weights. A fake ``faster_whisper`` module (same
+# pattern as tests/test_processors/test_audio.py) keeps this offline while
+# still validating the artifacts the audio processor actually produces.
+# =============================================================================
+
+
+def _audio_extensions() -> list[str]:
+    import attachments._processors.audio as audio_mod
+
+    return sorted(
+        ext for ext in _registry if _registry[ext] is audio_mod.audio_processor
+    )
+
+
+@pytest.mark.parametrize("ext", _audio_extensions())
+def test_audio_artifacts_conform(ext: str, tmp_path: Path, monkeypatch):
+    import sys
+    import types
+
+    import attachments._processors.audio as audio_mod
+    from attachments.deps import clear_cache
+
+    class FakeSegment:
+        def __init__(self, start, end, text):
+            self.start, self.end, self.text = start, end, text
+
+    class FakeInfo:
+        duration = 9.5
+        language = "en"
+
+    class FakeWhisperModel:
+        def __init__(self, model, device=None, compute_type=None):
+            pass
+
+        def transcribe(self, audio, language=None, **kw):
+            segments = [
+                FakeSegment(0.0, 4.2, " Hello world. "),
+                FakeSegment(4.2, 9.5, "Second segment."),
+            ]
+            return iter(segments), FakeInfo()
+
+    fake = types.ModuleType("faster_whisper")
+    fake.WhisperModel = FakeWhisperModel
+    monkeypatch.setitem(sys.modules, "faster_whisper", fake)
+    monkeypatch.setattr(audio_mod, "_ENGINES", {})
+    clear_cache()
+    try:
+        path = tmp_path / f"sample{ext}"
+        path.write_bytes(b"\x00fake-audio-bytes\x00")
+
+        artifacts = att(str(path))
+
+        assert artifacts, f"att() returned no artifacts for {ext}"
+        for artifact in artifacts:
+            assert_conformant(artifact)
+            _assert_no_none_in_meta(artifact["meta"])
+    finally:
+        clear_cache()
 
 
 # =============================================================================

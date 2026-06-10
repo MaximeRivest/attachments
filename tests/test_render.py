@@ -336,6 +336,39 @@ def test_chunk_invalid_max_chars_raises():
         chunk([_text_artifact("hi")], max_chars=0)
 
 
+def test_chunk_invalid_max_tokens_raises():
+    with pytest.raises(ValueError):
+        chunk([_text_artifact("hi")], max_tokens=0)
+
+
+def test_chunk_max_tokens_is_four_chars_per_token():
+    art = _text_artifact("alpha beta gamma delta epsilon zeta", source="t.txt")
+    assert chunk([art], max_tokens=100) == chunk([art], max_chars=400)
+    assert chunk([art], max_tokens=3, overlap=0) == chunk(
+        [art], max_chars=12, overlap=0
+    )
+
+
+def test_chunk_max_tokens_overrides_default_max_chars():
+    # 8400 chars: the 8000-char default would split; max_tokens=3000
+    # (= 12000 chars) must override the default and keep one chunk.
+    art = _text_artifact("x" * 8400, source="big.txt")
+    assert len(chunk([art])) == 2
+    assert len(chunk([art], max_tokens=3000)) == 1
+
+
+def test_chunk_both_caps_given_smaller_wins():
+    art = _text_artifact("alpha beta gamma", source="t.txt")
+    # max_chars=12 < max_tokens*4=4000 -> chars cap wins.
+    assert chunk([art], max_chars=12, max_tokens=1000, overlap=0) == chunk(
+        [art], max_chars=12, overlap=0
+    )
+    # max_tokens*4=12 < max_chars=4000 -> token cap wins.
+    assert chunk([art], max_chars=4000, max_tokens=3, overlap=0) == chunk(
+        [art], max_chars=12, overlap=0
+    )
+
+
 def test_chunk_overlap_clamped_below_max_chars_terminates():
     text = "x" * 35
     art = _text_artifact(text, source="o.txt")

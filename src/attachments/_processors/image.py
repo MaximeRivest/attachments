@@ -12,7 +12,10 @@ HEIC/HEIF additionally requires pillow-heif: ``pip install attachments[heic]``
 
 from __future__ import annotations
 
+import contextlib
 import io
+import logging
+import os
 from typing import Any
 
 from .._options import Option, register_options
@@ -40,6 +43,90 @@ _ENCODABLE_MODES = {
 }
 
 
+#: Cached RapidOCR engine — model load is expensive, so it happens once.
+_OCR_ENGINE: Any = None
+
+#: Hint stored in meta.extra when OCR could help but rapidocr is missing.
+OCR_HINT = "image with text? pip install attachments[ocr]"
+
+
+@contextlib.contextmanager
+def _quiet_ocr():
+    """Silence rapidocr/onnxruntime console spew during import + inference.
+
+    Mirrors pdf.py's ``_quiet_pdf_loggers`` pattern: ``att()`` reports
+    problems in-band, so third-party log noise is suppressed and the
+    previous logger levels are restored afterwards. onnxruntime
+    additionally writes device-discovery warnings straight to file
+    descriptor 2 from C++ (bypassing ``sys.stderr``), so as a last resort
+    fd 2 is pointed at devnull for the duration.
+    """
+    loggers = [logging.getLogger(name) for name in ("rapidocr", "onnxruntime")]
+    previous = [logger.level for logger in loggers]
+    for logger in loggers:
+        logger.setLevel(logging.CRITICAL + 1)
+    saved_fd = devnull_fd = None
+    try:
+        saved_fd = os.dup(2)
+        devnull_fd = os.open(os.devnull, os.O_WRONLY)
+        os.dup2(devnull_fd, 2)
+    except OSError:
+        pass  # fd redirection unavailable; logger suppression still applies
+    # Import AFTER fd 2 is silenced: onnxruntime prints device-discovery
+    # warnings to fd 2 from C++ at import time.
+    try:
+        import onnxruntime  # set native log severity if available
+
+        onnxruntime.set_default_logger_severity(4)  # FATAL only
+    except Exception:
+        pass
+    try:
+        yield
+    finally:
+        if saved_fd is not None:
+            with contextlib.suppress(OSError):
+                os.dup2(saved_fd, 2)
+            os.close(saved_fd)
+        if devnull_fd is not None:
+            os.close(devnull_fd)
+        for logger, level in zip(loggers, previous, strict=True):
+            logger.setLevel(level)
+
+
+def _get_ocr_engine() -> Any:
+    """Construct (once) and return the module-level RapidOCR engine.
+
+    Raises ImportError when rapidocr_onnxruntime is not installed.
+    """
+    global _OCR_ENGINE
+    if _OCR_ENGINE is None:
+        with _quiet_ocr():
+            from rapidocr_onnxruntime import RapidOCR
+
+            _OCR_ENGINE = RapidOCR()
+    return _OCR_ENGINE
+
+
+def _ocr_image_bytes(image_bytes: bytes) -> str:
+    """Run OCR over encoded image bytes and return the recognized text.
+
+    Lines are joined with newlines in reading order (RapidOCR returns
+    detections top-to-bottom). Returns "" when nothing is recognized.
+    """
+    import numpy as np
+    from PIL import Image
+
+    engine = _get_ocr_engine()
+    img = Image.open(io.BytesIO(image_bytes))
+    if img.mode != "RGB":
+        img = img.convert("RGB")
+    with _quiet_ocr():
+        result, _elapsed = engine(np.asarray(img))
+    if not result:
+        return ""
+    return "\n".join(str(item[1]).strip() for item in result if item and item[1])
+
+
 def _looks_heic(data: bytes, filename: str | None) -> bool:
     """Cheap HEIC/HEIF detection: extension or ISO-BMFF ftyp brand sniff."""
     if filename and filename.lower().rsplit(".", 1)[-1] in ("heic", "heif"):
@@ -53,6 +140,7 @@ def image_processor(
     filename: str | None = None,
     max_dim: int | None = None,
     rotate: int | None = None,
+    ocr: bool | str = False,
     **_: Any,
 ) -> dict[str, Any]:
     """Convert image bytes to an artifact carrying one ImageItem.
@@ -64,6 +152,12 @@ def image_processor(
             direction; negative values rotate clockwise). Normalized modulo
             360; applied before ``max_dim``. ``expand=True`` grows the canvas,
             so non-right angles get background fill in the corners.
+        ocr: ``True`` runs RapidOCR and the recognized text becomes the
+            artifact text (``extra.ocr = True``); missing rapidocr yields the
+            typed missing-dependency artifact. ``"auto"`` behaves like
+            ``True`` only when rapidocr is installed, otherwise it is a
+            no-op that records ``extra.ocr_hint``. ``False`` (default)
+            never runs OCR.
 
     Behavior:
         - png/jpeg/gif/webp with no resize/rotate needed: bytes pass through.
@@ -150,8 +244,22 @@ def image_processor(
         if degrees:
             extra["rotated"] = degrees
 
+        text = ""
+        if ocr is True or str(ocr).lower() == "always" or str(ocr).lower() == "auto":
+            from ..deps import check_dep
+
+            if check_dep("ocr").available:
+                text = _ocr_image_bytes(image_bytes)
+                extra["ocr"] = True
+                extra["ocr_backend"] = "rapidocr"
+            elif ocr is True or str(ocr).lower() == "always":
+                # Forced OCR without rapidocr is a typed missing-dependency.
+                return missing_dep_artifact(source, "ocr")
+            else:
+                extra["ocr_hint"] = OCR_HINT
+
         return make_artifact(
-            text="",
+            text=text,
             images=[{"name": name, "mimetype": mimetype, "bytes": image_bytes}],
             meta={"kind": "image", "extra": extra},
         )
@@ -186,6 +294,16 @@ OPTIONS = (
         type="int",
         help="Rotate counterclockwise by this many degrees (negative = clockwise)",
         example="rotate: 90",
+    ),
+    Option(
+        name="ocr",
+        type="bool_or_auto",
+        default=False,
+        help=(
+            "Recognize text in the image with RapidOCR: true/false, or auto "
+            "(only when rapidocr is installed)"
+        ),
+        example="ocr: true",
     ),
 )
 

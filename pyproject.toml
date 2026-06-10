@@ -76,6 +76,12 @@ xls = [
 csv-pandas = [
     "pandas>=2.0,<3.0",
 ]
+ocr = [
+    "rapidocr-onnxruntime>=1.3",
+]
+audio = [
+    "faster-whisper>=1.0",
+]
 
 # === Service Mode (minimal - just HTTP client) ===
 service = [
@@ -98,9 +104,13 @@ all-local = [
 ]
 
 # === Self-Hosted Server ===
-# Install this on your server machine to serve all formats to clients
+# Install this on your server machine to serve all formats to clients.
+# ocr (onnxruntime) and audio (ctranslate2 via faster-whisper) ship very
+# large wheels, so they are deliberately NOT in all-local — local installs
+# opt in with attachments[ocr] / attachments[audio]. The server bundle
+# includes them because a server should serve everything.
 server = [
-    "attachments[all-local]",
+    "attachments[all-local,ocr,audio]",
 ]
 
 [project.urls]
@@ -129,6 +139,8 @@ dev = [
     "pillow-heif>=0.16",
     "cairosvg>=2.7",
     "xlrd>=2.0",
+    "rapidocr-onnxruntime>=1.3",
+    "faster-whisper>=1.0",
     # CLI clipboard support (`att --copy`)
     "pyperclip>=1.8",
     # Spec conformance validation

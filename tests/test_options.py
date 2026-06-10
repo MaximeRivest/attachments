@@ -251,6 +251,7 @@ class TestSchemaExport:
             "password",
             "images",
             "dpi",
+            "ocr",
             "max_pages",
         ]
         entry = next(o for o in pdf if o["name"] == "pages")

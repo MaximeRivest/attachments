@@ -352,6 +352,8 @@ def process_pdf(
     # Image rendering options
     render_images: bool | str = "auto",  # False | True/"always" | "auto"
     images_dpi: int = 200,
+    # OCR options
+    ocr: bool | str = "auto",  # False | True/"always" | "auto"
     **_opts: Any,
 ) -> dict:
     """
@@ -365,10 +367,19 @@ def process_pdf(
       - render_images:               False | True/"always" | "auto"
                                      "auto" renders only if text is empty.
       - images_dpi: int              PNG rendering resolution when rendering.
+      - ocr:                         False | True/"always" | "auto"
+                                     OCR runs ONLY when the extracted text
+                                     layer is empty (a text layer always
+                                     wins). "auto" OCRs scanned PDFs when
+                                     rapidocr is installed, else records an
+                                     ocr_hint; True with rapidocr missing
+                                     returns the typed missing-dependency
+                                     artifact; False never OCRs.
 
     Dependencies:
       - Text: pypdf (preferred) or PyPDF2; fallback to pdfminer.six.
       - Images: PyMuPDF (fitz) preferred; fallback pdf2image (+poppler).
+      - OCR: rapidocr_onnxruntime (pip install attachments[ocr]).
     """
     from ..deps import check_dep
     from ..types import missing_dep_artifact
@@ -480,9 +491,52 @@ def process_pdf(
                 extra["image_backend"] = img_backend2
                 images = imgs2
 
+    # ---- OCR (optional; only when there is no text layer) ----
+    # A text layer always wins: OCR runs only when extracted text is empty.
+    ocr_note: str | None = None
+    ocr_forced = ocr is True or str(ocr).lower() == "always"
+    ocr_auto = isinstance(ocr, str) and ocr.lower() == "auto"
+    if text.strip() == "" and (ocr_forced or ocr_auto):
+        if check_dep("ocr").available:
+            ocr_images = images
+            if not ocr_images:
+                # Render pages just for OCR at an OCR-suitable resolution.
+                ocr_dpi = max(int(images_dpi), 200)
+                ocr_images, _backend, _ = _render_pages_to_png_with_pymupdf(
+                    data, page_start, page_end, max_pages, ocr_dpi, filename
+                )
+                if not _backend:
+                    ocr_images, _backend, _ = _render_pages_to_png_with_pdf2image(
+                        data, page_start, page_end, max_pages, ocr_dpi, filename
+                    )
+            if ocr_images:
+                from .image import _ocr_image_bytes
+
+                ordered = sorted(ocr_images, key=lambda im: im["page"])
+                page_texts = [_ocr_image_bytes(im["bytes"]) for im in ordered]
+                ocr_text, ocr_segments = _join_pages_with_segments(
+                    page_texts, ordered[0]["page"] - 1
+                )
+                extra["ocr"] = True
+                extra["ocr_backend"] = "rapidocr"
+                if ocr_text.strip():
+                    text = ocr_text
+                    segments = ocr_segments
+        elif ocr_forced:
+            # Forced OCR without rapidocr is a typed missing-dependency.
+            return missing_dep_artifact(source, "ocr")
+        else:
+            # First-impression fix: never silently empty for scanned PDFs.
+            extra["ocr_hint"] = "scanned PDF? pip install attachments[ocr]"
+            ocr_note = (
+                "No text layer found — this may be a scanned PDF. "
+                "Install OCR support with `pip install attachments[ocr]` "
+                "to recognize text from the page images."
+            )
+
     # Typed parse failure: every text backend errored out (not merely empty
     # output) and image rendering produced nothing either.
-    if text1 is None and text2 is None and not images:
+    if text1 is None and text2 is None and not images and not text.strip():
         detail = (
             extra.get("extract_error")
             or extra.get("pdfminer_extract_error")
@@ -496,6 +550,8 @@ def process_pdf(
 
     # Final artifact
     meta: dict[str, Any] = {"kind": "pdf", "extra": extra}
+    if ocr_note:
+        meta["note"] = ocr_note
     if segments:
         meta["segments"] = segments
     return make_artifact(
@@ -539,6 +595,16 @@ register_options(
             default=200,
             help="Resolution for rendered page images.",
             example="dpi: 300",
+        ),
+        Option(
+            "ocr",
+            "bool_or_auto",
+            default="auto",
+            help=(
+                "OCR scanned pages with RapidOCR when there is no text layer: "
+                "true/false, or auto (only when rapidocr is installed)."
+            ),
+            example="ocr: true",
         ),
         Option(
             "max_pages",

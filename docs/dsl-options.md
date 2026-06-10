@@ -13,6 +13,7 @@ Regenerate with `uv run python scripts/gen_dsl_assets.py`.
 | --- | --- | --- | --- | --- | --- |
 | `max_dim` | `int` | — | — | `max_dim: 1024` | Downscale so the longest side is at most this many pixels |
 | `rotate` | `int` | — | — | `rotate: 90` | Rotate counterclockwise by this many degrees (negative = clockwise) |
+| `ocr` | `bool_or_auto` | — | `false` | `ocr: true` | Recognize text in the image with RapidOCR: true/false, or auto (only when rapidocr is installed) |
 
 ### `.cfg`, `.css`, `.ini`, `.java`, `.js`, `.json`, `.log`, `.markdown`, `.md`, `.py`, `.rst`, `.tex`, `.toml`, `.ts`, `.txt`, `.xml`, `.yaml`, `.yml`, `__text__`
 
@@ -32,12 +33,25 @@ No options declared.
 | --- | --- | --- | --- | --- | --- |
 | `images` | `bool` | `render` | `false` | `images: true` | Extract embedded images. |
 
+### `.flac`, `.m4a`, `.mp3`, `.ogg`, `.opus`, `.wav`
+
+| Option | Type | Aliases | Default | Example | Description |
+| --- | --- | --- | --- | --- | --- |
+| `model` | `str` | — | `"base"` | `model: small` | Whisper model size: tiny, base, small, medium, or large-v3. |
+| `language` | `str` | — | — | `language: en` | Spoken language code (e.g. 'en', 'fr'); omit to autodetect. |
+
 ### `.htm`, `.html`
 
 | Option | Type | Aliases | Default | Example | Description |
 | --- | --- | --- | --- | --- | --- |
 | `images` | `bool` | `render` | `false` | `images: true` | Extract inline data-URI images. |
 | `select` | `str` | `css` | — | `select: "h1, .article"` | CSS selector; extract only matching elements |
+
+### `.ipynb`
+
+| Option | Type | Aliases | Default | Example | Description |
+| --- | --- | --- | --- | --- | --- |
+| `outputs` | `bool` | — | `false` | `outputs: true` | Include per-cell execution outputs: text outputs as fenced blocks (truncated at ~2000 chars each) and image/png outputs as image items. |
 
 ### `.pdf`
 
@@ -47,6 +61,7 @@ No options declared.
 | `password` | `str` | `pw` | — | `password: secret` | Password for encrypted PDFs. |
 | `images` | `bool_or_auto` | `render` | `"auto"` | `images: true` | Render pages to PNG: true/false, or auto (only when no text). |
 | `dpi` | `int` | — | `200` | `dpi: 300` | Resolution for rendered page images. |
+| `ocr` | `bool_or_auto` | — | `"auto"` | `ocr: true` | OCR scanned pages with RapidOCR when there is no text layer: true/false, or auto (only when rapidocr is installed). |
 | `max_pages` | `int` | — | — | `max_pages: 10` | Hard cap on the number of pages parsed/rendered. |
 
 ### `.pptx`

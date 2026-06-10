@@ -8,8 +8,12 @@ format support as you need it, or let a service/server do the processing.
 
 > 🧭 **This is attachments 1.0** — a complete rewrite that succeeds the 0.25.x
 > series of the published [`attachments`](https://pypi.org/project/attachments/)
-> package. Read [VISION.md](VISION.md) for where the project is going,
-> [CHANGELOG.md](CHANGELOG.md) for what changed (and how to migrate), and
+> package. Start with the executed demo notebook
+> [examples/demo.ipynb](examples/demo.ipynb) and the launch post
+> [ANNOUNCEMENT.md](ANNOUNCEMENT.md). Migrating from 0.25.x?
+> [docs/MIGRATION.md](docs/MIGRATION.md) is the side-by-side guide. Read
+> [VISION.md](VISION.md) for where the project is going,
+> [CHANGELOG.md](CHANGELOG.md) for what changed, and
 > [DEVELOPMENT.md](DEVELOPMENT.md) to add processors or sources.
 
 ## Quick Start
@@ -25,9 +29,11 @@ pip install attachments[docx]        # Word support
 pip install attachments[pptx]        # PowerPoint support
 pip install attachments[html]        # HTML support
 pip install attachments[image]       # png/jpg/gif/webp/bmp/tiff support
+pip install attachments[ocr]         # OCR for scanned PDFs/images (large: pulls onnxruntime)
+pip install attachments[audio]       # mp3/wav/m4a/flac/ogg/opus transcription (large: pulls faster-whisper/ctranslate2)
 pip install attachments[service]     # API fallback mode
 pip install attachments[clipboard]   # `att --copy` clipboard support
-pip install attachments[all-local]   # Everything currently shipped
+pip install attachments[all-local]   # Everything currently shipped (except ocr/audio — too big)
 ```
 
 ```python
@@ -47,6 +53,8 @@ artifacts = att("https://example.com/f.pdf") # URL
 artifacts = att("report.pdf[pages: 1-4]")
 artifacts = att("report.pdf[pages: 1-10, images: true, dpi: 300]")
 artifacts = att("data.xlsx[sheet: Sales, rows: 100]")
+artifacts = att("scan.pdf[ocr: true]")      # force OCR on a scanned PDF (auto by default)
+artifacts = att("meeting.mp3[model: small, language: en]")  # audio transcription
 artifacts = att("github://org/repo[branch: develop]")
 
 # With service fallback (when local deps missing)
@@ -63,12 +71,15 @@ collapse into a `+N more errors (see .errors)` line (real runs):
 
 ```python
 >>> att("report.pdf[pages: 1-2, images: true]")
-<Artifacts: 1 artifact | 94 chars | 2 images>
+<Artifacts: 1 artifact | 94 chars | ~24 tokens | 2 images>
 
 >>> att("missing.pdf")
-<Artifacts: 1 artifact | 0 chars | 1 error>
+<Artifacts: 1 artifact | 0 chars | ~0 tokens | 1 error>
   ! missing.pdf: unpack-error — unpack failed: Unsupported or non-existent input: missing.pdf
 ```
+
+The `~N tokens` segment (also available as `.tokens`) is a fast chars/4
+approximation, not a real tokenizer count.
 
 `print()` (or `.text`) gives the full assembled prompt — v1 muscle memory:
 
@@ -377,10 +388,13 @@ $ att --options .xlsx
 
 ## Status & Contributing
 
-Shipped today: text (20+ extensions), PDF, XLSX, XLS, DOCX, PPTX, HTML
-(with `select:` CSS extraction), CSV/TSV (real tables, optional pandas
-summary), SVG (text extraction + optional raster), and image
-(png/jpg/gif/webp/bmp/tiff/heic, with `rotate:`) processors; local files,
+Shipped today: text (20+ extensions), PDF (with OCR for scanned pages),
+XLSX, XLS, DOCX, PPTX, HTML (with `select:` CSS extraction), CSV/TSV
+(real tables, optional pandas summary), SVG (text extraction + optional
+raster), image (png/jpg/gif/webp/bmp/tiff/heic, with `rotate:` and
+`ocr:`), Jupyter notebook (`.ipynb`, zero-dep, optional cell outputs),
+and audio transcription
+(mp3/wav/m4a/flac/ogg/opus via faster-whisper) processors; local files,
 directories, glob patterns (`att("src/**/*.py")`), zip/tar, HTTP(S), and
 `github://` sources; service client, self-hosted server, and CLI.
 The last mile ships too: `render_text` / `to_claude_messages` /
@@ -389,7 +403,7 @@ API messages, or RAG chunks. The IR contract and DSL grammar are frozen in
 [spec/](spec/) and enforced by a conformance suite; the generated option
 cheatsheet lives in [docs/dsl-options.md](docs/dsl-options.md).
 
-Everything else (legacy `.doc`/`.ppt`, EPS, OCR, audio, `s3://`,
+Everything else (legacy `.doc`/`.ppt`, EPS, video, `s3://`,
 `gdrive://`, `notion://`, …) is the
 long tail we want help with — each new processor is one pure function
 `(bytes, options) -> artifact` plus a declared option schema. Start with

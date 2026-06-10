@@ -62,18 +62,18 @@ def test_repr_summary_line_counts():
     )
     assert (
         repr(arts).splitlines()[0]
-        == "<Artifacts: 3 artifacts | 11 chars | 1 image | 1 error>"
+        == "<Artifacts: 3 artifacts | 11 chars | ~3 tokens | 1 image | 1 error>"
     )
 
 
 def test_repr_singular_and_omits_zero_sections():
     arts = Artifacts([_text_artifact("hi")])
-    assert repr(arts) == "<Artifacts: 1 artifact | 2 chars>"
+    assert repr(arts) == "<Artifacts: 1 artifact | 2 chars | ~1 tokens>"
 
 
 def test_repr_thousands_separator():
     arts = Artifacts([_text_artifact("x" * 14210)])
-    assert repr(arts) == "<Artifacts: 1 artifact | 14,210 chars>"
+    assert repr(arts) == "<Artifacts: 1 artifact | 14,210 chars | ~3.6k tokens>"
 
 
 def test_repr_error_lines_with_source_code_and_truncated_message():
@@ -85,7 +85,7 @@ def test_repr_error_lines_with_source_code_and_truncated_message():
         ]
     )
     lines = repr(arts).splitlines()
-    assert lines[0] == "<Artifacts: 2 artifacts | 0 chars | 2 errors>"
+    assert lines[0] == "<Artifacts: 2 artifacts | 0 chars | ~0 tokens | 2 errors>"
     assert lines[1] == "  ! a.pdf: parse-error — short"
     # Over-long messages are middle-truncated to 160 chars with an ellipsis.
     prefix = "  ! b.pdf: unpack-error — "
@@ -117,7 +117,7 @@ def test_repr_caps_error_lines_and_points_to_errors():
         [error_artifact(f"bad{i:02d}.pdf", ERROR_PARSE, "broken") for i in range(60)]
     )
     lines = repr(arts).splitlines()
-    assert lines[0] == "<Artifacts: 60 artifacts | 0 chars | 60 errors>"
+    assert lines[0] == "<Artifacts: 60 artifacts | 0 chars | ~0 tokens | 60 errors>"
     assert len(lines) == 12  # summary + 10 error lines + overflow note
     assert lines[1] == "  ! bad00.pdf: parse-error — broken"
     assert lines[10] == "  ! bad09.pdf: parse-error — broken"
@@ -156,6 +156,50 @@ def test_repr_never_leaks_bytes_or_text():
     assert len(rendered) < 2000
     assert "tttt" not in rendered
     assert "\\xff" not in rendered
+
+
+# =============================================================================
+# .tokens — fast ceil(chars/4) estimate + compact repr formatting
+# =============================================================================
+
+
+def test_tokens_is_ceil_of_total_chars_over_four():
+    assert Artifacts([]).tokens == 0
+    assert Artifacts([_text_artifact("abcd")]).tokens == 1
+    assert Artifacts([_text_artifact("abcde")]).tokens == 2
+    # Summed across artifacts BEFORE the ceil (2 + 2 chars -> 1 token).
+    assert Artifacts([_text_artifact("ab"), _text_artifact("cd")]).tokens == 1
+    # Error-only artifacts have no text.
+    assert Artifacts([error_artifact("x.pdf", ERROR_PARSE, "bad")]).tokens == 0
+
+
+def test_tokens_formatting_boundaries_in_repr():
+    # 999 tokens (3996 chars) — exact count, no suffix.
+    arts = Artifacts([_text_artifact("x" * 3996)])
+    assert repr(arts) == "<Artifacts: 1 artifact | 3,996 chars | ~999 tokens>"
+    # 1000 tokens (4000 chars) — 'k' suffix, '.0' stripped.
+    arts = Artifacts([_text_artifact("x" * 4000)])
+    assert repr(arts) == "<Artifacts: 1 artifact | 4,000 chars | ~1k tokens>"
+
+
+def test_tokens_million_formatting_in_repr():
+    arts = Artifacts([_text_artifact("x" * 4_800_000)])  # 1.2M tokens
+    assert repr(arts) == "<Artifacts: 1 artifact | 4,800,000 chars | ~1.2M tokens>"
+
+
+def test_tokens_segment_sits_between_chars_and_images():
+    arts = Artifacts([_image_artifact()])
+    assert repr(arts) == "<Artifacts: 1 artifact | 0 chars | ~0 tokens | 1 image>"
+
+
+def test_repr_markdown_summary_includes_tokens():
+    arts = Artifacts([_text_artifact("abcd")])
+    assert "1 artifact | 4 chars | ~1 tokens" in arts._repr_markdown_()
+
+
+def test_chunk_shortcut_passes_max_tokens():
+    arts = Artifacts([_text_artifact("alpha beta gamma", source="t.txt")])
+    assert arts.chunk(max_tokens=3, overlap=0) == arts.chunk(max_chars=12, overlap=0)
 
 
 # =============================================================================
@@ -282,7 +326,9 @@ def test_repr_markdown_summary_errors_and_preview_truncation():
         ]
     )
     md = arts._repr_markdown_()
-    assert md.startswith("### Artifacts — 2 artifacts | 700 chars | 1 error")
+    assert md.startswith(
+        "### Artifacts — 2 artifacts | 700 chars | ~175 tokens | 1 error"
+    )
     assert "> ⚠️ `broken.pdf`: parse-error — not a PDF" in md
     assert "```text" in md
     # Preview is capped at 600 chars of the assembled text (headers count).

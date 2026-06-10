@@ -316,4 +316,80 @@ class TestRegistration:
     def test_extension_registered_with_options(self, ext):
         assert processors[ext] is image_processor
         names = [o.name for o in get_options(ext)]
-        assert names == ["max_dim", "rotate"]
+        assert names == ["max_dim", "rotate", "ocr"]
+
+
+def _text_image_bytes(text: str = "HELLO WORLD 42") -> bytes:
+    """Render large, clear black-on-white text into a PNG (OCR fixture)."""
+    from PIL import Image, ImageDraw, ImageFont
+
+    img = Image.new("RGB", (600, 200), "white")
+    draw = ImageDraw.Draw(img)
+    try:
+        font = ImageFont.load_default(size=60)
+    except TypeError:  # older Pillow: load_default() takes no size kwarg
+        font = ImageFont.load_default()
+    draw.text((20, 60), text, fill="black", font=font)
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()
+
+
+class TestImageOcr:
+    """ocr option: False (default) | True | "auto"."""
+
+    def test_ocr_default_off(self):
+        result = image_processor(_text_image_bytes(), filename="sign.png")
+
+        assert "error" not in result["meta"]
+        assert result["text"] == ""
+        assert "ocr" not in result["meta"]["extra"]
+
+    def test_ocr_false_never_runs(self):
+        result = image_processor(_text_image_bytes(), filename="sign.png", ocr=False)
+
+        assert result["text"] == ""
+        assert "ocr" not in result["meta"]["extra"]
+
+    @pytest.mark.skipif(
+        not check_dep("ocr").available, reason="rapidocr_onnxruntime not installed"
+    )
+    def test_ocr_true_recognizes_text(self):
+        # Real CPU inference; the first call also loads the model (slow,
+        # but the engine is cached at module level for the whole session).
+        result = image_processor(_text_image_bytes(), filename="sign.png", ocr=True)
+
+        assert "error" not in result["meta"]
+        assert "HELLO WORLD 42" in result["text"]
+        extra = result["meta"]["extra"]
+        assert extra["ocr"] is True
+        assert extra["ocr_backend"] == "rapidocr"
+        assert result["images"]  # the image item is still emitted
+
+    @pytest.mark.skipif(
+        not check_dep("ocr").available, reason="rapidocr_onnxruntime not installed"
+    )
+    def test_ocr_auto_behaves_like_true_when_installed(self):
+        result = image_processor(_text_image_bytes(), filename="sign.png", ocr="auto")
+
+        assert "HELLO WORLD 42" in result["text"]
+        assert result["meta"]["extra"]["ocr"] is True
+
+    def test_ocr_true_missing_dep_returns_typed_error(self, mask_modules):
+        mask_modules("rapidocr_onnxruntime")
+
+        result = image_processor(_text_image_bytes(), filename="sign.png", ocr=True)
+
+        assert is_missing_dependency(result)
+        error = result["meta"]["error"]
+        assert error["code"] == ERROR_MISSING_DEPENDENCY
+        assert "pip install attachments[ocr]" in error["message"]
+
+    def test_ocr_auto_missing_dep_is_noop_with_hint(self, mask_modules):
+        mask_modules("rapidocr_onnxruntime")
+
+        result = image_processor(_text_image_bytes(), filename="sign.png", ocr="auto")
+
+        assert "error" not in result["meta"]
+        assert result["text"] == ""
+        assert "pip install attachments[ocr]" in result["meta"]["extra"]["ocr_hint"]

@@ -97,6 +97,35 @@ def _clip_message(message: str) -> str:
     return f"{message[:head]}…{message[-tail:]}"
 
 
+def _format_tokens(n: int) -> str:
+    """Compact ``~N tokens`` summary segment for *n* estimated tokens.
+
+    Under 1,000 the exact estimate is shown; thousands and millions get
+    one decimal with a trailing ``.0`` stripped.
+
+    Examples:
+        >>> _format_tokens(842)
+        '~842 tokens'
+        >>> _format_tokens(999)
+        '~999 tokens'
+        >>> _format_tokens(1000)
+        '~1k tokens'
+        >>> _format_tokens(3553)
+        '~3.6k tokens'
+        >>> _format_tokens(1_200_000)
+        '~1.2M tokens'
+        >>> _format_tokens(2_000_000)
+        '~2M tokens'
+    """
+    if n >= 1_000_000:
+        value, suffix = n / 1_000_000, "M"
+    elif n >= 1000:
+        value, suffix = n / 1000, "k"
+    else:
+        return f"~{n} tokens"
+    return f"~{f'{value:.1f}'.removesuffix('.0')}{suffix} tokens"
+
+
 def _fence(content: str) -> str:
     """Return a backtick fence longer than any backtick run in *content*.
 
@@ -172,7 +201,7 @@ class Artifacts(list):
         ...     ]
         ... )
         >>> print(repr(a))
-        <Artifacts: 2 artifacts | 11 chars | 1 error>
+        <Artifacts: 2 artifacts | 11 chars | ~3 tokens | 1 error>
           ! broken.pdf: parse-error — not a PDF
         >>> print(a)
         ## notes.txt
@@ -193,15 +222,20 @@ class Artifacts(list):
         """One deterministic summary line (no text/bytes ever).
 
         ``chars`` counts artifact text characters (summed across
-        artifacts, before ``render_text`` adds headers).
+        artifacts, before ``render_text`` adds headers); ``~N tokens``
+        is the :attr:`tokens` estimate, compact-formatted.
 
         Examples:
             >>> from attachments.types import make_artifact
             >>> Artifacts([make_artifact(text="hi")])._summary()
-            '1 artifact | 2 chars'
+            '1 artifact | 2 chars | ~1 tokens'
         """
         chars = sum(len(artifact.get("text") or "") for artifact in self)
-        parts = [_plural(len(self), "artifact"), f"{chars:,} chars"]
+        parts = [
+            _plural(len(self), "artifact"),
+            f"{chars:,} chars",
+            _format_tokens(self.tokens),
+        ]
         n_images = len(self.images)
         if n_images:
             parts.append(_plural(n_images, "image"))
@@ -211,16 +245,23 @@ class Artifacts(list):
         return " | ".join(parts)
 
     def __repr__(self) -> str:
-        """Summary line plus one ``!`` line per error — never text/bytes.
+        """Summary line plus one ``!`` line per error and one ``*`` line per
+        note — never text/bytes.
 
         Error lines are capped at ``_ERROR_MAX_COUNT``; the rest collapse
         into one ``+N more errors (see .errors)`` line so the repr stays a
-        glance even when a whole directory fails.
+        glance even when a whole directory fails. Teaching notes that
+        processors leave in ``meta["note"]`` (e.g. the scanned-PDF OCR
+        hint) are surfaced the same way, capped at the same count, so a
+        first-run user who just prints the result sees the guidance.
 
         Examples:
             >>> from attachments.types import make_artifact
             >>> Artifacts([make_artifact(text="hello", meta={"source": "a.txt"})])
-            <Artifacts: 1 artifact | 5 chars>
+            <Artifacts: 1 artifact | 5 chars | ~2 tokens>
+            >>> Artifacts([make_artifact(meta={"source": "scan.pdf", "note": "hint"})])
+            <Artifacts: 1 artifact | 0 chars | ~0 tokens>
+              * scan.pdf: hint
         """
         lines = [f"<Artifacts: {self._summary()}>"]
         errors = self.errors
@@ -230,6 +271,16 @@ class Artifacts(list):
         hidden = len(errors) - _ERROR_MAX_COUNT
         if hidden > 0:
             lines.append(f"  … +{_plural(hidden, 'more error')} (see .errors)")
+        notes = [
+            (artifact["meta"].get("source", "?"), note)
+            for artifact in self
+            if (note := artifact.get("meta", {}).get("note"))
+        ]
+        for source, note in notes[:_ERROR_MAX_COUNT]:
+            lines.append(f"  * {source}: {_clip_message(note)}")
+        hidden_notes = len(notes) - _ERROR_MAX_COUNT
+        if hidden_notes > 0:
+            lines.append(f"  … +{_plural(hidden_notes, 'more note')}")
         return "\n".join(lines)
 
     def __str__(self) -> str:
@@ -251,6 +302,29 @@ class Artifacts(list):
             True
         """
         return render_text(self)
+
+    @property
+    def tokens(self) -> int:
+        """Estimated token count over all artifact text.
+
+        A FAST APPROXIMATION, not a tokenizer: total artifact text
+        characters divided by 4, rounded up (``ceil(chars / 4)``). Real
+        token counts vary by model and content; use this for quick
+        budget checks, not billing math.
+
+        Examples:
+            >>> from attachments.types import make_artifact
+            >>> Artifacts([]).tokens
+            0
+            >>> Artifacts([make_artifact(text="abcd")]).tokens
+            1
+            >>> Artifacts([make_artifact(text="abcde")]).tokens
+            2
+            >>> Artifacts([make_artifact(text="ab"), make_artifact(text="cd")]).tokens
+            1
+        """
+        chars = sum(len(artifact.get("text") or "") for artifact in self)
+        return -(-chars // 4)  # ceil(chars / 4) without importing math
 
     @property
     def images(self) -> list[dict]:
@@ -403,7 +477,7 @@ class Artifacts(list):
             ...     [make_artifact(text="hi", images=[img], meta={"source": "a"})]
             ... )
             >>> md = a._repr_markdown_()
-            >>> "### Artifacts — 1 artifact | 2 chars | 1 image" in md
+            >>> "### Artifacts — 1 artifact | 2 chars | ~1 tokens | 1 image" in md
             True
             >>> "![p.png](data:image/png;base64," in md
             True

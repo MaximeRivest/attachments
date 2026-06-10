@@ -18,6 +18,15 @@
         "name": "rotate",
         "param": null,
         "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": false,
+        "example": "ocr: true",
+        "help": "Recognize text in the image with RapidOCR: true/false, or auto (only when rapidocr is installed)",
+        "name": "ocr",
+        "param": null,
+        "type": "bool_or_auto"
       }
     ],
     ".cfg": [],
@@ -69,6 +78,26 @@
         "type": "bool"
       }
     ],
+    ".flac": [
+      {
+        "aliases": [],
+        "default": "base",
+        "example": "model: small",
+        "help": "Whisper model size: tiny, base, small, medium, or large-v3.",
+        "name": "model",
+        "param": null,
+        "type": "str"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "language: en",
+        "help": "Spoken language code (e.g. 'en', 'fr'); omit to autodetect.",
+        "name": "language",
+        "param": null,
+        "type": "str"
+      }
+    ],
     ".gif": [
       {
         "aliases": [],
@@ -87,6 +116,15 @@
         "name": "rotate",
         "param": null,
         "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": false,
+        "example": "ocr: true",
+        "help": "Recognize text in the image with RapidOCR: true/false, or auto (only when rapidocr is installed)",
+        "name": "ocr",
+        "param": null,
+        "type": "bool_or_auto"
       }
     ],
     ".heic": [
@@ -107,6 +145,15 @@
         "name": "rotate",
         "param": null,
         "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": false,
+        "example": "ocr: true",
+        "help": "Recognize text in the image with RapidOCR: true/false, or auto (only when rapidocr is installed)",
+        "name": "ocr",
+        "param": null,
+        "type": "bool_or_auto"
       }
     ],
     ".heif": [
@@ -127,6 +174,15 @@
         "name": "rotate",
         "param": null,
         "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": false,
+        "example": "ocr: true",
+        "help": "Recognize text in the image with RapidOCR: true/false, or auto (only when rapidocr is installed)",
+        "name": "ocr",
+        "param": null,
+        "type": "bool_or_auto"
       }
     ],
     ".htm": [
@@ -178,6 +234,17 @@
       }
     ],
     ".ini": [],
+    ".ipynb": [
+      {
+        "aliases": [],
+        "default": false,
+        "example": "outputs: true",
+        "help": "Include per-cell execution outputs: text outputs as fenced blocks (truncated at ~2000 chars each) and image/png outputs as image items.",
+        "name": "outputs",
+        "param": null,
+        "type": "bool"
+      }
+    ],
     ".java": [],
     ".jpeg": [
       {
@@ -197,6 +264,15 @@
         "name": "rotate",
         "param": null,
         "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": false,
+        "example": "ocr: true",
+        "help": "Recognize text in the image with RapidOCR: true/false, or auto (only when rapidocr is installed)",
+        "name": "ocr",
+        "param": null,
+        "type": "bool_or_auto"
       }
     ],
     ".jpg": [
@@ -217,13 +293,102 @@
         "name": "rotate",
         "param": null,
         "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": false,
+        "example": "ocr: true",
+        "help": "Recognize text in the image with RapidOCR: true/false, or auto (only when rapidocr is installed)",
+        "name": "ocr",
+        "param": null,
+        "type": "bool_or_auto"
       }
     ],
     ".js": [],
     ".json": [],
     ".log": [],
+    ".m4a": [
+      {
+        "aliases": [],
+        "default": "base",
+        "example": "model: small",
+        "help": "Whisper model size: tiny, base, small, medium, or large-v3.",
+        "name": "model",
+        "param": null,
+        "type": "str"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "language: en",
+        "help": "Spoken language code (e.g. 'en', 'fr'); omit to autodetect.",
+        "name": "language",
+        "param": null,
+        "type": "str"
+      }
+    ],
     ".markdown": [],
     ".md": [],
+    ".mp3": [
+      {
+        "aliases": [],
+        "default": "base",
+        "example": "model: small",
+        "help": "Whisper model size: tiny, base, small, medium, or large-v3.",
+        "name": "model",
+        "param": null,
+        "type": "str"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "language: en",
+        "help": "Spoken language code (e.g. 'en', 'fr'); omit to autodetect.",
+        "name": "language",
+        "param": null,
+        "type": "str"
+      }
+    ],
+    ".ogg": [
+      {
+        "aliases": [],
+        "default": "base",
+        "example": "model: small",
+        "help": "Whisper model size: tiny, base, small, medium, or large-v3.",
+        "name": "model",
+        "param": null,
+        "type": "str"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "language: en",
+        "help": "Spoken language code (e.g. 'en', 'fr'); omit to autodetect.",
+        "name": "language",
+        "param": null,
+        "type": "str"
+      }
+    ],
+    ".opus": [
+      {
+        "aliases": [],
+        "default": "base",
+        "example": "model: small",
+        "help": "Whisper model size: tiny, base, small, medium, or large-v3.",
+        "name": "model",
+        "param": null,
+        "type": "str"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "language: en",
+        "help": "Spoken language code (e.g. 'en', 'fr'); omit to autodetect.",
+        "name": "language",
+        "param": null,
+        "type": "str"
+      }
+    ],
     ".pdf": [
       {
         "aliases": [
@@ -269,6 +434,15 @@
       },
       {
         "aliases": [],
+        "default": "auto",
+        "example": "ocr: true",
+        "help": "OCR scanned pages with RapidOCR when there is no text layer: true/false, or auto (only when rapidocr is installed).",
+        "name": "ocr",
+        "param": null,
+        "type": "bool_or_auto"
+      },
+      {
+        "aliases": [],
         "default": null,
         "example": "max_pages: 10",
         "help": "Hard cap on the number of pages parsed/rendered.",
@@ -295,6 +469,15 @@
         "name": "rotate",
         "param": null,
         "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": false,
+        "example": "ocr: true",
+        "help": "Recognize text in the image with RapidOCR: true/false, or auto (only when rapidocr is installed)",
+        "name": "ocr",
+        "param": null,
+        "type": "bool_or_auto"
       }
     ],
     ".pptx": [
@@ -357,6 +540,15 @@
         "name": "rotate",
         "param": null,
         "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": false,
+        "example": "ocr: true",
+        "help": "Recognize text in the image with RapidOCR: true/false, or auto (only when rapidocr is installed)",
+        "name": "ocr",
+        "param": null,
+        "type": "bool_or_auto"
       }
     ],
     ".tiff": [
@@ -377,6 +569,15 @@
         "name": "rotate",
         "param": null,
         "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": false,
+        "example": "ocr: true",
+        "help": "Recognize text in the image with RapidOCR: true/false, or auto (only when rapidocr is installed)",
+        "name": "ocr",
+        "param": null,
+        "type": "bool_or_auto"
       }
     ],
     ".toml": [],
@@ -416,6 +617,26 @@
       }
     ],
     ".txt": [],
+    ".wav": [
+      {
+        "aliases": [],
+        "default": "base",
+        "example": "model: small",
+        "help": "Whisper model size: tiny, base, small, medium, or large-v3.",
+        "name": "model",
+        "param": null,
+        "type": "str"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "language: en",
+        "help": "Spoken language code (e.g. 'en', 'fr'); omit to autodetect.",
+        "name": "language",
+        "param": null,
+        "type": "str"
+      }
+    ],
     ".webp": [
       {
         "aliases": [],
@@ -434,6 +655,15 @@
         "name": "rotate",
         "param": null,
         "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": false,
+        "example": "ocr: true",
+        "help": "Recognize text in the image with RapidOCR: true/false, or auto (only when rapidocr is installed)",
+        "name": "ocr",
+        "param": null,
+        "type": "bool_or_auto"
       }
     ],
     ".xls": [

@@ -48,6 +48,8 @@ DEPENDENCY_MAP: dict[str, tuple[tuple[str, ...], str]] = {
     "svg": (("cairosvg",), "pip install attachments[svg]"),
     "xls": (("xlrd",), "pip install attachments[xls]"),
     "csv-pandas": (("pandas",), "pip install attachments[csv-pandas]"),
+    "ocr": (("rapidocr_onnxruntime",), "pip install attachments[ocr]"),
+    "audio": (("faster_whisper",), "pip install attachments[audio]"),
     # Future processors/sources (ocr, audio, s3, gcs, gdrive, ...) are added
     # here together with their processor module and pyproject extra.
     # Service
