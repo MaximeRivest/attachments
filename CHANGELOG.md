@@ -125,6 +125,13 @@ See [VISION.md](VISION.md) for the reasoning.
   support via the `clipboard` extra), `--prefer`, `--options`. Exits
   nonzero when every input failed (each artifact carries `meta.error`);
   partial success still exits 0.
+- **MCP server**: `attachments-mcp` (`mcp` extra) exposes two tools to any
+  MCP-capable agent — `att(source, options)` (universal ingestion: text
+  first, then page/slide images capped at 6 / 1.5 MB each, errors and
+  teaching notes returned as readable text under `--- notes ---`, never
+  exceptions) and `att_options(extension)` (per-format option tables).
+  Stdio transport; `--help` prints Claude Code / Claude Desktop config
+  snippets; `ATTACHMENTS_SERVICE_URL` enables hosted-tier passthrough.
 - **Typed plugin contract**: `attachments.Processor` protocol —
   `(data: bytes, *, filename=None, **options) -> Artifact` — is the
   type of the processor registry and `register_processor`/`processor`,

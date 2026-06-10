@@ -386,6 +386,37 @@ $ att --options .xlsx
   rows (max_rows)          int          Maximum number of rows rendered as text per sheet.  e.g. [rows: 100]
 ```
 
+## Agents (MCP)
+
+The same one-call ingestion, as an MCP server: any MCP-capable agent gets
+an `att` tool (files, directories, globs, zip/tar, URLs, `github://` —
+text plus page/slide images, with errors returned as readable text, never
+exceptions) and an `att_options` tool to discover per-format options.
+
+Claude Code:
+
+```bash
+claude mcp add attachments -- uvx --from "attachments[mcp]" attachments-mcp
+```
+
+Claude Desktop (`claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "attachments": {
+      "command": "uvx",
+      "args": ["--from", "attachments[mcp]", "attachments-mcp"]
+    }
+  }
+}
+```
+
+Set `ATTACHMENTS_SERVICE_URL` (and `ATTACHMENTS_API_KEY`) in the server's
+environment for hosted-tier OCR/audio without local optional installs.
+Note: the server reads local files and fetches URLs with your permissions —
+only attach it to agents you trust.
+
 ## Status & Contributing
 
 Shipped today: text (20+ extensions), PDF (with OCR for scanned pages),

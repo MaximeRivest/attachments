@@ -612,6 +612,7 @@ src/attachments/
 ├── service.py               # Remote API client
 ├── server.py                # Self-hosted server (stdlib HTTP + WSGI create_app)
 ├── cli.py                   # `att` / `attachments` CLI
+├── mcp_server.py            # `attachments-mcp` MCP server (att + att_options tools)
 ├── dsl.py                   # DSL parsing ("file.pdf[pages: 1-4]")
 ├── _options.py              # Option schemas: declare/resolve/export (att.options)
 ├── _help.py                 # att.help(): printed one-screen overview

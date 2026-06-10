@@ -65,6 +65,10 @@ sniffing routes anyway. The core has **zero required dependencies** —
 format support installs as extras (`pip install attachments[pdf]`), or a
 self-hosted server with all deps can process for zero-dep clients.
 
+- Agents get it too: an MCP server (`attachments-mcp`, via the `mcp`
+  extra) exposes the same one-call ingestion as an `att` tool — one
+  `claude mcp add` away for Claude Code/Desktop.
+
 **The part I care about most** is what's underneath: the artifact shape, the
 typed `meta` envelope and error codes, and the DSL grammar are frozen in a
 one-page spec ([spec/](spec/)) with a JSON Schema and shared parser test
