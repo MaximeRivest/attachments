@@ -32,8 +32,8 @@ from io import BytesIO
 
 import pytest
 
+from attachments._processors import processors
 from attachments.deps import check_dep
-from attachments.processors import processors
 
 # Skip all tests if no XLSX deps available
 pytestmark = pytest.mark.skipif(
@@ -252,7 +252,7 @@ class TestXlsxWithPandas:
     """The pandas fallback renders the same text layout as openpyxl."""
 
     def test_pandas_layout_matches_openpyxl(self, multi_sheet_xlsx_bytes: bytes):
-        from attachments.processors.xlsx import (
+        from attachments._processors.xlsx import (
             _xlsx_with_openpyxl,
             _xlsx_with_pandas,
         )
@@ -269,7 +269,7 @@ class TestXlsxWithPandas:
         assert extra_p["engine"] == "pandas"
 
     def test_pandas_single_sheet_matches_openpyxl(self, sample_xlsx_bytes: bytes):
-        from attachments.processors.xlsx import (
+        from attachments._processors.xlsx import (
             _xlsx_with_openpyxl,
             _xlsx_with_pandas,
         )

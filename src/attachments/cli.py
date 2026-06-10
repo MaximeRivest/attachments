@@ -17,6 +17,9 @@ Notes:
     - Unknown `--key value` options are converted to DSL options: `[key:value]`.
     - Control options are: `--copy`, `--clipboard`, `--verbose`, `--json`,
       `--prefer`, `--api-key`, `--prompt`, `--options`, `--help`.
+    - `--copy` requires pyperclip: `pip install attachments[clipboard]`.
+    - Exit status: 0 on success (including partial success), 1 when every
+      input failed (each artifact carries `meta.error`) or on usage errors.
 """
 
 from __future__ import annotations
@@ -153,9 +156,27 @@ def _copy_to_clipboard(text: str) -> None:
         import pyperclip
     except ImportError as e:
         raise RuntimeError(
-            "Clipboard support requires pyperclip. Install with: pip install pyperclip"
+            "Clipboard support requires pyperclip. "
+            "Install with: pip install attachments[clipboard]"
         ) from e
     pyperclip.copy(text)
+
+
+def _all_inputs_failed(artifacts: list[dict[str, Any]]) -> bool:
+    """True when there is at least one artifact and every one carries
+    ``meta.error`` — i.e. the run produced nothing usable.
+
+    Examples:
+        >>> _all_inputs_failed([])
+        False
+        >>> _all_inputs_failed([{"meta": {"error": {"code": "unpack-error"}}}])
+        True
+        >>> _all_inputs_failed(
+        ...     [{"meta": {"error": {"code": "parse-error"}}}, {"meta": {}}]
+        ... )
+        False
+    """
+    return bool(artifacts) and all(a.get("meta", {}).get("error") for a in artifacts)
 
 
 def _print_help() -> None:
@@ -179,7 +200,7 @@ def _format_option_rows(entries: list[dict[str, Any]]) -> list[str]:
 
 def _print_options(key: str | None) -> int:
     """Print the declared DSL option table (generated from dsl_schema())."""
-    from .options import dsl_schema
+    from ._options import dsl_schema
 
     schema = dsl_schema()
     sections = {**schema["processors"], **schema["sources"]}
@@ -250,9 +271,14 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Error: {exc}", file=sys.stderr)
         return 1
 
+    # A run where EVERY artifact carries meta.error produced nothing usable:
+    # exit nonzero so shell pipelines and CI scripts notice total failure.
+    # Partial success (some inputs worked) still exits 0.
+    exit_code = 1 if _all_inputs_failed(all_artifacts) else 0
+
     if want_json:
         print(json.dumps(_artifact_to_json_safe(all_artifacts), indent=2))
-        return 0
+        return exit_code
 
     # Surface typed errors (meta.error.code/message) on stderr
     for line in _format_errors(all_artifacts):
@@ -265,13 +291,13 @@ def main(argv: list[str] | None = None) -> int:
         try:
             _copy_to_clipboard(clipboard_text)
             print("Copied to clipboard.")
-            return 0
+            return exit_code
         except Exception as exc:  # noqa: BLE001
             print(f"Error: {exc}", file=sys.stderr)
             return 1
 
     print(output_text)
-    return 0
+    return exit_code
 
 
 def app() -> None:

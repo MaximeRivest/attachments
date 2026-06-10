@@ -61,18 +61,24 @@ Installation Options::
     pip install attachments[all-local]   # Everything local
 """
 
-from .config import configure, get_config, reset_config
-from .core import att
-from .deps import check_dep, check_deps, has_local, has_service
-from .dsl import format_dsl, parse_dsl
-from .options import Option, dsl_schema, options, register_options
-from .processors import (
+from ._options import Option, dsl_schema, options, register_options
+from ._processors import (
     get_processors_copy,
     processor,
     processors,
     register_processor,
     reset_processors,
 )
+from ._unpack import (
+    extra_unpack_handlers,
+    register_unpack_handler,
+    source,
+    unpack,
+)
+from .config import configure, get_config, reset_config
+from .core import att
+from .deps import check_dep, check_deps, has_local, has_service
+from .dsl import format_dsl, parse_dsl
 from .render import (
     chunk,
     render_text,
@@ -92,18 +98,13 @@ from .types import (
     ErrorInfo,
     ImageItem,
     Meta,
+    Processor,
     Segment,
     error_artifact,
     is_missing_dependency,
     make_artifact,
     missing_dep_artifact,
     normalize_artifact,
-)
-from .unpack import (
-    extra_unpack_handlers,
-    register_unpack_handler,
-    source,
-    unpack,
 )
 
 __all__ = [
@@ -115,6 +116,7 @@ __all__ = [
     "Meta",
     "Segment",
     "ErrorInfo",
+    "Processor",
     "make_artifact",
     "error_artifact",
     "missing_dep_artifact",
@@ -167,4 +169,4 @@ __all__ = [
 # Runtime discoverability: att.options(".pdf") -> declared option dicts.
 att.options = options  # type: ignore[attr-defined]
 
-__version__ = "1.0.0a0"
+__version__ = "1.0.0"  # see VISION.md

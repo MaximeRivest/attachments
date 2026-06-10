@@ -18,8 +18,8 @@ from pathlib import Path
 import pytest
 
 from attachments import att
+from attachments._processors import processors
 from attachments.core import _route_processor
-from attachments.processors import processors
 from attachments.utils import detect_extension
 
 # =============================================================================

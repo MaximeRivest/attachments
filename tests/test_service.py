@@ -186,7 +186,7 @@ class TestCheckServiceHealth:
     def test_returns_json_on_success(self, dummy_httpx):
         configure(service_url="http://svc")
         dummy_httpx.next_get = _DummyResponse(
-            payload={"status": "ok", "version": "0.1.0"}
+            payload={"status": "ok", "version": "1.0.0"}
         )
 
         out = check_service_health()

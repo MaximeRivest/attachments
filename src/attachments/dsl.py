@@ -8,7 +8,7 @@ This parser is a pure function ``string -> (source, options)`` and performs
 **no alias resolution and no validation** — it returns the source plus raw
 typed options. Mapping keys to processor parameters, alias handling, and
 "did you mean" warnings are the router's job, driven by each processor's
-declared option schema (see ``attachments.options``).
+declared option schema (see ``attachments._options``).
 
 The normative test vectors live in ``spec/dsl-test-vectors.json``; every
 implementation, in any language, must pass all of them.
@@ -133,7 +133,7 @@ def parse_dsl(input: str) -> tuple[str, dict[str, Any]]:
     when the input ends with ``]`` and every comma-separated segment contains
     a ``:`` outside quotes. Otherwise the whole group stays in the source.
     Keys are normalized; values are typed but NOT resolved against any
-    processor schema (that happens in ``attachments.options``).
+    processor schema (that happens in ``attachments._options``).
 
     Examples:
         >>> parse_dsl("file.pdf")

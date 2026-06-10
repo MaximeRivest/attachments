@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..options import register_options
+from .._options import register_options
 from ..types import make_artifact
 from ..utils import guess_decode
 from . import register_processor

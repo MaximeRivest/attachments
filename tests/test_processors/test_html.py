@@ -6,8 +6,8 @@ import base64
 
 import pytest
 
+from attachments._processors import processors
 from attachments.deps import check_dep
-from attachments.processors import processors
 
 pytestmark = pytest.mark.skipif(
     not check_dep("html").available,
@@ -80,7 +80,7 @@ class TestHtmlProcessor:
 
     def test_overrides_text_processor(self):
         """The HTML processor should NOT be the plain text_processor."""
-        from attachments.processors.text import text_processor
+        from attachments._processors.text import text_processor
 
         assert processors[".html"] is not text_processor
 

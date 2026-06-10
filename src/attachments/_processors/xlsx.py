@@ -4,7 +4,7 @@ from collections.abc import Iterable
 from io import BytesIO
 from typing import Any
 
-from ..options import Option, register_options
+from .._options import Option, register_options
 from ..types import ERROR_PARSE, error_artifact, make_artifact, missing_dep_artifact
 from . import register_processor
 

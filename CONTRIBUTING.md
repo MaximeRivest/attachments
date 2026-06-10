@@ -6,6 +6,12 @@ project is going, then [DEVELOPMENT.md](DEVELOPMENT.md) for the step-by-step
 guide to adding processors (file formats) and sources (protocols/schemes) —
 that's where most contributions land.
 
+**The contributor playbook in one line:** a processor PR is one pure function
+`(bytes, **options) -> Artifact` + a declared option schema
+(`@processor(".myf", options=(...))`) + tests (including the missing-dep
+path) — the conformance suite (`tests/test_conformance.py`) iterates the live
+processor registry and picks your processor up automatically.
+
 Quickstart (2 minutes)
 ----------------------
 
@@ -64,9 +70,13 @@ Code style and conventions
 
 Tests
 -----
-- Tests live in `tests/`; processor tests in `tests/test_processors/`.
+- Tests live flat in `tests/` (e.g. `tests/test_core.py`,
+  `tests/test_conformance.py`).
 - Every processor needs both a missing-dep test (graceful error artifact) and
   an installed-path test (skipped when the dep is absent).
+- The conformance suite validates every registered processor's output against
+  `spec/artifact.schema.json` automatically — add a sample-file generator for
+  your extension in `tests/test_conformance.py` to opt in to content checks.
 
 Branches, commits, and PRs
 --------------------------

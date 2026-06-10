@@ -42,6 +42,18 @@ except ImportError:
 log = logging.getLogger("attachments.server")
 
 
+def _allow_private_urls() -> bool:
+    """Whether ``/unpack`` may fetch private/internal HTTP(S) addresses.
+
+    The server blocks requests to loopback, link-local (cloud metadata),
+    and private-range hosts by default (SSRF guard). Operators who run the
+    server inside a trusted network and need it to fetch internal URLs can
+    opt out with ``ATTACHMENTS_ALLOW_PRIVATE_URLS=1``.
+    """
+    flag = os.environ.get("ATTACHMENTS_ALLOW_PRIVATE_URLS", "")
+    return flag.strip().lower() in ("1", "true", "yes", "on")
+
+
 def _encode_artifact_for_wire(artifact: dict) -> dict:
     """Replace each image's raw ``bytes`` with base64 ``bytes_b64``.
 
@@ -62,9 +74,10 @@ def _make_handler():
     and :func:`run_server` (stdlib ``HTTPServer``).
     """
     # Import here to avoid circular imports
+    from . import __version__
+    from ._options import dsl_schema
+    from ._processors import processors
     from .deps import check_deps
-    from .options import dsl_schema
-    from .processors import processors
 
     class AttachmentsHandler(BaseHTTPRequestHandler):
         """HTTP handler for attachments server."""
@@ -177,7 +190,7 @@ def _make_handler():
                 self._send_json(
                     {
                         "status": "ok",
-                        "version": "0.1.0",
+                        "version": __version__,
                         "features": {k: v for k, v in deps.items() if v},
                     }
                 )
@@ -217,6 +230,15 @@ def _make_handler():
         def _handle_process(self):
             """Process uploaded file."""
             try:
+                # Enforce the upload cap BEFORE reading the body so an
+                # oversized request never gets buffered into memory.
+                content_length = int(self.headers.get("Content-Length", 0))
+                if content_length > self.MAX_UPLOAD_SIZE:
+                    self._send_error(
+                        f"Upload too large (max {self.MAX_UPLOAD_SIZE})", 413
+                    )
+                    return
+
                 file_data, filename, fields = self._parse_multipart()
                 log.debug("process request: %s (%d bytes)", filename, len(file_data))
 
@@ -253,14 +275,24 @@ def _make_handler():
 
             except ValueError as e:
                 self._send_error(str(e), 400)
-            except Exception as e:
+            except Exception:
+                # Never leak internal exception details to the client;
+                # log.exception() above keeps the full traceback server-side.
                 log.exception("processing failed for uploaded file")
-                self._send_error(f"Processing failed: {e}", 500)
+                self._send_error("Internal error", 500)
 
         def _handle_unpack(self):
             """Unpack a URL."""
             try:
+                # Enforce the upload cap BEFORE reading the body so an
+                # oversized request never gets buffered into memory.
                 content_length = int(self.headers.get("Content-Length", 0))
+                if content_length > self.MAX_UPLOAD_SIZE:
+                    self._send_error(
+                        f"Upload too large (max {self.MAX_UPLOAD_SIZE})", 413
+                    )
+                    return
+
                 body = self.rfile.read(content_length)
                 data = json.loads(body)
 
@@ -269,9 +301,9 @@ def _make_handler():
                     self._send_error("Missing 'url' in request body")
                     return
 
-                from .unpack import unpack
+                from ._unpack import unpack
 
-                files = unpack(url)
+                files = unpack(url, block_private_urls=not _allow_private_urls())
 
                 # Encode file contents as base64
                 result = {
@@ -288,9 +320,15 @@ def _make_handler():
 
             except json.JSONDecodeError:
                 self._send_error("Invalid JSON", 400)
-            except Exception as e:
+            except ValueError as e:
+                # Client-input errors (unsupported input, blocked URL,
+                # size limits) are safe to echo back.
+                self._send_error(str(e), 400)
+            except Exception:
+                # Never leak internal exception details to the client;
+                # the full traceback stays in the server log.
                 log.exception("unpack failed")
-                self._send_error(f"Unpack failed: {e}", 500)
+                self._send_error("Internal error", 500)
 
         def log_message(self, format: str, *args):
             """Route stdlib HTTP server logs through the logging module."""
@@ -312,9 +350,10 @@ def create_app():
     handler_cls = _make_handler()
 
     # Import the same deps the handler uses at class scope
+    from . import __version__
+    from ._options import dsl_schema
+    from ._processors import processors
     from .deps import check_deps
-    from .options import dsl_schema
-    from .processors import processors
 
     def wsgi_app(environ, start_response):
         """Minimal WSGI adapter that delegates to AttachmentsHandler."""
@@ -344,7 +383,7 @@ def create_app():
                 return _json_response(
                     {
                         "status": "ok",
-                        "version": "0.1.0",
+                        "version": __version__,
                         "features": {k: v for k, v in deps.items() if v},
                     }
                 )
@@ -370,11 +409,14 @@ def create_app():
         if method != "POST":
             return _error("Method not allowed", 405)
 
-        # Read body once
+        # Enforce the upload cap BEFORE reading the body so an oversized
+        # request never gets buffered into worker memory, then read once.
         try:
             content_length = int(environ.get("CONTENT_LENGTH", 0))
         except (ValueError, TypeError):
             content_length = 0
+        if content_length > handler_cls.MAX_UPLOAD_SIZE:
+            return _error(f"Upload too large (max {handler_cls.MAX_UPLOAD_SIZE})", 413)
         body = environ["wsgi.input"].read(content_length)
 
         # --- POST /process ---
@@ -410,9 +452,11 @@ def create_app():
                 artifact = _process_single(
                     filename, file_data, options=options, prefer="local-only"
                 )
-            except Exception as exc:
+            except Exception:
+                # Never leak internal exception details to the client;
+                # the full traceback stays in the server log.
                 log.exception("processing failed for uploaded file")
-                return _error(f"Processing failed: {exc}", 500)
+                return _error("Internal error", 500)
 
             # Response body is exactly an Artifact (meta envelope,
             # images encoded as bytes_b64 for JSON transport).
@@ -430,13 +474,19 @@ def create_app():
             if not url:
                 return _error("Missing 'url' in request body")
 
-            from .unpack import unpack as _unpack
+            from ._unpack import unpack as _unpack
 
             try:
-                files = _unpack(url)
-            except Exception as exc:
+                files = _unpack(url, block_private_urls=not _allow_private_urls())
+            except ValueError as exc:
+                # Client-input errors (unsupported input, blocked URL,
+                # size limits) are safe to echo back.
+                return _error(str(exc), 400)
+            except Exception:
+                # Never leak internal exception details to the client;
+                # the full traceback stays in the server log.
                 log.exception("unpack failed")
-                return _error(f"Unpack failed: {exc}", 500)
+                return _error("Internal error", 500)
 
             result = {
                 "files": [

@@ -34,9 +34,31 @@ def test_main_renders_meta_error_to_stderr(tmp_path: Path, capsys):
     code = cli.main([str(tmp_path / "missing.txt")])
     captured = capsys.readouterr()
 
-    assert code == 0
+    # Every input failed -> nonzero exit so pipelines/CI notice
+    assert code == 1
     assert "[unpack-error]" in captured.err
     assert "unpack failed" in captured.err
+
+
+def test_main_all_failed_json_exits_nonzero(tmp_path: Path, capsys):
+    code = cli.main([str(tmp_path / "missing.txt"), "--json"])
+    out = capsys.readouterr().out
+
+    assert code == 1
+    data = json.loads(out)
+    assert data[0]["meta"]["error"]["code"] == "unpack-error"
+
+
+def test_main_partial_failure_exits_zero(tmp_path: Path, capsys):
+    ok = tmp_path / "ok.txt"
+    ok.write_text("fine\n", encoding="utf-8")
+
+    code = cli.main([str(ok), str(tmp_path / "missing.txt")])
+    captured = capsys.readouterr()
+
+    assert code == 0  # partial success is still success
+    assert "fine" in captured.out
+    assert "[unpack-error]" in captured.err
 
 
 def test_main_no_args_prints_help(capsys):

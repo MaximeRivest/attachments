@@ -12,7 +12,7 @@ fail silently: they produce a human-readable warning and are dropped.
 
 Example::
 
-    from attachments.options import Option, register_options
+    from attachments import Option, register_options
 
     register_options(
         ".myf",
@@ -97,7 +97,7 @@ str, int, float, bool, pages, bool_or_auto, str_or_int)
 
 
 # ---------------------------------------------------------------------------
-# Registries (mirroring the processor registry in attachments.processors)
+# Registries (mirroring the processor registry in attachments._processors)
 # ---------------------------------------------------------------------------
 
 #: Option schemas keyed like the processor registry (".pdf", "__text__").

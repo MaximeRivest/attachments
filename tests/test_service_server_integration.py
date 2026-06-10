@@ -90,11 +90,14 @@ def _request_json(
 
 class TestServerEndpoints:
     def test_health_and_formats(self, live_server):
+        import attachments
+
         host, port = live_server
 
         status, health = _request_json(host, port, "GET", "/health")
         assert status == 200
         assert health["status"] == "ok"
+        assert health["version"] == attachments.__version__
         assert isinstance(health["features"], dict)
 
         status, formats = _request_json(host, port, "GET", "/formats")
@@ -246,7 +249,37 @@ class TestServerAuthAndLimits:
                 },
             )
 
-            assert status == 400
+            assert status == 413
+            assert "Upload too large" in payload["error"]
+        finally:
+            httpd.shutdown()
+            httpd.server_close()
+            thread.join(timeout=3)
+
+    def test_unpack_upload_too_large(self, monkeypatch):
+        """The cap applies to /unpack too — checked BEFORE reading the body."""
+        monkeypatch.setenv("ATTACHMENTS_MAX_UPLOAD", "10")
+        handler = _make_handler()
+        httpd = HTTPServer(("127.0.0.1", 0), handler)
+        host, port = httpd.server_address
+        thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+        thread.start()
+
+        try:
+            body = json.dumps({"url": "x" * 256}).encode("utf-8")
+            status, payload = _request_json(
+                host,
+                port,
+                "POST",
+                "/unpack",
+                body=body,
+                headers={
+                    "Content-Type": "application/json",
+                    "Content-Length": str(len(body)),
+                },
+            )
+
+            assert status == 413
             assert "Upload too large" in payload["error"]
         finally:
             httpd.shutdown()
@@ -351,9 +384,12 @@ class TestWsgiApp:
         return captured["status"], json.loads(payload)
 
     def test_health(self, app):
+        import attachments
+
         status, body = self._call(app, "GET", "/health")
         assert status.startswith("200")
         assert body["status"] == "ok"
+        assert body["version"] == attachments.__version__
 
     def test_formats(self, app):
         status, body = self._call(app, "GET", "/formats")
@@ -421,3 +457,102 @@ class TestWsgiApp:
     def test_not_found(self, app):
         status, body = self._call(app, "GET", "/nope")
         assert status.startswith("404")
+
+    def test_process_rejects_oversized_body_before_reading(self, monkeypatch):
+        """WSGI path must enforce the cap from CONTENT_LENGTH, before read()."""
+        monkeypatch.setenv("ATTACHMENTS_MAX_UPLOAD", "1024")
+        app = create_app()
+
+        class ExplodingInput:
+            """Fails the test if the server buffers the oversized body."""
+
+            def read(self, *_args):
+                raise AssertionError("body must not be read when oversized")
+
+        raw, ct = _build_multipart_body(
+            field_name="file", filename="big.txt", content=b"x" * 4096
+        )
+        environ = {
+            "REQUEST_METHOD": "POST",
+            "PATH_INFO": "/process",
+            "CONTENT_LENGTH": str(len(raw)),
+            "CONTENT_TYPE": ct,
+            "wsgi.input": ExplodingInput(),
+        }
+        captured: dict = {}
+
+        def start_response(status, headers):
+            captured["status"] = status
+
+        payload = b"".join(app(environ, start_response))
+        assert captured["status"].startswith("413")
+        assert "Upload too large" in json.loads(payload)["error"]
+
+    def test_unpack_rejects_oversized_body_before_reading(self, monkeypatch):
+        monkeypatch.setenv("ATTACHMENTS_MAX_UPLOAD", "1024")
+        app = create_app()
+
+        class ExplodingInput:
+            def read(self, *_args):
+                raise AssertionError("body must not be read when oversized")
+
+        environ = {
+            "REQUEST_METHOD": "POST",
+            "PATH_INFO": "/unpack",
+            "CONTENT_LENGTH": str(2048),
+            "CONTENT_TYPE": "application/json",
+            "wsgi.input": ExplodingInput(),
+        }
+        captured: dict = {}
+
+        def start_response(status, headers):
+            captured["status"] = status
+
+        payload = b"".join(app(environ, start_response))
+        assert captured["status"].startswith("413")
+        assert "Upload too large" in json.loads(payload)["error"]
+
+    def test_unpack_bad_input_is_400_without_internals(self, app):
+        """Unsupported input is a 4xx client error, not a leaky 500."""
+        raw = json.dumps({"url": "/nonexistent/path/xyz"}).encode()
+        status, body = self._call(
+            app,
+            "POST",
+            "/unpack",
+            body=raw,
+            headers={"Content-Type": "application/json"},
+        )
+        assert status.startswith("400")
+        assert "Unpack failed" not in body["error"]
+
+    def test_unpack_internal_error_is_generic(self, app, monkeypatch):
+        """Unexpected exceptions must not leak details to the client."""
+
+        def _boom(*_args, **_kwargs):
+            raise RuntimeError("secret /tmp/attachments_github_x path")
+
+        monkeypatch.setattr("attachments._unpack.unpack", _boom)
+        raw = json.dumps({"url": "https://example.com/x.zip"}).encode()
+        status, body = self._call(
+            app,
+            "POST",
+            "/unpack",
+            body=raw,
+            headers={"Content-Type": "application/json"},
+        )
+        assert status.startswith("500")
+        assert body["error"] == "Internal error"
+        assert "secret" not in json.dumps(body)
+
+    def test_unpack_blocks_private_urls_by_default(self, app):
+        """SSRF guard: /unpack refuses loopback/metadata addresses."""
+        raw = json.dumps({"url": "http://127.0.0.1:9/secret"}).encode()
+        status, body = self._call(
+            app,
+            "POST",
+            "/unpack",
+            body=raw,
+            headers={"Content-Type": "application/json"},
+        )
+        assert status.startswith("400")
+        assert "non-public address" in body["error"]

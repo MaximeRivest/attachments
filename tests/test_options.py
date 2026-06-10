@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import pytest
 
-from attachments.options import (
+from attachments._options import (
     Option,
     dsl_schema,
     get_options,
@@ -33,7 +33,7 @@ from attachments.options import (
     resolve_options,
     source_option_schemas,
 )
-from attachments.processors import processor, processors, reset_processors
+from attachments._processors import processor, processors, reset_processors
 
 XLSX_SCHEMA = (
     Option("sheet", "str_or_int"),

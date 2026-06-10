@@ -21,8 +21,8 @@ import sys
 
 import pytest
 
+from attachments._processors import processors
 from attachments.deps import clear_cache
-from attachments.processors import processors
 from attachments.types import ERROR_MISSING_DEPENDENCY, is_missing_dependency
 
 

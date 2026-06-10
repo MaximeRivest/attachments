@@ -31,8 +31,8 @@ import io
 
 import pytest
 
+from attachments._processors import processors
 from attachments.deps import check_dep
-from attachments.processors import processors
 from attachments.types import ERROR_PASSWORD_REQUIRED
 
 # Skip all tests in this module if PDF deps not available

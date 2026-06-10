@@ -4,10 +4,32 @@ build-backend = "uv_build"
 
 [project]
 name = "attachments"
-version = "1.0.0a0"  # successor to the published `attachments` 0.25.x (see VISION.md)
+version = "1.0.0"  # see VISION.md
 description = "Turn anything into LLM-ready artifacts. Universal file and source processing."
 readme = "README.md"
 requires-python = ">=3.12"
+authors = [{ name = "Maxime Rivest", email = "mrive052@gmail.com" }]
+license = "MIT"
+license-files = ["LICENSE"]
+keywords = [
+    "llm",
+    "context",
+    "pdf",
+    "docx",
+    "xlsx",
+    "pptx",
+    "extraction",
+    "rag",
+    "prompt",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Text Processing",
+]
 
 # ZERO required dependencies - everything is optional
 dependencies = []
@@ -47,6 +69,11 @@ service = [
     "httpx>=0.27",
 ]
 
+# === CLI clipboard support (`att --copy`) ===
+clipboard = [
+    "pyperclip>=1.8",
+]
+
 # === Convenience Bundles ===
 # Only formats with shipped processors belong here. New processors (audio,
 # s3://, gdrive://, ...) are added as they land - see VISION.md.
@@ -62,6 +89,11 @@ all-local = [
 server = [
     "attachments[all-local]",
 ]
+
+[project.urls]
+Homepage = "https://github.com/MaximeRivest/attachments"
+Repository = "https://github.com/MaximeRivest/attachments"
+Documentation = "https://github.com/MaximeRivest/attachments"
 
 [dependency-groups]
 dev = [
@@ -81,6 +113,8 @@ dev = [
     "beautifulsoup4>=4.12",
     "lxml>=5.0",
     "pillow>=10.0",
+    # CLI clipboard support (`att --copy`)
+    "pyperclip>=1.8",
     # Spec conformance validation
     "jsonschema>=4.21",
     # Dev tools

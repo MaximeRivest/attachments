@@ -10,7 +10,7 @@ import zipfile
 from collections.abc import Callable
 from pathlib import Path
 
-from .options import Option, register_options, snapshot_option_defaults
+from ._options import Option, register_options, snapshot_option_defaults
 
 # --- Added/changed for HTTP(S) support ---
 # Configurable HTTP limits and UA (can be overridden via env)
@@ -21,6 +21,23 @@ HTTP_USER_AGENT = os.environ.get(
     "ATT_USER_AGENT", "attachments-unpack/1.0 (+https://github.com/MaximeRivest/att)"
 )
 # --- end ---
+
+# Decompression-bomb guards for archive expansion (overridable via env).
+# MAX_ARCHIVE_EXPANSION_BYTES caps the TOTAL uncompressed bytes produced by
+# expanding one archive (including nested archives); MAX_ARCHIVE_DEPTH caps
+# archive-in-archive nesting. Both protect against zip/tar bombs: without
+# them a few-hundred-KB upload could expand to many GB in memory.
+MAX_ARCHIVE_EXPANSION_BYTES = int(
+    os.environ.get("ATT_MAX_EXPANSION_BYTES", str(1024 * 1024 * 1024))
+)
+MAX_ARCHIVE_DEPTH = int(os.environ.get("ATT_MAX_ARCHIVE_DEPTH", "8"))
+
+#: When true, HTTP(S) downloads refuse URLs that resolve to loopback,
+#: link-local, or private-range addresses (SSRF guard). Off by default for
+#: local/library use; the server enables it per-request (see server.py).
+BLOCK_PRIVATE_URLS_DEFAULT = os.environ.get(
+    "ATT_BLOCK_PRIVATE_URLS", ""
+).strip().lower() in ("1", "true", "yes", "on")
 
 # Public registry for custom scheme handlers (prefix -> handler function)
 extra_unpack_handlers: dict[str, Callable[[str], list[tuple[str, bytes]]]] = {}
@@ -188,10 +205,53 @@ def _is_tar_bytes(data: bytes) -> bool:
         return False
 
 
-def _explode_archive_bytes(container_name: str, data: bytes) -> list[tuple[str, bytes]]:
+def _read_member_capped(fp, virtual_name: str, budget: list[int]) -> bytes:
+    """Read an archive member in chunks, charging a shared expansion budget.
+
+    ``budget`` is a single-element list holding the remaining uncompressed
+    bytes allowed for the whole expansion (shared across nested archives).
+    Raises ``ValueError`` once the budget is exhausted, BEFORE buffering an
+    unbounded amount of data — this is the zip/tar-bomb guard.
+    """
+    chunks: list[bytes] = []
+    while True:
+        chunk = fp.read(1024 * 1024)
+        if not chunk:
+            break
+        budget[0] -= len(chunk)
+        if budget[0] < 0:
+            max_mb = MAX_ARCHIVE_EXPANSION_BYTES // (1024 * 1024)
+            raise ValueError(
+                f"Archive expansion exceeds the maximum total size "
+                f"({max_mb} MB) at member {virtual_name!r}. "
+                f"Raise ATT_MAX_EXPANSION_BYTES to override."
+            )
+        chunks.append(chunk)
+    return b"".join(chunks)
+
+
+def _explode_archive_bytes(
+    container_name: str,
+    data: bytes,
+    _depth: int = 0,
+    _budget: list[int] | None = None,
+) -> list[tuple[str, bytes]]:
     """Expand a zip/tar bytes blob into a flat list of (virtual_path, bytes).
     Recurses into nested archives, but only if the inner name has a raw archive suffix.
+
+    Decompression-bomb guards: the total uncompressed output is capped at
+    ``MAX_ARCHIVE_EXPANSION_BYTES`` and nesting at ``MAX_ARCHIVE_DEPTH``;
+    exceeding either raises ``ValueError`` (callers surface it as a typed
+    ``unpack-error`` artifact / HTTP 400).
     """
+    if _budget is None:
+        _budget = [MAX_ARCHIVE_EXPANSION_BYTES]
+    if _depth > MAX_ARCHIVE_DEPTH:
+        raise ValueError(
+            f"Archive nesting exceeds the maximum depth ({MAX_ARCHIVE_DEPTH}) "
+            f"at {container_name!r}. Raise ATT_MAX_ARCHIVE_DEPTH to override."
+        )
+
     out: list[tuple[str, bytes]] = []
 
     # ZIP
@@ -201,15 +261,17 @@ def _explode_archive_bytes(container_name: str, data: bytes) -> list[tuple[str, 
                 if zi.is_dir():
                     continue
                 inner_name = _sanitize_member_name(zi.filename)
-                with zf.open(zi, "r") as fp:
-                    inner = fp.read()
                 virtual_name = (
                     f"{container_name}/{inner_name}" if container_name else inner_name
                 )
+                with zf.open(zi, "r") as fp:
+                    inner = _read_member_capped(fp, virtual_name, _budget)
                 if _is_raw_archive_name(inner_name) and (
                     _is_zip_bytes(inner) or _is_tar_bytes(inner)
                 ):
-                    out.extend(_explode_archive_bytes(virtual_name, inner))
+                    out.extend(
+                        _explode_archive_bytes(virtual_name, inner, _depth + 1, _budget)
+                    )
                 else:
                     out.append((virtual_name, inner))
         return out
@@ -224,14 +286,16 @@ def _explode_archive_bytes(container_name: str, data: bytes) -> list[tuple[str, 
                 fp = tf.extractfile(ti)
                 if not fp:
                     continue
-                inner = fp.read()
                 virtual_name = (
                     f"{container_name}/{inner_name}" if container_name else inner_name
                 )
+                inner = _read_member_capped(fp, virtual_name, _budget)
                 if _is_raw_archive_name(inner_name) and (
                     _is_zip_bytes(inner) or _is_tar_bytes(inner)
                 ):
-                    out.extend(_explode_archive_bytes(virtual_name, inner))
+                    out.extend(
+                        _explode_archive_bytes(virtual_name, inner, _depth + 1, _budget)
+                    )
                 else:
                     out.append((virtual_name, inner))
         return out
@@ -424,13 +488,74 @@ def _filename_from_content_disposition(cd: str | None) -> str | None:
     return None
 
 
-def _download_http_or_https(url: str) -> tuple[str, bytes]:
-    """Download a single HTTP(S) resource, returning (filename, bytes)."""
+def _assert_public_http_url(url: str) -> None:
+    """SSRF guard: reject URLs that do not resolve to public addresses.
+
+    Raises ``ValueError`` when *url* is not plain http(s), has no hostname,
+    cannot be resolved, or resolves to any non-global address (loopback,
+    RFC1918 private ranges, link-local — including the 169.254.169.254
+    cloud metadata endpoint — reserved, multicast, ...).
+    """
+    import ipaddress
+    import socket
+    from urllib.parse import urlparse
+
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        raise ValueError(
+            f"Blocked URL scheme {parsed.scheme!r} (only http/https allowed)"
+        )
+    host = parsed.hostname
+    if not host:
+        raise ValueError(f"Blocked URL without a hostname: {url}")
+    port = parsed.port or (443 if parsed.scheme == "https" else 80)
+    try:
+        infos = socket.getaddrinfo(host, port, proto=socket.IPPROTO_TCP)
+    except OSError as e:
+        raise ValueError(f"Cannot resolve host {host!r}: {e}") from e
+    for info in infos:
+        addr = str(info[4][0]).split("%", 1)[0]  # strip IPv6 zone id
+        ip = ipaddress.ip_address(addr)
+        if not ip.is_global:
+            raise ValueError(
+                f"Blocked URL {url!r}: host {host!r} resolves to "
+                f"non-public address {ip}"
+            )
+
+
+def _download_http_or_https(
+    url: str, *, block_private_urls: bool | None = None
+) -> tuple[str, bytes]:
+    """Download a single HTTP(S) resource, returning (filename, bytes).
+
+    With ``block_private_urls`` (default: ``BLOCK_PRIVATE_URLS_DEFAULT``,
+    i.e. the ``ATT_BLOCK_PRIVATE_URLS`` env var), the URL — and every
+    redirect target — must resolve to a public address (SSRF guard).
+    """
     from urllib.parse import unquote, urlparse
-    from urllib.request import Request, urlopen
+    from urllib.request import HTTPRedirectHandler, Request, build_opener, urlopen
+
+    if block_private_urls is None:
+        block_private_urls = BLOCK_PRIVATE_URLS_DEFAULT
 
     req = Request(url, headers={"User-Agent": HTTP_USER_AGENT})
-    with urlopen(req, timeout=60) as resp:
+
+    if block_private_urls:
+        _assert_public_http_url(url)
+
+        class _ValidatingRedirectHandler(HTTPRedirectHandler):
+            """Re-validate every redirect target against the SSRF guard."""
+
+            def redirect_request(self, request, fp, code, msg, headers, newurl):
+                _assert_public_http_url(newurl)
+                return super().redirect_request(request, fp, code, msg, headers, newurl)
+
+        opener = build_opener(_ValidatingRedirectHandler())
+        resp_ctx = opener.open(req, timeout=60)
+    else:
+        resp_ctx = urlopen(req, timeout=60)
+
+    with resp_ctx as resp:
         # Prefer filename from Content-Disposition
         filename = _filename_from_content_disposition(
             resp.headers.get("Content-Disposition")
@@ -468,6 +593,8 @@ def _download_http_or_https(url: str) -> tuple[str, bytes]:
 def unpack(
     input: str,
     extra_handlers: dict[str, Callable[[str], list[tuple[str, bytes]]]] | None = None,
+    *,
+    block_private_urls: bool | None = None,
 ) -> list[tuple[str, bytes]]:
     """Resolve an input path/spec into a flat list of ``(filename, bytes)``.
 
@@ -479,6 +606,15 @@ def unpack(
       - GitHub repos via ``github://owner/repo`` or
         ``https://github.com/owner/repo`` (shallow clone of repo root)
       - HTTP/HTTPS single files (follows redirects; expands archives **by extension**)
+
+    Safety:
+      - Archive expansion is capped (``MAX_ARCHIVE_EXPANSION_BYTES`` total
+        uncompressed bytes, ``MAX_ARCHIVE_DEPTH`` nesting) to stop zip/tar
+        bombs; exceeding a cap raises ``ValueError``.
+      - With ``block_private_urls=True`` (default: the
+        ``ATT_BLOCK_PRIVATE_URLS`` env var; the self-hosted server enables
+        it per-request), HTTP(S) inputs — and their redirect targets — must
+        resolve to public addresses (SSRF guard).
 
     Extensibility:
       - Register new scheme/prefix handlers with
@@ -507,7 +643,9 @@ def unpack(
     # --- Added: HTTP/HTTPS single-file download ---
     if input.startswith("http://") or input.startswith("https://"):
         # If it's a GitHub URL but NOT a repo root, treat it as a file download
-        name, data = _download_http_or_https(input)
+        name, data = _download_http_or_https(
+            input, block_private_urls=block_private_urls
+        )
         if _is_raw_archive_name(name):
             return _explode_archive_bytes(name, data)
         return [(name, data)]

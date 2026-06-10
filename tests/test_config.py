@@ -130,6 +130,32 @@ class TestEnvVarPrecedence:
         assert get_config("service_url") == "https://env.example.com"
 
 
+class TestEnvVarValidation:
+    """Env values get the same typing/validation as configure() inputs."""
+
+    def test_env_timeout_coerced_to_int(self, monkeypatch):
+        monkeypatch.setenv("ATTACHMENTS_TIMEOUT", "120")
+        assert get_config("timeout") == 120
+
+    def test_env_timeout_coerced_to_float(self, monkeypatch):
+        monkeypatch.setenv("ATTACHMENTS_TIMEOUT", "1.5")
+        assert get_config("timeout") == 1.5
+
+    def test_env_timeout_invalid_raises(self, monkeypatch):
+        monkeypatch.setenv("ATTACHMENTS_TIMEOUT", "120abc")
+        with pytest.raises(ValueError, match="ATTACHMENTS_TIMEOUT"):
+            get_config("timeout")
+
+    def test_env_prefer_invalid_raises(self, monkeypatch):
+        monkeypatch.setenv("ATTACHMENTS_PREFER", "bogus-mode")
+        with pytest.raises(ValueError, match="ATTACHMENTS_PREFER"):
+            get_prefer()
+
+    def test_env_prefer_valid_passes(self, monkeypatch):
+        monkeypatch.setenv("ATTACHMENTS_PREFER", "local-only")
+        assert get_prefer() == "local-only"
+
+
 class TestGetApiKey:
     """Tests for get_api_key() helper."""
 

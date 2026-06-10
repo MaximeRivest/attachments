@@ -13,7 +13,7 @@ from __future__ import annotations
 import io
 from typing import Any
 
-from ..options import Option, register_options
+from .._options import Option, register_options
 from ..types import (
     ERROR_PARSE,
     ERROR_PROCESSING,

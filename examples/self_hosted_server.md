@@ -4,11 +4,12 @@ This example shows how to set up a self-hosted attachments server so your team c
 
 ## The Problem
 
-Installing all attachments dependencies can be complex:
-- PDF processing needs `pypdf`, `pymupdf`, and optionally system libraries
-- Audio transcription needs `whisper` (large model downloads, GPU optional)
-- OCR needs `tesseract` system binary
-- Some deps have complex build requirements
+Installing all attachments dependencies on every machine adds up:
+- PDF processing needs `pypdf` and `pymupdf`
+- Excel needs `openpyxl` (and optionally `pandas`)
+- Word/PowerPoint need `python-docx` / `python-pptx`
+- HTML needs `beautifulsoup4` + `lxml`, images need `Pillow`
+- Future heavy processors (OCR, audio transcription) will be worse
 
 ## The Solution
 
@@ -31,10 +32,9 @@ Installing all attachments dependencies can be complex:
 │ )                        │          │ │ • openpyxl, pandas (Excel) │   │
 │                          │          │ │ • python-docx (Word)       │   │
 │ att("document.pdf")      │  <────   │ │ • python-pptx (PowerPoint) │   │
-│ # Returns artifact!      │ artifact │ │ • whisper (Audio)          │   │
-│                          │          │ │ • tesseract (OCR)          │   │
-└──────────────────────────┘          │ │ • ... everything else      │   │
-                                      │ └────────────────────────────┘   │
+│ # Returns artifact!      │ artifact │ │ • bs4, lxml (HTML)         │   │
+│                          │          │ │ • Pillow (images)          │   │
+└──────────────────────────┘          │ └────────────────────────────┘   │
                                       └──────────────────────────────────┘
 ```
 
@@ -45,11 +45,11 @@ Installing all attachments dependencies can be complex:
 ### 1. Install on Server Machine
 
 ```bash
-# Install attachments with all processors
+# Install attachments with all shipped processors
 pip install attachments[server]
 
 # Or be specific about what you need
-pip install attachments[pdf,xlsx,docx,pptx,audio,ocr]
+pip install attachments[pdf,xlsx,docx,pptx,html,image]
 ```
 
 ### 2. Set Security Key
@@ -58,8 +58,15 @@ pip install attachments[pdf,xlsx,docx,pptx,audio,ocr]
 # Set a secret key for authentication
 export ATTACHMENTS_SERVER_KEY="your-team-secret-key"
 
-# Optional: Customize max upload size (default 256MB)
+# Optional: Customize max upload size (default 256MB).
+# Oversized request bodies are rejected with HTTP 413 before being read.
 export ATTACHMENTS_MAX_UPLOAD=536870912  # 512MB
+
+# Optional: allow /unpack to fetch private/internal addresses.
+# By default the server BLOCKS URLs that resolve to loopback, link-local
+# (cloud metadata), or private-range hosts — an SSRF guard. Only enable
+# this if the server runs in a trusted network and needs internal URLs.
+export ATTACHMENTS_ALLOW_PRIVATE_URLS=1
 ```
 
 ### 3. Start the Server
@@ -77,17 +84,18 @@ You'll see:
 ╔══════════════════════════════════════════════════════════════╗
 ║                   Attachments Server                         ║
 ╠══════════════════════════════════════════════════════════════╣
-║  URL:  http://0.0.0.0:8000                                   ║
-║  Auth: enabled                                               ║
+║  URL:  http://0.0.0.0:8000                                  ║
+║  Auth: enabled                                              ║
 ╠══════════════════════════════════════════════════════════════╣
 ║  Endpoints:                                                  ║
 ║    POST /process  - Process a file                           ║
 ║    POST /unpack   - Unpack a URL                             ║
 ║    GET  /health   - Health check                             ║
 ║    GET  /formats  - List supported formats                   ║
+║    GET  /options  - DSL option schemas                       ║
 ╚══════════════════════════════════════════════════════════════╝
 
-Available features: pdf, pdf-text, pdf-images, xlsx, xlsx-pandas, docx, pptx
+Available features: pdf, pdf-text, pdf-images, xlsx, xlsx-pandas, docx, pptx, html, image, service
 ```
 
 ---
@@ -115,10 +123,11 @@ configure(
 # Now everything works!
 artifacts = att("quarterly-report.pdf")
 print(artifacts[0]["text"][:500])
+print(artifacts[0]["meta"]["via"])  # "service"
 
 # Excel files
 artifacts = att("sales-data.xlsx")
-print(f"Rows: {artifacts[0]['meta']['extra']['rows']}")
+print(f"Sheets: {artifacts[0]['meta']['extra']['sheets']}")
 
 # Even URLs work - server fetches and processes
 artifacts = att("https://arxiv.org/pdf/2301.00001.pdf")
@@ -144,17 +153,14 @@ artifacts = att("document.pdf")
 
 ## Production Deployment
 
+For production use the WSGI app (`attachments.server:create_app`) with
+gunicorn instead of the stdlib development server:
+
 ### Docker
 
 ```dockerfile
 # Dockerfile
 FROM python:3.12-slim
-
-# Install system deps for some processors (optional)
-RUN apt-get update && apt-get install -y \
-    tesseract-ocr \
-    poppler-utils \
-    && rm -rf /var/lib/apt/lists/*
 
 # Install attachments with all deps
 RUN pip install attachments[server] gunicorn
@@ -316,6 +322,9 @@ Keep all processing inside your secure network:
 
 ## API Reference
 
+GET routes are public; POST routes require `Authorization: Bearer <key>`
+when `ATTACHMENTS_SERVER_KEY` is set.
+
 ### Health Check
 
 ```bash
@@ -325,16 +334,23 @@ curl http://server:8000/health
 ```json
 {
   "status": "ok",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "features": {
     "pdf": true,
     "pdf-text": true,
     "pdf-images": true,
     "xlsx": true,
-    "xlsx-pandas": true
+    "xlsx-pandas": true,
+    "docx": true,
+    "pptx": true,
+    "html": true,
+    "image": true,
+    "service": true
   }
 }
 ```
+
+(`features` lists only the dependency groups available on the server.)
 
 ### List Formats
 
@@ -344,39 +360,75 @@ curl http://server:8000/formats
 
 ```json
 {
-  "formats": [".pdf", ".xlsx", ".txt", ".md", "__text__", ...],
-  "count": 24
+  "formats": ["__text__", ".txt", ".md", ".markdown", ".rst", ".csv", "...", ".pdf", ".xlsx", ".docx", ".pptx", ".png"],
+  "count": 35
 }
 ```
 
-### Process File
+### List DSL Options
+
+The full declared option schemas (`attachments.dsl_schema()` export — the
+same data behind `att.options()` and `att --options`):
 
 ```bash
-curl -X POST http://server:8000/process \
-  -H "Authorization: Bearer your-secret" \
-  -F "file=@document.pdf"
+curl http://server:8000/options
 ```
 
 ```json
 {
-  "text": "Extracted text content...",
-  "images": [
-    {
-      "name": "document-page-1.png",
-      "mimetype": "image/png",
-      "bytes_b64": "iVBORw0KGgo...",
-      "page": 1
-    }
-  ],
+  "version": 1,
+  "processors": {
+    ".pdf": [
+      {"name": "pages", "type": "pages", "aliases": ["page"], "param": null,
+       "default": null, "help": "Pages to include: a 1-based page number or range.",
+       "example": "pages: 1-4"}
+    ]
+  },
+  "sources": {
+    "github://": [
+      {"name": "ref", "type": "str", "aliases": ["branch", "tag"], "param": null,
+       "default": null, "help": "Git branch, tag, or ref to clone.", "example": "ref: main"}
+    ]
+  }
+}
+```
+
+(Excerpt — every processor with declared options appears under `processors`.)
+
+### Process File
+
+DSL options travel as extra form fields (here: `pages=1-2`):
+
+```bash
+curl -X POST http://server:8000/process \
+  -H "Authorization: Bearer your-secret" \
+  -F "file=@document.pdf" \
+  -F "pages=1-2"
+```
+
+The response body is exactly an Artifact (images carry `bytes_b64` on the
+wire — see `spec/IR-CONTRACT.md`):
+
+```json
+{
+  "text": "Hello from page 1. Quarterly revenue grew 12%.\n\nHello from page 2. ...",
+  "images": [],
   "audio": [],
   "video": [],
   "meta": {
     "source": "document.pdf",
     "kind": "pdf",
-    "extra": {"pages": 5}
+    "segments": [
+      {"kind": "page", "label": "page 1", "start": 0, "end": 46},
+      {"kind": "page", "label": "page 2", "start": 48, "end": 94}
+    ],
+    "extra": {"encrypted": false, "text_backend": "pypdf", "pages": 3, "parsed_pages": 2}
   }
 }
 ```
+
+With `images: true`, each rendered page appears as
+`{"name": "document.pdf-page-1.png", "mimetype": "image/png", "bytes_b64": "iVBORw0KGgo...", "page": 1}`.
 
 ### Unpack URL
 
@@ -403,7 +455,7 @@ curl -X POST http://server:8000/unpack \
 ### Connection Refused
 
 ```
-ServiceError: Service request failed: Connection refused
+ServiceError: Service request failed: ... Connection refused
 ```
 
 **Fix**: Check server is running and port is open:
@@ -418,7 +470,7 @@ sudo ufw allow 8000
 ### Unauthorized (401)
 
 ```
-ServiceError: Unauthorized
+ServiceError: Invalid API key
 ```
 
 **Fix**: Check API key matches:
@@ -447,7 +499,24 @@ configure(
 
 ### File Too Large (413)
 
+```
+{"error": "Upload too large (max 268435456)"}
+```
+
 **Fix**: Increase server limit:
 ```bash
 export ATTACHMENTS_MAX_UPLOAD=1073741824  # 1GB
+```
+
+### Blocked URL (400)
+
+```
+{"error": "Blocked URL 'http://10.0.0.5/x': host '10.0.0.5' resolves to non-public address 10.0.0.5"}
+```
+
+`/unpack` refuses URLs that resolve to private/internal addresses by
+default (SSRF guard). If the server should fetch internal URLs:
+
+```bash
+export ATTACHMENTS_ALLOW_PRIVATE_URLS=1
 ```

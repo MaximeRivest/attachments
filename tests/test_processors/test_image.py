@@ -7,10 +7,10 @@ import sys
 
 import pytest
 
+from attachments._options import get_options
+from attachments._processors import image, processors
+from attachments._processors.image import image_processor
 from attachments.deps import check_dep, clear_cache
-from attachments.options import get_options
-from attachments.processors import image, processors
-from attachments.processors.image import image_processor
 from attachments.types import (
     ERROR_MISSING_DEPENDENCY,
     ERROR_PARSE,

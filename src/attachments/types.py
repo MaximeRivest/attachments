@@ -26,7 +26,7 @@ Example::
 
 from __future__ import annotations
 
-from typing import Any, TypedDict
+from typing import Any, Protocol, TypedDict
 
 # ---------------------------------------------------------------------------
 # Error codes (spec/IR-CONTRACT.md — frozen, do not rename)
@@ -151,6 +151,32 @@ class Artifact(TypedDict):
     audio: list[dict[str, Any]]
     video: list[dict[str, Any]]
     meta: Meta
+
+
+class Processor(Protocol):
+    """The processor contract, as frozen in ``spec/IR-CONTRACT.md``.
+
+    A processor is a pure function
+    ``(data: bytes, *, filename=None, **options) -> Artifact``. The core
+    pipeline always calls it as ``proc(data, filename=filename, **options)``,
+    so implementations must accept ``filename`` (a ``**options`` catch-all
+    is enough) and never raise: missing optional dependencies become
+    :func:`missing_dep_artifact`, bad input becomes :func:`error_artifact`.
+
+    Example::
+
+        def my_processor(data: bytes, **options) -> Artifact:
+            return make_artifact(text=data.decode(errors="replace"))
+    """
+
+    def __call__(
+        self,
+        data: bytes,
+        /,
+        *,
+        filename: str | None = None,
+        **options: Any,
+    ) -> Artifact: ...
 
 
 def make_artifact(

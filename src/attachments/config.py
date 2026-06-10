@@ -20,6 +20,7 @@ from typing import Literal
 
 # Valid values for the "prefer" setting
 PreferMode = Literal["local", "service", "local-only", "service-only"]
+_VALID_PREFER = ("local", "service", "local-only", "service-only")
 
 # Default configuration
 _config: dict = {
@@ -28,6 +29,53 @@ _config: dict = {
     "service_url": "https://api.attachments.dev/v1",
     "timeout": 60,  # seconds for service requests
 }
+
+
+def _coerce_env_value(key: str, raw: str):
+    """Validate/coerce an ``ATTACHMENTS_*`` env value like configure() input.
+
+    Environment variables are a first-class config path, so they get the
+    same typing and validation as ``configure()`` arguments: ``timeout``
+    becomes a number, ``prefer`` must be a valid mode. Invalid values raise
+    ``ValueError`` immediately instead of failing deep inside a request (or
+    being silently treated as a different mode).
+
+    Examples:
+        >>> _coerce_env_value("timeout", "120")
+        120
+        >>> _coerce_env_value("timeout", "1.5")
+        1.5
+        >>> _coerce_env_value("prefer", "local-only")
+        'local-only'
+        >>> _coerce_env_value("api_key", "att_123")
+        'att_123'
+        >>> _coerce_env_value("timeout", "120abc")
+        Traceback (most recent call last):
+        ...
+        ValueError: Invalid ATTACHMENTS_TIMEOUT value '120abc': expected seconds \
+as a number
+        >>> _coerce_env_value("prefer", "bogus-mode")  # doctest: +ELLIPSIS
+        Traceback (most recent call last):
+        ...
+        ValueError: Invalid ATTACHMENTS_PREFER value 'bogus-mode'. Valid: ...
+    """
+    if key == "timeout":
+        try:
+            return int(raw)
+        except ValueError:
+            try:
+                return float(raw)
+            except ValueError:
+                raise ValueError(
+                    f"Invalid ATTACHMENTS_TIMEOUT value {raw!r}: "
+                    f"expected seconds as a number"
+                ) from None
+    if key == "prefer":
+        if raw not in _VALID_PREFER:
+            raise ValueError(
+                f"Invalid ATTACHMENTS_PREFER value {raw!r}. Valid: {_VALID_PREFER}"
+            )
+    return raw
 
 
 def configure(**kwargs) -> None:
@@ -67,10 +115,9 @@ def configure(**kwargs) -> None:
         raise ValueError(f"Invalid config keys: {invalid_keys}. Valid: {valid_keys}")
 
     if "prefer" in kwargs:
-        valid_prefer = ("local", "service", "local-only", "service-only")
-        if kwargs["prefer"] not in valid_prefer:
+        if kwargs["prefer"] not in _VALID_PREFER:
             raise ValueError(
-                f"Invalid prefer value: {kwargs['prefer']}. Valid: {valid_prefer}"
+                f"Invalid prefer value: {kwargs['prefer']}. Valid: {_VALID_PREFER}"
             )
 
     _config.update(kwargs)
@@ -80,7 +127,8 @@ def get_config(key: str, default=None):
     """Get a configuration value.
 
     Checks in order:
-    1. Environment variable (ATTACHMENTS_{KEY})
+    1. Environment variable (ATTACHMENTS_{KEY}) — coerced/validated like
+       configure() input (timeout becomes a number, prefer must be valid)
     2. Global config set via configure()
     3. Default value
 
@@ -90,6 +138,11 @@ def get_config(key: str, default=None):
 
     Returns:
         Configuration value
+
+    Raises:
+        ValueError: If an environment variable carries an invalid value
+            (e.g. ``ATTACHMENTS_TIMEOUT=abc`` or an unknown
+            ``ATTACHMENTS_PREFER`` mode).
 
     Examples:
         >>> reset_config()
@@ -108,7 +161,7 @@ def get_config(key: str, default=None):
     env_key = f"ATTACHMENTS_{key.upper()}"
     env_value = os.environ.get(env_key)
     if env_value is not None:
-        return env_value
+        return _coerce_env_value(key, env_value)
 
     # Then check global config
     return _config.get(key, default)

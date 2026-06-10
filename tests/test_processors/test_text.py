@@ -27,8 +27,8 @@ from __future__ import annotations
 
 import pytest
 
-from attachments.processors import processors
-from attachments.processors.text import text_processor
+from attachments._processors import processors
+from attachments._processors.text import text_processor
 
 
 class TestTextProcessor:

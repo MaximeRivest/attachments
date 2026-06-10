@@ -65,9 +65,15 @@ att("doc.pdf", prefer="service")       # Try service first
 pip install attachments              # Core only (text files work)
 pip install attachments[pdf]         # Add PDF support
 pip install attachments[xlsx]        # Add Excel support
+pip install attachments[docx]        # Add Word support
+pip install attachments[pptx]        # Add PowerPoint support
+pip install attachments[html]        # Add HTML support
+pip install attachments[image]       # Add image support (Pillow)
 pip install attachments[service]     # Add service mode (httpx)
-pip install attachments[office]      # xlsx + docx
+pip install attachments[clipboard]   # CLI clipboard support (`att --copy`)
+pip install attachments[office]      # xlsx + docx + pptx
 pip install attachments[all-local]   # Everything currently shipped
+pip install attachments[server]      # Self-hosted server (= all-local)
 ```
 
 ---
@@ -140,7 +146,7 @@ register_options(".myf", (Option("depth", "int", help="Parse depth."),))
 
 ### Full Example
 
-Create `src/attachments/processors/myformat.py`:
+Create `src/attachments/_processors/myformat.py`:
 
 ```python
 """Processor for MyFormat files (.myf)."""
@@ -149,7 +155,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..options import Option
+from .._options import Option
 from ..types import (
     ERROR_PARSE,
     error_artifact,
@@ -218,7 +224,7 @@ def myformat_processor(data: bytes, **options: Any) -> dict[str, Any]:
         return error_artifact(filename, ERROR_PARSE, f"Failed to parse MyFormat: {e}")
 ```
 
-### Step 2: Import in `processors/__init__.py`
+### Step 2: Import in `_processors/__init__.py`
 
 Add the import to trigger self-registration:
 
@@ -330,7 +336,7 @@ register_unpack_handler("myproto://", my_handler)
 
 ### Full Example
 
-Create `src/attachments/unpack/s3.py`:
+Create `src/attachments/unpack_s3.py` (or your own package's module):
 
 ```python
 """S3 source handler for attachments."""
@@ -392,35 +398,16 @@ def s3_handler(url: str) -> list[tuple[str, bytes]]:
 
 ### Step 2: Register the Handler
 
-Option A: **Auto-register in `unpack/__init__.py`** (for built-in handlers):
+For third-party handlers (the common case), registration is the decorator or
+function call shown above — `@source("s3://")` /
+`register_unpack_handler("s3://", s3_handler)` adds the prefix to the public
+`extra_unpack_handlers` registry, which `unpack()` consults before its
+built-in resolution.
 
-```python
-# At module level, try to register if deps available
-try:
-    from .s3 import s3_handler
-    from ..unpack import register_unpack_handler
-    register_unpack_handler("s3://", s3_handler)
-except ImportError:
-    pass  # boto3 not installed, skip registration
-```
-
-Option B: **Lazy registration in main `unpack.py`** (preferred for optional deps):
-
-```python
-def unpack(input: str, extra_handlers=None) -> list[tuple[str, bytes]]:
-    # ... existing code ...
-
-    # S3 handling
-    if input.startswith("s3://"):
-        try:
-            from .unpack.s3 import s3_handler
-            return s3_handler(input)
-        except ImportError:
-            raise ImportError(
-                "S3 support requires boto3. "
-                "Install with: pip install attachments[s3]"
-            )
-```
+For handlers contributed to the library itself, the module lives next to
+`_unpack.py` (e.g. `src/attachments/_unpack_s3.py`) and registers at import
+time — see how the built-in `github://` source registers itself (and its
+option schema) inside `_unpack.py`.
 
 ### Step 3: Add Dependencies to `pyproject.toml`
 
@@ -491,12 +478,17 @@ When adding a new processor or source:
 - [ ] **1. Create the module** with try/except imports
 - [ ] **2. Add to `pyproject.toml`** optional dependencies
 - [ ] **3. Add to `deps.py`** DEPENDENCY_MAP
-- [ ] **4. Add import** to `__init__.py` if needed
-- [ ] **5. Update bundles** in pyproject.toml (`all-processors`, `cloud`, etc.)
+- [ ] **4. Add import** to `_processors/__init__.py` (for built-in processors)
+- [ ] **5. Update bundles** in pyproject.toml (`office`, `all-local`)
 - [ ] **6. Add tests** for both missing-dep and installed cases
 - [ ] **7. Update dev dependencies** if needed for testing
 
 ### Dependency Naming Conventions
+
+The extras that exist today: `pdf`, `pdf-fallback`, `xlsx`, `xlsx-pandas`,
+`docx`, `pptx`, `html`, `image`, `service`, `clipboard`, `office`,
+`all-local`, `server`.
+New extras follow these conventions:
 
 ```toml
 [project.optional-dependencies]
@@ -506,23 +498,18 @@ xlsx = [...]
 docx = [...]
 
 # Processors with alternatives: use descriptive suffix
-pdf-fallback = ["pdfminer.six"]      # Alternative backend
+pdf-fallback = ["pdfminer.six"]       # Alternative backend
 xlsx-pandas = ["pandas", "openpyxl"]  # Enhanced version
 
-# Sources: named after service/protocol
-s3 = [...]
-gcs = [...]
-gdrive = [...]
+# Future sources: named after service/protocol (s3, gcs, gdrive, ...)
 
 # Bundles: descriptive groupings
 office = ["attachments[xlsx,docx,pptx]"]
-cloud = ["attachments[s3,gcs,gdrive]"]
-all-processors = [...]
-all-sources = [...]
-all-local = [...]
+all-local = ["attachments[pdf,pdf-fallback,xlsx-pandas,docx,pptx,html,image]"]
+server = ["attachments[all-local]"]
 
 # Service mode
-service = ["httpx"]
+service = ["httpx>=0.27"]
 ```
 
 ### Error Message Convention
@@ -549,14 +536,15 @@ src/attachments/
 ├── config.py                # Global configuration
 ├── deps.py                  # Dependency detection
 ├── service.py               # Remote API client
-├── server.py                # Self-hosted server
+├── server.py                # Self-hosted server (stdlib HTTP + WSGI create_app)
 ├── cli.py                   # `att` / `attachments` CLI
 ├── dsl.py                   # DSL parsing ("file.pdf[pages: 1-4]")
-├── types.py                 # Artifact / ImageItem TypedDicts
+├── _options.py              # Option schemas: declare/resolve/export (att.options)
+├── types.py                 # Artifact / ImageItem TypedDicts, error codes, helpers
 ├── utils.py                 # Encoding detection, magic-byte detection, helpers
-├── unpack.py                # Input resolution (local, dirs, archives, http, github)
+├── _unpack.py               # Input resolution (local, dirs, archives, http, github)
 ├── render.py                # Last mile: render_text, to_claude/openai_messages, chunk
-└── processors/
+└── _processors/
     ├── __init__.py          # Processor registry & @processor decorator
     ├── text.py              # Text files (no deps)
     ├── pdf.py               # PDF (pypdf, pymupdf)
@@ -578,8 +566,8 @@ uv sync --group dev
 # Run tests
 uv run pytest
 
-# Run with specific optional deps
-uv run --extra pdf pytest tests/test_pdf.py
+# Run one file
+uv run pytest tests/test_conformance.py
 
 # Check linting
 uv run ruff check src/
@@ -643,17 +631,18 @@ Output:
 ╔══════════════════════════════════════════════════════════════╗
 ║                   Attachments Server                         ║
 ╠══════════════════════════════════════════════════════════════╣
-║  URL:  http://0.0.0.0:8000                                   ║
-║  Auth: enabled                                               ║
+║  URL:  http://0.0.0.0:8000                                  ║
+║  Auth: enabled                                              ║
 ╠══════════════════════════════════════════════════════════════╣
 ║  Endpoints:                                                  ║
 ║    POST /process  - Process a file                           ║
 ║    POST /unpack   - Unpack a URL                             ║
 ║    GET  /health   - Health check                             ║
 ║    GET  /formats  - List supported formats                   ║
+║    GET  /options  - DSL option schemas                       ║
 ╚══════════════════════════════════════════════════════════════╝
 
-Available features: pdf, pdf-text, pdf-images, xlsx, xlsx-pandas, docx, ...
+Available features: pdf, pdf-text, pdf-images, xlsx, xlsx-pandas, docx, pptx, html, image, service
 ```
 
 ### Client Setup (zero deps needed)

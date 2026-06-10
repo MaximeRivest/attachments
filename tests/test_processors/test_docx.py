@@ -6,8 +6,8 @@ import io
 
 import pytest
 
+from attachments._processors import processors
 from attachments.deps import check_dep
-from attachments.processors import processors
 
 pytestmark = pytest.mark.skipif(
     not check_dep("docx").available,

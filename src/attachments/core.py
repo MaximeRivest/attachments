@@ -11,32 +11,30 @@ from __future__ import annotations
 
 import logging
 import os
-from collections.abc import Callable
 from typing import Any
 
+from ._options import get_options, resolve_options, source_option_schemas
+from ._processors import processors
+from ._unpack import unpack
 from .config import get_api_key, get_prefer
 from .dsl import parse_dsl
-from .options import get_options, resolve_options, source_option_schemas
-from .processors import processors
 from .types import (
     ERROR_MISSING_DEPENDENCY,
     ERROR_PROCESSING,
     ERROR_SERVICE,
     ERROR_UNPACK,
+    Processor,
     error_artifact,
     is_missing_dependency,
     make_artifact,
     normalize_artifact,
 )
-from .unpack import unpack
 from .utils import detect_extension, is_text_bytes
 
 log = logging.getLogger("attachments.core")
 
 
-def _route_processor(
-    filename: str, data: bytes
-) -> tuple[Callable[..., dict] | None, str]:
+def _route_processor(filename: str, data: bytes) -> tuple[Processor | None, str]:
     """Find the appropriate processor (and its registry key) for a file.
 
     Routing order:
@@ -163,7 +161,7 @@ def _process_single(
     """Process a single file with local/service fallback logic.
 
     Local processor calls receive options resolved against the processor's
-    declared schema (``attachments.options``); resolution warnings are
+    declared schema (``attachments._options``); resolution warnings are
     attached to the resulting artifact's ``meta.warnings``. Service calls
     receive the RAW options — the service resolves them server-side.
 

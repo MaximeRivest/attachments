@@ -34,8 +34,10 @@ from pathlib import Path
 
 import pytest
 
-from attachments.unpack import (
+import attachments._unpack as unpack_mod
+from attachments._unpack import (
     RAW_ARCHIVE_SUFFIXES,
+    _assert_public_http_url,
     _filename_from_content_disposition,
     _is_github_repo_root_url,
     _is_raw_archive_name,
@@ -347,6 +349,122 @@ class TestSourceDecorator:
         finally:
             del extra_unpack_handlers["multi1://"]
             del extra_unpack_handlers["multi2://"]
+
+
+class TestArchiveBombGuards:
+    """Decompression-bomb protection in _explode_archive_bytes."""
+
+    def test_expansion_budget_enforced(self, tmp_path: Path, monkeypatch):
+        """A tiny compressed file expanding past the cap raises ValueError."""
+        monkeypatch.setattr(unpack_mod, "MAX_ARCHIVE_EXPANSION_BYTES", 64 * 1024)
+
+        import zipfile as _zipfile
+
+        buf = io.BytesIO()
+        with _zipfile.ZipFile(buf, "w", _zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr("big.bin", b"\0" * (10 * 1024 * 1024))  # ~10KB compressed
+        bomb = tmp_path / "bomb.zip"
+        bomb.write_bytes(buf.getvalue())
+
+        with pytest.raises(ValueError, match="maximum total size"):
+            unpack(str(bomb))
+
+    def test_budget_shared_across_nested_archives(self, monkeypatch):
+        monkeypatch.setattr(unpack_mod, "MAX_ARCHIVE_EXPANSION_BYTES", 1024)
+
+        import zipfile as _zipfile
+
+        inner = io.BytesIO()
+        with _zipfile.ZipFile(inner, "w", _zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr("a.bin", b"\0" * 800)
+        outer = io.BytesIO()
+        with _zipfile.ZipFile(outer, "w", _zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr("one.zip", inner.getvalue())
+            zf.writestr("b.bin", b"\0" * 800)
+
+        with pytest.raises(ValueError, match="maximum total size"):
+            unpack_mod._explode_archive_bytes("outer.zip", outer.getvalue())
+
+    def test_nesting_depth_enforced(self, monkeypatch):
+        monkeypatch.setattr(unpack_mod, "MAX_ARCHIVE_DEPTH", 1)
+
+        import zipfile as _zipfile
+
+        blob = b"payload"
+        for i in range(3):  # zip-in-zip-in-zip
+            buf = io.BytesIO()
+            with _zipfile.ZipFile(buf, "w") as zf:
+                name = "data.txt" if i == 0 else f"level{i}.zip"
+                zf.writestr(name, blob)
+            blob = buf.getvalue()
+
+        with pytest.raises(ValueError, match="maximum depth"):
+            unpack_mod._explode_archive_bytes("outer.zip", blob)
+
+    def test_normal_archives_unaffected(self, tmp_path: Path, sample_zip_bytes: bytes):
+        zip_path = tmp_path / "archive.zip"
+        zip_path.write_bytes(sample_zip_bytes)
+        result = unpack(str(zip_path))
+        assert len(result) == 1
+        assert b"Hello" in result[0][1]
+
+    def test_tar_member_budget_enforced(self, monkeypatch):
+        monkeypatch.setattr(unpack_mod, "MAX_ARCHIVE_EXPANSION_BYTES", 1024)
+
+        payload = b"\0" * 4096
+        buf = io.BytesIO()
+        with tarfile.open(fileobj=buf, mode="w:gz") as tf:
+            info = tarfile.TarInfo(name="big.bin")
+            info.size = len(payload)
+            tf.addfile(info, io.BytesIO(payload))
+
+        with pytest.raises(ValueError, match="maximum total size"):
+            unpack_mod._explode_archive_bytes("bomb.tar.gz", buf.getvalue())
+
+
+class TestSsrfGuard:
+    """_assert_public_http_url blocks private/internal addresses."""
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "http://127.0.0.1/admin",
+            "http://localhost:8080/x",
+            "http://169.254.169.254/latest/meta-data/",
+            "http://10.0.0.5/internal",
+            "http://192.168.1.1/router",
+            "http://[::1]/v6-loopback",
+        ],
+    )
+    def test_blocks_non_public_addresses(self, url: str):
+        with pytest.raises(ValueError, match="Blocked URL|Cannot resolve"):
+            _assert_public_http_url(url)
+
+    def test_blocks_non_http_schemes(self):
+        with pytest.raises(ValueError, match="scheme"):
+            _assert_public_http_url("ftp://example.com/file")
+
+    def test_allows_public_literal_address(self):
+        # 93.184.216.34 (example.com) is a public address; no DNS needed.
+        _assert_public_http_url("http://93.184.216.34/page")
+
+    def test_unpack_blocks_private_url_when_enabled(self):
+        with pytest.raises(ValueError, match="non-public address"):
+            unpack("http://127.0.0.1:9/secret.zip", block_private_urls=True)
+
+    def test_guard_off_by_default_for_library_use(self, monkeypatch):
+        """Without the flag, private URLs reach the downloader (no SSRF
+        validation) — the library trusts its local caller by default."""
+        seen = {}
+
+        def fake_urlopen(req, timeout=None):
+            seen["url"] = req.full_url
+            raise OSError("stop before any network I/O")
+
+        monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
+        with pytest.raises(OSError, match="stop before"):
+            unpack_mod._download_http_or_https("http://127.0.0.1:9/x")
+        assert seen["url"] == "http://127.0.0.1:9/x"
 
 
 class TestUnpackIntegration:

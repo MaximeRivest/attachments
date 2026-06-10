@@ -245,20 +245,23 @@ platform only when pulled by demand.
 
 ## Where things stand
 
-**This repo is where all new development happens.** It is versioned `1.0.0a0`
-and will be published as the next major version of the
-[`attachments`](https://pypi.org/project/attachments/) PyPI package.
+**This repo IS attachments 1.0.0** — the next major version of the
+[`attachments`](https://pypi.org/project/attachments/) PyPI package. Epics
+A–D are substantially complete: the IR is frozen and CI-enforced by a
+conformance suite (`spec/` + `tests/test_conformance.py`), processors declare
+option schemas with `att.options()` runtime discovery and "did you mean"
+errors, the v1 corpus is ported through pptx and images with magic-byte
+routing, and the server plus the render/adapt/chunk last mile ship. The 0.x
+grammar API is a clean break — see [CHANGELOG.md](CHANGELOG.md) for the
+migration pointer.
 
+- **Next:** `1.0.0aN` pre-releases to PyPI (stable users on
+  `pip install attachments` are never affected — pip ignores pre-releases by
+  default), then `1.0` proper.
 - **v1** (the original `attachments` repo, published as 0.25.x on PyPI) is in
-  **maintenance mode**: bug fixes only, no new features. Its grammar API
-  (`Attachments`, `load | present | adapt`) is not the future — don't build on
-  it. It remains the richest corpus of converters; we port them here format by
-  format (Epic A1, Epic G).
-- **This repo (1.0)** ships to PyPI first as pre-releases (`1.0.0aN` — stable
-  users on `pip install attachments` are never affected, since pip ignores
-  pre-releases by default), then as `1.0` once Epics A–B are green. At that
-  point we decide between a thin `Attachments(...)` compatibility shim over
-  `att()` or a clean break with a migration guide.
+  **maintenance mode**: bug fixes only, no new features. It remains the
+  richest corpus of converters; the long tail (OCR, audio, `s3://`,
+  `gdrive://`, ...) stays open by design (Epic G).
 
 Work here without looking at v1/v2 — everything you need is this repo plus this
 document.

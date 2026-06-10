@@ -1,0 +1,257 @@
+{
+  "processors": {
+    ".bmp": [
+      {
+        "aliases": [],
+        "default": null,
+        "example": "max_dim: 1024",
+        "help": "Downscale so the longest side is at most this many pixels",
+        "name": "max_dim",
+        "param": null,
+        "type": "int"
+      }
+    ],
+    ".cfg": [],
+    ".css": [],
+    ".csv": [],
+    ".docx": [
+      {
+        "aliases": [
+          "render"
+        ],
+        "default": false,
+        "example": "images: true",
+        "help": "Extract embedded images.",
+        "name": "images",
+        "param": "render_images",
+        "type": "bool"
+      }
+    ],
+    ".gif": [
+      {
+        "aliases": [],
+        "default": null,
+        "example": "max_dim: 1024",
+        "help": "Downscale so the longest side is at most this many pixels",
+        "name": "max_dim",
+        "param": null,
+        "type": "int"
+      }
+    ],
+    ".htm": [
+      {
+        "aliases": [
+          "render"
+        ],
+        "default": false,
+        "example": "images: true",
+        "help": "Extract inline data-URI images.",
+        "name": "images",
+        "param": "render_images",
+        "type": "bool"
+      }
+    ],
+    ".html": [
+      {
+        "aliases": [
+          "render"
+        ],
+        "default": false,
+        "example": "images: true",
+        "help": "Extract inline data-URI images.",
+        "name": "images",
+        "param": "render_images",
+        "type": "bool"
+      }
+    ],
+    ".ini": [],
+    ".java": [],
+    ".jpeg": [
+      {
+        "aliases": [],
+        "default": null,
+        "example": "max_dim: 1024",
+        "help": "Downscale so the longest side is at most this many pixels",
+        "name": "max_dim",
+        "param": null,
+        "type": "int"
+      }
+    ],
+    ".jpg": [
+      {
+        "aliases": [],
+        "default": null,
+        "example": "max_dim: 1024",
+        "help": "Downscale so the longest side is at most this many pixels",
+        "name": "max_dim",
+        "param": null,
+        "type": "int"
+      }
+    ],
+    ".js": [],
+    ".json": [],
+    ".log": [],
+    ".markdown": [],
+    ".md": [],
+    ".pdf": [
+      {
+        "aliases": [
+          "page"
+        ],
+        "default": null,
+        "example": "pages: 1-4",
+        "help": "Pages to include: a 1-based page number or range.",
+        "name": "pages",
+        "param": null,
+        "type": "pages"
+      },
+      {
+        "aliases": [
+          "pw"
+        ],
+        "default": null,
+        "example": "password: secret",
+        "help": "Password for encrypted PDFs.",
+        "name": "password",
+        "param": null,
+        "type": "str"
+      },
+      {
+        "aliases": [
+          "render"
+        ],
+        "default": "auto",
+        "example": "images: true",
+        "help": "Render pages to PNG: true/false, or auto (only when no text).",
+        "name": "images",
+        "param": "render_images",
+        "type": "bool_or_auto"
+      },
+      {
+        "aliases": [],
+        "default": 200,
+        "example": "dpi: 300",
+        "help": "Resolution for rendered page images.",
+        "name": "dpi",
+        "param": "images_dpi",
+        "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "max_pages: 10",
+        "help": "Hard cap on the number of pages parsed/rendered.",
+        "name": "max_pages",
+        "param": null,
+        "type": "int"
+      }
+    ],
+    ".png": [
+      {
+        "aliases": [],
+        "default": null,
+        "example": "max_dim: 1024",
+        "help": "Downscale so the longest side is at most this many pixels",
+        "name": "max_dim",
+        "param": null,
+        "type": "int"
+      }
+    ],
+    ".pptx": [
+      {
+        "aliases": [
+          "render"
+        ],
+        "default": false,
+        "example": "images: true",
+        "help": "Extract embedded slide pictures: true/false ('auto'/'always' behave like true; slides are never rasterized).",
+        "name": "images",
+        "param": "render_images",
+        "type": "bool_or_auto"
+      }
+    ],
+    ".py": [],
+    ".rst": [],
+    ".tex": [],
+    ".tif": [
+      {
+        "aliases": [],
+        "default": null,
+        "example": "max_dim: 1024",
+        "help": "Downscale so the longest side is at most this many pixels",
+        "name": "max_dim",
+        "param": null,
+        "type": "int"
+      }
+    ],
+    ".tiff": [
+      {
+        "aliases": [],
+        "default": null,
+        "example": "max_dim: 1024",
+        "help": "Downscale so the longest side is at most this many pixels",
+        "name": "max_dim",
+        "param": null,
+        "type": "int"
+      }
+    ],
+    ".toml": [],
+    ".ts": [],
+    ".tsv": [],
+    ".txt": [],
+    ".webp": [
+      {
+        "aliases": [],
+        "default": null,
+        "example": "max_dim: 1024",
+        "help": "Downscale so the longest side is at most this many pixels",
+        "name": "max_dim",
+        "param": null,
+        "type": "int"
+      }
+    ],
+    ".xlsx": [
+      {
+        "aliases": [],
+        "default": null,
+        "example": "sheet: Sales",
+        "help": "Sheet to render: a sheet name or 0-based index. Omit to render all sheets.",
+        "name": "sheet",
+        "param": null,
+        "type": "str_or_int"
+      },
+      {
+        "aliases": [
+          "max_rows"
+        ],
+        "default": 200,
+        "example": "rows: 100",
+        "help": "Maximum number of rows rendered as text per sheet.",
+        "name": "rows",
+        "param": "max_rows",
+        "type": "int"
+      }
+    ],
+    ".xml": [],
+    ".yaml": [],
+    ".yml": [],
+    "__text__": []
+  },
+  "sources": {
+    "github://": [
+      {
+        "aliases": [
+          "branch",
+          "tag"
+        ],
+        "default": null,
+        "example": "ref: main",
+        "help": "Git branch, tag, or ref to clone.",
+        "name": "ref",
+        "param": null,
+        "type": "str"
+      }
+    ]
+  },
+  "version": 1
+}

@@ -8,10 +8,11 @@ import sys
 
 import pytest
 
+from attachments._processors import pptx, processors
+
 # Self-registration: pptx isn't wired into processors/__init__.py yet, so
 # importing the module is what registers ".pptx" (and its option schema).
 from attachments.deps import check_dep, clear_cache
-from attachments.processors import pptx, processors
 from attachments.types import (
     ERROR_MISSING_DEPENDENCY,
     ERROR_PARSE,
@@ -214,7 +215,7 @@ class TestPptxProcessor:
         assert "segments" not in result["meta"]  # absent when not applicable
 
     def test_option_schema_resolves_to_render_images(self):
-        from attachments.options import get_options, resolve_options
+        from attachments._options import get_options, resolve_options
 
         schema = get_options(".pptx")
         assert [o.name for o in schema] == ["images"]

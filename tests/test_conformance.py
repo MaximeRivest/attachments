@@ -24,7 +24,7 @@ import jsonschema
 import pytest
 
 from attachments import att
-from attachments.processors import processors as _registry
+from attachments._processors import processors as _registry
 from attachments.server import _encode_artifact_for_wire, create_app
 from attachments.types import missing_dep_artifact, normalize_artifact
 

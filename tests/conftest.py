@@ -76,7 +76,7 @@ def reset_processor_registry():
 
     Ensures custom processors registered in tests don't leak.
     """
-    from attachments.processors import reset_processors
+    from attachments._processors import reset_processors
 
     yield
     reset_processors()

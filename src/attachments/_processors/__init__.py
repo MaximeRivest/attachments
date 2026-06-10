@@ -3,19 +3,22 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from ..options import (
+from .._options import (
     Option,
     register_options,
     reset_options,
     snapshot_option_defaults,
 )
+from ..types import Processor
 
 # Global registry for processors (extension -> callable)
 # Keys are lowercase extensions like ".pdf" or sentinel keys like "__text__".
-processors: dict[str, Callable[[bytes], dict]] = {}
+# Values follow the IR processor contract (``types.Processor``):
+# ``(data: bytes, *, filename=None, **options) -> Artifact``.
+processors: dict[str, Processor] = {}
 
 # Snapshot of default processors after initial registration (populated lazily)
-_default_processors: dict[str, Callable[[bytes], dict]] | None = None
+_default_processors: dict[str, Processor] | None = None
 
 
 def _normalize_key(key: str) -> str:
@@ -41,10 +44,10 @@ def _normalize_key(key: str) -> str:
 
 def register_processor(
     key: str,
-    func: Callable[[bytes], dict] | None = None,
-    registry: dict[str, Callable[[bytes], dict]] | None = None,
+    func: Processor | None = None,
+    registry: dict[str, Processor] | None = None,
 ) -> Callable:
-    """Register a processor for a file extension.
+    """Register a processor for a single file extension.
 
     Can be used as a function or decorator:
 
@@ -56,14 +59,17 @@ def register_processor(
         def docx_processor(data: bytes, **options) -> dict:
             ...
 
-        # Multiple extensions
-        @register_processor(".doc", ".docx", ".rtf")
+    To register one function for multiple extensions, use the
+    :func:`processor` decorator instead:
+
+        @processor(".doc", ".docx", ".rtf")
         def word_processor(data: bytes, **options) -> dict:
             ...
 
     Args:
         key: File extension (e.g., ".pdf") or sentinel key (e.g., "__text__")
-        func: Processor function that takes bytes and returns an artifact dict
+        func: Processor following the IR contract
+            ``(data: bytes, *, filename=None, **options) -> Artifact``
         registry: Optional custom registry dict. If None, uses the global registry.
 
     Returns:
@@ -91,7 +97,7 @@ def register_processor(
     """
     target = registry if registry is not None else processors
 
-    def decorator(fn: Callable[[bytes], dict]) -> Callable[[bytes], dict]:
+    def decorator(fn: Processor) -> Processor:
         target[_normalize_key(key)] = fn
         return fn
 
@@ -127,7 +133,7 @@ def processor(*extensions: str, options: tuple[Option, ...] | None = None) -> Ca
         >>> # def word_processor(data, **opts): ...
     """
 
-    def decorator(fn: Callable[[bytes], dict]) -> Callable[[bytes], dict]:
+    def decorator(fn: Processor) -> Processor:
         for ext in extensions:
             processors[_normalize_key(ext)] = fn
             if options is not None:
@@ -149,7 +155,7 @@ def reset_processors() -> None:
 
     Useful for testing to ensure test isolation. Restores only the
     built-in processors (text, pdf, xlsx) and removes any custom processors.
-    Also resets the declared option schemas (``attachments.options``).
+    Also resets the declared option schemas (``attachments._options``).
     """
     global processors
     if _default_processors is not None:
@@ -158,7 +164,7 @@ def reset_processors() -> None:
     reset_options()
 
 
-def get_processors_copy() -> dict[str, Callable[[bytes], dict]]:
+def get_processors_copy() -> dict[str, Processor]:
     """Return a shallow copy of the current processor registry.
 
     Useful for creating isolated registries for testing or custom pipelines.
@@ -190,6 +196,7 @@ snapshot_option_defaults()
 
 
 __all__ = [
+    "Processor",
     "processors",
     "register_processor",
     "processor",
