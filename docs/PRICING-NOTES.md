@@ -131,14 +131,16 @@ trust the brand runs on.
   prices.** All published numbers are H100-only. Blocked on an AWS GPU
   quota increase (requested 2026-06-10). Also benchmark the vLLM CPU
   backend for the playground preview idea.
-- **First real datapoint (2026-06-10, home 3090, severely constrained):**
-  0.33 pages/s (3.07 s/page, ~816 output tokens/page, output quality
-  good) with vLLM squeezed into the 3.4 GB left over beside other
-  services — KV cache of only 5.3k tokens meant batching couldn't help
-  (concurrency 4/8/16 all ~0.32 pages/s, flat = cache-starved, not
-  GPU-bound). Treat as a hard floor: even this floor is ~28k pages/day
-  ≈ 855k pages/month per GPU. A clean 3090 run (model + real KV cache)
-  should batch 3–10× higher; measure before setting final prices.
+- **Measured (2026-06-10, home RTX 3090, clean run):** sequential
+  3.08 s/page; batched **0.96 pages/s peak at concurrency 16**
+  (~780 output tok/s, ~816 tokens/page, quality good; throughput flat
+  at conc 32 — latency-bound per request, fully batched beyond ~16).
+  That is ~83k pages/day ≈ **2.5M pages/month per 3090**, i.e. ~$6.2k/mo
+  of batch-priced capacity per GPU we already own; 1,000 invoices ≈ 18
+  minutes. The ~1 page/s L4 estimate used in the margin math above is
+  hereby validated for same-class hardware (3090 ≈ L4-or-better for
+  this model). Constrained-run footnote: squeezed into 3.4 GB beside
+  other services it still did 0.33 pages/s — the absolute floor.
 - Batch turnaround promise: "minutes, not seconds" needs a number we can
   defend (queue SLA, e.g. "typically under 30 minutes") once the
   autoscaler exists.
