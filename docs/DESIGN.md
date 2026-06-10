@@ -10,11 +10,14 @@
 ## 1. Design concept
 
 **The product's own output is the imagery.** attachments is a tool whose
-entire user experience is text in a terminal; the design system treats the
-terminal as the canonical canvas and the REPL session as the hero
-illustration. No stock art, no abstract gradients, no 3D blobs, no
-screenshots-of-screenshots. If a page needs a visual, it shows the product
-*running*.
+entire user experience is text in a code block — most often a notebook
+cell (Jupyter, RStudio/Positron, Quarto, Colab), sometimes a terminal.
+The design system treats that code block as the canonical canvas and a
+real session as the hero illustration. Blocks render the way the
+audience's environment renders them: light, quiet, a notebook cell —
+not a dark terminal (see BRAND.md §1b). No stock art, no abstract
+gradients, no 3D blobs, no screenshots-of-screenshots. If a page needs a
+visual, it shows the product *running*.
 
 Reference points (and why):
 - **Stripe docs** — code samples as the visual hero; we go further: the
@@ -28,39 +31,50 @@ cards, "Trusted by" logo soup), AI-product glow effects.
 
 ## 2. Color
 
-Dark-first. These tokens already exist in `site/index.html`; they are now
-canon and named.
+**Light-first.** The audience reads in Jupyter, RStudio, Colab, and Quarto
+— light by default. The page should feel like their environment: a clean
+notebook, a well-set paper. Near-monochrome: ink on paper, **one** accent.
 
-### Core palette (dark, default)
+> History note: the first palette (`#7ee787` green / `#79c0ff` blue on
+> `#0f1115`) was GitHub's dark syntax theme, inherited from the first
+> site draft and canonized after the fact. It encoded a terminal-first
+> bias the brand explicitly rejects (BRAND.md §1b). Replaced 2026-06.
+
+### Core palette (light, default)
 
 | Token | Hex | Role |
 |---|---|---|
-| `--bg` | `#0f1115` | Page background (near-black, slightly warm) |
-| `--panel` | `#161a21` | Terminal blocks, cards |
-| `--border` | `#262c37` | 1px borders, dividers |
-| `--text` | `#d7dde6` | Body text |
-| `--dim` | `#8b94a3` | Secondary text, comments, captions |
-| `--accent` | `#7ee787` | Terminal green: success, prompts, the FREE word, strings in code |
-| `--accent2` | `#79c0ff` | Terminal blue: links, keywords |
-| `--warn` | `#f0b72f` | Amber: notes/hints (`*` lines) only |
-| `--error` | `#ff7b72` | Red: error lines (`!` lines) only — NEW token |
+| `--bg` | `#fcfcfb` | Page background (warm paper, not pure white) |
+| `--panel` | `#f6f6f4` | Code/notebook blocks, cards |
+| `--border` | `#e4e5e2` | 1px borders, dividers |
+| `--text` | `#21262c` | Body text (ink, not pure black) |
+| `--dim` | `#6b7280` | Secondary text, comments, prompts, captions |
+| `--accent` | `#0f766e` | Viridis teal: success, strings, the word "free" — the only chromatic accent in prose. Chosen because viridis is the colormap of scientific plotting (matplotlib, ggplot2, Julia) — the audience's own color — and because GitHub-green (`#1a7f37`) is every dev tool's accent; teal-on-paper is ownable. |
+| `--warn` | `#9a6700` | Amber: `*` note/hint lines, inside output blocks only |
+| `--error` | `#cf222e` | Red: `!` error lines, inside output blocks only |
+
+There is no second accent. Links are underlined ink (`--text` with a
+`--dim` underline at rest), the register of an academic paper — which is
+who is reading. Keywords in code are plain ink at weight 600, not blue.
+
+### Dark variant (courtesy, via `prefers-color-scheme`)
+
+bg `#0f1115`, panel `#161a21`, border `#262c37`, text `#d7dde6`,
+dim `#8b94a3`, accent `#36c2ae` (viridis teal, lightened for dark bg),
+warn `#f0b72f`, error `#ff7b72`.
+Same single-accent discipline; dark is an adaptation, never the source
+of truth.
 
 ### Usage rules
 
-1. **Green is earned.** `--accent` marks success, working examples, and
-   the word "free." It is never used for decorative emphasis or CTAs that
-   ask for something.
-2. **Amber and red are semantic only.** They mirror the repr's `*` (note)
-   and `!` (error) lines. Never use them for marketing highlights.
-3. **One accent per block.** A terminal block may use the full syntax
-   palette; prose sections use at most green OR blue for emphasis, not both.
+1. **Green is earned.** `--accent` marks success, working examples,
+   strings in real runs, and the word "free." Never decorative emphasis,
+   never a CTA asking for something.
+2. **Amber and red are semantic only**, mirroring the repr's `*` and `!`
+   lines, and appear only inside code/output blocks.
+3. **One accent, period.** If a design wants a second color, the design
+   is wrong. Hierarchy comes from weight, size, and space.
 4. **No gradients.** Anywhere.
-
-### Light variant (docs only, optional)
-
-Derive by inverting lightness, keep hues: bg `#fbfcfd`, panel `#f2f4f7`,
-text `#1c2128`, accent `#1a7f37`, accent2 `#0969da`, warn `#9a6700`,
-error `#cf222e`. The marketing site does not ship a light mode; docs may.
 
 ## 3. Typography
 
@@ -68,30 +82,44 @@ Two stacks, no webfonts (zero-dependency is a brand value; system fonts
 load instantly and render natively everywhere):
 
 ```css
---mono: ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, Consolas, monospace;
---sans: system-ui, -apple-system, 'Segoe UI', sans-serif;
+--mono:  ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, Consolas, monospace;
+--serif: Charter, 'Bitstream Charter', Cambria, Georgia, serif;
+--sans:  system-ui, -apple-system, 'Segoe UI', sans-serif;
 ```
+
+Three voices, each with a job — this is a decision, not a fallback stack:
+
+- **Mono** is the product speaking: reprs, errors, hints, options, file
+  names, code, the wordmark.
+- **Serif** is prose *about* the product: body text, explanations. The
+  register of a well-set paper — what the audience reads all day — and
+  instantly differentiated from every sans-serif SaaS page. Charter ships
+  with macOS; Cambria with Windows; Georgia is the universal fallback.
+  All designed for screens.
+- **Sans** is UI chrome only: nav, buttons, pills, table headers,
+  captions. Never body prose.
 
 | Element | Stack | Size / weight |
 |---|---|---|
 | Wordmark, h1 | mono | 2rem / 650, letter-spacing -0.02em |
 | Section headings (h2) | sans | 1.3rem / 600 |
-| Body prose | sans | 1rem / 400, line-height 1.6 |
-| Terminal blocks | mono | 0.86rem, line-height 1.55 |
+| Body prose | serif | 1.05rem / 400, line-height 1.65 |
+| Code blocks | mono | 0.86rem, line-height 1.55 |
 | Pills / inline code | mono | 0.85rem |
-| Captions, footers | sans | 0.88–0.9rem, `--dim` |
+| Nav, captions, footers | sans | 0.88–0.9rem, `--dim` |
 
 Rules:
-- **Anything the product "says" is monospace.** Reprs, errors, hints,
-  options, file names, the wordmark itself. Prose *about* the product is
-  sans. This boundary is the visual grammar of the whole system.
+- **Anything the product "says" is monospace.** Prose about the product
+  is serif; UI chrome is sans. This three-voice boundary is the visual
+  grammar of the whole system.
 - Max line length for prose: ~70ch (the 880px container does this).
 - No font weights above 650. No italics in terminal blocks.
 
 ## 4. The wordmark and mark
 
-- **Wordmark:** `attachments` lowercase, mono stack, weight 650. On dark:
-  `--text`. Single-color always; never gradient, never two-tone.
+- **Wordmark:** `attachments` lowercase, mono stack, weight 650, in
+  `--text` (ink on light, light on dark). Single-color always; never
+  gradient, never two-tone.
 - **Mark:** `[a]` — the DSL brackets around lowercase a, mono. Use for
   favicon, avatars, social profile. At 16px render as text, not paths.
   Brackets in `--dim` or `--border`-weight stroke; the `a` in `--text`
@@ -100,7 +128,7 @@ Rules:
 - **Never:** a paperclip, a clip icon, any skeuomorph of "attachment."
   The email-attachment metaphor is legacy naming, not identity.
 
-## 5. The terminal block (hero component)
+## 5. The code block (hero component)
 
 The signature component. Specification:
 
@@ -124,7 +152,7 @@ Syntax classes (match the repr semantics exactly):
 |---|---|---|
 | `.p` | `--dim` | Prompts: `$`, `>>>` |
 | `.g` | `--accent` | Strings, success values |
-| `.b` | `--accent2` | Keywords: `from`, `import` |
+| `.b` | `--text`, weight 600 | Keywords: `from`, `import` — ink, not a second color |
 | `.y` | `--warn` | `*` note lines |
 | `.r` | `--error` | `!` error lines |
 | `.c` | `#6e7681` | Comments |
@@ -136,7 +164,13 @@ Rules:
 2. The repr line `<Artifacts: ...>` appears un-highlighted (plain
    `--text`) — it is the product speaking, not syntax.
 3. Blocks never exceed ~14 lines on marketing pages; link to docs for more.
-4. No window chrome (traffic-light dots). We are a terminal, not a macOS ad.
+4. No window chrome (traffic-light dots). We are a code block, not a
+   macOS ad.
+5. **The notebook cell is an equal hero.** `_repr_markdown_` output
+   (summaries, admonitions, thumbnails) is the same brand surface as the
+   terminal repr; screenshots of a notebook cell are as canonical as a
+   REPL session, and often closer to how the audience actually sees the
+   product.
 
 ## 6. Other components
 
@@ -147,7 +181,8 @@ Rules:
 - **Cards** (`.card`): panel bg, 1px border, 10px radius, 20px padding.
   For paired concepts (The Artifact / The DSL). Max 2 columns; collapse
   to 1 below 700px.
-- **Links:** `--accent2`, no underline at rest, underline on hover. Never
+- **Links:** ink (`--text`) with a `--dim`-colored underline at rest,
+  full-ink underline on hover — the register of an academic paper. Never
   buttons-styled-as-links or links-styled-as-buttons on the marketing
   site; the only CTA is a copyable `pip install` line.
 - **The install line is the CTA.** `$ pip install attachments` in a

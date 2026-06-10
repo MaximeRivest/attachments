@@ -4,28 +4,41 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>attachments — turn anything into LLM-ready context</title>
-<meta name="description" content="One Python function that turns files, folders, URLs, and repos into LLM-ready text + images. Zero required dependencies, zero telemetry, open source.">
+<meta name="description" content="You have a file and a question for an LLM. attachments turns scans, spreadsheets, recordings, folders, and repos into model-ready context — one Python function, zero required dependencies, free hosted tier for the heavy stuff.">
 <style>
   :root{
-    --bg:#0f1115; --panel:#161a21; --border:#262c37; --text:#d7dde6;
-    --dim:#8b94a3; --accent:#7ee787; --accent2:#79c0ff; --warn:#f0b72f;
+    --bg:#fcfcfb; --panel:#f6f6f4; --border:#e4e5e2; --text:#21262c;
+    --dim:#6b7280; --accent:#1a7f37; --warn:#9a6700; --error:#cf222e;
     --mono:ui-monospace,'SF Mono','Cascadia Code',Menlo,Consolas,monospace;
     --sans:system-ui,-apple-system,'Segoe UI',sans-serif;
+  }
+  @media(prefers-color-scheme:dark){
+    :root{
+      --bg:#0f1115; --panel:#161a21; --border:#262c37; --text:#d7dde6;
+      --dim:#8b94a3; --accent:#7ee787; --warn:#f0b72f; --error:#ff7b72;
+    }
   }
   *{box-sizing:border-box;margin:0;padding:0}
   body{background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.6}
   main{max-width:880px;margin:0 auto;padding:0 24px}
-  a{color:var(--accent2);text-decoration:none}
-  a:hover{text-decoration:underline}
-  h1{font-size:2rem;font-weight:650;letter-spacing:-.02em}
-  h2{font-size:1.3rem;margin-bottom:.6rem;letter-spacing:-.01em}
+  a{color:inherit;text-decoration:underline;text-decoration-color:var(--dim);text-underline-offset:2px}
+  a:hover{text-decoration-color:var(--text)}
+  h1{font-family:var(--mono);font-size:2rem;font-weight:650;letter-spacing:-.02em}
+  h2{font-size:1.3rem;font-weight:600;margin-bottom:.6rem;letter-spacing:-.01em}
   section{margin:64px 0}
-  .tagline{color:var(--dim);font-size:1.12rem;margin:10px 0 28px}
+  .tagline{font-size:1.25rem;margin:14px 0 6px;max-width:34em}
+  .sub{color:var(--dim);font-size:1.02rem;margin-bottom:28px;max-width:38em}
   .term{background:var(--panel);border:1px solid var(--border);border-radius:10px;
         font-family:var(--mono);font-size:.86rem;line-height:1.55;overflow-x:auto;
-        padding:18px 20px;white-space:pre}
-  .term .p{color:var(--dim)} .term .g{color:var(--accent)} .term .b{color:var(--accent2)}
-  .term .y{color:var(--warn)} .term .c{color:#6e7681}
+        padding:18px 20px;white-space:pre;position:relative}
+  .term .p{color:var(--dim)} .term .g{color:var(--accent)} .term .b{font-weight:600}
+  .term .y{color:var(--warn)} .term .r{color:var(--error)} .term .c{color:var(--dim)}
+  .term.wrap{white-space:pre-wrap;word-break:break-word}
+  .celllabel{font-family:var(--mono);font-size:.78rem;color:var(--dim);margin:18px 0 6px}
+  .copybtn{position:absolute;top:10px;right:10px;background:none;border:1px solid var(--border);
+           border-radius:6px;color:var(--dim);font-family:var(--mono);font-size:.75rem;
+           padding:3px 9px;cursor:pointer}
+  .copybtn:hover{color:var(--text);border-color:var(--dim)}
   .pill{display:inline-block;background:var(--panel);border:1px solid var(--border);
         border-radius:6px;font-family:var(--mono);font-size:.85rem;padding:3px 10px;margin:2px 3px}
   .cols{display:grid;grid-template-columns:1fr 1fr;gap:20px}
@@ -38,7 +51,10 @@
          color:var(--dim);font-size:.9rem}
   .free{color:var(--accent);font-weight:600}
   ul{padding-left:1.2rem}
-  li{margin:.25rem 0}
+  li{margin:.3rem 0}
+  table{border-collapse:collapse;width:100%;font-size:.92rem;margin-top:10px}
+  th,td{border:1px solid var(--border);padding:8px 12px;text-align:left}
+  th{font-weight:600;background:var(--panel)}
 </style>
 </head>
 <body>
@@ -46,46 +62,77 @@
 
 <header class="hero">
   <h1>attachments</h1>
-  <p class="tagline">Turn anything into LLM-ready context. One function. Zero required dependencies.</p>
+  <p class="tagline">Turn anything into LLM-ready context.</p>
+  <p class="sub">
+    A scanned PDF, a spreadsheet, a folder of images, a two-hour recording —
+    you have the file and the question. attachments turns the file into
+    something a model can actually read, so you can get to the question.
+  </p>
 
-  <div class="term"><span class="p">$</span> pip install attachments
+  <div class="term"><button class="copybtn" data-copy="pip install attachments">copy</button><span class="p">$</span> pip install attachments</div>
 
-<span class="p">&gt;&gt;&gt;</span> <span class="b">from</span> attachments <span class="b">import</span> att
+  <p class="celllabel">In a notebook — Jupyter, Colab, RStudio, Positron, Quarto:</p>
+  <div class="term"><span class="p">&gt;&gt;&gt;</span> <span class="b">from</span> attachments <span class="b">import</span> att
 <span class="p">&gt;&gt;&gt;</span> att(<span class="g">"report.pdf[pages: 1-4, images: true]"</span>)
 &lt;Artifacts: 1 artifact | 202 chars | ~51 tokens | 4 images&gt;
 
-<span class="p">&gt;&gt;&gt;</span> a = att(<span class="g">"meeting.mp3"</span>) + att(<span class="g">"github://you/repo"</span>) + att(<span class="g">"data.xlsx"</span>)
-<span class="p">&gt;&gt;&gt;</span> a.claude(<span class="g">"What should we do next quarter?"</span>)  <span class="c"># ready-to-send messages</span>
-<span class="p">&gt;&gt;&gt;</span> a.chunk(max_tokens=500)                       <span class="c"># RAG chunks, segment-aware</span></div>
+<span class="p">&gt;&gt;&gt;</span> a = att(<span class="g">"meeting.mp3"</span>) + att(<span class="g">"data.xlsx"</span>) + att(<span class="g">"github://you/repo"</span>)
+<span class="p">&gt;&gt;&gt;</span> a.claude(<span class="g">"What should we do next quarter?"</span>)  <span class="c"># ready-to-send messages</span></div>
 
   <p class="small dim" style="margin-top:14px">
-    Errors never raise — they come back as data that teaches:
+    You never tell it what kind of file it is, and nothing here raises an
+    exception. When something needs attention, the answer comes back as data
+    that tells you the fix:
   </p>
-  <div class="term" style="margin-top:8px"><span class="p">&gt;&gt;&gt;</span> att(<span class="g">"scan.pdf"</span>)   <span class="c"># a scanned PDF, no OCR installed</span>
+  <div class="term wrap" style="margin-top:8px"><span class="p">&gt;&gt;&gt;</span> att(<span class="g">"scan.pdf"</span>)   <span class="c"># a scanned PDF, no OCR installed</span>
 &lt;Artifacts: 1 artifact | 0 chars | ~0 tokens | 1 image&gt;
   <span class="y">*</span> scan.pdf: No text layer (scanned?) - pip install attachments[ocr], or the free hosted tier: attachments.dev</div>
 </header>
 
 <section>
   <h2>What it eats</h2>
-  <p class="dim small" style="margin-bottom:10px">Formats — each an optional install, so you only carry what you use:</p>
-  <p>
-    <span class="pill">.pdf <span class="dim">+ OCR</span></span><span class="pill">.docx</span><span class="pill">.pptx</span><span class="pill">.xlsx</span><span class="pill">.xls</span><span class="pill">.csv/.tsv</span><span class="pill">.html <span class="dim">+ CSS select</span></span><span class="pill">.ipynb</span><span class="pill">.md .py .json… <span class="dim">20+ text</span></span><span class="pill">.png .jpg .webp… <span class="dim">8 image</span></span><span class="pill">.heic</span><span class="pill">.svg</span><span class="pill">.mp3 .wav .m4a… <span class="dim">transcription</span></span>
+  <p style="max-width:38em">
+    Scans, spreadsheets, slide decks, Word documents, recordings, photos,
+    notebooks, whole folders, zip files, web pages, GitHub repos. If it has
+    a wrong or missing extension, the bytes are sniffed and routed anyway.
   </p>
-  <p class="dim small" style="margin:14px 0 10px">Sources — every source works with every format:</p>
+  <p style="margin-top:12px">
+    <span class="pill">.pdf <span class="dim">+ OCR</span></span><span class="pill">.docx</span><span class="pill">.pptx</span><span class="pill">.xlsx</span><span class="pill">.csv/.tsv</span><span class="pill">.html</span><span class="pill">.ipynb</span><span class="pill">.md .py .json… <span class="dim">20+ text</span></span><span class="pill">.png .jpg .heic… <span class="dim">images</span></span><span class="pill">.svg</span><span class="pill">.mp3 .wav .m4a… <span class="dim">transcription</span></span>
+  </p>
+  <p class="dim small" style="margin:14px 0 10px">And every source works with every format:</p>
   <p>
     <span class="pill">files</span><span class="pill">directories</span><span class="pill">globs <span class="dim">**/*.py</span></span><span class="pill">zip / tar</span><span class="pill">https://</span><span class="pill">github://owner/repo</span>
   </p>
   <p class="small dim" style="margin-top:14px">
-    Mislabeled or extensionless files route by magic bytes. Scanned PDFs OCR
-    automatically when the extra is installed. Every option autocompletes in
-    your editor and is discoverable at runtime: <code class="pill">att.options(".pdf")</code>
+    Need just part of a file? Say it in plain options —
+    <code class="pill">att("data.xlsx[sheet: Sales, rows: 100]")</code> —
+    and discover what a format accepts with <code class="pill">att.options(".xlsx")</code>.
+    Typos get corrected: <span style="font-family:var(--mono);font-size:.85rem">Unknown option 'sheets' for .xlsx — did you mean 'sheet'?</span>
   </p>
 </section>
 
 <section>
+  <h2>When the install gets painful, we run it for you <span class="free">— free</span></h2>
+  <p style="max-width:38em">
+    Most formats install in seconds. Two don't: OCR wants onnxruntime,
+    transcription wants whisper weights — heavy downloads that fail on
+    locked-down lab and university machines. So we keep them warm on our
+    server. Two lines, no account, no key:
+  </p>
+  <div class="term" style="margin-top:10px"><span class="p">&gt;&gt;&gt;</span> <span class="b">from</span> attachments <span class="b">import</span> att, configure
+<span class="p">&gt;&gt;&gt;</span> configure(service_url=<span class="g">"https://api.attachments.dev/v1"</span>)
+<span class="p">&gt;&gt;&gt;</span> att(<span class="g">"scan.pdf"</span>)   <span class="c"># OCR'd remotely; same Artifact back</span>
+&lt;Artifacts: 1 artifact | 37 chars | ~10 tokens | 1 image&gt;</div>
+  <ul class="small" style="margin-top:12px">
+    <li><span class="free">Free</span>: files up to 25&nbsp;MB, rate-limited. Your files are processed in memory and never stored.</li>
+    <li>When you need more — bigger files, higher volume, GPU OCR, video — a paid tier will remove the limits. Until then, this is the whole deal.</li>
+    <li>It's the same open-source server you can self-host. The hosted tier is convenience, not capability.</li>
+  </ul>
+</section>
+
+<section>
   <h2>You can leave at any time</h2>
-  <p>
+  <p style="max-width:38em">
     Everything on this page is <a href="https://github.com/MaximeRivest/attachments">open source (MIT)</a> —
     the library, the parsers, the spec, <em>and the entire hosted service</em>.
     Self-host it with one command:
@@ -93,29 +140,16 @@
   <div class="term" style="margin-top:10px"><span class="p">$</span> pip install attachments[server] &amp;&amp; attachments-server   <span class="c"># or: docker compose up</span></div>
   <p class="small dim" style="margin-top:10px">
     No telemetry, ever. No accounts. The library makes no network calls unless
-    you point it at a URL — or explicitly opt into the service below.
+    you point it at a URL — or explicitly opt into the service above.
   </p>
 </section>
 
 <section>
-  <h2>The hosted tier <span class="free">— free</span></h2>
-  <p>
-    Some models are heavy. OCR wants onnxruntime; transcription wants whisper
-    weights. We keep them warm on a server so you don't have to install them:
+  <h2>For developers: built on a one-page contract</h2>
+  <p class="small dim" style="margin-bottom:14px">
+    If you just want your files read, you're done — everything above is the
+    product. This part is for people building on top of it.
   </p>
-  <div class="term" style="margin-top:10px"><span class="p">&gt;&gt;&gt;</span> <span class="b">from</span> attachments <span class="b">import</span> att, configure
-<span class="p">&gt;&gt;&gt;</span> configure(service_url=<span class="g">"https://api.attachments.dev/v1"</span>)
-<span class="p">&gt;&gt;&gt;</span> att(<span class="g">"scan.pdf"</span>)   <span class="c"># OCR'd remotely; same Artifact back</span>
-&lt;Artifacts: 1 artifact | 37 chars | ~10 tokens | 1 image&gt;</div>
-  <ul class="small" style="margin-top:12px">
-    <li>No API key, no signup. Files up to 25&nbsp;MB, rate-limited, processed in memory and not stored.</li>
-    <li>It's the same open-source server you can self-host — the hosted tier is convenience, not capability.</li>
-    <li>CPU processing is cheap for us and useful for you; that's the whole business model of the free tier. GPU OCR (LightOnOCR) is coming for the documents that need more.</li>
-  </ul>
-</section>
-
-<section>
-  <h2>Built on a one-page contract</h2>
   <div class="cols">
     <div class="card">
       <h3>The Artifact</h3>
@@ -136,6 +170,8 @@
     Adding a format is one pure function <code>(bytes, options) → Artifact</code> —
     <a href="https://github.com/MaximeRivest/attachments/blob/master/DEVELOPMENT.md">the contributor guide</a>
     is a checklist, and the conformance suite picks your processor up automatically.
+    Agents get the same power through the <a href="https://github.com/MaximeRivest/attachments#mcp">MCP server</a>;
+    everything else gets the <a href="https://github.com/MaximeRivest/attachments#http-api">HTTP API</a>.
   </p>
 </section>
 
@@ -150,5 +186,14 @@
 </footer>
 
 </main>
+<script>
+document.querySelectorAll('.copybtn').forEach(function(b){
+  b.addEventListener('click',function(){
+    navigator.clipboard.writeText(b.dataset.copy).then(function(){
+      b.textContent='copied';setTimeout(function(){b.textContent='copy'},1200);
+    });
+  });
+});
+</script>
 </body>
 </html>
