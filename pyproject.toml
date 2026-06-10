@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "attachments"
-version = "1.0.0"  # see VISION.md
+version = "1.0.0a1"  # pre-release: pip install attachments will NOT pick this up; see VISION.md
 description = "Turn anything into LLM-ready artifacts. Universal file and source processing."
 readme = "README.md"
 requires-python = ">=3.12"

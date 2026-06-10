@@ -183,4 +183,4 @@ __all__ = [
 att.options = options  # type: ignore[attr-defined]
 att.help = att_help  # type: ignore[attr-defined]
 
-__version__ = "1.0.0"  # see VISION.md
+__version__ = "1.0.0a1"  # pre-release; see VISION.md
