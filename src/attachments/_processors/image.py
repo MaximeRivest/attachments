@@ -1,11 +1,13 @@
-"""Processor for raster images (.png, .jpg, .jpeg, .gif, .webp, .bmp, .tiff).
+"""Processor for raster images (.png, .jpg, .jpeg, .gif, .webp, .bmp, .tiff, .heic).
 
 Identifies the image with Pillow and emits a single ImageItem. Web-friendly
 formats (png/jpeg/gif/webp) pass through untouched; exotic formats (bmp,
-tiff, ...) are re-encoded to PNG; an optional ``max_dim`` downscales the
-longest side while preserving the aspect ratio.
+tiff, heic, ...) are re-encoded to PNG; an optional ``max_dim`` downscales
+the longest side while preserving the aspect ratio, and an optional
+``rotate`` turns the image counterclockwise (applied before ``max_dim``).
 
 Requires Pillow: ``pip install attachments[image]``
+HEIC/HEIF additionally requires pillow-heif: ``pip install attachments[heic]``
 """
 
 from __future__ import annotations
@@ -38,11 +40,19 @@ _ENCODABLE_MODES = {
 }
 
 
+def _looks_heic(data: bytes, filename: str | None) -> bool:
+    """Cheap HEIC/HEIF detection: extension or ISO-BMFF ftyp brand sniff."""
+    if filename and filename.lower().rsplit(".", 1)[-1] in ("heic", "heif"):
+        return True
+    return data[4:8] == b"ftyp" and data[8:12].startswith((b"hei", b"mif1", b"msf1"))
+
+
 def image_processor(
     data: bytes,
     *,
     filename: str | None = None,
     max_dim: int | None = None,
+    rotate: int | None = None,
     **_: Any,
 ) -> dict[str, Any]:
     """Convert image bytes to an artifact carrying one ImageItem.
@@ -50,22 +60,40 @@ def image_processor(
     Options:
         filename: Original filename (used for metadata and the image name).
         max_dim: Downscale so the longest side is at most this many pixels.
+        rotate: Rotate counterclockwise by this many degrees (PIL-native
+            direction; negative values rotate clockwise). Normalized modulo
+            360; applied before ``max_dim``. ``expand=True`` grows the canvas,
+            so non-right angles get background fill in the corners.
 
     Behavior:
-        - png/jpeg/gif/webp with no resize needed: original bytes pass through.
-        - ``max_dim`` exceeded: downscale (``Image.thumbnail``) and re-encode —
+        - png/jpeg/gif/webp with no resize/rotate needed: bytes pass through.
+        - ``max_dim`` exceeded or nonzero ``rotate``: transform and re-encode —
           JPEG (quality 85) when the original was JPEG, PNG otherwise.
-        - Exotic formats (bmp/tiff/...): re-encode to PNG.
+        - Exotic formats (bmp/tiff/heic/...): re-encode to PNG.
 
     Never raises: corrupt bytes yield a ``parse-error`` artifact and a
-    missing Pillow yields the typed ``missing-dependency`` artifact.
+    missing Pillow (or pillow-heif for HEIC inputs) yields the typed
+    ``missing-dependency`` artifact.
     """
     source = filename or "image"
+
+    # HEIC needs pillow-heif registered with Pillow *before* Image.open. This
+    # branch runs only for HEIC inputs so a missing pillow_heif never affects
+    # png/jpg processing. The heic extra implies both modules, so a missing
+    # PIL is also reported as feature "heic" for these inputs.
+    is_heic = _looks_heic(data, filename)
+    if is_heic:
+        try:
+            from pillow_heif import register_heif_opener
+
+            register_heif_opener()  # idempotent, safe to call per-request
+        except ImportError:
+            return missing_dep_artifact(source, "heic")
 
     try:
         from PIL import Image
     except ImportError:
-        return missing_dep_artifact(source, "image")
+        return missing_dep_artifact(source, "heic" if is_heic else "image")
 
     try:
         img = Image.open(io.BytesIO(data))
@@ -78,10 +106,16 @@ def image_processor(
     mode = img.mode
 
     try:
+        degrees = 0 if rotate is None else int(rotate) % 360
+        if degrees:
+            # PIL-native counterclockwise; expand=True grows the canvas so
+            # nothing is cropped (non-right angles get corner fill).
+            img = img.rotate(degrees, expand=True)
+
         limit = None if max_dim is None else int(max_dim)
         resized = limit is not None and max(img.size) > limit
 
-        if not resized and original_format in _PASSTHROUGH:
+        if not resized and not degrees and original_format in _PASSTHROUGH:
             mimetype, ext = _PASSTHROUGH[original_format]
             name = filename or f"image.{ext}"
             image_bytes = data
@@ -113,6 +147,8 @@ def image_processor(
         }
         if resized:
             extra["resized"] = True
+        if degrees:
+            extra["rotated"] = degrees
 
         return make_artifact(
             text="",
@@ -124,7 +160,18 @@ def image_processor(
 
 
 #: Extensions handled by this processor.
-EXTENSIONS = (".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".tiff", ".tif")
+EXTENSIONS = (
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".webp",
+    ".bmp",
+    ".tiff",
+    ".tif",
+    ".heic",
+    ".heif",
+)
 
 #: Declared option schema (see attachments.options).
 OPTIONS = (
@@ -133,6 +180,12 @@ OPTIONS = (
         type="int",
         help="Downscale so the longest side is at most this many pixels",
         example="max_dim: 1024",
+    ),
+    Option(
+        name="rotate",
+        type="int",
+        help="Rotate counterclockwise by this many degrees (negative = clockwise)",
+        example="rotate: 90",
     ),
 )
 

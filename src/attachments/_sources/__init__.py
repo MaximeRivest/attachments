@@ -20,7 +20,12 @@ Dispatch order in ``unpack()`` — preserved exactly, do not reorder:
 3. HTTP(S) URLs: single-file download; archives expanded by extension.
 4. Local directory: deterministic recursive walk.
 5. Local file: read as-is; archives expanded by extension.
-6. Anything else raises ``ValueError``.
+6. Glob pattern: ``**`` anywhere, or ``* ? [`` in the last path
+   component — expanded sorted, names relative to the static base.
+   Checked AFTER the ``exists()`` checks, so a literal file actually
+   named ``file[1].txt`` wins over glob interpretation (fixes v1 edge
+   case (8)).
+7. Anything else raises ``ValueError``.
 
 Contributor note: to add a new source, add one module in this package,
 register it at import time via the relative import ``from . import source``
@@ -197,6 +202,11 @@ def unpack(
         # Regular file -> as-is
         return [(p.name, data)]
 
+    # Glob pattern — after the exists() checks, so a literal file named
+    # e.g. "file[1].txt" wins over glob interpretation (v1 edge case (8)).
+    if _looks_like_glob(input):
+        return _expand_glob(input)
+
     raise ValueError(f"Unsupported or non-existent input: {input}")
 
 
@@ -215,7 +225,7 @@ __all__ = [
 from .archives import _explode_archive_bytes, _is_raw_archive_name  # noqa: E402
 from .github import _clone_github_to_temp, _is_github_repo_root_url  # noqa: E402
 from .http import _download_http_or_https  # noqa: E402
-from .local import _walk_directory  # noqa: E402
+from .local import _expand_glob, _looks_like_glob, _walk_directory  # noqa: E402
 
 # Capture built-in source option schemas as defaults (additive, see
 # _options.snapshot_option_defaults) so reset_options()/reset_processors()

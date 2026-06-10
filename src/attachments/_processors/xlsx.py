@@ -189,6 +189,91 @@ def _xlsx_with_pandas(
     return text, segments, extra
 
 
+def _normalize_xls_value(value: Any) -> Any:
+    """Normalize an xlrd cell value for layout parity with openpyxl.
+
+    xlrd returns ALL numbers as floats; map integral floats to int so a
+    cell that stores ``25`` renders as ``"25"`` rather than ``"25.0"``.
+    Empty cells arrive as ``''`` and already render as ``''``. Dates render
+    as their raw serial floats (documented, accepted for 1.0).
+
+    Examples:
+        >>> _normalize_xls_value(25.0)
+        25
+        >>> _normalize_xls_value(2.5)
+        2.5
+        >>> _normalize_xls_value("")
+        ''
+        >>> _normalize_xls_value("hi")
+        'hi'
+    """
+    if isinstance(value, float) and value.is_integer():
+        return int(value)
+    return value
+
+
+def _xls_with_xlrd(
+    data: bytes, *, sheet: str | int | None, max_rows: int
+) -> tuple[str, list[dict[str, Any]], dict[str, Any]]:
+    """Legacy .xls backend (xlrd). Returns ``(text, segments, extra)``."""
+    import xlrd  # type: ignore
+
+    wb = xlrd.open_workbook(file_contents=data)
+    names: list[str] = list(wb.sheet_names())
+    chosen = _select_sheet(names, sheet)
+    targets = [chosen] if chosen is not None else names
+
+    blocks: list[tuple[str, str]] = []
+    truncated = False
+    for name in targets:
+        sh = wb.sheet_by_name(name)
+        rows = (
+            tuple(_normalize_xls_value(v) for v in sh.row_values(r))
+            for r in range(sh.nrows)
+        )
+        block, t = _render_sheet_block(name, rows, max_rows)
+        truncated = truncated or t
+        blocks.append((name, block))
+
+    text, segments = _join_blocks_with_segments(blocks)
+    extra: dict[str, Any] = {"sheets": names, "engine": "xlrd"}
+    if len(targets) == 1:
+        sh = wb.sheet_by_name(targets[0])
+        extra["sheet_used"] = targets[0]
+        extra["rows"] = sh.nrows
+        extra["cols"] = sh.ncols
+    if truncated:
+        extra["rows_truncated"] = True
+    return text, segments, extra
+
+
+def xls_processor(data: bytes, **options: Any) -> dict[str, Any]:
+    """Legacy Excel (.xls, BIFF) -> artifact via xlrd. Same layout, options,
+    and ``meta.segments`` semantics as :func:`xlsx_processor`: all sheets by
+    default, each a ``# <sheet name>`` heading plus CSV rows.
+    """
+    sheet = options.get("sheet")
+    max_rows = int(options.get("max_rows", 200))
+    source = options.get("filename") or "workbook.xls"
+
+    try:
+        import xlrd  # type: ignore # noqa: F401
+    except ImportError:
+        return missing_dep_artifact(source, "xls")
+
+    try:
+        text, segments, extra = _xls_with_xlrd(data, sheet=sheet, max_rows=max_rows)
+    except Exception as e:
+        return error_artifact(
+            source, ERROR_PARSE, f"Failed to parse legacy Excel workbook: {e}"
+        )
+
+    meta: dict[str, Any] = {"kind": "table", "extra": extra}
+    if segments:
+        meta["segments"] = segments
+    return make_artifact(text=text, meta=meta)
+
+
 def xlsx_processor(data: bytes, **options: Any) -> dict[str, Any]:
     """XLSX -> artifact. No ``sheet`` option: render ALL sheets, each as a
     ``# <sheet name>`` heading plus CSV rows, joined with a blank line, with
@@ -244,25 +329,27 @@ def xlsx_processor(data: bytes, **options: Any) -> dict[str, Any]:
     return artifact
 
 
-register_processor(".xlsx", xlsx_processor)
-register_options(
-    ".xlsx",
-    (
-        Option(
-            "sheet",
-            "str_or_int",
-            help="Sheet to render: a sheet name or 0-based index. "
-            "Omit to render all sheets.",
-            example="sheet: Sales",
-        ),
-        Option(
-            "rows",
-            "int",
-            aliases=("max_rows",),
-            param="max_rows",
-            default=200,
-            help="Maximum number of rows rendered as text per sheet.",
-            example="rows: 100",
-        ),
+_SHEET_OPTIONS = (
+    Option(
+        "sheet",
+        "str_or_int",
+        help="Sheet to render: a sheet name or 0-based index. "
+        "Omit to render all sheets.",
+        example="sheet: Sales",
+    ),
+    Option(
+        "rows",
+        "int",
+        aliases=("max_rows",),
+        param="max_rows",
+        default=200,
+        help="Maximum number of rows rendered as text per sheet.",
+        example="rows: 100",
     ),
 )
+
+register_processor(".xlsx", xlsx_processor)
+register_options(".xlsx", _SHEET_OPTIONS)
+
+register_processor(".xls", xls_processor)
+register_options(".xls", _SHEET_OPTIONS)

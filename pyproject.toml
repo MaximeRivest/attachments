@@ -63,6 +63,19 @@ html = [
 image = [
     "pillow>=10.0",
 ]
+heic = [
+    "pillow>=10.0",
+    "pillow-heif>=0.16",
+]
+svg = [
+    "cairosvg>=2.7",
+]
+xls = [
+    "xlrd>=2.0",
+]
+csv-pandas = [
+    "pandas>=2.0,<3.0",
+]
 
 # === Service Mode (minimal - just HTTP client) ===
 service = [
@@ -81,7 +94,7 @@ office = [
     "attachments[xlsx,docx,pptx]",
 ]
 all-local = [
-    "attachments[pdf,pdf-fallback,xlsx-pandas,docx,pptx,html,image]",
+    "attachments[pdf,pdf-fallback,xlsx-pandas,docx,pptx,html,image,heic,svg,xls,csv-pandas]",
 ]
 
 # === Self-Hosted Server ===
@@ -113,6 +126,9 @@ dev = [
     "beautifulsoup4>=4.12",
     "lxml>=5.0",
     "pillow>=10.0",
+    "pillow-heif>=0.16",
+    "cairosvg>=2.7",
+    "xlrd>=2.0",
     # CLI clipboard support (`att --copy`)
     "pyperclip>=1.8",
     # Spec conformance validation

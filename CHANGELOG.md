@@ -70,6 +70,22 @@ See [VISION.md](VISION.md) for the reasoning.
   (python-docx), PPTX (python-pptx), HTML (beautifulsoup4/lxml), and images
   png/jpg/gif/webp/bmp/tiff (Pillow). Multi-part formats populate
   `meta.segments` (pages/sheets/slides with offsets into `text`).
+- **CSV/TSV processor** (stdlib, zero deps): delimiter sniffing, markdown
+  pipe tables capped at `rows` (default 200), and an optional pandas
+  `summary: true` section (`attachments[csv-pandas]`).
+- **Legacy Excel (.xls)** via xlrd (`attachments[xls]`) — identical
+  all-sheets layout, `sheet`/`rows` options, and `meta.segments` as XLSX.
+- **HEIC/HEIF images** via pillow-heif (`attachments[heic]`), with
+  extension- and ftyp-brand-based detection; plus a `rotate:` option for
+  all raster images (counterclockwise degrees, applied before `max_dim`).
+- **SVG processor** (stdlib text extraction for .svg/.svgz, including
+  gzipped sources) with optional cairosvg rasterization
+  (`attachments[svg]`, `images: true`).
+- **HTML `select:` option** (alias `css`): extract only the elements
+  matching a CSS selector, preserving the page title.
+- **Glob patterns as input**: `att("src/**/*.py")` expands recursive
+  globs deterministically (sorted, regular files only), with archive
+  expansion and a clear error naming the pattern on zero matches.
 - **Magic-byte routing**: files with missing or lying extensions are routed
   by content sniffing (`%PDF`, PNG/JPEG/GIF magic, zip-container types, ...).
 - **Last mile** (`attachments.render`): `render_text` (prompt string with

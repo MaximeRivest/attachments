@@ -155,6 +155,150 @@ class TestHtmlProcessor:
         assert result["meta"]["extra"]["parser"] in ("lxml", "html.parser")
 
 
+SELECT_HTML = b"""\
+<!DOCTYPE html>
+<html>
+<head><title>Select Page</title><script>var x = 1;</script></head>
+<body>
+  <h1>Heading One</h1>
+  <p class="intro">Intro paragraph.</p>
+  <ul><li><a href="https://example.com">A link</a></li></ul>
+  <p>Outro paragraph.</p>
+</body>
+</html>
+"""
+
+
+class TestHtmlSelect:
+    def test_single_match_no_title_prefix(self):
+        result = processors[".html"](SELECT_HTML, select="h1")
+
+        assert result["text"] == "Heading One"
+        assert "Select Page" not in result["text"]
+        extra = result["meta"]["extra"]
+        assert extra["selector"] == "h1"
+        assert extra["selected_count"] == 1
+        assert extra["title"] == "Select Page"  # title still recorded
+        assert "select_note" not in extra
+        assert extra["chars"] == len(result["text"])
+
+    def test_multi_match_document_order(self):
+        result = processors[".html"](SELECT_HTML, select="p")
+
+        assert result["meta"]["extra"]["selected_count"] == 2
+        text = result["text"]
+        assert text.index("Intro paragraph.") < text.index("Outro paragraph.")
+        assert "Heading One" not in text
+
+    def test_comma_group_kwarg(self):
+        result = processors[".html"](SELECT_HTML, select="h1, .intro")
+
+        assert result["meta"]["extra"]["selected_count"] == 2
+        assert "Heading One" in result["text"]
+        assert "Intro paragraph." in result["text"]
+        assert "Outro" not in result["text"]
+
+    def test_comma_group_quoted_dsl_via_att(self, tmp_path):
+        from attachments import att
+
+        path = tmp_path / "page.html"
+        path.write_bytes(SELECT_HTML)
+
+        arts = att(f'{path}[select: "h1, .intro"]')
+        assert len(arts) == 1
+        extra = arts[0]["meta"]["extra"]
+        assert extra["selector"] == "h1, .intro"
+        assert extra["selected_count"] == 2
+        assert "Heading One" in arts[0]["text"]
+        assert "Outro" not in arts[0]["text"]
+
+    def test_attribute_selector_kwarg(self):
+        result = processors[".html"](SELECT_HTML, select="a[href]")
+
+        assert result["meta"]["extra"]["selected_count"] == 1
+        assert result["text"] == "A link"
+
+    def test_attribute_selector_dsl_balanced_brackets(self, tmp_path):
+        from attachments import att
+
+        path = tmp_path / "page.html"
+        path.write_bytes(SELECT_HTML)
+
+        arts = att(f"{path}[select: a[href]]")
+        assert arts[0]["meta"]["extra"]["selector"] == "a[href]"
+        assert arts[0]["meta"]["extra"]["selected_count"] == 1
+        assert arts[0]["text"] == "A link"
+
+    def test_zero_match_not_an_error(self):
+        result = processors[".html"](SELECT_HTML, select=".nope")
+
+        assert result["text"] == ""
+        extra = result["meta"]["extra"]
+        assert extra["selected_count"] == 0
+        assert extra["select_note"] == "selector matched no elements"
+        assert "error" not in result["meta"]
+
+    def test_invalid_selector_not_an_error(self):
+        result = processors[".html"](SELECT_HTML, select="li:::")
+
+        assert result["text"] == ""
+        extra = result["meta"]["extra"]
+        assert extra["selected_count"] == 0
+        assert extra["select_note"].startswith("invalid selector:")
+        assert "error" not in result["meta"]
+
+    def test_css_alias(self):
+        from attachments._options import get_options, resolve_options
+
+        schema = get_options(".html")
+        kwargs, warnings = resolve_options(schema, {"css": "h1"}, context=".html")
+        assert kwargs == {"select": "h1"}
+        assert warnings == []
+
+        result = processors[".html"](SELECT_HTML, **kwargs)
+        assert result["text"] == "Heading One"
+
+    def test_select_with_images_only_inside_selection(self):
+        html = (
+            b"<html><body>"
+            b'<div id="keep"><img src="data:image/png;base64,'
+            + _TINY_PNG.encode()
+            + b'"/></div>'
+            b'<div id="drop"><img src="data:image/gif;base64,'
+            + _TINY_PNG.encode()
+            + b'"/></div>'
+            b"</body></html>"
+        )
+        result = processors[".html"](html, select="#keep", images=True)
+        assert len(result["images"]) == 1
+        assert result["images"][0]["mimetype"] == "image/png"
+
+        result_all = processors[".html"](html, images=True)
+        assert len(result_all["images"]) == 2
+
+    def test_select_strips_whitespace(self):
+        result = processors[".html"](SELECT_HTML, select="  h1  ")
+
+        assert result["meta"]["extra"]["selector"] == "h1"
+        assert result["meta"]["extra"]["selected_count"] == 1
+
+    def test_empty_string_select_is_no_select(self):
+        result = processors[".html"](SELECT_HTML, select="   ")
+
+        extra = result["meta"]["extra"]
+        assert "selector" not in extra
+        assert "selected_count" not in extra
+        # No-select path: title prefix behavior intact
+        assert result["text"].startswith("Select Page")
+
+    def test_options_registration(self):
+        from attachments._options import get_options
+
+        for ext in (".html", ".htm"):
+            names = sorted(o.name for o in get_options(ext))
+            assert names == ["images", "select"]
+
+
 # Missing-dependency behavior is covered by the always-runnable tests in
 # tests/test_processors/test_missing_deps.py (this module is skipped
 # entirely when bs4 is absent, so such tests could never run here).

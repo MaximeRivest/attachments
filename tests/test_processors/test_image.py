@@ -187,11 +187,133 @@ class TestErrors:
         assert is_missing_dependency(result)
 
 
+class TestRotate:
+    def _two_tone_png(self, size=(64, 32)) -> bytes:
+        """Red image with a distinct blue pixel in the top-left corner."""
+        from PIL import Image
+
+        img = Image.new("RGB", size, (255, 0, 0))
+        img.putpixel((0, 0), (0, 0, 255))
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        return buf.getvalue()
+
+    def test_rotate_90_is_counterclockwise(self):
+        data = self._two_tone_png((64, 32))
+
+        result = image_processor(data, filename="wide.png", rotate=90)
+
+        item = result["images"][0]
+        decoded = _decode(item)
+        assert decoded.size == (32, 64)
+        # CCW: the blue top-left corner moves to the bottom-left corner.
+        assert decoded.getpixel((0, 63)) == (0, 0, 255)
+        assert decoded.getpixel((0, 0)) == (255, 0, 0)
+        extra = result["meta"]["extra"]
+        assert extra["rotated"] == 90
+        assert extra["width"] == 32
+        assert extra["height"] == 64
+
+    def test_rotate_forces_reencode_for_png(self):
+        # Two-tone so the rotated pixels (and thus the bytes) actually differ.
+        data = self._two_tone_png((8, 8))
+
+        result = image_processor(data, filename="pic.png", rotate=90)
+
+        assert result["images"][0]["bytes"] != data
+
+    def test_rotate_applied_before_max_dim(self):
+        data = _make_image_bytes("PNG", size=(64, 32))
+
+        result = image_processor(data, rotate=90, max_dim=32)
+
+        # Rotated to 32x64, then thumbnailed to fit 32 → (16, 32).
+        assert _decode(result["images"][0]).size == (16, 32)
+        extra = result["meta"]["extra"]
+        assert extra["rotated"] == 90
+        assert extra["resized"] is True
+
+    @pytest.mark.parametrize("degrees", [0, 360])
+    def test_rotate_noop_keeps_passthrough(self, degrees):
+        data = _make_image_bytes("PNG", size=(8, 8))
+
+        result = image_processor(data, filename="pic.png", rotate=degrees)
+
+        assert result["images"][0]["bytes"] == data
+        assert "rotated" not in result["meta"]["extra"]
+
+
+class TestHeic:
+    def _heic_bytes(self, size=(8, 8)) -> bytes:
+        from pillow_heif import register_heif_opener
+
+        register_heif_opener()
+        from PIL import Image
+
+        buf = io.BytesIO()
+        Image.new("RGB", size, (0, 128, 255)).save(buf, format="HEIF")
+        return buf.getvalue()
+
+    def test_heic_missing_pillow_heif_returns_typed_artifact(self, mask_modules):
+        mask_modules("pillow_heif")
+
+        result = image_processor(b"\x00\x00\x00\x18ftypheic fake", filename="pic.heic")
+
+        assert is_missing_dependency(result)
+        error = result["meta"]["error"]
+        assert error["code"] == ERROR_MISSING_DEPENDENCY
+        assert "attachments[heic]" in error["message"]
+
+    @pytest.mark.parametrize("filename", ["pic.heic", "pic.HEIF", None])
+    def test_heic_detected_by_extension_or_magic(self, filename, mask_modules):
+        mask_modules("pillow_heif")
+
+        result = image_processor(b"\x00\x00\x00\x18ftypmif1 fake", filename=filename)
+
+        assert is_missing_dependency(result)
+        assert "attachments[heic]" in result["meta"]["error"]["message"]
+
+    def test_png_unaffected_by_missing_pillow_heif(self, mask_modules):
+        mask_modules("pillow_heif")
+        data = _make_image_bytes("PNG")
+
+        result = image_processor(data, filename="pic.png")
+
+        assert "error" not in result["meta"]
+        assert result["images"][0]["bytes"] == data
+
+    @pytest.mark.skipif(
+        not check_dep("heic").available, reason="pillow-heif not installed"
+    )
+    def test_heic_roundtrips_to_png(self):
+        data = self._heic_bytes()
+
+        result = image_processor(data, filename="photo.heic")
+
+        item = result["images"][0]
+        assert item["mimetype"] == "image/png"
+        assert item["name"] == "photo.png"
+        assert _decode(item).format == "PNG"
+        assert result["meta"]["extra"]["original_format"] == "HEIF"
+
+
 class TestRegistration:
     @pytest.mark.parametrize(
-        "ext", [".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".tiff", ".tif"]
+        "ext",
+        [
+            ".png",
+            ".jpg",
+            ".jpeg",
+            ".gif",
+            ".webp",
+            ".bmp",
+            ".tiff",
+            ".tif",
+            ".heic",
+            ".heif",
+        ],
     )
-    def test_extension_registered_with_max_dim_option(self, ext):
+    def test_extension_registered_with_options(self, ext):
         assert processors[ext] is image_processor
         names = [o.name for o in get_options(ext)]
-        assert names == ["max_dim"]
+        assert names == ["max_dim", "rotate"]

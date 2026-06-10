@@ -7,15 +7,24 @@ Regenerate with `uv run python scripts/gen_dsl_assets.py`.
 
 ## Processors
 
-### `.bmp`, `.gif`, `.jpeg`, `.jpg`, `.png`, `.tif`, `.tiff`, `.webp`
+### `.bmp`, `.gif`, `.heic`, `.heif`, `.jpeg`, `.jpg`, `.png`, `.tif`, `.tiff`, `.webp`
 
 | Option | Type | Aliases | Default | Example | Description |
 | --- | --- | --- | --- | --- | --- |
 | `max_dim` | `int` | — | — | `max_dim: 1024` | Downscale so the longest side is at most this many pixels |
+| `rotate` | `int` | — | — | `rotate: 90` | Rotate counterclockwise by this many degrees (negative = clockwise) |
 
-### `.cfg`, `.css`, `.csv`, `.ini`, `.java`, `.js`, `.json`, `.log`, `.markdown`, `.md`, `.py`, `.rst`, `.tex`, `.toml`, `.ts`, `.tsv`, `.txt`, `.xml`, `.yaml`, `.yml`, `__text__`
+### `.cfg`, `.css`, `.ini`, `.java`, `.js`, `.json`, `.log`, `.markdown`, `.md`, `.py`, `.rst`, `.tex`, `.toml`, `.ts`, `.txt`, `.xml`, `.yaml`, `.yml`, `__text__`
 
 No options declared.
+
+### `.csv`, `.tsv`
+
+| Option | Type | Aliases | Default | Example | Description |
+| --- | --- | --- | --- | --- | --- |
+| `rows` | `int` | `max_rows`, `limit` | `200` | `rows: 100` | Maximum number of data rows rendered as text. |
+| `summary` | `bool` | — | `false` | `summary: true` | Append a pandas-backed summary (shape, dtypes, numeric stats). |
+| `delimiter` | `str` | `sep` | — | `delimiter: semicolon` | Field delimiter: a literal character or tab/comma/semicolon/pipe. Overrides sniffing. |
 
 ### `.docx`
 
@@ -28,6 +37,7 @@ No options declared.
 | Option | Type | Aliases | Default | Example | Description |
 | --- | --- | --- | --- | --- | --- |
 | `images` | `bool` | `render` | `false` | `images: true` | Extract inline data-URI images. |
+| `select` | `str` | `css` | — | `select: "h1, .article"` | CSS selector; extract only matching elements |
 
 ### `.pdf`
 
@@ -45,7 +55,13 @@ No options declared.
 | --- | --- | --- | --- | --- | --- |
 | `images` | `bool_or_auto` | `render` | `false` | `images: true` | Extract embedded slide pictures: true/false ('auto'/'always' behave like true; slides are never rasterized). |
 
-### `.xlsx`
+### `.svg`, `.svgz`
+
+| Option | Type | Aliases | Default | Example | Description |
+| --- | --- | --- | --- | --- | --- |
+| `images` | `bool_or_auto` | `render` | `false` | `images: true` | Rasterize the SVG to PNG with cairosvg (true/false/auto/always). |
+
+### `.xls`, `.xlsx`
 
 | Option | Type | Aliases | Default | Example | Description |
 | --- | --- | --- | --- | --- | --- |

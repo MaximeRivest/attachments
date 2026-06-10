@@ -49,8 +49,37 @@ def html_processor(data: bytes, **options: Any) -> dict[str, Any]:
         filename: Original filename (for metadata).
         images: If ``True``, extract ``<img src="data:...">``
             inline images (default ``False``).
+        select: CSS selector string; when provided, only matching
+            elements (in document order) contribute text/images. The
+            title is still recorded in ``extra.title`` but is NOT
+            prefixed to the text. No-match and invalid selectors are
+            not errors: the artifact has ``text == ""`` plus an
+            explanatory ``extra.select_note``.
+
+    DSL note: the v3 parser takes the final *balanced* bracket group,
+    so attribute selectors work inline — ``page.html[select: a[href]]``.
+    Comma groups must be quoted in DSL (``[select: "h1, p"]``): segments
+    split on commas outside quotes, and a segment without a colon (like
+    the bare ``p`` in ``[select: h1,p]``) invalidates the WHOLE bracket
+    group, which then stays in the source and is misrouted as a glob
+    pattern. The kwargs twin (``att(..., select="h1, p")``) always works.
+
+    Examples:
+        >>> art = html_processor(
+        ...     b"<html><head><title>T</title></head>"
+        ...     b"<body><h1>Top</h1><p>Body</p></body></html>",
+        ...     select="h1",
+        ... )
+        >>> art["text"]
+        'Top'
+        >>> art["meta"]["extra"]["selected_count"]
+        1
+        >>> bad = html_processor(b"<p>x</p>", select="li:::")
+        >>> bad["text"], bad["meta"]["extra"]["selected_count"]
+        ('', 0)
     """
     filename = options.get("filename", "page.html")
+    selector = options.get("select")
 
     try:
         from bs4 import BeautifulSoup
@@ -73,6 +102,29 @@ def html_processor(data: bytes, **options: Any) -> dict[str, Any]:
 
     title = _extract_title(soup)
 
+    # --- CSS selection (runs on the FULL soup, scripts intact) ---
+    select_extra: dict[str, Any] = {}
+    select_active = False
+    if isinstance(selector, str) and selector.strip():
+        selector = selector.strip()
+        select_active = True
+        select_extra["selector"] = selector
+        try:
+            matches = soup.select(selector)
+        except Exception as e:  # soupsieve SelectorSyntaxError on garbage
+            matches = []
+            select_extra["select_note"] = f"invalid selector: {e}"
+        select_extra["selected_count"] = len(matches)
+        if len(matches) == 0:
+            select_extra.setdefault("select_note", "selector matched no elements")
+            soup = BeautifulSoup("", parser)
+        elif len(matches) == 1:
+            soup = BeautifulSoup(str(matches[0]), parser)
+        else:
+            soup = BeautifulSoup(
+                "<div>" + "".join(str(e) for e in matches) + "</div>", parser
+            )
+
     # Remove non-visible elements
     for tag in soup.find_all(_STRIP_TAGS):
         tag.decompose()
@@ -86,8 +138,10 @@ def html_processor(data: bytes, **options: Any) -> dict[str, Any]:
     raw_text = soup.get_text(separator="\n")
     text = _collapse_whitespace(raw_text)
 
-    # Optionally prefix with title (only if not already present)
-    if title and title not in text:
+    # Optionally prefix with title (only if not already present).
+    # Skipped when select is active: selection text must be exactly
+    # the selection (title is still in extra.title).
+    if title and not select_active and title not in text:
         text = f"{title}\n\n{text}"
 
     # --- inline data-URI images ---
@@ -123,6 +177,7 @@ def html_processor(data: bytes, **options: Any) -> dict[str, Any]:
                 "title": title,
                 "parser": parser,
                 "chars": len(text),
+                **select_extra,
             },
         },
     )
@@ -138,6 +193,13 @@ _HTML_OPTIONS = (
         default=False,
         help="Extract inline data-URI images.",
         example="images: true",
+    ),
+    Option(
+        "select",
+        "str",
+        aliases=("css",),
+        help="CSS selector; extract only matching elements",
+        example='select: "h1, .article"',
     ),
 )
 register_processor(".html", html_processor)

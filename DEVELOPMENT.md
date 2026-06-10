@@ -619,7 +619,7 @@ src/attachments/
 ├── _sources/                # Input resolution (WHERE files come from)
 │   ├── __init__.py          # Source registry, @source decorator & unpack() dispatch
 │   ├── _guards.py           # Security: expansion budget, sanitization, SSRF guard
-│   ├── local.py             # Local files + deterministic directory walk
+│   ├── local.py             # Local files, glob patterns + deterministic directory walk
 │   ├── archives.py          # ZIP/TAR expansion (recursive, bomb-guarded)
 │   ├── http.py              # HTTP(S) single-file download
 │   └── github.py            # github:// + github.com repo roots
@@ -627,11 +627,13 @@ src/attachments/
     ├── __init__.py          # Processor registry & @processor decorator
     ├── text.py              # Text files (no deps)
     ├── pdf.py               # PDF (pypdf, pymupdf)
-    ├── xlsx.py              # Excel (openpyxl, pandas)
+    ├── xlsx.py              # Excel .xlsx (openpyxl, pandas) + legacy .xls (xlrd)
     ├── docx.py              # Word (python-docx)
-    ├── html.py              # HTML (beautifulsoup4, lxml)
+    ├── html.py              # HTML, CSS select (beautifulsoup4, lxml)
     ├── pptx.py              # PowerPoint (python-pptx)
-    └── image.py             # Images png/jpg/gif/webp/bmp/tiff (Pillow)
+    ├── csv.py               # CSV/TSV tables (stdlib; optional pandas summary)
+    ├── svg.py               # SVG/SVGZ text (stdlib; optional cairosvg raster)
+    └── image.py             # Images png/jpg/gif/webp/bmp/tiff/heic (Pillow, pillow-heif)
 ```
 
 ---

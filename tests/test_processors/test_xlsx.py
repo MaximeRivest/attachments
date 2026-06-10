@@ -364,3 +364,236 @@ class TestXlsxSegments:
 # Missing-dependency behavior is covered by the always-runnable tests in
 # tests/test_processors/test_missing_deps.py (this module is skipped
 # entirely when XLSX deps are absent, so such tests could never run here).
+# EXCEPTION: the .xls processor's missing-dep test lives below (this shared
+# file must not be edited per package ownership), masking xlrd directly.
+
+
+# ---------------------------------------------------------------------------
+# Legacy Excel (.xls) processor — xlrd backend
+# ---------------------------------------------------------------------------
+#
+# Embedded 2-sheet legacy BIFF .xls fixture (zlib-compressed, base64).
+# Generated once with xlwt; reproduce with:
+#
+#     import xlwt, base64, zlib
+#     from io import BytesIO
+#     wb = xlwt.Workbook()
+#     s1 = wb.add_sheet("Sheet1")
+#     for r, row in enumerate(
+#         [["Name", "Age"], ["Alice", 30], ["Bob", 25], ["Cara", 41]]
+#     ):
+#         for c, v in enumerate(row):
+#             s1.write(r, c, v)
+#     s2 = wb.add_sheet("Sheet2")
+#     for r, row in enumerate(
+#         [["Product", "Revenue"], ["Widget", 1000], ["Gadget", 2.5]]
+#     ):
+#         for c, v in enumerate(row):
+#             s2.write(r, c, v)
+#     buf = BytesIO(); wb.save(buf)
+#     print(base64.b64encode(zlib.compress(buf.getvalue(), 9)).decode())
+
+_XLS_FIXTURE_B64 = (
+    "eNrtWE1oE0EU/mY3/7RpUlOhFUooWLX2Ur14qTEVzckQ66Eigm6btYbGREIq2INWa46C4En"
+    "xUimCl6oXf9CD3jwIFT0IgpDqsaeCgocm65uXCSYaaAMatOwX5s3bN9/87L43byf7dilYnH"
+    "/Us4xfsB86ypYXrhqboOKtXgRA7ZYl1WrtoWLZ+K/g9ZAjXU48b3/jlj6U/l6GhoeOVySBz"
+    "1RO4jzi2YwZbiFGeA2GkGsYFg6KPQ13qPjRzevqZDnBcgvLB8x9wfIAW66zHCZuUZzAUiQ+"
+    "sE/F8XGtj9v8JAWecJ+PbBlCF17LOL58Q1S4TkRzKSP9bzb0OtqwAPJczMyYOSNdRIhcuIB"
+    "vVhj4Wt2rL8O2vbV2AbJ/r7e7G9hvag5gFtZpIQOxQAHpdVS24bGzppkfkpaSs8ayZw0JTs"
+    "KyEDVunDN1IDppEiuaTk3Iq5HsODUdNHIGRUYil01OT+RJGzUvmJlpk7b4WCo5aeZJiRlS8"
+    "cnxOBEE6hJBO2+PNpJJdLAe5E0SoFS/dn/13ZHxROQUW2Y5+VdeEdvlPcHCFdmDOvu5hW+L"
+    "uQMsd7O8yqNuY72HZYhCm+r+RJdSDs8x5xq39tM8exnvIztq9J2kF1aOPu0tfInsIn0xtjw"
+    "TWvwQmUcfPakk9Ze/OQyKQXH7lsSzSLUWKpl8Ytn9W2LxaAG1dku9BztQgo/VIMvKlXw6Qv"
+    "FFA75gvhzxkubj9QQxo/haA77GfF3xK0//jOLrDfg68x2KrzP/nnyVa514LAejtPgTrfC5v"
+    "kl97qzzuWtdn7vrfH63Yz2fe+p8vqIrH6KRD23YsGHDhg0bNpqEUAc0XR3RneoY6FbfdUpU"
+    "yvZnkk2LUWTpl6e/pYeQoTqHi03Fz1Y4RXUsscE+1e+FEmM0ew5TGOd1TDUdv3SMF7X3s+G"
+    "OgT+3hZqdv9zMOv/y/D8A/yQLlA=="
+)
+
+
+def _xls_fixture_bytes() -> bytes:
+    import base64
+    import zlib
+
+    return zlib.decompress(base64.b64decode(_XLS_FIXTURE_B64))
+
+
+_needs_xlrd = pytest.mark.skipif(
+    not check_dep("xls").available,
+    reason="XLS deps (xlrd) not installed",
+)
+
+
+class TestXlsRegistration:
+    """Registration and option-schema tests (no xlrd needed)."""
+
+    def test_processor_registered(self):
+        from attachments._processors.xlsx import xls_processor
+
+        assert processors[".xls"] is xls_processor
+
+    def test_options_schema_identical_to_xlsx(self):
+        from attachments._options import get_options
+
+        assert get_options(".xls") == get_options(".xlsx")
+
+
+@_needs_xlrd
+class TestXlsProcessor:
+    """Behavioral tests against the embedded 2-sheet .xls fixture."""
+
+    def test_all_sheets_text_layout(self):
+        result = processors[".xls"](_xls_fixture_bytes())
+
+        text = result["text"]
+        assert "# Sheet1" in text
+        assert "# Sheet2" in text
+        assert "Name,Age" in text
+        assert "Product,Revenue" in text
+        assert result["meta"]["kind"] == "table"
+        assert "sheet_used" not in result["meta"]["extra"]
+
+    def test_segments_slice_exactly(self):
+        result = processors[".xls"](_xls_fixture_bytes())
+
+        text = result["text"]
+        segments = result["meta"]["segments"]
+        assert [s["label"] for s in segments] == ["Sheet1", "Sheet2"]
+        blocks = text.split("\n\n")
+        for segment, block in zip(segments, blocks, strict=True):
+            assert segment["kind"] == "sheet"
+            assert text[segment["start"] : segment["end"]] == block
+        assert segments[0]["start"] == 0
+        assert segments[-1]["end"] == len(text)
+
+    def test_sheet_by_name(self):
+        result = processors[".xls"](_xls_fixture_bytes(), sheet="Sheet2")
+
+        assert result["text"].startswith("# Sheet2\n")
+        assert "# Sheet1" not in result["text"]
+        extra = result["meta"]["extra"]
+        assert extra["sheet_used"] == "Sheet2"
+        assert extra["rows"] == 3
+        assert extra["cols"] == 2
+
+    def test_sheet_by_index(self):
+        result = processors[".xls"](_xls_fixture_bytes(), sheet=1)
+
+        assert result["meta"]["extra"]["sheet_used"] == "Sheet2"
+        assert result["text"].startswith("# Sheet2\n")
+
+    def test_unknown_sheet_name_falls_back_to_first(self):
+        result = processors[".xls"](_xls_fixture_bytes(), sheet="Nope")
+
+        assert result["meta"]["extra"]["sheet_used"] == "Sheet1"
+        assert result["text"].startswith("# Sheet1\n")
+
+    def test_rows_truncation(self):
+        result = processors[".xls"](_xls_fixture_bytes(), max_rows=1)
+
+        text = result["text"]
+        for segment in result["meta"]["segments"]:
+            block = text[segment["start"] : segment["end"]]
+            # heading + header + at most 1 data row
+            assert len(block.split("\n")) <= 3
+        assert result["meta"]["extra"]["rows_truncated"] is True
+
+    def test_integer_floats_render_without_decimal(self):
+        result = processors[".xls"](_xls_fixture_bytes())
+
+        text = result["text"]
+        assert "Alice,30" in text
+        assert "Bob,25" in text
+        assert "Widget,1000" in text
+        assert "25.0" not in text
+        # Genuine non-integral floats keep their decimal part
+        assert "Gadget,2.5" in text
+
+    def test_extra_engine_and_sheets(self):
+        result = processors[".xls"](_xls_fixture_bytes())
+
+        extra = result["meta"]["extra"]
+        assert extra["engine"] == "xlrd"
+        assert extra["sheets"] == ["Sheet1", "Sheet2"]
+
+
+class TestXlsErrors:
+    """Error paths never raise (no xlrd needed for the missing-dep case)."""
+
+    def test_missing_xlrd_returns_typed_error(self, monkeypatch):
+        import sys
+
+        from attachments.deps import clear_cache
+        from attachments.types import (
+            ERROR_MISSING_DEPENDENCY,
+            is_missing_dependency,
+        )
+
+        monkeypatch.setitem(sys.modules, "xlrd", None)
+        clear_cache()
+        try:
+            result = processors[".xls"](_xls_fixture_bytes())
+        finally:
+            clear_cache()
+
+        error = result["meta"]["error"]
+        assert error["code"] == ERROR_MISSING_DEPENDENCY
+        assert "pip install attachments[xls]" in error["message"]
+        assert is_missing_dependency(result)
+        assert result["text"] == ""
+
+    @_needs_xlrd
+    def test_corrupt_bytes_return_parse_error(self):
+        from attachments.types import ERROR_PARSE
+
+        result = processors[".xls"](b"this is not a BIFF workbook")
+
+        assert result["text"] == ""
+        assert result["meta"]["error"]["code"] == ERROR_PARSE
+        assert "legacy Excel" in result["meta"]["error"]["message"]
+
+    @_needs_xlrd
+    def test_xlsx_bytes_as_xls_return_parse_error(self, sample_xlsx_bytes: bytes):
+        from attachments.types import ERROR_PARSE
+
+        result = processors[".xls"](sample_xlsx_bytes)
+
+        assert result["text"] == ""
+        assert result["meta"]["error"]["code"] == ERROR_PARSE
+
+    @_needs_xlrd
+    def test_empty_bytes_handled(self):
+        result = processors[".xls"](b"")
+
+        assert "meta" in result
+
+
+@pytest.mark.skipif(
+    not (check_dep("xls").available and check_dep("xlsx").available),
+    reason="xlrd or openpyxl not installed",
+)
+class TestXlsXlsxParity:
+    """The same logical table renders with the same layout shape in both."""
+
+    def test_layout_matches_xlsx_for_same_table(self):
+        from attachments._processors.xlsx import (
+            _xls_with_xlrd,
+            _xlsx_with_openpyxl,
+        )
+
+        # Same logical content as the .xls fixture, written as .xlsx
+        xlsx_bytes = _build_workbook(
+            {
+                "Sheet1": [["Name", "Age"], ["Alice", 30], ["Bob", 25], ["Cara", 41]],
+                "Sheet2": [["Product", "Revenue"], ["Widget", 1000], ["Gadget", 2.5]],
+            }
+        )
+
+        text_x, segs_x, _ = _xlsx_with_openpyxl(xlsx_bytes, sheet=None, max_rows=200)
+        text_l, segs_l, extra_l = _xls_with_xlrd(
+            _xls_fixture_bytes(), sheet=None, max_rows=200
+        )
+
+        assert text_l == text_x
+        assert segs_l == segs_x
+        assert extra_l["engine"] == "xlrd"

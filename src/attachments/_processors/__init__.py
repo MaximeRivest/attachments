@@ -189,6 +189,8 @@ from . import docx as _docx  # noqa: E402,F401
 from . import html as _html  # noqa: E402,F401
 from . import pptx as _pptx  # noqa: E402,F401
 from . import image as _image  # noqa: E402,F401
+from . import csv as _csv  # noqa: E402,F401
+from . import svg as _svg  # noqa: E402,F401
 
 # Capture defaults after built-in processors (and their schemas) registered
 _snapshot_defaults()

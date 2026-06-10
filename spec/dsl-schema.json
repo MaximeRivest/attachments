@@ -9,11 +9,53 @@
         "name": "max_dim",
         "param": null,
         "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "rotate: 90",
+        "help": "Rotate counterclockwise by this many degrees (negative = clockwise)",
+        "name": "rotate",
+        "param": null,
+        "type": "int"
       }
     ],
     ".cfg": [],
     ".css": [],
-    ".csv": [],
+    ".csv": [
+      {
+        "aliases": [
+          "max_rows",
+          "limit"
+        ],
+        "default": 200,
+        "example": "rows: 100",
+        "help": "Maximum number of data rows rendered as text.",
+        "name": "rows",
+        "param": "max_rows",
+        "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": false,
+        "example": "summary: true",
+        "help": "Append a pandas-backed summary (shape, dtypes, numeric stats).",
+        "name": "summary",
+        "param": null,
+        "type": "bool"
+      },
+      {
+        "aliases": [
+          "sep"
+        ],
+        "default": null,
+        "example": "delimiter: semicolon",
+        "help": "Field delimiter: a literal character or tab/comma/semicolon/pipe. Overrides sniffing.",
+        "name": "delimiter",
+        "param": null,
+        "type": "str"
+      }
+    ],
     ".docx": [
       {
         "aliases": [
@@ -36,6 +78,55 @@
         "name": "max_dim",
         "param": null,
         "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "rotate: 90",
+        "help": "Rotate counterclockwise by this many degrees (negative = clockwise)",
+        "name": "rotate",
+        "param": null,
+        "type": "int"
+      }
+    ],
+    ".heic": [
+      {
+        "aliases": [],
+        "default": null,
+        "example": "max_dim: 1024",
+        "help": "Downscale so the longest side is at most this many pixels",
+        "name": "max_dim",
+        "param": null,
+        "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "rotate: 90",
+        "help": "Rotate counterclockwise by this many degrees (negative = clockwise)",
+        "name": "rotate",
+        "param": null,
+        "type": "int"
+      }
+    ],
+    ".heif": [
+      {
+        "aliases": [],
+        "default": null,
+        "example": "max_dim: 1024",
+        "help": "Downscale so the longest side is at most this many pixels",
+        "name": "max_dim",
+        "param": null,
+        "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "rotate: 90",
+        "help": "Rotate counterclockwise by this many degrees (negative = clockwise)",
+        "name": "rotate",
+        "param": null,
+        "type": "int"
       }
     ],
     ".htm": [
@@ -49,6 +140,17 @@
         "name": "images",
         "param": "render_images",
         "type": "bool"
+      },
+      {
+        "aliases": [
+          "css"
+        ],
+        "default": null,
+        "example": "select: \"h1, .article\"",
+        "help": "CSS selector; extract only matching elements",
+        "name": "select",
+        "param": null,
+        "type": "str"
       }
     ],
     ".html": [
@@ -62,6 +164,17 @@
         "name": "images",
         "param": "render_images",
         "type": "bool"
+      },
+      {
+        "aliases": [
+          "css"
+        ],
+        "default": null,
+        "example": "select: \"h1, .article\"",
+        "help": "CSS selector; extract only matching elements",
+        "name": "select",
+        "param": null,
+        "type": "str"
       }
     ],
     ".ini": [],
@@ -75,6 +188,15 @@
         "name": "max_dim",
         "param": null,
         "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "rotate: 90",
+        "help": "Rotate counterclockwise by this many degrees (negative = clockwise)",
+        "name": "rotate",
+        "param": null,
+        "type": "int"
       }
     ],
     ".jpg": [
@@ -84,6 +206,15 @@
         "example": "max_dim: 1024",
         "help": "Downscale so the longest side is at most this many pixels",
         "name": "max_dim",
+        "param": null,
+        "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "rotate: 90",
+        "help": "Rotate counterclockwise by this many degrees (negative = clockwise)",
+        "name": "rotate",
         "param": null,
         "type": "int"
       }
@@ -155,6 +286,15 @@
         "name": "max_dim",
         "param": null,
         "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "rotate: 90",
+        "help": "Rotate counterclockwise by this many degrees (negative = clockwise)",
+        "name": "rotate",
+        "param": null,
+        "type": "int"
       }
     ],
     ".pptx": [
@@ -172,6 +312,32 @@
     ],
     ".py": [],
     ".rst": [],
+    ".svg": [
+      {
+        "aliases": [
+          "render"
+        ],
+        "default": false,
+        "example": "images: true",
+        "help": "Rasterize the SVG to PNG with cairosvg (true/false/auto/always).",
+        "name": "images",
+        "param": "render_images",
+        "type": "bool_or_auto"
+      }
+    ],
+    ".svgz": [
+      {
+        "aliases": [
+          "render"
+        ],
+        "default": false,
+        "example": "images: true",
+        "help": "Rasterize the SVG to PNG with cairosvg (true/false/auto/always).",
+        "name": "images",
+        "param": "render_images",
+        "type": "bool_or_auto"
+      }
+    ],
     ".tex": [],
     ".tif": [
       {
@@ -180,6 +346,15 @@
         "example": "max_dim: 1024",
         "help": "Downscale so the longest side is at most this many pixels",
         "name": "max_dim",
+        "param": null,
+        "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "rotate: 90",
+        "help": "Rotate counterclockwise by this many degrees (negative = clockwise)",
+        "name": "rotate",
         "param": null,
         "type": "int"
       }
@@ -193,11 +368,53 @@
         "name": "max_dim",
         "param": null,
         "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "rotate: 90",
+        "help": "Rotate counterclockwise by this many degrees (negative = clockwise)",
+        "name": "rotate",
+        "param": null,
+        "type": "int"
       }
     ],
     ".toml": [],
     ".ts": [],
-    ".tsv": [],
+    ".tsv": [
+      {
+        "aliases": [
+          "max_rows",
+          "limit"
+        ],
+        "default": 200,
+        "example": "rows: 100",
+        "help": "Maximum number of data rows rendered as text.",
+        "name": "rows",
+        "param": "max_rows",
+        "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": false,
+        "example": "summary: true",
+        "help": "Append a pandas-backed summary (shape, dtypes, numeric stats).",
+        "name": "summary",
+        "param": null,
+        "type": "bool"
+      },
+      {
+        "aliases": [
+          "sep"
+        ],
+        "default": null,
+        "example": "delimiter: semicolon",
+        "help": "Field delimiter: a literal character or tab/comma/semicolon/pipe. Overrides sniffing.",
+        "name": "delimiter",
+        "param": null,
+        "type": "str"
+      }
+    ],
     ".txt": [],
     ".webp": [
       {
@@ -207,6 +424,37 @@
         "help": "Downscale so the longest side is at most this many pixels",
         "name": "max_dim",
         "param": null,
+        "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "rotate: 90",
+        "help": "Rotate counterclockwise by this many degrees (negative = clockwise)",
+        "name": "rotate",
+        "param": null,
+        "type": "int"
+      }
+    ],
+    ".xls": [
+      {
+        "aliases": [],
+        "default": null,
+        "example": "sheet: Sales",
+        "help": "Sheet to render: a sheet name or 0-based index. Omit to render all sheets.",
+        "name": "sheet",
+        "param": null,
+        "type": "str_or_int"
+      },
+      {
+        "aliases": [
+          "max_rows"
+        ],
+        "default": 200,
+        "example": "rows: 100",
+        "help": "Maximum number of rows rendered as text per sheet.",
+        "name": "rows",
+        "param": "max_rows",
         "type": "int"
       }
     ],

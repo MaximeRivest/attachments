@@ -109,6 +109,8 @@ class _Att:
         *,
         api_key: str | None = ...,
         prefer: Literal["local", "service", "local-only", "service-only"] | None = ...,
+        delimiter: str = ...,
+        sep: str = ...,
         dpi: int = ...,
         images: bool | str = ...,
         render: bool | str = ...,
@@ -121,9 +123,14 @@ class _Att:
         ref: str = ...,
         branch: str = ...,
         tag: str = ...,
+        rotate: int = ...,
         rows: int = ...,
+        limit: int = ...,
         max_rows: int = ...,
+        select: str = ...,
+        css: str = ...,
         sheet: str | int = ...,
+        summary: bool = ...,
         **options: Any,
     ) -> Artifacts: ...
     def options(

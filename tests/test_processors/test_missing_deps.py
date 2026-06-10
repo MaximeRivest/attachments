@@ -96,3 +96,31 @@ class TestProcessorsMissingDeps:
 
         _assert_missing_dep(result)
         assert "pip install attachments[image]" in result["meta"]["error"]["message"]
+
+    def test_heic_missing_dep_returns_typed_error(self, mask_modules):
+        mask_modules("pillow_heif")
+
+        result = processors[".heic"](
+            b"\x00\x00\x00\x18ftypheic fake", filename="photo.heic"
+        )
+
+        _assert_missing_dep(result)
+        assert "pip install attachments[heic]" in result["meta"]["error"]["message"]
+
+    def test_svg_raster_missing_dep_returns_typed_error(self, mask_modules):
+        mask_modules("cairosvg")
+
+        result = processors[".svg"](
+            b"<svg xmlns='http://www.w3.org/2000/svg'/>", render_images=True
+        )
+
+        _assert_missing_dep(result)
+        assert "pip install attachments[svg]" in result["meta"]["error"]["message"]
+
+    def test_xls_missing_dep_returns_typed_error(self, mask_modules):
+        mask_modules("xlrd")
+
+        result = processors[".xls"](b"\xd0\xcf\x11\xe0 fake xls content")
+
+        _assert_missing_dep(result)
+        assert "pip install attachments[xls]" in result["meta"]["error"]["message"]

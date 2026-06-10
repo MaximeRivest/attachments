@@ -149,7 +149,55 @@ def _make_image(pil_format: str) -> Callable[[], bytes]:
     return make
 
 
+def _make_csv() -> bytes:
+    return b"name,age\nAlice,30\nBob,25\n"
+
+
+def _make_tsv() -> bytes:
+    return b"name\tage\nAlice\t30\nBob\t25\n"
+
+
+_SVG = (
+    b'<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10">'
+    b"<title>Sample</title><text>hello conformance</text></svg>"
+)
+
+
+def _make_svg() -> bytes:
+    return _SVG
+
+
+def _make_svgz() -> bytes:
+    import gzip
+
+    return gzip.compress(_SVG)
+
+
+def _make_xls() -> bytes:
+    # Reuse the embedded BIFF fixture from the xlsx processor tests.
+    from test_processors.test_xlsx import _xls_fixture_bytes
+
+    return _xls_fixture_bytes()
+
+
+def _make_heic() -> bytes:
+    import pillow_heif
+    from PIL import Image
+
+    pillow_heif.register_heif_opener()
+    buf = io.BytesIO()
+    Image.new("RGB", (4, 4), (255, 0, 0)).save(buf, format="HEIF")
+    return buf.getvalue()
+
+
 GENERATORS: dict[str, Callable[[], bytes]] = {
+    ".csv": _make_csv,
+    ".tsv": _make_tsv,
+    ".svg": _make_svg,
+    ".svgz": _make_svgz,
+    ".xls": _make_xls,
+    ".heic": _make_heic,
+    ".heif": _make_heic,
     ".html": _make_html,
     ".htm": _make_html,
     ".xlsx": _make_xlsx,
@@ -285,11 +333,13 @@ class TestErrorArtifactsConform:
         assert artifact["meta"].get("error"), "expected a typed error artifact"
         assert_conformant(artifact)
 
-    def test_missing_dependency_artifact(self):
-        artifact = missing_dep_artifact("report.docx", "docx")
+    @pytest.mark.parametrize("feature", ["docx", "heic", "svg", "xls", "csv-pandas"])
+    def test_missing_dependency_artifact(self, feature: str):
+        artifact = missing_dep_artifact(f"sample.{feature}", feature)
 
         assert artifact["meta"]["error"]["code"] == "missing-dependency"
         assert "pip install" in artifact["meta"]["error"]["message"]
+        assert f"attachments[{feature}]" in artifact["meta"]["error"]["message"]
         assert_conformant(artifact)
 
     def test_service_only_without_api_key(self, tmp_path: Path):

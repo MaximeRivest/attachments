@@ -184,6 +184,12 @@ att("doc.pdf[password: secret]")        # Encrypted PDF
 att("data.xlsx[sheet: Revenue]")        # Specific sheet
 att("data.xlsx[sheet: 0, rows: 50]")    # First sheet, 50 rows
 
+# HTML options
+att("page.html[select: h1]")            # Only matching CSS-selected elements
+
+# Image options
+att("photo.jpg[rotate: 90]")            # Rotate 90° counterclockwise
+
 # GitHub options
 att("github://org/repo[branch: main]")  # Specific branch
 att("github://org/repo[ref: v1.0.0]")   # Tag
@@ -371,16 +377,20 @@ $ att --options .xlsx
 
 ## Status & Contributing
 
-Shipped today: text (20+ extensions), PDF, XLSX, DOCX, PPTX, HTML, and image
-(png/jpg/gif/webp/bmp/tiff) processors; local files, directories, zip/tar,
-HTTP(S), and `github://` sources; service client, self-hosted server, and CLI.
+Shipped today: text (20+ extensions), PDF, XLSX, XLS, DOCX, PPTX, HTML
+(with `select:` CSS extraction), CSV/TSV (real tables, optional pandas
+summary), SVG (text extraction + optional raster), and image
+(png/jpg/gif/webp/bmp/tiff/heic, with `rotate:`) processors; local files,
+directories, glob patterns (`att("src/**/*.py")`), zip/tar, HTTP(S), and
+`github://` sources; service client, self-hosted server, and CLI.
 The last mile ships too: `render_text` / `to_claude_messages` /
 `to_openai_messages` / `chunk` turn artifact lists straight into prompts,
 API messages, or RAG chunks. The IR contract and DSL grammar are frozen in
 [spec/](spec/) and enforced by a conformance suite; the generated option
 cheatsheet lives in [docs/dsl-options.md](docs/dsl-options.md).
 
-Everything else (OCR, audio, `s3://`, `gdrive://`, `notion://`, …) is the
+Everything else (legacy `.doc`/`.ppt`, EPS, OCR, audio, `s3://`,
+`gdrive://`, `notion://`, …) is the
 long tail we want help with — each new processor is one pure function
 `(bytes, options) -> artifact` plus a declared option schema. Start with
 [VISION.md](VISION.md), then [DEVELOPMENT.md](DEVELOPMENT.md) for the
