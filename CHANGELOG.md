@@ -126,6 +126,17 @@ See [VISION.md](VISION.md) for the reasoning.
   number and `ATTACHMENTS_PREFER` is validated like `configure()` input —
   a typo'd mode now raises instead of silently behaving like `local`.
 
+### Internal
+
+- **Source-handling layout**: the private `_unpack.py` module was split into
+  the `src/attachments/_sources/` package — registry & `unpack()` dispatch in
+  `__init__.py`; one module per source (`local`, `archives`, `http`,
+  `github`); shared security guards (expansion budget, member sanitization,
+  SSRF) in `_guards.py` — mirroring `_processors/`. No user-facing change:
+  the public API (`unpack`, `register_unpack_handler`, `source`,
+  `extra_unpack_handlers`), dispatch order, env vars, and behavior are
+  identical.
+
 ### Removed
 
 - **Breaking — the 0.x grammar API is gone.** The `Attachments` class, the

@@ -58,7 +58,7 @@ def att_help() -> None:
         ...
     """
     from . import __version__
-    from ._unpack import extra_unpack_handlers
+    from ._sources import extra_unpack_handlers
 
     sources = "local files, directories, zip/tar archives, http(s)://, github://"
     extra = sorted(prefix for prefix in extra_unpack_handlers)

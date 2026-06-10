@@ -16,7 +16,7 @@ from typing import Any
 from ._artifacts import Artifacts
 from ._options import get_options, resolve_options, source_option_schemas
 from ._processors import processors
-from ._unpack import unpack
+from ._sources import unpack
 from .config import get_api_key, get_prefer
 from .dsl import parse_dsl
 from .types import (
@@ -322,10 +322,15 @@ def _apply_source_options(input: str, options: dict) -> str:
     """Apply source-specific options to the input path.
 
     Consumes options declared in ``source_option_schemas`` (matching
-    canonical names, aliases, and param names) and transforms them into
-    URL parameters — e.g. ``ref``/``branch``/``tag`` become ``?ref=...``
-    on GitHub URLs. Unrecognized keys are left untouched WITHOUT warnings:
-    they may be processor options resolved later, per file.
+    canonical names, aliases, and param names) and re-encodes every
+    consumed option as a query parameter on the input string, where the
+    matching source handler parses it — e.g. ``ref``/``branch``/``tag``
+    become ``?ref=...``, which ``_sources.github`` reads. This is the
+    generic delivery channel: handler signatures stay
+    ``(url) -> [(name, bytes)]``, so a custom source's declared options
+    (say ``region`` on ``s3://``) arrive as ``s3://...?region=...``.
+    Falsy values are skipped. Unrecognized keys are left untouched WITHOUT
+    warnings: they may be processor options resolved later, per file.
 
     Examples:
         >>> opts = {"ref": "main", "other": "value"}
@@ -353,11 +358,15 @@ def _apply_source_options(input: str, options: dict) -> str:
         for key in [k for k in options if k in names]:
             consumed[option.param or option.name] = options.pop(key)
 
-    # GitHub: pass ref to the cloner as a query parameter
-    ref = consumed.get("ref")
-    if ref:
+    # Generic delivery: append every consumed option as a query parameter
+    # on the input string; the matching handler parses it from the URL
+    # (github's _clone_github_to_temp reads ?ref=...). Falsy values are
+    # skipped — same semantics as the original ``if ref:`` github path.
+    for key, value in consumed.items():
+        if not value:
+            continue
         separator = "&" if "?" in input else "?"
-        input = f"{input}{separator}ref={ref}"
+        input = f"{input}{separator}{key}={value}"
 
     return input
 

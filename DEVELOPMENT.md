@@ -301,14 +301,49 @@ def test_myformat_processing():
 
 ---
 
-## Building New Source Handlers
+## Building New Sources
 
 Source handlers resolve input strings (URLs, paths, schemes) into `(filename, bytes)` pairs.
+Built-in sources live in the `src/attachments/_sources/` package — one module
+per source, mirroring `_processors/` (see the
+[Module Structure](#module-structure) map).
+
+Checklist (symmetric to [Building New Processors](#building-new-processors)):
+
+- [ ] **One module** in `src/attachments/_sources/` (e.g. `_sources/s3.py`)
+      — or your own package for third-party handlers
+- [ ] **Register at import time** (`@source(...)` / `register_unpack_handler`)
+      + an import line in `_sources/__init__.py` for built-ins.
+      **Placement matters**: built-in modules must use the relative import
+      `from . import source`, and their import line goes in the block at the
+      **bottom** of `_sources/__init__.py` — after the registry is defined.
+      A top-of-file import (or `from attachments import source` inside
+      `_sources/`) is circular and breaks all of `import attachments`
+      (see [Step 2](#step-2-register-the-handler))
+- [ ] **Optional source option schema** via `register_options("s3://", ...)`
+      immediately followed by `snapshot_option_defaults()` — see how
+      `_sources/github.py` declares `ref`. Without the snapshot call,
+      `reset_options()` / `reset_processors()` (which the autouse fixture in
+      `tests/conftest.py` runs after every test) silently wipes the schema.
+      Declared options are consumed from the DSL and delivered to your
+      handler as query parameters on the input:
+      `s3://bucket/key[region: us-east-1]` reaches the handler as
+      `s3://bucket/key?region=us-east-1` — parse them the way
+      `_sources/github.py` parses `?ref=`
+- [ ] **`deps.py` entry + `pyproject.toml` extra** if it needs dependencies
+- [ ] **Tests** in `tests/test_sources/`, including a download path that
+      respects the guards in `_sources/_guards.py` (size caps, SSRF guard
+      for anything fetched over HTTP)
+- [ ] **Run `uv run python scripts/gen_dsl_assets.py`** if you added an
+      option schema (regenerates `__init__.pyi`, `spec/dsl-schema.json`,
+      `docs/dsl-options.md`)
 
 ### Quick Start (Decorator Pattern)
 
+For third-party handlers in your own package:
+
 ```python
-# my_sources.py
+# my_sources.py — your own package, NOT inside attachments/_sources/
 from attachments import source
 
 @source("s3://", "s3a://")
@@ -323,6 +358,11 @@ def s3_handler(url: str) -> list[tuple[str, bytes]]:
     return [("file.txt", file_bytes)]
 ```
 
+Inside `attachments/_sources/`, this top-level import is circular (the
+`attachments` package is still initializing when `_sources/` modules are
+imported) — built-in modules must use the relative form
+`from . import source` instead. See the Full Example below.
+
 ### Alternative: Function Call
 
 ```python
@@ -336,14 +376,20 @@ register_unpack_handler("myproto://", my_handler)
 
 ### Full Example
 
-Create `src/attachments/unpack_s3.py` (or your own package's module):
+Create `src/attachments/_sources/s3.py` (or your own package's module):
 
 ```python
 """S3 source handler for attachments."""
 
 from __future__ import annotations
 
+# Built-in modules MUST use this relative import — `from attachments
+# import source` is circular inside `_sources/`. In your own package,
+# use `from attachments import source` instead.
+from . import source
 
+
+@source("s3://")
 def s3_handler(url: str) -> list[tuple[str, bytes]]:
     """Fetch files from S3.
 
@@ -404,10 +450,32 @@ function call shown above — `@source("s3://")` /
 `extra_unpack_handlers` registry, which `unpack()` consults before its
 built-in resolution.
 
-For handlers contributed to the library itself, the module lives next to
-`_unpack.py` (e.g. `src/attachments/_unpack_s3.py`) and registers at import
-time — see how the built-in `github://` source registers itself (and its
-option schema) inside `_unpack.py`.
+For handlers contributed to the library itself, the module lives in the
+`_sources/` package (e.g. `src/attachments/_sources/s3.py`), uses the
+relative import `from . import source` (see the Full Example above), and
+gets an import line in the block at the **bottom** of
+`_sources/__init__.py` — after `register_unpack_handler` / `source` are
+defined, mirroring `_processors/__init__.py`:
+
+```python
+# Import built-in source modules LAST so they can use the registry defined
+# above (...) — same layout as _processors/__init__.py.
+from .archives import _explode_archive_bytes, _is_raw_archive_name  # noqa: E402
+from .github import _clone_github_to_temp, _is_github_repo_root_url  # noqa: E402
+from .http import _download_http_or_https  # noqa: E402
+from .local import _walk_directory  # noqa: E402
+from . import s3 as _s3  # noqa: E402,F401  # ADD THIS
+```
+
+Do **not** put the import at the top of `_sources/__init__.py`: it would run
+before the registry exists and break all of `import attachments` with
+`ImportError: cannot import name 'source' from partially initialized module`.
+
+Note that the historical built-ins predate the registry and don't use
+`@source`: `github://` dispatch is hardwired inside `unpack()` itself, and
+`_sources/github.py` registers only its *option schema* (`ref`) via
+`register_options` + `snapshot_option_defaults`. Copy `github.py` for the
+schema pattern and the Full Example above for handler registration.
 
 ### Step 3: Add Dependencies to `pyproject.toml`
 
@@ -547,8 +615,14 @@ src/attachments/
 ├── _help.py                 # att.help(): printed one-screen overview
 ├── types.py                 # Artifact / ImageItem TypedDicts, error codes, helpers
 ├── utils.py                 # Encoding detection, magic-byte detection, helpers
-├── _unpack.py               # Input resolution (local, dirs, archives, http, github)
 ├── render.py                # Last mile: render_text, to_claude/openai_messages, chunk
+├── _sources/                # Input resolution (WHERE files come from)
+│   ├── __init__.py          # Source registry, @source decorator & unpack() dispatch
+│   ├── _guards.py           # Security: expansion budget, sanitization, SSRF guard
+│   ├── local.py             # Local files + deterministic directory walk
+│   ├── archives.py          # ZIP/TAR expansion (recursive, bomb-guarded)
+│   ├── http.py              # HTTP(S) single-file download
+│   └── github.py            # github:// + github.com repo roots
 └── _processors/
     ├── __init__.py          # Processor registry & @processor decorator
     ├── text.py              # Text files (no deps)

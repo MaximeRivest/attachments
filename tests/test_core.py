@@ -14,7 +14,7 @@ GOOD tests for core:
     - Use real files via fixtures (not mocks for integration tests)
 
 BAD tests:
-    - Testing unpack in isolation (that's test_unpack.py)
+    - Testing unpack in isolation (that's tests/test_sources/)
     - Testing processors in isolation (that's test_processors/)
     - Testing DSL parsing in isolation (that's test_dsl.py)
     - Mocking everything (defeats purpose of integration tests)

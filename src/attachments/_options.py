@@ -109,7 +109,7 @@ option_schemas: dict[str, tuple[Option, ...]] = {}
 source_option_schemas: dict[str, tuple[Option, ...]] = {}
 
 # Snapshots of the built-in schemas (populated at import time; additive so
-# both processors/__init__.py and unpack.py can snapshot their built-ins).
+# both _processors/__init__.py and _sources/ can snapshot their built-ins).
 _default_option_schemas: dict[str, tuple[Option, ...]] | None = None
 _default_source_option_schemas: dict[str, tuple[Option, ...]] | None = None
 
@@ -182,10 +182,12 @@ def get_option_schemas_copy() -> dict[str, tuple[Option, ...]]:
 def snapshot_option_defaults() -> None:
     """Capture the current schemas as the built-in defaults.
 
-    Called at import time by ``processors/__init__.py`` (after the built-in
-    processors register their schemas) and by ``unpack.py`` (after the
-    built-in source schemas register). Additive: each call merges new keys
-    into the snapshot without overwriting earlier ones.
+    Called at import time by ``_processors/__init__.py`` (after the built-in
+    processors register their schemas) and by ``_sources/`` — both per
+    module (e.g. ``_sources/github.py``) and at the bottom of
+    ``_sources/__init__.py`` after the built-in source imports. Additive:
+    each call merges new keys into the snapshot without overwriting
+    earlier ones.
     """
     global _default_option_schemas, _default_source_option_schemas
     if _default_option_schemas is None:

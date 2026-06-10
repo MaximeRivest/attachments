@@ -531,7 +531,7 @@ class TestWsgiApp:
         def _boom(*_args, **_kwargs):
             raise RuntimeError("secret /tmp/attachments_github_x path")
 
-        monkeypatch.setattr("attachments._unpack.unpack", _boom)
+        monkeypatch.setattr("attachments._sources.unpack", _boom)
         raw = json.dumps({"url": "https://example.com/x.zip"}).encode()
         status, body = self._call(
             app,

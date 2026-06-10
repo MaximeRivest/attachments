@@ -12,7 +12,7 @@ GOOD tests for text processor:
     - Test the artifact structure is correct
 
 BAD tests:
-    - Testing file I/O (that's test_unpack.py)
+    - Testing file I/O (that's tests/test_sources/)
     - Testing the att() pipeline (that's test_core.py)
     - Duplicating doctest examples
 

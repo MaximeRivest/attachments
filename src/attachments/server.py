@@ -301,7 +301,7 @@ def _make_handler():
                     self._send_error("Missing 'url' in request body")
                     return
 
-                from ._unpack import unpack
+                from ._sources import unpack
 
                 files = unpack(url, block_private_urls=not _allow_private_urls())
 
@@ -474,7 +474,7 @@ def create_app():
             if not url:
                 return _error("Missing 'url' in request body")
 
-            from ._unpack import unpack as _unpack
+            from ._sources import unpack as _unpack
 
             try:
                 files = _unpack(url, block_private_urls=not _allow_private_urls())
