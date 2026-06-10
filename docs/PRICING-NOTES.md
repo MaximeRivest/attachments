@@ -128,10 +128,17 @@ trust the brand runs on.
 ## Still open
 
 - **Benchmark LightOnOCR-2-1B on an L4 (g6.xlarge) — gates final
-  prices.** All published numbers are H100-only; the ~1 page/s L4
-  estimate and the CPU 30–120 s/page guess must be measured. Also
-  benchmark the vLLM CPU backend on the m6i.large for the playground
-  preview idea.
+  prices.** All published numbers are H100-only. Blocked on an AWS GPU
+  quota increase (requested 2026-06-10). Also benchmark the vLLM CPU
+  backend for the playground preview idea.
+- **First real datapoint (2026-06-10, home 3090, severely constrained):**
+  0.33 pages/s (3.07 s/page, ~816 output tokens/page, output quality
+  good) with vLLM squeezed into the 3.4 GB left over beside other
+  services — KV cache of only 5.3k tokens meant batching couldn't help
+  (concurrency 4/8/16 all ~0.32 pages/s, flat = cache-starved, not
+  GPU-bound). Treat as a hard floor: even this floor is ~28k pages/day
+  ≈ 855k pages/month per GPU. A clean 3090 run (model + real KV cache)
+  should batch 3–10× higher; measure before setting final prices.
 - Batch turnaround promise: "minutes, not seconds" needs a number we can
   defend (queue SLA, e.g. "typically under 30 minutes") once the
   autoscaler exists.
