@@ -23,8 +23,10 @@ Example::
 from __future__ import annotations
 
 import difflib
+import json
 import logging
 import re
+import textwrap
 from dataclasses import dataclass
 from typing import Any
 
@@ -444,8 +446,128 @@ def dsl_schema() -> dict[str, Any]:
     }
 
 
+#: Column headers for the plain-text option tables (repr of ``options()``).
+_TABLE_COLUMNS = ("Option", "Type", "Aliases", "Default", "Example")
+
+#: Target line width for the plain-text option tables.
+_TABLE_WIDTH = 88
+
+
+def _format_option_table(option_dicts: list[dict[str, Any]], indent: str = "") -> str:
+    """Render option dicts as an aligned plain-text table (~88 cols).
+
+    Columns: Option | Type | Aliases | Default | Example — with the help
+    text as a wrapped Description column at the end.
+
+    Examples:
+        >>> print(_format_option_table([]))
+        (no options declared)
+    """
+    if not option_dicts:
+        return f"{indent}(no options declared)"
+    rows = [
+        (
+            option["name"],
+            option["type"],
+            ", ".join(option["aliases"]) or "—",
+            "—" if option["default"] is None else json.dumps(option["default"]),
+            option["example"] or "—",
+            " ".join(str(option["help"]).split()),
+        )
+        for option in option_dicts
+    ]
+    widths = [
+        max(len(header), *(len(row[i]) for row in rows))
+        for i, header in enumerate(_TABLE_COLUMNS)
+    ]
+    desc_start = len(indent) + sum(widths) + 2 * len(widths)
+    desc_width = max(20, _TABLE_WIDTH - desc_start)
+    lines: list[str] = []
+    for cells in [(*_TABLE_COLUMNS, "Description"), *rows]:
+        prefix = indent + "".join(
+            cells[i].ljust(widths[i] + 2) for i in range(len(widths))
+        )
+        wrapped = textwrap.wrap(cells[5], width=desc_width) or [""]
+        lines.append((prefix + wrapped[0]).rstrip())
+        lines.extend(" " * desc_start + cont for cont in wrapped[1:])
+    return "\n".join(lines)
+
+
+def _group_by_schema(
+    entries: dict[str, list[dict[str, Any]]],
+) -> list[tuple[list[str], list[dict[str, Any]]]]:
+    """Group keys whose exported option schemas are identical (sorted)."""
+    keys_by_fingerprint: dict[str, list[str]] = {}
+    options_by_fingerprint: dict[str, list[dict[str, Any]]] = {}
+    for key in sorted(entries):
+        fingerprint = json.dumps(entries[key], sort_keys=True)
+        keys_by_fingerprint.setdefault(fingerprint, []).append(key)
+        options_by_fingerprint[fingerprint] = entries[key]
+    groups = [
+        (keys, options_by_fingerprint[fingerprint])
+        for fingerprint, keys in keys_by_fingerprint.items()
+    ]
+    groups.sort(key=lambda group: group[0][0])
+    return groups
+
+
+class _OptionList(list):
+    """Per-key option dicts whose repr is an aligned plain-text table.
+
+    Same data as a plain list — iteration, indexing, and ``json.dumps``
+    are unchanged; only ``__repr__`` differs (REPL delight).
+    """
+
+    def __repr__(self) -> str:
+        return _format_option_table(self)
+
+
+class _OptionCatalog(dict):
+    """Full schema export whose repr renders one table per schema group.
+
+    Same data as the plain :func:`dsl_schema` dict — ``json.dumps`` and
+    key access are unchanged; only ``__repr__`` differs.
+    """
+
+    def __repr__(self) -> str:
+        lines = [f"DSL options (schema version {self.get('version')})"]
+        for section, title in (("processors", "Processors"), ("sources", "Sources")):
+            entries = self.get(section) or {}
+            if not entries:
+                continue
+            lines += ["", title, ""]
+            no_option_keys: list[str] = []
+            for keys, option_dicts in _group_by_schema(entries):
+                if not option_dicts:
+                    no_option_keys.extend(keys)
+                    continue
+                lines.append(", ".join(keys))
+                lines.append(_format_option_table(option_dicts, indent="  "))
+                lines.append("")
+            if no_option_keys:
+                lines.append(
+                    "\n".join(
+                        textwrap.wrap(
+                            "No options: " + ", ".join(no_option_keys),
+                            width=_TABLE_WIDTH,
+                            subsequent_indent="  ",
+                        )
+                    )
+                )
+                lines.append("")
+        while lines and not lines[-1]:
+            lines.pop()
+        return "\n".join(lines)
+
+
 def options(key: str | None = None) -> dict[str, Any] | list[dict[str, Any]]:
     """Runtime discovery of declared options (also exposed as ``att.options``).
+
+    Returns the same data as always, wrapped in repr-friendly subclasses:
+    a list subclass per key, a dict subclass for the full catalog. Both
+    print aligned plain-text tables in a REPL while staying 100%
+    JSON-serializable plain data (:func:`dsl_schema` itself stays a plain
+    dict — it feeds asset generation).
 
     Args:
         key: A processor extension (``".pdf"``), sentinel (``"__text__"``),
@@ -459,10 +581,20 @@ def options(key: str | None = None) -> dict[str, Any] | list[dict[str, Any]]:
         >>> [o["name"] for o in options(".pdf")]
         ['pages', 'password', 'images', 'dpi', 'max_pages']
         >>> options(".unknown-ext")
-        []
+        (no options declared)
         >>> options()["version"]
         1
+        >>> register_options(
+        ...     ".demo", (Option("depth", "int", help="How deep.", example="depth: 2"),)
+        ... )
+        >>> options(".demo")
+        Option  Type  Aliases  Default  Example   Description
+        depth   int   —        —        depth: 2  How deep.
+        >>> reset_options()  # clean up the example registration
+        >>> import json
+        >>> json.loads(json.dumps(options(".pdf")))[0]["name"]
+        'pages'
     """
     if key is None:
-        return dsl_schema()
-    return [_option_as_dict(o) for o in get_options(key)]
+        return _OptionCatalog(dsl_schema())
+    return _OptionList(_option_as_dict(o) for o in get_options(key))

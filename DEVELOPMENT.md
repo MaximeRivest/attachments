@@ -532,7 +532,11 @@ Always include install instructions in error messages:
 ```
 src/attachments/
 ├── __init__.py              # Public API exports
+├── __init__.pyi             # GENERATED typing stub (scripts/gen_dsl_assets.py):
+│                            #   kwargs autocomplete for att() — do not edit
 ├── core.py                  # Main att() function, routing logic
+├── _artifacts.py            # Artifacts container att() returns (list subclass;
+│                            #   repr/str/.claude()/.openai()/.chunk() sugar)
 ├── config.py                # Global configuration
 ├── deps.py                  # Dependency detection
 ├── service.py               # Remote API client
@@ -540,6 +544,7 @@ src/attachments/
 ├── cli.py                   # `att` / `attachments` CLI
 ├── dsl.py                   # DSL parsing ("file.pdf[pages: 1-4]")
 ├── _options.py              # Option schemas: declare/resolve/export (att.options)
+├── _help.py                 # att.help(): printed one-screen overview
 ├── types.py                 # Artifact / ImageItem TypedDicts, error codes, helpers
 ├── utils.py                 # Encoding detection, magic-byte detection, helpers
 ├── _unpack.py               # Input resolution (local, dirs, archives, http, github)

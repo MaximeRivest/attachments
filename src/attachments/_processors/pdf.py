@@ -1,7 +1,9 @@
 # src/attachments/processors/pdf.py
 from __future__ import annotations
 
+import contextlib
 import io
+import logging
 from typing import Any
 
 from .._options import Option, register_options
@@ -15,6 +17,32 @@ from ..types import (
 from . import register_processor
 
 _PAGE_SEPARATOR = "\n\n"
+
+
+@contextlib.contextmanager
+def _quiet_pdf_loggers():
+    """Silence pypdf/PyPDF2 console log spew while parsing.
+
+    pypdf reports recoverable robustness fixes (e.g. ``EOF marker not
+    found``, ``CAUTION: startxref ...``) by logging to the ``pypdf``
+    logger, which — with no handlers configured — prints straight to
+    stderr via logging's last-resort handler, with no filename context.
+    ``att()`` reports problems in-band (error artifacts and ``meta``), so
+    third-party log noise is suppressed for the duration of the parse and
+    the previous logger levels are restored afterwards.
+
+    Usable as a decorator (``contextlib`` context managers recreate
+    themselves per call).
+    """
+    loggers = [logging.getLogger(name) for name in ("pypdf", "PyPDF2")]
+    previous = [logger.level for logger in loggers]
+    for logger in loggers:
+        logger.setLevel(logging.CRITICAL + 1)
+    try:
+        yield
+    finally:
+        for logger, level in zip(loggers, previous, strict=True):
+            logger.setLevel(level)
 
 
 def _join_pages_with_segments(
@@ -53,6 +81,7 @@ def _join_pages_with_segments(
     return _PAGE_SEPARATOR.join(parts), segments
 
 
+@_quiet_pdf_loggers()
 def _extract_text_with_pypdf_or_pyPDF2(
     data: bytes,
     password: str | None,

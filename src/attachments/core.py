@@ -13,6 +13,7 @@ import logging
 import os
 from typing import Any
 
+from ._artifacts import Artifacts
 from ._options import get_options, resolve_options, source_option_schemas
 from ._processors import processors
 from ._unpack import unpack
@@ -367,7 +368,7 @@ def att(
     api_key: str | None = None,
     prefer: str | None = None,
     **options: Any,
-) -> list[dict]:
+) -> Artifacts:
     """Turn any input into LLM-ready artifacts.
 
     This is the main entry point for the attachments library.
@@ -412,15 +413,22 @@ def att(
         option warnings.
 
     Returns:
-        List of artifact dicts, each with:
+        An :class:`attachments.Artifacts` — a ``list`` subclass whose
+        elements remain plain artifact dicts, each with:
             - text: Extracted text content
             - images: List of image dicts
             - audio: List of audio dicts (future)
             - video: List of video dicts (future)
             - meta: Typed metadata (source, kind, error{code,message}, via, ...)
 
+        The container adds interactive sugar around the frozen IR:
+        ``repr()`` is a one-line summary, ``str()``/``.text`` is the
+        assembled prompt (``render_text``), plus ``.images``, ``.errors``,
+        ``.claude()``, ``.openai()``, and ``.chunk()`` shortcuts.
+
         Errors never raise out of att(); they come back as artifacts with
-        ``meta["error"] = {"code": ..., "message": ...}``.
+        ``meta["error"] = {"code": ..., "message": ...}`` (so the return
+        value is ALWAYS Artifacts, including every error path).
 
     Example:
         >>> from attachments import att
@@ -461,26 +469,34 @@ def att(
 
                 pairs = unpack_via_service(input, api_key=key)
             except ServiceError as se:
-                return [
-                    error_artifact(
-                        input,
-                        ERROR_UNPACK,
-                        f"unpack failed: {e}; service: {se.message}",
-                    )
-                ]
+                return Artifacts(
+                    [
+                        error_artifact(
+                            input,
+                            ERROR_UNPACK,
+                            f"unpack failed: {e}; service: {se.message}",
+                        )
+                    ]
+                )
             except ImportError:
-                return [error_artifact(input, ERROR_UNPACK, f"unpack failed: {e}")]
+                return Artifacts(
+                    [error_artifact(input, ERROR_UNPACK, f"unpack failed: {e}")]
+                )
             except Exception as se:
-                return [
-                    error_artifact(
-                        input, ERROR_UNPACK, f"unpack failed: {e}; service: {se}"
-                    )
-                ]
+                return Artifacts(
+                    [
+                        error_artifact(
+                            input, ERROR_UNPACK, f"unpack failed: {e}; service: {se}"
+                        )
+                    ]
+                )
         else:
-            return [error_artifact(input, ERROR_UNPACK, f"unpack failed: {e}")]
+            return Artifacts(
+                [error_artifact(input, ERROR_UNPACK, f"unpack failed: {e}")]
+            )
 
     # Process each file
-    out: list[dict] = []
+    out = Artifacts()
     for fname, data in pairs:
         artifact = _process_single(
             fname,

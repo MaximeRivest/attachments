@@ -220,6 +220,34 @@ class TestUnpackDirectory:
         assert "data.json" in names
         assert "subdir/nested.md" in names or "nested.md" in str(names)
 
+    def test_directory_walk_is_sorted_and_deterministic(self, tmp_path: Path):
+        """Artifact order must not depend on filesystem internals.
+
+        Raw os.walk order varies across filesystems and file-creation
+        history, which would make .text / .chunk() / the repr differ
+        machine-to-machine and break prompt caching.
+        """
+        # Create files in deliberately non-alphabetical order.
+        for name in ("zeta.txt", "alpha.txt", "mid.txt"):
+            (tmp_path / name).write_bytes(b"x")
+        (tmp_path / "bdir").mkdir()
+        (tmp_path / "bdir" / "two.txt").write_bytes(b"x")
+        (tmp_path / "adir").mkdir()
+        (tmp_path / "adir" / "one.txt").write_bytes(b"x")
+
+        names = [name for name, _ in unpack(str(tmp_path))]
+
+        # Top-level files first (sorted), then subdirectories sorted.
+        assert names == [
+            "alpha.txt",
+            "mid.txt",
+            "zeta.txt",
+            "adir/one.txt",
+            "bdir/two.txt",
+        ]
+        # And stable across calls.
+        assert names == [name for name, _ in unpack(str(tmp_path))]
+
     def test_skips_git_directory(self, tmp_path: Path):
         (tmp_path / ".git").mkdir()
         (tmp_path / ".git" / "config").write_bytes(b"git config")

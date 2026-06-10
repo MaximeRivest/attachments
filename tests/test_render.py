@@ -218,6 +218,20 @@ def test_to_openai_messages_empty_artifacts_prompt_only():
     ]
 
 
+def test_to_claude_messages_prompt_is_optional():
+    artifacts = [_text_artifact("Hello.", source="a.txt")]
+    messages = to_claude_messages(artifacts)
+    assert [b["type"] for b in messages[0]["content"]] == ["text"]
+    assert messages == to_claude_messages(artifacts, prompt=None)
+
+
+def test_to_openai_messages_prompt_is_optional():
+    artifacts = [_text_artifact("Hello.", source="a.txt"), _image_artifact()]
+    messages = to_openai_messages(artifacts)
+    assert [p["type"] for p in messages[0]["content"]] == ["text", "image_url"]
+    assert messages == to_openai_messages(artifacts, prompt=None)
+
+
 # =============================================================================
 # chunk — window splitting
 # =============================================================================

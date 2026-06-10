@@ -14,8 +14,34 @@ See [VISION.md](VISION.md) for the reasoning.
 
 ### Added
 
-- **One-function API**: `att(input, **options) -> list[Artifact]` handles
+- **One-function API**: `att(input, **options) -> Artifacts` handles
   files, directories, zip/tar archives, HTTP(S) URLs, and `github://` repos.
+  Directory walks are deterministic (sorted), so artifact order — and
+  therefore `.text`, `.chunk()`, and the repr — is the same on every
+  filesystem and machine.
+- **`Artifacts` container**: `att()` returns a `list` subclass whose elements
+  stay plain Artifact dicts (the IR is untouched — pure sugar around it).
+  The repr is a one-line summary plus one `!` line per error (capped at 10,
+  the rest collapse into `+N more errors (see .errors)`) and never dumps
+  text/bytes; `str()`/`.text` is the assembled prompt (`render_text` — v1's
+  `print(ctx)` muscle memory); `.images`/`.errors` flatten the common parts;
+  `.claude(prompt=None)`/`.openai(prompt=None)`/`.chunk()` are last-mile
+  shortcuts (`prompt=` is now optional in `to_claude_messages` /
+  `to_openai_messages` too); slices and concatenation stay `Artifacts`; and
+  `_repr_markdown_` gives Jupyter a summary, error admonitions, a text
+  preview, and capped inline image thumbnails.
+- **Generated typing stub (kwargs autocomplete)**: `__init__.pyi` is
+  generated from the declared option schemas by
+  `scripts/gen_dsl_assets.py` — one typed named parameter per DSL option
+  AND alias across all schemas on `att()` (e.g. `pages: int | str |
+  tuple[int, int]`), plus typed `att.options`/`att.help` — so the kwarg
+  twin autocompletes in any editor with no plugin. Sync-tested in CI like
+  the other generated assets.
+- **Pretty `att.options()` + `att.help()`**: `options()` returns the same
+  JSON-serializable data wrapped in repr-friendly subclasses that print
+  aligned plain-text option tables in the REPL, and `att.help()` prints a
+  one-screen overview (formats grouped from the live registry, sources,
+  copy-pasteable examples, pointers) — no network, instant.
 - **Frozen Artifact IR**: every processor produces, and every consumer
   accepts, `{text, images[], audio[], video[], meta}` with a **typed meta
   envelope** (`source`, `kind`, `via`, `error{code,message}`, `note`,
@@ -110,14 +136,14 @@ See [VISION.md](VISION.md) for the reasoning.
 ### Migration from 0.25.x
 
 The one-liner maps directly: `Attachments("report.pdf")` becomes
-`att("report.pdf")`, and where you previously relied on
-`str(Attachments(...))` (or `.text`) to build a prompt string, call
-`render_text(att("report.pdf"))`. Adapter usage (`.claude()`, `.openai()`)
-becomes `to_claude_messages(artifacts, prompt=...)` /
-`to_openai_messages(artifacts, prompt=...)`; images are on each artifact's
-`images` list; per-format tweaks move from pipeline stages to DSL options or
-their kwarg twins (`att("doc.pdf[pages: 1-4]")`). Custom loaders/presenters
-become processors or unpack handlers (see
+`att("report.pdf")`, and the muscle memory carries over: `str(att(...))`
+(or `.text`) is still the assembled prompt string, and adapter usage
+(`.claude(prompt)`, `.openai(prompt)`) still hangs off the result — they
+are sugar for `render_text` / `to_claude_messages` / `to_openai_messages`,
+which also accept any plain artifact list. `.images` flattens each
+artifact's `images` list; per-format tweaks move from pipeline stages to
+DSL options or their kwarg twins (`att("doc.pdf[pages: 1-4]")`). Custom
+loaders/presenters become processors or unpack handlers (see
 [DEVELOPMENT.md](DEVELOPMENT.md)).
 
 [1.0.0]: https://pypi.org/project/attachments/

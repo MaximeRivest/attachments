@@ -8,7 +8,15 @@ Quick Start::
     from attachments import att
 
     artifacts = att("document.pdf")
-    print(artifacts[0]["text"])
+    artifacts  # repr: one summary line, e.g.
+    #   <Artifacts: 1 artifact | 14,210 chars | 2 images>
+    print(artifacts)  # the full assembled prompt text (render_text)
+    print(artifacts[0]["text"])  # elements stay plain Artifact dicts
+
+``att()`` returns :class:`Artifacts` — a ``list`` subclass of plain
+artifact dicts with shortcuts: ``.text``, ``.images``, ``.errors``,
+``.claude(prompt=None)``, ``.openai(prompt=None)``, ``.chunk()``. Lost?
+``att.help()`` prints a one-screen overview.
 
 With Service Fallback::
 
@@ -61,6 +69,8 @@ Installation Options::
     pip install attachments[all-local]   # Everything local
 """
 
+from ._artifacts import Artifacts
+from ._help import att_help
 from ._options import Option, dsl_schema, options, register_options
 from ._processors import (
     get_processors_copy,
@@ -110,6 +120,8 @@ from .types import (
 __all__ = [
     # Main entry point
     "att",
+    # The container att() returns (list subclass of plain Artifact dicts)
+    "Artifacts",
     # Types & artifact helpers
     "Artifact",
     "ImageItem",
@@ -166,7 +178,9 @@ __all__ = [
     "extra_unpack_handlers",
 ]
 
-# Runtime discoverability: att.options(".pdf") -> declared option dicts.
+# Runtime discoverability: att.options(".pdf") -> declared option dicts;
+# att.help() -> printed one-screen overview (returns None, like help()).
 att.options = options  # type: ignore[attr-defined]
+att.help = att_help  # type: ignore[attr-defined]
 
 __version__ = "1.0.0"  # see VISION.md

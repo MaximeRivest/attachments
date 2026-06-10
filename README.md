@@ -54,6 +54,73 @@ configure(api_key="att_...")
 artifacts = att("document.pdf")  # Uses service if pypdf not installed
 ```
 
+## Interactive Use
+
+`att()` returns `Artifacts` — a `list` subclass of plain artifact dicts that
+is a joy in a REPL or notebook. The repr is a one-line summary (it never
+dumps text or bytes); errors get one `!` line each — capped at 10, the rest
+collapse into a `+N more errors (see .errors)` line (real runs):
+
+```python
+>>> att("report.pdf[pages: 1-2, images: true]")
+<Artifacts: 1 artifact | 94 chars | 2 images>
+
+>>> att("missing.pdf")
+<Artifacts: 1 artifact | 0 chars | 1 error>
+  ! missing.pdf: unpack-error — unpack failed: Unsupported or non-existent input: missing.pdf
+```
+
+`print()` (or `.text`) gives the full assembled prompt — v1 muscle memory:
+
+```python
+>>> print(att("report.pdf[pages: 1-2]"))
+## report.pdf
+Hello from page 1. Quarterly revenue grew 12%.
+
+Hello from page 2. Quarterly revenue grew 12%.
+```
+
+The last mile hangs right off the result (`prompt` is optional everywhere),
+and `.images` / `.errors` flatten the parts you reach for most:
+
+```python
+a = att("report.pdf[pages: 1-2, images: true]")
+a.claude("Summarize in one sentence.")  # Claude messages: [text, image, image, text]
+a.openai("Summarize in one sentence.")  # OpenAI messages (data-URL image parts)
+a.chunk(max_chars=4000)                 # segment-aware RAG chunks
+a.images                                # flattened ImageItem dicts
+a.errors                                # [{"source", "code", "message"}, ...]
+a[:1] + a[1:]                           # slices/concat stay Artifacts; a[0] is a dict
+```
+
+In Jupyter, a bare `att("report.pdf[images: true]")` cell renders the summary,
+error admonitions, a text preview, and up to 4 inline image thumbnails.
+
+Discovery is built in: `att.options(".pdf")` pretty-prints the declared
+option table (same data as before — `json.dumps` still works), and
+`att.help()` prints a one-screen overview (real run):
+
+```python
+>>> att.options(".pdf")
+Option     Type          Aliases  Default  Example           Description
+pages      pages         page     —        pages: 1-4        Pages to include: a 1-based
+                                                             page number or range.
+password   str           pw       —        password: secret  Password for encrypted
+                                                             PDFs.
+images     bool_or_auto  render   "auto"   images: true      Render pages to PNG:
+                                                             true/false, or auto (only
+                                                             when no text).
+dpi        int           —        200      dpi: 300          Resolution for rendered
+                                                             page images.
+max_pages  int           —        —        max_pages: 10     Hard cap on the number of
+                                                             pages parsed/rendered.
+```
+
+Editors get the same delight statically: a generated typing stub
+(`__init__.pyi`, built from the declared option schemas) autocompletes every
+DSL option's kwarg twin — `att("doc.pdf", pages=` ⇥ — and types
+`att.options` / `att.help`.
+
 ## The Artifact
 
 Every input becomes a list of artifacts — the universal output shape every
@@ -159,8 +226,10 @@ Every DSL option has a keyword-argument twin, and explicit kwargs win:
 
 ## The Last Mile
 
-`att()` returns `list[Artifact]`; `attachments.render` turns that straight
-into prompts, API messages, or RAG chunks (all outputs below are real runs):
+`att()` returns `Artifacts`, a `list[Artifact]` subclass (see
+[Interactive Use](#interactive-use)); `attachments.render` turns any artifact
+list straight into prompts, API messages, or RAG chunks (all outputs below
+are real runs — `prompt=` is optional in both adapters):
 
 ```python
 from attachments import att, render_text, to_claude_messages, to_openai_messages, chunk

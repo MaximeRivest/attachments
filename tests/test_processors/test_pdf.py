@@ -131,6 +131,26 @@ class TestPdfProcessorErrors:
 
         assert result["meta"]["error"]["code"] == ERROR_PARSE
 
+    def test_corrupt_pdf_does_not_spew_pypdf_log_noise(
+        self, corrupt_pdf_bytes: bytes, caplog
+    ):
+        """pypdf's 'EOF marker not found' must not reach the console.
+
+        Problems are reported in-band (error artifacts), so third-party
+        log spew is suppressed during parsing — and the logger levels are
+        restored afterwards.
+        """
+        import logging
+
+        level_before = logging.getLogger("pypdf").level
+        processor = processors[".pdf"]
+        with caplog.at_level(logging.DEBUG):
+            result = processor(corrupt_pdf_bytes)
+
+        assert result["meta"]["error"]["code"]  # still the typed artifact
+        assert not [r for r in caplog.records if r.name.startswith(("pypdf", "PyPDF2"))]
+        assert logging.getLogger("pypdf").level == level_before
+
 
 @pytest.mark.skipif(
     not check_dep("pdf-images").available,

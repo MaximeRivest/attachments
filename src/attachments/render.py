@@ -220,11 +220,15 @@ def to_claude_content(
     return blocks
 
 
-def to_claude_messages(artifacts: list[dict], *, prompt: str) -> list[dict[str, Any]]:
+def to_claude_messages(
+    artifacts: list[dict], *, prompt: str | None = None
+) -> list[dict[str, Any]]:
     """Convert artifacts to a complete Claude Messages API ``messages`` list.
 
     A single user message whose content is :func:`to_claude_content`.
     Plain dicts — pass straight to ``messages=`` in an HTTP request body.
+    *prompt* is optional: when omitted (or ``None``), no trailing prompt
+    text block is appended.
 
     Examples:
         >>> from attachments.types import make_artifact
@@ -234,6 +238,8 @@ def to_claude_messages(artifacts: list[dict], *, prompt: str) -> list[dict[str, 
         'user'
         >>> [b["type"] for b in msgs[0]["content"]]
         ['text', 'text']
+        >>> [b["type"] for b in to_claude_messages([art])[0]["content"]]
+        ['text']
     """
     return [{"role": "user", "content": to_claude_content(artifacts, prompt=prompt)}]
 
@@ -243,14 +249,17 @@ def to_claude_messages(artifacts: list[dict], *, prompt: str) -> list[dict[str, 
 # ---------------------------------------------------------------------------
 
 
-def to_openai_messages(artifacts: list[dict], *, prompt: str) -> list[dict[str, Any]]:
+def to_openai_messages(
+    artifacts: list[dict], *, prompt: str | None = None
+) -> list[dict[str, Any]]:
     """Convert artifacts to OpenAI Chat Completions ``messages``.
 
     A single user message with multimodal content parts: all text first as
     one ``{"type": "text", ...}`` part (built with :func:`render_text`),
     then one ``{"type": "image_url", ...}`` part per image using a
     ``data:<mimetype>;base64,<b64>`` URL, then *prompt* appended last as a
-    text part. Wire-form images (``bytes_b64``) are supported.
+    text part when given (``None`` — the default — appends nothing).
+    Wire-form images (``bytes_b64``) are supported.
 
     Examples:
         >>> from attachments.types import make_artifact
@@ -265,6 +274,8 @@ def to_openai_messages(artifacts: list[dict], *, prompt: str) -> list[dict[str, 
         'data:image/png;base64,'
         >>> msgs[0]["content"][-1]
         {'type': 'text', 'text': 'Go'}
+        >>> [p["type"] for p in to_openai_messages([art])[0]["content"]]
+        ['text', 'image_url']
     """
     parts: list[dict[str, Any]] = []
     text = render_text(artifacts)

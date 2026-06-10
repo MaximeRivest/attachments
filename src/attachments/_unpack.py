@@ -309,6 +309,12 @@ def _walk_directory(path: Path) -> list[tuple[str, bytes]]:
     """Return ``(relative_path, bytes)`` for all files in a directory.
 
     Skips common VCS/cache directories like ``.git/`` by default.
+
+    The walk is deterministic: directories and filenames are visited in
+    sorted order, so artifact order — and therefore ``.text``, ``.chunk()``
+    and the repr — never depends on filesystem internals or file-creation
+    history (raw ``os.walk`` order varies across filesystems/machines,
+    which would break prompt caching and reproducibility).
     """
     root = path.resolve()
     out: list[tuple[str, bytes]] = []
@@ -321,8 +327,10 @@ def _walk_directory(path: Path) -> list[tuple[str, bytes]]:
         for d in list(dirnames):
             if d in {".git", ".hg", ".svn", "__pycache__"}:
                 dirnames.remove(d)
+        # Sort in place so os.walk descends in deterministic order.
+        dirnames.sort()
 
-        for fn in filenames:
+        for fn in sorted(filenames):
             fpath = Path(dirpath) / fn
             try:
                 with open(fpath, "rb") as f:

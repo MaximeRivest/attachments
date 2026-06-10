@@ -284,3 +284,48 @@ class TestSchemaExport:
         from attachments import att
 
         assert att.options is options
+
+
+class TestOptionsRepr:
+    """options() returns repr-friendly subclasses carrying the SAME data."""
+
+    def test_single_key_is_list_with_table_repr(self):
+        result = options(".xlsx")
+        assert isinstance(result, list)
+        rendered = repr(result)
+        lines = rendered.splitlines()
+        assert lines[0].startswith("Option")
+        for column in ("Type", "Aliases", "Default", "Example", "Description"):
+            assert column in lines[0]
+        assert any(line.startswith("sheet") for line in lines)
+        assert any(line.startswith("rows") and "max_rows" in line for line in lines)
+        # Wrapped sensibly: nothing runs past ~88 columns.
+        assert all(len(line) <= 88 for line in lines)
+
+    def test_unknown_key_repr(self):
+        assert repr(options(".unknown-ext")) == "(no options declared)"
+
+    def test_catalog_is_dict_with_table_repr(self):
+        catalog = options()
+        assert isinstance(catalog, dict)
+        rendered = repr(catalog)
+        assert rendered.startswith("DSL options (schema version 1)")
+        assert "Processors" in rendered
+        assert "Sources" in rendered
+        assert ".pdf" in rendered
+        assert "github://" in rendered
+        assert "No options:" in rendered  # extension groups with no options
+
+    def test_repr_subclasses_stay_json_serializable(self):
+        import json
+
+        assert json.loads(json.dumps(options(".pdf"))) == [
+            dict(o) for o in options(".pdf")
+        ]
+        assert json.loads(json.dumps(options())) == dsl_schema()
+
+    def test_dsl_schema_stays_plain(self):
+        """dsl_schema() feeds asset generation — it must stay a plain dict."""
+        schema = dsl_schema()
+        assert type(schema) is dict
+        assert all(type(v) is list for v in schema["processors"].values())
