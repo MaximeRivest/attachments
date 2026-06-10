@@ -156,3 +156,17 @@ docker compose -f deploy/docker-compose.yml logs api | grep warmup
    tier to shared-beta-key mode — POSTs without the key get 401), publish the
    key in the docs, `docker compose ... up -d` to apply.
 5. Nuclear: security group → remove 0.0.0.0/0 on 443 while you investigate.
+
+## Post-deploy corrections (2026-06-10, first production deploy)
+
+Applied to this kit after the first real deployment of api.attachments.dev:
+- ca-central-1 has no c7a.large — use **m6i.large** (8 GiB suits warm-in-RAM).
+- nginx: `/v1/process` and `/v1/unpack` are in the **heavy** rate zone
+  (the server accepts /v1-prefixed routes; without this the limit could be
+  bypassed via the prefix).
+- user-data no longer falls back to git clone (would fetch the old public
+  0.25.x repo until the migration) — rsync is the only code path.
+- certbot account email is set via `certbot update_account -m <email>` if the
+  boot-time registration used a placeholder.
+- Library ≥ this commit supports **keyless servers**: clients need only
+  `configure(service_url=...)`; no dummy api_key workaround.

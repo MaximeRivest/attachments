@@ -17,7 +17,7 @@ from ._artifacts import Artifacts
 from ._options import get_options, resolve_options, source_option_schemas
 from ._processors import processors
 from ._sources import unpack
-from .config import get_api_key, get_prefer
+from .config import get_api_key, get_prefer, service_configured
 from .dsl import parse_dsl
 from .types import (
     ERROR_MISSING_DEPENDENCY,
@@ -183,6 +183,7 @@ def _process_single(
     """
     options = options or {}
     key = get_api_key(api_key)
+    svc = service_configured(api_key)
     mode = get_prefer(prefer)
 
     proc, proc_key = _route_processor(filename, data)
@@ -206,12 +207,13 @@ def _process_single(
     # Determine processing strategy based on mode
     if mode == "service-only":
         # Only use service
-        if not key:
-            log.warning("service-only mode but no API key for %s", filename)
+        if not svc:
+            log.warning("service-only mode but no service configured for %s", filename)
             return error_artifact(
                 filename,
                 ERROR_SERVICE,
-                "service-only mode but no API key configured",
+                "service-only mode but no service configured "
+                "(configure(api_key=...) or configure(service_url=...))",
             )
         return _process_via_service(filename, data, key, options=options)
 
@@ -228,7 +230,7 @@ def _process_single(
 
     elif mode == "service":
         # Try service first, fall back to local
-        if key:
+        if svc:
             try:
                 result = _process_via_service(filename, data, key, options=options)
                 if not result.get("meta", {}).get("error"):
@@ -252,7 +254,7 @@ def _process_single(
                 result = _run_local()
                 # Typed check: only a missing-dependency result (plus an API
                 # key) may trigger service fallback. Other errors are final.
-                if not key or not is_missing_dependency(result):
+                if not svc or not is_missing_dependency(result):
                     return result
                 log.info("local dep error for %s, falling back to service", filename)
             except Exception as e:
@@ -264,8 +266,8 @@ def _process_single(
                     e,
                 )
 
-        # No local processor or local failed - try service if key available
-        if key:
+        # No local processor or local failed - try service if configured
+        if svc:
             try:
                 return _process_via_service(filename, data, key, options=options)
             except Exception as e:
@@ -472,7 +474,7 @@ def att(
         key = get_api_key(api_key)
         mode = get_prefer(prefer)
 
-        if key and mode not in ("local-only",):
+        if service_configured(api_key) and mode not in ("local-only",):
             try:
                 from .service import ServiceError, unpack_via_service
 

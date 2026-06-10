@@ -62,7 +62,7 @@ def dummy_httpx(monkeypatch):
 class TestProcessViaService:
     def test_requires_api_key(self, dummy_httpx):
         configure(api_key=None)
-        with pytest.raises(ServiceError, match="No API key"):
+        with pytest.raises(ServiceError, match="Service not configured"):
             process_via_service(b"hello", filename="a.txt")
 
     def test_success_decodes_images(self, dummy_httpx):
@@ -186,7 +186,7 @@ class TestUnpackViaService:
 class TestUnpackBytesViaService:
     def test_requires_api_key(self, dummy_httpx):
         configure(api_key=None)
-        with pytest.raises(ServiceError, match="No API key"):
+        with pytest.raises(ServiceError, match="Service not configured"):
             unpack_bytes_via_service(b"PK...", filename="a.zip")
 
     def test_posts_multipart_and_decodes_files(self, dummy_httpx):
@@ -242,3 +242,77 @@ class TestCheckServiceHealth:
 
         assert out["status"] == "error"
         assert "boom" in out["error"]
+
+
+class TestKeylessService:
+    """A keyless server (self-hosted or the hosted free tier) needs only an
+    explicitly configured service_url — no API key (see
+    config.service_configured)."""
+
+    def test_explicit_url_no_key_sends_no_auth_header(self, monkeypatch):
+        from attachments import configure, reset_config
+        from attachments.service import process_via_service
+
+        reset_config()
+        configure(service_url="http://keyless.example:8000")
+        captured = {}
+
+        class FakeResponse:
+            status_code = 200
+
+            @staticmethod
+            def json():
+                return {"text": "ok", "meta": {"source": "f.txt"}}
+
+        def fake_post(url, **kwargs):
+            captured["url"] = url
+            captured["headers"] = kwargs.get("headers", {})
+            return FakeResponse()
+
+        monkeypatch.setattr("httpx.post", fake_post)
+        result = process_via_service(b"data", filename="f.txt")
+        assert result["text"] == "ok"
+        assert "Authorization" not in captured["headers"]
+        assert captured["url"].startswith("http://keyless.example:8000")
+        reset_config()
+
+    def test_default_url_without_key_is_not_configured(self):
+        from attachments import reset_config
+        from attachments.config import service_configured
+
+        reset_config()
+        # The shipped default URL alone must NOT enable service mode
+        # (privacy: no silent uploads to the hosted endpoint).
+        assert service_configured() is False
+
+    def test_att_service_only_keyless_end_to_end(self, monkeypatch):
+        import httpx
+
+        from attachments import att, configure, reset_config
+        from attachments.server import create_app
+
+        reset_config()
+        configure(service_url="http://testserver")
+        transport = httpx.WSGITransport(app=create_app())
+
+        real_post = httpx.post
+
+        def wsgi_post(url, **kwargs):
+            kwargs.pop("timeout", None)
+            with httpx.Client(transport=transport) as client:
+                return client.post(url, **kwargs)
+
+        monkeypatch.setattr("httpx.post", wsgi_post)
+        try:
+            import os
+            import tempfile
+
+            p = os.path.join(tempfile.mkdtemp(), "hello.txt")
+            with open(p, "w") as f:
+                f.write("keyless round trip")
+            a = att(p, prefer="service-only")
+            assert a[0]["text"] == "keyless round trip"
+            assert a[0]["meta"]["via"] == "service"
+        finally:
+            monkeypatch.setattr("httpx.post", real_post)
+            reset_config()

@@ -18,7 +18,7 @@ import json
 import logging
 from typing import Any
 
-from .config import get_api_key, get_config
+from .config import get_api_key, get_config, service_configured
 
 log = logging.getLogger("attachments.service")
 
@@ -43,6 +43,18 @@ def _get_client():
             "Service mode requires httpx. "
             "Install with: pip install attachments[service]"
         ) from e
+
+
+def _auth_headers(key: str | None) -> dict[str, str]:
+    """Bearer header when a key is set; empty for keyless servers.
+
+    Examples:
+        >>> _auth_headers("k")
+        {'Authorization': 'Bearer k'}
+        >>> _auth_headers(None)
+        {}
+    """
+    return {"Authorization": f"Bearer {key}"} if key else {}
 
 
 def process_via_service(
@@ -74,10 +86,11 @@ def process_via_service(
     httpx = _get_client()
 
     key = get_api_key(api_key)
-    if not key:
+    if not service_configured(api_key):
         raise ServiceError(
-            "No API key configured. "
-            "Set via configure(api_key=...) or ATTACHMENTS_API_KEY env var"
+            "Service not configured. Set configure(api_key=...) for the hosted "
+            "service, or configure(service_url=...) for a keyless/self-hosted "
+            "server."
         )
 
     service_url = get_config("service_url")
@@ -105,7 +118,7 @@ def process_via_service(
     try:
         response = httpx.post(
             f"{service_url}/process",
-            headers={"Authorization": f"Bearer {key}"},
+            headers=_auth_headers(key),
             files=files,
             data=form_data,
             timeout=timeout,
@@ -168,8 +181,11 @@ def unpack_via_service(
     httpx = _get_client()
 
     key = get_api_key(api_key)
-    if not key:
-        raise ServiceError("No API key configured")
+    if not service_configured(api_key):
+        raise ServiceError(
+            "Service not configured. Set configure(api_key=...) or "
+            "configure(service_url=...)."
+        )
 
     service_url = get_config("service_url")
     timeout = get_config("timeout", 60)
@@ -177,7 +193,7 @@ def unpack_via_service(
     try:
         response = httpx.post(
             f"{service_url}/unpack",
-            headers={"Authorization": f"Bearer {key}"},
+            headers=_auth_headers(key),
             json={"url": url, **options},
             timeout=timeout,
         )
@@ -243,8 +259,11 @@ def unpack_bytes_via_service(
     httpx = _get_client()
 
     key = get_api_key(api_key)
-    if not key:
-        raise ServiceError("No API key configured")
+    if not service_configured(api_key):
+        raise ServiceError(
+            "Service not configured. Set configure(api_key=...) or "
+            "configure(service_url=...)."
+        )
 
     service_url = get_config("service_url")
     timeout = get_config("timeout", 60)
@@ -258,7 +277,7 @@ def unpack_bytes_via_service(
     try:
         response = httpx.post(
             f"{service_url}/unpack",
-            headers={"Authorization": f"Bearer {key}"},
+            headers=_auth_headers(key),
             files={"file": (filename, data)},
             timeout=timeout,
         )

@@ -30,3 +30,7 @@ index.md
 mrmd.md
 terminal.md
 z-claude.md
+
+# Deployment state (machine-specific resource IDs) and live env
+deploy/DEPLOYED.md
+deploy/.env

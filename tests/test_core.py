@@ -442,7 +442,7 @@ class TestAttErrorCodes:
         assert len(result) == 1
         error = result[0]["meta"]["error"]
         assert error["code"] == ERROR_SERVICE
-        assert "API key" in error["message"]
+        assert "no service configured" in error["message"]
 
     def test_parse_failure_uses_parse_error_code(self, tmp_path: Path):
         @register_processor(".bad")

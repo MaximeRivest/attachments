@@ -34,7 +34,9 @@ usermod -aG docker ubuntu || true
 # ==> DECISION: pre-publish, the repo is private and dist/*.whl is not in git.
 #     Either (a) rsync the repo (including dist/) from your workstation:
 #         rsync -av --exclude .venv ~/Projects/attachmentsv3/ ubuntu@<ip>:/opt/attachments/
-#     or (b) git clone (post-migration, public repo) and `uv build` or scp the
+  # DO NOT git-clone here: until the public repo is migrated to 1.0, cloning
+  # would fetch the old 0.25.x codebase. The deploy flow is rsync (RUNBOOK §3).
+  echo "ERROR: /opt/attachments missing — rsync the repo before continuing (see deploy/RUNBOOK.md)" >&2
 #     wheel into /opt/attachments/dist/ separately.
 APP_DIR=/opt/attachments
 if [ ! -d "$APP_DIR/.git" ] && [ ! -f "$APP_DIR/deploy/docker-compose.yml" ]; then

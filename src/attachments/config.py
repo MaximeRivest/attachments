@@ -22,13 +22,26 @@ from typing import Literal
 PreferMode = Literal["local", "service", "local-only", "service-only"]
 _VALID_PREFER = ("local", "service", "local-only", "service-only")
 
-# Default configuration
+# Default configuration values. _DEFAULTS stays frozen so we can tell an
+# explicitly-configured value apart from the shipped default (see
+# service_configured()).
+_DEFAULTS: dict = {
+    "api_key": None,
+    "prefer": "local",
+    "service_url": "https://api.attachments.dev/v1",
+    "timeout": 60,
+}
+
 _config: dict = {
     "api_key": None,
     "prefer": "local",  # local | service | local-only | service-only
     "service_url": "https://api.attachments.dev/v1",
     "timeout": 60,  # seconds for service requests
 }
+
+# Keys the user explicitly set via configure() — distinguishes an explicit
+# configure(service_url=<default value>) from the untouched default.
+_explicitly_set: set = set()
 
 
 def _coerce_env_value(key: str, raw: str):
@@ -121,6 +134,7 @@ def configure(**kwargs) -> None:
             )
 
     _config.update(kwargs)
+    _explicitly_set.update(kwargs.keys())
 
 
 def get_config(key: str, default=None):
@@ -226,6 +240,47 @@ def get_service_url(override: str | None = None) -> str:
     return get_config("service_url", "https://api.attachments.dev/v1")
 
 
+def service_configured(api_key_override: str | None = None) -> bool:
+    """Whether service mode has been explicitly enabled.
+
+    Service processing is opt-in: the library never sends file bytes to the
+    default hosted endpoint unless the user either set an API key or
+    explicitly configured a ``service_url`` (via :func:`configure` or the
+    ``ATTACHMENTS_SERVICE_URL`` env var). The shipped default URL alone does
+    NOT count — that would silently upload user data.
+
+    Keyless servers are supported: a self-hosted instance without
+    ``ATTACHMENTS_SERVER_KEY`` (or the hosted free tier) needs only
+    ``configure(service_url=...)``.
+
+    Examples:
+        >>> reset_config()
+        >>> service_configured()
+        False
+        >>> service_configured("some_key")
+        True
+        >>> configure(service_url="http://localhost:8000")
+        >>> service_configured()
+        True
+        >>> reset_config()
+        >>> configure(service_url="https://api.attachments.dev/v1")  # explicit
+        >>> service_configured()  # counts: the user typed it
+        True
+        >>> reset_config()
+        >>> configure(api_key="att_x")
+        >>> service_configured()
+        True
+        >>> reset_config()
+    """
+    if get_api_key(api_key_override):
+        return True
+    if os.environ.get("ATTACHMENTS_SERVICE_URL"):
+        return True
+    if "service_url" in _explicitly_set:
+        return True
+    return _config.get("service_url") != _DEFAULTS["service_url"]
+
+
 def reset_config() -> None:
     """Reset configuration to defaults. Useful for testing.
 
@@ -248,3 +303,4 @@ def reset_config() -> None:
         "service_url": "https://api.attachments.dev/v1",
         "timeout": 60,
     }
+    _explicitly_set.clear()
