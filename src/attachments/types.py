@@ -47,6 +47,17 @@ ERROR_INVALID_OPTION = "invalid-option"
 #: Anything else.
 ERROR_PROCESSING = "processing-error"
 
+#: Features whose local install is genuinely heavy (onnxruntime, whisper).
+#: ONLY these missing-dependency messages mention the free hosted tier —
+#: light extras (pdf, xlsx, ...) keep the plain pip install remedy.
+HEAVY_FEATURES = frozenset({"ocr", "audio"})
+
+#: Extra sentence appended for HEAVY_FEATURES missing-dependency messages.
+_HOSTED_TIER_HINT = (
+    "Or use the free hosted tier: configure(service_url="
+    '"https://api.attachments.dev/v1") - details at attachments.dev.'
+)
+
 
 class ErrorInfo(TypedDict):
     """Typed error payload stored at ``meta["error"]``.
@@ -243,6 +254,11 @@ def missing_dep_artifact(source: str, feature: str) -> Artifact:
     uses :func:`is_missing_dependency` on this artifact to decide whether
     to fall back to the service.
 
+    The local remedy always comes first. Only for :data:`HEAVY_FEATURES`
+    (``ocr``, ``audio`` — onnxruntime/whisper installs are genuinely heavy)
+    does the message ALSO mention the free hosted tier; light extras keep
+    the plain pip install message.
+
     Args:
         source: Filename / path being processed.
         feature: Feature name from ``deps.DEPENDENCY_MAP``
@@ -254,7 +270,15 @@ def missing_dep_artifact(source: str, feature: str) -> Artifact:
         'missing-dependency'
         >>> "pip install" in a["meta"]["error"]["message"]
         True
+        >>> "attachments.dev" in a["meta"]["error"]["message"]  # light: no ad
+        False
         >>> is_missing_dependency(a)
+        True
+
+        >>> heavy = missing_dep_artifact("scan.pdf", "ocr")
+        >>> "pip install" in heavy["meta"]["error"]["message"]
+        True
+        >>> "attachments.dev" in heavy["meta"]["error"]["message"]
         True
     """
     # Imported lazily to avoid import cycles (deps is dependency-free).
@@ -272,6 +296,8 @@ def missing_dep_artifact(source: str, feature: str) -> Artifact:
             f"Processing {source!r} requires optional dependencies "
             f"for {feature!r}. Install with: pip install attachments[{feature}]"
         )
+    if feature in HEAVY_FEATURES:
+        message = f"{message} {_HOSTED_TIER_HINT}"
     return error_artifact(source, ERROR_MISSING_DEPENDENCY, message)
 
 

@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>attachments — turn anything into LLM-ready context</title>
+<meta name="description" content="One Python function that turns files, folders, URLs, and repos into LLM-ready text + images. Zero required dependencies, zero telemetry, open source.">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#161a21; --border:#262c37; --text:#d7dde6;
+    --dim:#8b94a3; --accent:#7ee787; --accent2:#79c0ff; --warn:#f0b72f;
+    --mono:ui-monospace,'SF Mono','Cascadia Code',Menlo,Consolas,monospace;
+    --sans:system-ui,-apple-system,'Segoe UI',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.6}
+  main{max-width:880px;margin:0 auto;padding:0 24px}
+  a{color:var(--accent2);text-decoration:none}
+  a:hover{text-decoration:underline}
+  h1{font-size:2rem;font-weight:650;letter-spacing:-.02em}
+  h2{font-size:1.3rem;margin-bottom:.6rem;letter-spacing:-.01em}
+  section{margin:64px 0}
+  .tagline{color:var(--dim);font-size:1.12rem;margin:10px 0 28px}
+  .term{background:var(--panel);border:1px solid var(--border);border-radius:10px;
+        font-family:var(--mono);font-size:.86rem;line-height:1.55;overflow-x:auto;
+        padding:18px 20px;white-space:pre}
+  .term .p{color:var(--dim)} .term .g{color:var(--accent)} .term .b{color:var(--accent2)}
+  .term .y{color:var(--warn)} .term .c{color:#6e7681}
+  .pill{display:inline-block;background:var(--panel);border:1px solid var(--border);
+        border-radius:6px;font-family:var(--mono);font-size:.85rem;padding:3px 10px;margin:2px 3px}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  @media(max-width:700px){.cols{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:20px}
+  .card h3{font-size:1.02rem;margin-bottom:.5rem}
+  .dim{color:var(--dim)} .small{font-size:.88rem}
+  header.hero{padding-top:72px}
+  footer{border-top:1px solid var(--border);margin-top:80px;padding:28px 0 48px;
+         color:var(--dim);font-size:.9rem}
+  .free{color:var(--accent);font-weight:600}
+  ul{padding-left:1.2rem}
+  li{margin:.25rem 0}
+</style>
+</head>
+<body>
+<main>
+
+<header class="hero">
+  <h1>attachments</h1>
+  <p class="tagline">Turn anything into LLM-ready context. One function. Zero required dependencies.</p>
+
+  <div class="term"><span class="p">$</span> pip install attachments
+
+<span class="p">&gt;&gt;&gt;</span> <span class="b">from</span> attachments <span class="b">import</span> att
+<span class="p">&gt;&gt;&gt;</span> att(<span class="g">"report.pdf[pages: 1-4, images: true]"</span>)
+&lt;Artifacts: 1 artifact | 202 chars | ~51 tokens | 4 images&gt;
+
+<span class="p">&gt;&gt;&gt;</span> a = att(<span class="g">"meeting.mp3"</span>) + att(<span class="g">"github://you/repo"</span>) + att(<span class="g">"data.xlsx"</span>)
+<span class="p">&gt;&gt;&gt;</span> a.claude(<span class="g">"What should we do next quarter?"</span>)  <span class="c"># ready-to-send messages</span>
+<span class="p">&gt;&gt;&gt;</span> a.chunk(max_tokens=500)                       <span class="c"># RAG chunks, segment-aware</span></div>
+
+  <p class="small dim" style="margin-top:14px">
+    Errors never raise — they come back as data that teaches:
+  </p>
+  <div class="term" style="margin-top:8px"><span class="p">&gt;&gt;&gt;</span> att(<span class="g">"scan.pdf"</span>)   <span class="c"># a scanned PDF, no OCR installed</span>
+&lt;Artifacts: 1 artifact | 0 chars | ~0 tokens | 1 image&gt;
+  <span class="y">*</span> scan.pdf: No text layer (scanned?) - pip install attachments[ocr], or the free hosted tier: attachments.dev</div>
+</header>
+
+<section>
+  <h2>What it eats</h2>
+  <p class="dim small" style="margin-bottom:10px">Formats — each an optional install, so you only carry what you use:</p>
+  <p>
+    <span class="pill">.pdf <span class="dim">+ OCR</span></span><span class="pill">.docx</span><span class="pill">.pptx</span><span class="pill">.xlsx</span><span class="pill">.xls</span><span class="pill">.csv/.tsv</span><span class="pill">.html <span class="dim">+ CSS select</span></span><span class="pill">.ipynb</span><span class="pill">.md .py .json… <span class="dim">20+ text</span></span><span class="pill">.png .jpg .webp… <span class="dim">8 image</span></span><span class="pill">.heic</span><span class="pill">.svg</span><span class="pill">.mp3 .wav .m4a… <span class="dim">transcription</span></span>
+  </p>
+  <p class="dim small" style="margin:14px 0 10px">Sources — every source works with every format:</p>
+  <p>
+    <span class="pill">files</span><span class="pill">directories</span><span class="pill">globs <span class="dim">**/*.py</span></span><span class="pill">zip / tar</span><span class="pill">https://</span><span class="pill">github://owner/repo</span>
+  </p>
+  <p class="small dim" style="margin-top:14px">
+    Mislabeled or extensionless files route by magic bytes. Scanned PDFs OCR
+    automatically when the extra is installed. Every option autocompletes in
+    your editor and is discoverable at runtime: <code class="pill">att.options(".pdf")</code>
+  </p>
+</section>
+
+<section>
+  <h2>You can leave at any time</h2>
+  <p>
+    Everything on this page is <a href="https://github.com/MaximeRivest/attachments">open source (MIT)</a> —
+    the library, the parsers, the spec, <em>and the entire hosted service</em>.
+    Self-host it with one command:
+  </p>
+  <div class="term" style="margin-top:10px"><span class="p">$</span> pip install attachments[server] &amp;&amp; attachments-server   <span class="c"># or: docker compose up</span></div>
+  <p class="small dim" style="margin-top:10px">
+    No telemetry, ever. No accounts. The library makes no network calls unless
+    you point it at a URL — or explicitly opt into the service below.
+  </p>
+</section>
+
+<section>
+  <h2>The hosted tier <span class="free">— free</span></h2>
+  <p>
+    Some models are heavy. OCR wants onnxruntime; transcription wants whisper
+    weights. We keep them warm on a server so you don't have to install them:
+  </p>
+  <div class="term" style="margin-top:10px"><span class="p">&gt;&gt;&gt;</span> <span class="b">from</span> attachments <span class="b">import</span> att, configure
+<span class="p">&gt;&gt;&gt;</span> configure(service_url=<span class="g">"https://api.attachments.dev/v1"</span>)
+<span class="p">&gt;&gt;&gt;</span> att(<span class="g">"scan.pdf"</span>)   <span class="c"># OCR'd remotely; same Artifact back</span>
+&lt;Artifacts: 1 artifact | 37 chars | ~10 tokens | 1 image&gt;</div>
+  <ul class="small" style="margin-top:12px">
+    <li>No API key, no signup. Files up to 25&nbsp;MB, rate-limited, processed in memory and not stored.</li>
+    <li>It's the same open-source server you can self-host — the hosted tier is convenience, not capability.</li>
+    <li>CPU processing is cheap for us and useful for you; that's the whole business model of the free tier. GPU OCR (LightOnOCR) is coming for the documents that need more.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Built on a one-page contract</h2>
+  <div class="cols">
+    <div class="card">
+      <h3>The Artifact</h3>
+      <p class="small dim">Every input becomes <code>{text, images, audio, video, meta}</code> —
+      typed errors, page/sheet/slide segments with offsets, validated against a
+      <a href="https://github.com/MaximeRivest/attachments/blob/master/spec/artifact.schema.json">JSON Schema</a>
+      by a conformance suite in CI.</p>
+    </div>
+    <div class="card">
+      <h3>The DSL</h3>
+      <p class="small dim"><code>"file.pdf[pages: 1-4, ocr: true]"</code> — a
+      <a href="https://github.com/MaximeRivest/attachments/blob/master/spec/dsl-grammar.md">specified grammar</a>
+      with shared test vectors, so every future language port parses it identically.
+      Every option has a kwargs twin.</p>
+    </div>
+  </div>
+  <p class="small dim" style="margin-top:14px">
+    Adding a format is one pure function <code>(bytes, options) → Artifact</code> —
+    <a href="https://github.com/MaximeRivest/attachments/blob/master/DEVELOPMENT.md">the contributor guide</a>
+    is a checklist, and the conformance suite picks your processor up automatically.
+  </p>
+</section>
+
+<footer>
+  <p>
+    <a href="https://github.com/MaximeRivest/attachments">GitHub</a> ·
+    <a href="https://pypi.org/project/attachments/">PyPI</a> ·
+    <a href="https://github.com/MaximeRivest/attachments/blob/master/docs/MIGRATION.md">Migrating from 0.25.x</a> ·
+    <a href="https://github.com/MaximeRivest/attachments/blob/master/CHANGELOG.md">Changelog</a>
+  </p>
+  <p style="margin-top:8px">Built by <a href="https://github.com/MaximeRivest">Maxime Rivest</a> in Gatineau, Québec.</p>
+</footer>
+
+</main>
+</body>
+</html>

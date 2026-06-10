@@ -10,6 +10,7 @@ from attachments.types import (
     ERROR_PROCESSING,
     ERROR_SERVICE,
     ERROR_UNPACK,
+    HEAVY_FEATURES,
     Artifact,
     ImageItem,
     error_artifact,
@@ -93,6 +94,52 @@ class TestMissingDepArtifact:
         assert error["code"] == ERROR_MISSING_DEPENDENCY
         assert "pip install" in error["message"]
         assert "xyz-format" in error["message"]
+
+
+class TestHeavyVsLightMissingDepMessages:
+    """Give until they ask: the hosted tier is mentioned ONLY for features
+    whose local install is genuinely heavy (ocr, audio); light extras keep
+    today's pip-install-only message byte-identical."""
+
+    HOSTED_SENTENCE = (
+        "Or use the free hosted tier: configure(service_url="
+        '"https://api.attachments.dev/v1") - details at attachments.dev.'
+    )
+
+    def test_heavy_features_constant(self):
+        assert HEAVY_FEATURES == frozenset({"ocr", "audio"})
+
+    def test_heavy_features_mention_hosted_tier_after_local_remedy(self):
+        for feature in sorted(HEAVY_FEATURES):
+            message = missing_dep_artifact("f.bin", feature)["meta"]["error"]["message"]
+            assert "pip install" in message
+            assert message.endswith(self.HOSTED_SENTENCE)
+            # Local remedy comes FIRST, the hosted tier second.
+            assert message.index("pip install") < message.index("attachments.dev")
+
+    def test_light_feature_message_is_byte_identical_to_plain_remedy(self):
+        """Light extras never advertise — exact, byte-identical message."""
+        from attachments.deps import check_dep
+
+        for feature in ("pdf", "xlsx", "docx", "html"):
+            status = check_dep(feature)
+            missing = (
+                f" (missing: {', '.join(status.missing)})" if status.missing else ""
+            )
+            expected = (
+                f"Processing 'doc.bin' requires optional dependencies "
+                f"for {feature!r}{missing}. Install with: {status.install_hint}"
+            )
+            a = missing_dep_artifact("doc.bin", feature)
+            assert a["meta"]["error"]["message"] == expected
+            assert "attachments.dev" not in a["meta"]["error"]["message"]
+
+    def test_unknown_feature_stays_byte_identical_and_ad_free(self):
+        a = missing_dep_artifact("f.xyz", "xyz-format")
+        assert a["meta"]["error"]["message"] == (
+            "Processing 'f.xyz' requires optional dependencies "
+            "for 'xyz-format'. Install with: pip install attachments[xyz-format]"
+        )
 
 
 class TestIsMissingDependency:

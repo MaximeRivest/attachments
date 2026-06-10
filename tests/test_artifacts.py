@@ -112,15 +112,18 @@ def test_repr_error_truncation_keeps_the_pip_install_remedy():
 
 
 def test_repr_caps_error_lines_and_points_to_errors():
-    """60 broken files must not produce a 61-line repr (cap at 10 + note)."""
+    """60 distinct failures must not produce a 61-line repr (cap at 10 + note)."""
     arts = Artifacts(
-        [error_artifact(f"bad{i:02d}.pdf", ERROR_PARSE, "broken") for i in range(60)]
+        [
+            error_artifact(f"bad{i:02d}.pdf", ERROR_PARSE, f"broken {i:02d}")
+            for i in range(60)
+        ]
     )
     lines = repr(arts).splitlines()
     assert lines[0] == "<Artifacts: 60 artifacts | 0 chars | ~0 tokens | 60 errors>"
     assert len(lines) == 12  # summary + 10 error lines + overflow note
-    assert lines[1] == "  ! bad00.pdf: parse-error — broken"
-    assert lines[10] == "  ! bad09.pdf: parse-error — broken"
+    assert lines[1] == "  ! bad00.pdf: parse-error — broken 00"
+    assert lines[10] == "  ! bad09.pdf: parse-error — broken 09"
     assert lines[11] == "  … +50 more errors (see .errors)"
     # .errors still exposes everything.
     assert len(arts.errors) == 60
@@ -128,11 +131,106 @@ def test_repr_caps_error_lines_and_points_to_errors():
 
 def test_repr_no_overflow_note_at_exactly_the_cap():
     arts = Artifacts(
-        [error_artifact(f"bad{i}.pdf", ERROR_PARSE, "broken") for i in range(10)]
+        [error_artifact(f"bad{i}.pdf", ERROR_PARSE, f"broken {i}") for i in range(10)]
     )
     lines = repr(arts).splitlines()
     assert len(lines) == 11
     assert "more error" not in lines[-1]
+
+
+# =============================================================================
+# repr dedupe — identical lines collapse to one "(xN)" line, unique cap
+# =============================================================================
+
+
+def test_repr_dedupes_identical_error_lines():
+    """60 identical failures collapse to ONE line with (x60), no overflow."""
+    arts = Artifacts(
+        [error_artifact(f"bad{i:02d}.pdf", ERROR_PARSE, "broken") for i in range(60)]
+    )
+    lines = repr(arts).splitlines()
+    assert len(lines) == 2
+    assert lines[1] == "  ! parse-error — broken (x60)"
+    assert len(arts.errors) == 60  # .errors keeps every entry
+
+
+def test_repr_dedupes_identical_note_lines_40_scanned_pdfs():
+    """A directory of 40 scanned PDFs reprs as ONE note line with (x40)."""
+    note = (
+        "No text layer (scanned?) - pip install attachments[ocr], "
+        "or the free hosted tier: attachments.dev"
+    )
+    arts = Artifacts(
+        [
+            make_artifact(meta={"source": f"scan-{i:02d}.pdf", "note": note})
+            for i in range(40)
+        ]
+    )
+    lines = repr(arts).splitlines()
+    assert len(lines) == 2
+    assert lines[1] == f"  * {note} (x40)"
+    assert "more note" not in repr(arts)
+
+
+def test_repr_dedupe_preserves_first_seen_order_for_mixed_notes():
+    arts = Artifacts(
+        [
+            make_artifact(meta={"source": "a.pdf", "note": "alpha"}),
+            make_artifact(meta={"source": "b.pdf", "note": "beta"}),
+            make_artifact(meta={"source": "c.pdf", "note": "alpha"}),
+        ]
+    )
+    lines = repr(arts).splitlines()
+    assert lines[1] == "  * alpha (x2)"
+    assert lines[2] == "  * b.pdf: beta"
+
+
+def test_repr_singleton_note_keeps_its_source():
+    arts = Artifacts([make_artifact(meta={"source": "scan.pdf", "note": "hint"})])
+    assert repr(arts).splitlines()[1] == "  * scan.pdf: hint"
+
+
+def test_repr_cap_counts_unique_lines():
+    """One message repeated 30x + 11 unique ones -> 1 (x30) line + 10 + overflow."""
+    arts = Artifacts(
+        [error_artifact(f"dup{i}.pdf", ERROR_PARSE, "same") for i in range(30)]
+        + [
+            error_artifact(f"u{i:02d}.pdf", ERROR_PARSE, f"odd {i:02d}")
+            for i in range(11)
+        ]
+    )
+    lines = repr(arts).splitlines()
+    assert lines[1] == "  ! parse-error — same (x30)"
+    assert lines[2] == "  ! u00.pdf: parse-error — odd 00"
+    assert lines[10] == "  ! u08.pdf: parse-error — odd 08"
+    assert lines[11] == "  … +2 more errors (see .errors)"
+    assert len(lines) == 12
+
+
+def test_repr_dedupe_is_on_clipped_content():
+    """Messages identical after clipping collapse together."""
+    remedy = "Install with: pip install attachments[pdf]"
+    long_a = "x" * 200 + " stuff " + "y" * 200 + " " + remedy
+    long_b = "x" * 200 + " STUFF " + "y" * 200 + " " + remedy  # differs mid-clip
+    arts = Artifacts(
+        [
+            error_artifact("a.pdf", "missing-dependency", long_a),
+            error_artifact("b.pdf", "missing-dependency", long_b),
+        ]
+    )
+    lines = repr(arts).splitlines()
+    assert len(lines) == 2  # the clipped renderings are identical -> one line
+    assert lines[1].endswith(f"{remedy} (x2)")
+
+
+def test_repr_markdown_dedupes_identical_error_admonitions():
+    arts = Artifacts(
+        [error_artifact(f"bad{i:02d}.pdf", ERROR_PARSE, "broken") for i in range(40)]
+    )
+    md = arts._repr_markdown_()
+    assert md.count("> ⚠️") == 1
+    assert "> ⚠️ parse-error — broken (x40)" in md
+    assert "more error" not in md
 
 
 def test_repr_never_leaks_bytes_or_text():
@@ -340,7 +438,10 @@ def test_repr_markdown_summary_errors_and_preview_truncation():
 
 def test_repr_markdown_caps_error_admonitions_and_points_to_errors():
     arts = Artifacts(
-        [error_artifact(f"bad{i:02d}.pdf", ERROR_PARSE, "broken") for i in range(60)]
+        [
+            error_artifact(f"bad{i:02d}.pdf", ERROR_PARSE, f"broken {i:02d}")
+            for i in range(60)
+        ]
     )
     md = arts._repr_markdown_()
     assert md.count("> ⚠️") == 10

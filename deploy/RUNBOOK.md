@@ -170,3 +170,31 @@ Applied to this kit after the first real deployment of api.attachments.dev:
   boot-time registration used a placeholder.
 - Library ≥ this commit supports **keyless servers**: clients need only
   `configure(service_url=...)`; no dummy api_key workaround.
+
+## 7. Landing page (attachments.dev)
+
+The same box serves the static landing page from `site/` (mounted read-only
+into the nginx container at `/var/www/site` — see docker-compose.yml).
+
+- **Update flow:** edit `site/index.html` locally, then
+  `rsync -az -e "ssh -i ~/.ssh/attachments-deploy.pem" site ubuntu@<EIP>:/tmp/stage/ && ssh ... 'sudo rsync -a /tmp/stage/site /opt/attachments/'`
+  No reload needed (static files are read per-request).
+- **DNS layout (GoDaddy):** `A @ -> <EIP>`, `A api -> <EIP>`, `CNAME www -> @`
+  (GoDaddy pre-creates the www CNAME; do NOT try to PUT an A record named www —
+  it 400s against the existing CNAME, and the CNAME is correct).
+- **DNS via API:** `curl -X PUT "https://api.godaddy.com/v1/domains/attachments.dev/records/A/<name>" -H "Authorization: sso-key $GODADDY_API_KEY:$GODADDY_API_SECRET" -H "Content-Type: application/json" -d '[{"data":"<IP>","ttl":600}]'`
+- **Certificate covers all three names** (api, apex, www) in ONE lineage
+  (`--cert-name api.attachments.dev`); the renew loop renews them together.
+
+### ⚠ certbot one-off commands need --entrypoint
+
+The compose `certbot` service's entrypoint is the 12h renew LOOP. A plain
+`docker compose run certbot certonly ...` hands your arguments to that loop
+and HANGS SILENTLY. Always override:
+
+    docker compose -f deploy/docker-compose.yml --env-file deploy/.env \
+      run --rm --entrypoint certbot certbot certonly --webroot -w /var/www/certbot \
+      --cert-name api.attachments.dev -d api.attachments.dev -d attachments.dev \
+      -d www.attachments.dev --expand --non-interactive --agree-tos -m mrive052@gmail.com
+
+Then `... exec -T nginx nginx -s reload`.

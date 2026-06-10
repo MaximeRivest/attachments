@@ -33,6 +33,7 @@ import sys
 import pytest
 
 from attachments._processors import processors
+from attachments._processors.pdf import SCANNED_PDF_HINT
 from attachments.deps import check_dep, clear_cache
 from attachments.types import (
     ERROR_INVALID_OPTION,
@@ -363,8 +364,29 @@ class TestPdfOcr:
         assert "error" not in result["meta"]  # never an error under auto
         assert result["text"].strip() == ""  # still empty, but not silently
         extra = result["meta"]["extra"]
-        assert extra["ocr_hint"] == "scanned PDF? pip install attachments[ocr]"
+        assert extra["ocr_hint"] == SCANNED_PDF_HINT
+        # note and extra.ocr_hint stay consistent; local remedy first,
+        # free hosted tier second; short enough that the repr never clips.
+        assert result["meta"]["note"] == SCANNED_PDF_HINT
         assert "pip install attachments[ocr]" in result["meta"]["note"]
+        assert "attachments.dev" in result["meta"]["note"]
+        assert len(result["meta"]["note"]) < 150
+
+    def test_auto_missing_dep_note_surfaces_in_repr(
+        self, scanned_pdf_bytes: bytes, mask_ocr
+    ):
+        """End to end: a first-run user who just prints the result sees the
+        OCR remedy AND the free hosted tier, unclipped."""
+        from attachments import Artifacts
+        from attachments.types import normalize_artifact
+
+        result = processors[".pdf"](scanned_pdf_bytes)
+        arts = Artifacts([normalize_artifact(result, "scan.pdf")])
+
+        rendered = repr(arts)
+        assert "pip install attachments[ocr]" in rendered
+        assert "attachments.dev" in rendered
+        assert "…" not in rendered.split("\n")[1]  # remedy never clipped
 
     def test_forced_ocr_missing_dep_returns_typed_error(
         self, scanned_pdf_bytes: bytes, mask_ocr
@@ -475,7 +497,7 @@ class TestPdfOcrLighton:
         assert "error" not in result["meta"]
         extra = result["meta"]["extra"]
         assert extra["ocr_engine_fallback"] == "rapidocr"
-        assert extra["ocr_hint"] == "scanned PDF? pip install attachments[ocr]"
+        assert extra["ocr_hint"] == SCANNED_PDF_HINT
 
     def test_endpoint_failure_is_processing_error(
         self, scanned_pdf_bytes: bytes, lighton_env, fake_post

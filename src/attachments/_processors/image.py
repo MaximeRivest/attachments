@@ -50,7 +50,11 @@ _ENCODABLE_MODES = {
 _OCR_ENGINE: Any = None
 
 #: Hint stored in meta.extra when OCR could help but rapidocr is missing.
-OCR_HINT = "image with text? pip install attachments[ocr]"
+#: Local remedy first, free hosted tier second (ocr is a HEAVY install).
+OCR_HINT = (
+    "Image with text? pip install attachments[ocr], "
+    "or the free hosted tier: attachments.dev"
+)
 
 #: OCR engines accepted by the ``ocr_engine`` option.
 OCR_ENGINES = ("rapidocr", "lighton")

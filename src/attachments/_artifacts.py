@@ -97,6 +97,37 @@ def _clip_message(message: str) -> str:
     return f"{message[:head]}…{message[-tail:]}"
 
 
+def _collapse_lines(entries: list[tuple[str, str]]) -> list[str]:
+    """Collapse repeated rendered content into one line with ``(xN)``.
+
+    *entries* are ``(source, content)`` pairs where *content* is the
+    rendered line content AFTER clipping (the dedupe key). First-seen
+    order is preserved. A content seen once renders as
+    ``"source: content"``; repeated content collapses to ONE line —
+    ``"content (xN)"`` — dropping the per-file sources, which is what
+    gives repeated errors/notes a once-per-process feel: a directory of
+    40 scanned PDFs shows ONE hint line with ``(x40)``, not 10 plus
+    overflow.
+
+    Examples:
+        >>> _collapse_lines([("a.pdf", "hint"), ("b.txt", "odd"), ("c.pdf", "hint")])
+        ['hint (x2)', 'b.txt: odd']
+        >>> _collapse_lines([("f.pdf", "only")])
+        ['f.pdf: only']
+        >>> _collapse_lines([])
+        []
+    """
+    order: dict[str, list[str]] = {}
+    for source, content in entries:
+        order.setdefault(content, []).append(source)
+    return [
+        f"{sources[0]}: {content}"
+        if len(sources) == 1
+        else f"{content} (x{len(sources)})"
+        for content, sources in order.items()
+    ]
+
+
 def _format_tokens(n: int) -> str:
     """Compact ``~N tokens`` summary segment for *n* estimated tokens.
 
@@ -248,12 +279,16 @@ class Artifacts(list):
         """Summary line plus one ``!`` line per error and one ``*`` line per
         note — never text/bytes.
 
-        Error lines are capped at ``_ERROR_MAX_COUNT``; the rest collapse
-        into one ``+N more errors (see .errors)`` line so the repr stays a
-        glance even when a whole directory fails. Teaching notes that
-        processors leave in ``meta["note"]`` (e.g. the scanned-PDF OCR
-        hint) are surfaced the same way, capped at the same count, so a
-        first-run user who just prints the result sees the guidance.
+        Identical error content and identical note content (compared AFTER
+        clipping) collapse into a single line suffixed ``(xN)`` — a
+        once-per-process feel, in first-seen order. UNIQUE lines are capped
+        at ``_ERROR_MAX_COUNT``; the rest collapse into one ``+N more
+        errors (see .errors)`` line so the repr stays a glance even when a
+        whole directory fails. Teaching notes that processors leave in
+        ``meta["note"]`` (e.g. the scanned-PDF OCR hint) are surfaced the
+        same way, so a first-run user who just prints the result sees the
+        guidance — and a directory of 40 scanned PDFs shows ONE hint line
+        with ``(x40)``.
 
         Examples:
             >>> from attachments.types import make_artifact
@@ -262,23 +297,38 @@ class Artifacts(list):
             >>> Artifacts([make_artifact(meta={"source": "scan.pdf", "note": "hint"})])
             <Artifacts: 1 artifact | 0 chars | ~0 tokens>
               * scan.pdf: hint
+            >>> Artifacts(
+            ...     [
+            ...         make_artifact(meta={"source": f"scan-{i}.pdf", "note": "hint"})
+            ...         for i in range(40)
+            ...     ]
+            ... )
+            <Artifacts: 40 artifacts | 0 chars | ~0 tokens>
+              * hint (x40)
         """
         lines = [f"<Artifacts: {self._summary()}>"]
-        errors = self.errors
-        for error in errors[:_ERROR_MAX_COUNT]:
-            message = _clip_message(error["message"])
-            lines.append(f"  ! {error['source']}: {error['code']} — {message}")
-        hidden = len(errors) - _ERROR_MAX_COUNT
+        error_lines = _collapse_lines(
+            [
+                (
+                    error["source"],
+                    f"{error['code']} — {_clip_message(error['message'])}",
+                )
+                for error in self.errors
+            ]
+        )
+        lines.extend(f"  ! {line}" for line in error_lines[:_ERROR_MAX_COUNT])
+        hidden = len(error_lines) - _ERROR_MAX_COUNT
         if hidden > 0:
             lines.append(f"  … +{_plural(hidden, 'more error')} (see .errors)")
-        notes = [
-            (artifact["meta"].get("source", "?"), note)
-            for artifact in self
-            if (note := artifact.get("meta", {}).get("note"))
-        ]
-        for source, note in notes[:_ERROR_MAX_COUNT]:
-            lines.append(f"  * {source}: {_clip_message(note)}")
-        hidden_notes = len(notes) - _ERROR_MAX_COUNT
+        note_lines = _collapse_lines(
+            [
+                (artifact["meta"].get("source", "?"), _clip_message(note))
+                for artifact in self
+                if (note := artifact.get("meta", {}).get("note"))
+            ]
+        )
+        lines.extend(f"  * {line}" for line in note_lines[:_ERROR_MAX_COUNT])
+        hidden_notes = len(note_lines) - _ERROR_MAX_COUNT
         if hidden_notes > 0:
             lines.append(f"  … +{_plural(hidden_notes, 'more note')}")
         return "\n".join(lines)
@@ -460,8 +510,10 @@ class Artifacts(list):
     def _repr_markdown_(self) -> str:
         """Markdown for Jupyter: summary, error admonitions, preview, thumbs.
 
-        Shows the summary heading, one ``> ⚠️`` admonition per error
-        (capped at ``_ERROR_MAX_COUNT``, the rest noted as ``+N more
+        Shows the summary heading, one ``> ⚠️`` admonition per error —
+        identical error content collapses into one admonition suffixed
+        ``(xN)``, like ``__repr__`` — (UNIQUE admonitions capped at
+        ``_ERROR_MAX_COUNT``, the rest noted as ``+N more
         errors — see .errors``), the first ~600 chars of the assembled
         text in a fenced block (the fence is always longer than any
         backtick run in the preview, so content containing ``` cannot
@@ -483,11 +535,17 @@ class Artifacts(list):
             True
         """
         parts = [f"### Artifacts — {self._summary()}"]
-        errors = self.errors
-        for error in errors[:_ERROR_MAX_COUNT]:
-            message = _clip_message(error["message"])
-            parts.append(f"> ⚠️ `{error['source']}`: {error['code']} — {message}")
-        hidden = len(errors) - _ERROR_MAX_COUNT
+        error_lines = _collapse_lines(
+            [
+                (
+                    f"`{error['source']}`",
+                    f"{error['code']} — {_clip_message(error['message'])}",
+                )
+                for error in self.errors
+            ]
+        )
+        parts.extend(f"> ⚠️ {line}" for line in error_lines[:_ERROR_MAX_COUNT])
+        hidden = len(error_lines) - _ERROR_MAX_COUNT
         if hidden > 0:
             parts.append(f"> … +{_plural(hidden, 'more error')} — see `.errors`")
         text = self.text

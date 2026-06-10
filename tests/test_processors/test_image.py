@@ -9,7 +9,7 @@ import pytest
 
 from attachments._options import get_options
 from attachments._processors import image, processors
-from attachments._processors.image import image_processor
+from attachments._processors.image import OCR_HINT, image_processor
 from attachments.deps import check_dep, clear_cache
 from attachments.types import (
     ERROR_INVALID_OPTION,
@@ -386,6 +386,8 @@ class TestImageOcr:
         error = result["meta"]["error"]
         assert error["code"] == ERROR_MISSING_DEPENDENCY
         assert "pip install attachments[ocr]" in error["message"]
+        # ocr is a HEAVY install: the typed error also teaches the hosted tier.
+        assert "attachments.dev" in error["message"]
 
     def test_ocr_auto_missing_dep_is_noop_with_hint(self, mask_modules):
         mask_modules("rapidocr_onnxruntime")
@@ -394,7 +396,14 @@ class TestImageOcr:
 
         assert "error" not in result["meta"]
         assert result["text"] == ""
-        assert "pip install attachments[ocr]" in result["meta"]["extra"]["ocr_hint"]
+        hint = result["meta"]["extra"]["ocr_hint"]
+        assert hint == OCR_HINT
+        # Local remedy FIRST, free hosted tier second; short enough that
+        # the repr never clips the remedy.
+        assert "pip install attachments[ocr]" in hint
+        assert "attachments.dev" in hint
+        assert hint.index("pip install") < hint.index("attachments.dev")
+        assert len(hint) < 150
 
 
 class _FakeLightonResponse:

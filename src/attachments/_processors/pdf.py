@@ -20,6 +20,14 @@ from . import register_processor
 
 _PAGE_SEPARATOR = "\n\n"
 
+#: Note + extra.ocr_hint when a PDF has no text layer and rapidocr is
+#: missing (ocr="auto"). Local remedy first, free hosted tier second;
+#: kept under ~150 chars so the repr never clips the remedy.
+SCANNED_PDF_HINT = (
+    "No text layer (scanned?) - pip install attachments[ocr], "
+    "or the free hosted tier: attachments.dev"
+)
+
 
 @contextlib.contextmanager
 def _quiet_pdf_loggers():
@@ -583,12 +591,11 @@ def process_pdf(
             return missing_dep_artifact(source, "ocr")
         else:
             # First-impression fix: never silently empty for scanned PDFs.
-            extra["ocr_hint"] = "scanned PDF? pip install attachments[ocr]"
-            ocr_note = (
-                "No text layer found — this may be a scanned PDF. "
-                "Install OCR support with `pip install attachments[ocr]` "
-                "to recognize text from the page images."
-            )
+            # Kept under ~150 chars so the repr never clips the remedy.
+            # Local remedy first, free hosted tier second (ocr is a HEAVY
+            # install — the only place the service gets a mention).
+            extra["ocr_hint"] = SCANNED_PDF_HINT
+            ocr_note = SCANNED_PDF_HINT
 
     # Typed parse failure: every text backend errored out (not merely empty
     # output) and image rendering produced nothing either.
