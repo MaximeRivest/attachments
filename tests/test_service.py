@@ -9,6 +9,7 @@ from attachments.service import (
     ServiceError,
     check_service_health,
     process_via_service,
+    unpack_bytes_via_service,
     unpack_via_service,
 )
 
@@ -180,6 +181,45 @@ class TestUnpackViaService:
 
         with pytest.raises(ServiceError, match="bad unpack"):
             unpack_via_service("https://example.com")
+
+
+class TestUnpackBytesViaService:
+    def test_requires_api_key(self, dummy_httpx):
+        configure(api_key=None)
+        with pytest.raises(ServiceError, match="No API key"):
+            unpack_bytes_via_service(b"PK...", filename="a.zip")
+
+    def test_posts_multipart_and_decodes_files(self, dummy_httpx):
+        configure(api_key="key", service_url="http://svc", timeout=7)
+        data_b64 = base64.b64encode(b"member").decode("ascii")
+        dummy_httpx.next_post = _DummyResponse(
+            payload={"files": [{"filename": "a.zip/inner.txt", "data_b64": data_b64}]}
+        )
+
+        files = unpack_bytes_via_service(b"PK-zip-bytes", filename="a.zip")
+
+        assert files == [("a.zip/inner.txt", b"member")]
+        assert dummy_httpx.last_post["url"] == "http://svc/unpack"
+        kwargs = dummy_httpx.last_post["kwargs"]
+        assert kwargs["files"] == {"file": ("a.zip", b"PK-zip-bytes")}
+        assert kwargs["headers"]["Authorization"] == "Bearer key"
+        assert kwargs["timeout"] == 7
+
+    def test_http_error_raises_service_error(self, dummy_httpx):
+        configure(api_key="key", service_url="http://svc")
+        dummy_httpx.next_post = _DummyResponse(
+            status_code=400, payload={"error": "not a supported archive"}
+        )
+
+        with pytest.raises(ServiceError, match="not a supported archive"):
+            unpack_bytes_via_service(b"plain text", filename="a.txt")
+
+    def test_timeout_wrapped(self, dummy_httpx):
+        configure(api_key="key", timeout=3)
+        dummy_httpx.next_post = _DummyHttpx.TimeoutException("slow")
+
+        with pytest.raises(ServiceError, match="timed out"):
+            unpack_bytes_via_service(b"PK", filename="a.zip")
 
 
 class TestCheckServiceHealth:

@@ -17,7 +17,8 @@ Usage:
 
 The server provides:
     POST /process  - Process a file
-    POST /unpack   - Unpack a URL/path
+    POST /unpack   - Unpack a URL/path (JSON) or uploaded archive bytes
+                     (multipart/form-data with a "file" field)
     GET  /health   - Health check with available processors
     GET  /formats  - List supported formats
     GET  /options  - Declared DSL option schemas (dsl_schema())
@@ -65,6 +66,33 @@ def _encode_artifact_for_wire(artifact: dict) -> dict:
             img["bytes_b64"] = base64.b64encode(img["bytes"]).decode("ascii")
             del img["bytes"]
     return artifact
+
+
+def _unpack_bytes_response(file_data: bytes, filename: str) -> dict:
+    """Explode uploaded archive bytes into the /unpack wire shape.
+
+    Reuses the existing archive machinery (zip/tar detection plus
+    ``_explode_archive_bytes`` with its expansion-budget/depth guards).
+    Raises ``ValueError`` for non-archive bytes or guard violations —
+    callers surface it as HTTP 400.
+    """
+    from ._sources.archives import _explode_archive_bytes, _is_tar_bytes, _is_zip_bytes
+
+    if not (_is_zip_bytes(file_data) or _is_tar_bytes(file_data)):
+        raise ValueError(
+            "Uploaded bytes are not a supported archive (expected zip or tar)"
+        )
+
+    files = _explode_archive_bytes(filename or "", file_data)
+    return {
+        "files": [
+            {
+                "filename": fname,
+                "data_b64": base64.b64encode(fdata).decode("ascii"),
+            }
+            for fname, fdata in files
+        ]
+    }
 
 
 def _make_handler():
@@ -184,6 +212,7 @@ def _make_handler():
         def do_GET(self):
             """Handle GET requests."""
             parsed = urllib.parse.urlparse(self.path)
+            parsed = parsed._replace(path=_strip_api_version(parsed.path))
 
             if parsed.path == "/health":
                 deps = check_deps()
@@ -217,6 +246,7 @@ def _make_handler():
                 return
 
             parsed = urllib.parse.urlparse(self.path)
+            parsed = parsed._replace(path=_strip_api_version(parsed.path))
 
             if parsed.path == "/process":
                 self._handle_process()
@@ -282,7 +312,7 @@ def _make_handler():
                 self._send_error("Internal error", 500)
 
         def _handle_unpack(self):
-            """Unpack a URL."""
+            """Unpack a URL (JSON body) or uploaded archive bytes (multipart)."""
             try:
                 # Enforce the upload cap BEFORE reading the body so an
                 # oversized request never gets buffered into memory.
@@ -291,6 +321,18 @@ def _make_handler():
                     self._send_error(
                         f"Upload too large (max {self.MAX_UPLOAD_SIZE})", 413
                     )
+                    return
+
+                # Multipart mode: explode uploaded archive bytes server-side
+                # (same parsing approach as /process).
+                content_type = self.headers.get("Content-Type", "")
+                if "multipart/form-data" in content_type:
+                    file_data, filename, _fields = self._parse_multipart()
+                    log.debug("unpack upload: %s (%d bytes)", filename, len(file_data))
+                    if not file_data:
+                        self._send_error("No file uploaded")
+                        return
+                    self._send_json(_unpack_bytes_response(file_data, filename))
                     return
 
                 body = self.rfile.read(content_length)
@@ -337,6 +379,30 @@ def _make_handler():
     return AttachmentsHandler
 
 
+def _strip_api_version(path: str) -> str:
+    """Strip a leading ``/v1`` API-version prefix from a request path.
+
+    The hosted service default URL is ``https://api.attachments.dev/v1`` while
+    self-hosted setups typically use a bare host:port. Accepting both means a
+    client configured either way reaches the same routes.
+
+    Examples:
+        >>> _strip_api_version("/v1/process")
+        '/process'
+        >>> _strip_api_version("/process")
+        '/process'
+        >>> _strip_api_version("/v1")
+        '/'
+        >>> _strip_api_version("/v123/process")  # only the literal /v1 prefix
+        '/v123/process'
+    """
+    if path == "/v1":
+        return "/"
+    if path.startswith("/v1/"):
+        return path[3:]
+    return path
+
+
 def create_app():
     """Create a WSGI application for production deployment.
 
@@ -358,7 +424,7 @@ def create_app():
     def wsgi_app(environ, start_response):
         """Minimal WSGI adapter that delegates to AttachmentsHandler."""
         method = environ.get("REQUEST_METHOD", "GET")
-        path = environ.get("PATH_INFO", "/")
+        path = _strip_api_version(environ.get("PATH_INFO", "/"))
 
         # Build a JSON response helper
         def _json_response(data: dict, status: int = 200):
@@ -465,6 +531,27 @@ def create_app():
 
         # --- POST /unpack ---
         if path == "/unpack":
+            # Multipart mode: explode uploaded archive bytes server-side
+            # (same parsing approach as /process).
+            content_type = environ.get("CONTENT_TYPE", "")
+            if "multipart/form-data" in content_type:
+                try:
+                    file_data, filename, _fields = _parse_multipart_raw(
+                        body, content_type, handler_cls.MAX_UPLOAD_SIZE
+                    )
+                    if not file_data:
+                        return _error("No file uploaded")
+                    return _json_response(_unpack_bytes_response(file_data, filename))
+                except ValueError as exc:
+                    # Client-input errors (not an archive, expansion budget,
+                    # nesting depth) are safe to echo back.
+                    return _error(str(exc), 400)
+                except Exception:
+                    # Never leak internal exception details to the client;
+                    # the full traceback stays in the server log.
+                    log.exception("unpack failed for uploaded archive")
+                    return _error("Internal error", 500)
+
             try:
                 data = json.loads(body)
             except json.JSONDecodeError:

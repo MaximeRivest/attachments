@@ -27,6 +27,15 @@
         "name": "ocr",
         "param": null,
         "type": "bool_or_auto"
+      },
+      {
+        "aliases": [],
+        "default": "rapidocr",
+        "example": "ocr_engine: lighton",
+        "help": "OCR engine: rapidocr (local, default) or lighton (remote LightOnOCR vLLM endpoint via ATTACHMENTS_LIGHTON_URL)",
+        "name": "ocr_engine",
+        "param": null,
+        "type": "str"
       }
     ],
     ".cfg": [],
@@ -125,6 +134,15 @@
         "name": "ocr",
         "param": null,
         "type": "bool_or_auto"
+      },
+      {
+        "aliases": [],
+        "default": "rapidocr",
+        "example": "ocr_engine: lighton",
+        "help": "OCR engine: rapidocr (local, default) or lighton (remote LightOnOCR vLLM endpoint via ATTACHMENTS_LIGHTON_URL)",
+        "name": "ocr_engine",
+        "param": null,
+        "type": "str"
       }
     ],
     ".heic": [
@@ -154,6 +172,15 @@
         "name": "ocr",
         "param": null,
         "type": "bool_or_auto"
+      },
+      {
+        "aliases": [],
+        "default": "rapidocr",
+        "example": "ocr_engine: lighton",
+        "help": "OCR engine: rapidocr (local, default) or lighton (remote LightOnOCR vLLM endpoint via ATTACHMENTS_LIGHTON_URL)",
+        "name": "ocr_engine",
+        "param": null,
+        "type": "str"
       }
     ],
     ".heif": [
@@ -183,6 +210,15 @@
         "name": "ocr",
         "param": null,
         "type": "bool_or_auto"
+      },
+      {
+        "aliases": [],
+        "default": "rapidocr",
+        "example": "ocr_engine: lighton",
+        "help": "OCR engine: rapidocr (local, default) or lighton (remote LightOnOCR vLLM endpoint via ATTACHMENTS_LIGHTON_URL)",
+        "name": "ocr_engine",
+        "param": null,
+        "type": "str"
       }
     ],
     ".htm": [
@@ -273,6 +309,15 @@
         "name": "ocr",
         "param": null,
         "type": "bool_or_auto"
+      },
+      {
+        "aliases": [],
+        "default": "rapidocr",
+        "example": "ocr_engine: lighton",
+        "help": "OCR engine: rapidocr (local, default) or lighton (remote LightOnOCR vLLM endpoint via ATTACHMENTS_LIGHTON_URL)",
+        "name": "ocr_engine",
+        "param": null,
+        "type": "str"
       }
     ],
     ".jpg": [
@@ -302,6 +347,15 @@
         "name": "ocr",
         "param": null,
         "type": "bool_or_auto"
+      },
+      {
+        "aliases": [],
+        "default": "rapidocr",
+        "example": "ocr_engine: lighton",
+        "help": "OCR engine: rapidocr (local, default) or lighton (remote LightOnOCR vLLM endpoint via ATTACHMENTS_LIGHTON_URL)",
+        "name": "ocr_engine",
+        "param": null,
+        "type": "str"
       }
     ],
     ".js": [],
@@ -443,6 +497,15 @@
       },
       {
         "aliases": [],
+        "default": "rapidocr",
+        "example": "ocr_engine: lighton",
+        "help": "OCR engine: rapidocr (local, default) or lighton (remote LightOnOCR vLLM endpoint via ATTACHMENTS_LIGHTON_URL).",
+        "name": "ocr_engine",
+        "param": null,
+        "type": "str"
+      },
+      {
+        "aliases": [],
         "default": null,
         "example": "max_pages: 10",
         "help": "Hard cap on the number of pages parsed/rendered.",
@@ -478,6 +541,15 @@
         "name": "ocr",
         "param": null,
         "type": "bool_or_auto"
+      },
+      {
+        "aliases": [],
+        "default": "rapidocr",
+        "example": "ocr_engine: lighton",
+        "help": "OCR engine: rapidocr (local, default) or lighton (remote LightOnOCR vLLM endpoint via ATTACHMENTS_LIGHTON_URL)",
+        "name": "ocr_engine",
+        "param": null,
+        "type": "str"
       }
     ],
     ".pptx": [
@@ -549,6 +621,15 @@
         "name": "ocr",
         "param": null,
         "type": "bool_or_auto"
+      },
+      {
+        "aliases": [],
+        "default": "rapidocr",
+        "example": "ocr_engine: lighton",
+        "help": "OCR engine: rapidocr (local, default) or lighton (remote LightOnOCR vLLM endpoint via ATTACHMENTS_LIGHTON_URL)",
+        "name": "ocr_engine",
+        "param": null,
+        "type": "str"
       }
     ],
     ".tiff": [
@@ -578,6 +659,15 @@
         "name": "ocr",
         "param": null,
         "type": "bool_or_auto"
+      },
+      {
+        "aliases": [],
+        "default": "rapidocr",
+        "example": "ocr_engine: lighton",
+        "help": "OCR engine: rapidocr (local, default) or lighton (remote LightOnOCR vLLM endpoint via ATTACHMENTS_LIGHTON_URL)",
+        "name": "ocr_engine",
+        "param": null,
+        "type": "str"
       }
     ],
     ".toml": [],
@@ -664,6 +754,15 @@
         "name": "ocr",
         "param": null,
         "type": "bool_or_auto"
+      },
+      {
+        "aliases": [],
+        "default": "rapidocr",
+        "example": "ocr_engine: lighton",
+        "help": "OCR engine: rapidocr (local, default) or lighton (remote LightOnOCR vLLM endpoint via ATTACHMENTS_LIGHTON_URL)",
+        "name": "ocr_engine",
+        "param": null,
+        "type": "str"
       }
     ],
     ".xls": [

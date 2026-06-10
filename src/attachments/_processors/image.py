@@ -12,14 +12,17 @@ HEIC/HEIF additionally requires pillow-heif: ``pip install attachments[heic]``
 
 from __future__ import annotations
 
+import base64
 import contextlib
 import io
+import json
 import logging
 import os
 from typing import Any
 
 from .._options import Option, register_options
 from ..types import (
+    ERROR_INVALID_OPTION,
     ERROR_PARSE,
     ERROR_PROCESSING,
     error_artifact,
@@ -48,6 +51,85 @@ _OCR_ENGINE: Any = None
 
 #: Hint stored in meta.extra when OCR could help but rapidocr is missing.
 OCR_HINT = "image with text? pip install attachments[ocr]"
+
+#: OCR engines accepted by the ``ocr_engine`` option.
+OCR_ENGINES = ("rapidocr", "lighton")
+
+#: Environment variables configuring the LightOn OCR engine.
+LIGHTON_URL_ENV = "ATTACHMENTS_LIGHTON_URL"
+LIGHTON_MODEL_ENV = "ATTACHMENTS_LIGHTON_MODEL"
+LIGHTON_DEFAULT_MODEL = "lightonai/LightOnOCR-2-1B"
+
+#: Error message when ocr_engine=lighton is requested but no endpoint is set.
+LIGHTON_URL_UNSET_MSG = (
+    "ocr_engine=lighton requires the ATTACHMENTS_LIGHTON_URL environment "
+    "variable (e.g. http://127.0.0.1:8100/v1) pointing at an OpenAI-compatible "
+    "vLLM endpoint serving LightOnOCR. This engine is a SERVER capability — "
+    "it is not a local pip install; deploy the model with vLLM and set the "
+    "env var on the machine running attachments."
+)
+
+
+def _lighton_url() -> str | None:
+    """Return the configured LightOn endpoint base URL, or None when unset."""
+    url = os.environ.get(LIGHTON_URL_ENV, "").strip()
+    return url.rstrip("/") or None
+
+
+def _ocr_image_bytes_lighton(
+    image_bytes: bytes, *, url: str, mimetype: str = "image/png"
+) -> str:
+    """Run OCR via a LightOnOCR vLLM endpoint (OpenAI-compatible, stateless).
+
+    Sends ONE chat completion per image: the user message carries only the
+    image as a base64 data URL (standard OpenAI-vision shape); the prompt
+    template follows the LightOnOCR model card default, where the server-side
+    chat template supplies the OCR instruction. Model name comes from
+    ``ATTACHMENTS_LIGHTON_MODEL`` (default ``lightonai/LightOnOCR-2-1B``).
+
+    Uses httpx when importable, stdlib urllib otherwise. Raises on any
+    network/HTTP failure — callers surface it as a typed error artifact.
+    """
+    model = os.environ.get(LIGHTON_MODEL_ENV, "").strip() or LIGHTON_DEFAULT_MODEL
+    b64 = base64.b64encode(image_bytes).decode("ascii")
+    payload = {
+        "model": model,
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": f"data:{mimetype};base64,{b64}"},
+                    }
+                ],
+            }
+        ],
+        "max_tokens": 8192,
+        "temperature": 0,
+    }
+    endpoint = f"{url}/chat/completions"
+    try:
+        import httpx
+    except ImportError:
+        httpx = None  # type: ignore[assignment]
+
+    if httpx is not None:
+        response = httpx.post(endpoint, json=payload, timeout=120)
+        response.raise_for_status()
+        body = response.json()
+    else:
+        import urllib.request
+
+        req = urllib.request.Request(
+            endpoint,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req, timeout=120) as resp:
+            body = json.loads(resp.read().decode("utf-8"))
+
+    return str(body["choices"][0]["message"].get("content") or "")
 
 
 @contextlib.contextmanager
@@ -141,6 +223,7 @@ def image_processor(
     max_dim: int | None = None,
     rotate: int | None = None,
     ocr: bool | str = False,
+    ocr_engine: str = "rapidocr",
     **_: Any,
 ) -> dict[str, Any]:
     """Convert image bytes to an artifact carrying one ImageItem.
@@ -158,6 +241,13 @@ def image_processor(
             ``True`` only when rapidocr is installed, otherwise it is a
             no-op that records ``extra.ocr_hint``. ``False`` (default)
             never runs OCR.
+        ocr_engine: ``"rapidocr"`` (default, local) or ``"lighton"`` —
+            a remote LightOnOCR vLLM endpoint configured via the
+            ``ATTACHMENTS_LIGHTON_URL`` env var (a server capability, not a
+            pip install). With ``ocr="auto"`` and the env var unset, the
+            engine silently falls back to rapidocr
+            (``extra.ocr_engine_fallback = "rapidocr"``); with forced OCR it
+            is an ``invalid-option`` error.
 
     Behavior:
         - png/jpeg/gif/webp with no resize/rotate needed: bytes pass through.
@@ -246,17 +336,52 @@ def image_processor(
 
         text = ""
         if ocr is True or str(ocr).lower() == "always" or str(ocr).lower() == "auto":
-            from ..deps import check_dep
+            ocr_forced = ocr is True or str(ocr).lower() == "always"
+            engine = str(ocr_engine or "rapidocr").lower()
+            if engine not in OCR_ENGINES:
+                return error_artifact(
+                    source,
+                    ERROR_INVALID_OPTION,
+                    f"Unknown ocr_engine {ocr_engine!r} "
+                    f"(expected one of: {', '.join(OCR_ENGINES)})",
+                )
+            if engine == "lighton":
+                url = _lighton_url()
+                if url is None:
+                    if ocr_forced:
+                        return error_artifact(
+                            source, ERROR_INVALID_OPTION, LIGHTON_URL_UNSET_MSG
+                        )
+                    # ocr=auto: fall back to the local engine silently.
+                    engine = "rapidocr"
+                    extra["ocr_engine_fallback"] = "rapidocr"
+                else:
+                    try:
+                        text = _ocr_image_bytes_lighton(
+                            image_bytes, url=url, mimetype=mimetype
+                        )
+                    except Exception as e:
+                        return error_artifact(
+                            source,
+                            ERROR_PROCESSING,
+                            f"LightOn OCR request failed: {e}. Check that the "
+                            f"vLLM endpoint at {LIGHTON_URL_ENV} ({url}) is "
+                            f"running and reachable.",
+                        )
+                    extra["ocr"] = True
+                    extra["ocr_backend"] = "lighton"
+            if engine == "rapidocr":
+                from ..deps import check_dep
 
-            if check_dep("ocr").available:
-                text = _ocr_image_bytes(image_bytes)
-                extra["ocr"] = True
-                extra["ocr_backend"] = "rapidocr"
-            elif ocr is True or str(ocr).lower() == "always":
-                # Forced OCR without rapidocr is a typed missing-dependency.
-                return missing_dep_artifact(source, "ocr")
-            else:
-                extra["ocr_hint"] = OCR_HINT
+                if check_dep("ocr").available:
+                    text = _ocr_image_bytes(image_bytes)
+                    extra["ocr"] = True
+                    extra["ocr_backend"] = "rapidocr"
+                elif ocr_forced:
+                    # Forced OCR without rapidocr is a typed missing-dependency.
+                    return missing_dep_artifact(source, "ocr")
+                else:
+                    extra["ocr_hint"] = OCR_HINT
 
         return make_artifact(
             text=text,
@@ -304,6 +429,16 @@ OPTIONS = (
             "(only when rapidocr is installed)"
         ),
         example="ocr: true",
+    ),
+    Option(
+        name="ocr_engine",
+        type="str",
+        default="rapidocr",
+        help=(
+            "OCR engine: rapidocr (local, default) or lighton (remote "
+            "LightOnOCR vLLM endpoint via ATTACHMENTS_LIGHTON_URL)"
+        ),
+        example="ocr_engine: lighton",
     ),
 )
 

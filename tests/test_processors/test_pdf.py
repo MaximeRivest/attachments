@@ -35,8 +35,10 @@ import pytest
 from attachments._processors import processors
 from attachments.deps import check_dep, clear_cache
 from attachments.types import (
+    ERROR_INVALID_OPTION,
     ERROR_MISSING_DEPENDENCY,
     ERROR_PASSWORD_REQUIRED,
+    ERROR_PROCESSING,
     is_missing_dependency,
 )
 
@@ -373,3 +375,123 @@ class TestPdfOcr:
         error = result["meta"]["error"]
         assert error["code"] == ERROR_MISSING_DEPENDENCY
         assert "pip install attachments[ocr]" in error["message"]
+
+
+@pytest.mark.skipif(
+    not check_dep("pdf-images").available,
+    reason="PyMuPDF needed to build/render the scanned PDF fixture",
+)
+class TestPdfOcrLighton:
+    """ocr_engine=lighton: pages are OCRed via a remote vLLM endpoint."""
+
+    @pytest.fixture
+    def scanned_pdf_bytes(self) -> bytes:
+        """Minimal image-only PDF (no text layer)."""
+        pymupdf = pytest.importorskip("pymupdf")
+        PIL_Image = pytest.importorskip("PIL.Image")
+
+        img = PIL_Image.new("RGB", (300, 100), "white")
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+
+        doc = pymupdf.open()
+        page = doc.new_page(width=300, height=100)
+        page.insert_image(pymupdf.Rect(0, 0, 300, 100), stream=buf.getvalue())
+        data = doc.tobytes()
+        doc.close()
+        return data
+
+    @pytest.fixture
+    def lighton_env(self, monkeypatch):
+        monkeypatch.setenv("ATTACHMENTS_LIGHTON_URL", "http://127.0.0.1:8100/v1")
+        monkeypatch.delenv("ATTACHMENTS_LIGHTON_MODEL", raising=False)
+
+    @pytest.fixture
+    def fake_post(self, monkeypatch):
+        httpx = pytest.importorskip("httpx")
+        holder: dict = {"calls": [], "fail": False}
+
+        class _Resp:
+            def raise_for_status(self):
+                if holder["fail"]:
+                    raise RuntimeError("HTTP 500 from endpoint")
+
+            def json(self):
+                return {"choices": [{"message": {"content": "PAGE VIA LIGHTON"}}]}
+
+        def _post(url, json=None, timeout=None):
+            holder["calls"].append({"url": url, "json": json})
+            return _Resp()
+
+        monkeypatch.setattr(httpx, "post", _post)
+        return holder
+
+    def test_lighton_ocr_text_and_request_shape(
+        self, scanned_pdf_bytes: bytes, lighton_env, fake_post
+    ):
+        result = processors[".pdf"](
+            scanned_pdf_bytes, ocr=True, ocr_engine="lighton", render_images=False
+        )
+
+        assert "error" not in result["meta"]
+        assert result["text"] == "PAGE VIA LIGHTON"
+        extra = result["meta"]["extra"]
+        assert extra["ocr"] is True
+        assert extra["ocr_backend"] == "lighton"
+
+        call = fake_post["calls"][0]  # one chat completion per page
+        assert call["url"] == "http://127.0.0.1:8100/v1/chat/completions"
+        payload = call["json"]
+        assert payload["model"] == "lightonai/LightOnOCR-2-1B"
+        content = payload["messages"][0]["content"]
+        assert content[0]["image_url"]["url"].startswith("data:image/png;base64,")
+
+    def test_explicit_lighton_without_url_is_invalid_option(
+        self, scanned_pdf_bytes: bytes, monkeypatch
+    ):
+        monkeypatch.delenv("ATTACHMENTS_LIGHTON_URL", raising=False)
+
+        result = processors[".pdf"](scanned_pdf_bytes, ocr=True, ocr_engine="lighton")
+
+        error = result["meta"]["error"]
+        assert error["code"] == ERROR_INVALID_OPTION
+        assert "ATTACHMENTS_LIGHTON_URL" in error["message"]
+        assert "SERVER capability" in error["message"]
+        assert result["meta"]["kind"] == "pdf"
+
+    def test_auto_ocr_lighton_without_url_falls_back(
+        self, scanned_pdf_bytes: bytes, monkeypatch
+    ):
+        monkeypatch.delenv("ATTACHMENTS_LIGHTON_URL", raising=False)
+        monkeypatch.setitem(sys.modules, "rapidocr_onnxruntime", None)
+        clear_cache()
+        try:
+            result = processors[".pdf"](
+                scanned_pdf_bytes, ocr="auto", ocr_engine="lighton"
+            )
+        finally:
+            clear_cache()
+
+        assert "error" not in result["meta"]
+        extra = result["meta"]["extra"]
+        assert extra["ocr_engine_fallback"] == "rapidocr"
+        assert extra["ocr_hint"] == "scanned PDF? pip install attachments[ocr]"
+
+    def test_endpoint_failure_is_processing_error(
+        self, scanned_pdf_bytes: bytes, lighton_env, fake_post
+    ):
+        fake_post["fail"] = True
+
+        result = processors[".pdf"](scanned_pdf_bytes, ocr=True, ocr_engine="lighton")
+
+        error = result["meta"]["error"]
+        assert error["code"] == ERROR_PROCESSING
+        assert "LightOn OCR request failed" in error["message"]
+        assert "running and reachable" in error["message"]
+
+    def test_unknown_engine_is_invalid_option(self, scanned_pdf_bytes: bytes):
+        result = processors[".pdf"](scanned_pdf_bytes, ocr=True, ocr_engine="bogus")
+
+        error = result["meta"]["error"]
+        assert error["code"] == ERROR_INVALID_OPTION
+        assert "bogus" in error["message"]

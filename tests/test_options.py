@@ -252,6 +252,7 @@ class TestSchemaExport:
             "images",
             "dpi",
             "ocr",
+            "ocr_engine",
             "max_pages",
         ]
         entry = next(o for o in pdf if o["name"] == "pages")

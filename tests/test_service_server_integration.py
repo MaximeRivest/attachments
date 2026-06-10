@@ -556,3 +556,189 @@ class TestWsgiApp:
         )
         assert status.startswith("400")
         assert "non-public address" in body["error"]
+
+
+def _zip_bytes(members: dict[str, bytes]) -> bytes:
+    import io as _io
+    import zipfile
+
+    buf = _io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zf:
+        for name, content in members.items():
+            zf.writestr(name, content)
+    return buf.getvalue()
+
+
+def _tar_bytes(members: dict[str, bytes]) -> bytes:
+    import io as _io
+    import tarfile
+
+    buf = _io.BytesIO()
+    with tarfile.open(fileobj=buf, mode="w") as tf:
+        for name, content in members.items():
+            info = tarfile.TarInfo(name=name)
+            info.size = len(content)
+            tf.addfile(info, _io.BytesIO(content))
+    return buf.getvalue()
+
+
+class TestUnpackUploadedBytes:
+    """POST /unpack with multipart archive bytes (httpx WSGITransport)."""
+
+    @pytest.fixture
+    def client(self, monkeypatch):
+        httpx = pytest.importorskip("httpx")
+        monkeypatch.delenv("ATTACHMENTS_SERVER_KEY", raising=False)
+        monkeypatch.delenv("ATTACHMENTS_MAX_UPLOAD", raising=False)
+        with httpx.Client(
+            transport=httpx.WSGITransport(app=create_app()),
+            base_url="http://testserver",
+        ) as client:
+            yield client
+
+    def test_zip_bytes_round_trip(self, client):
+        data = _zip_bytes({"a.txt": b"alpha", "dir/b.csv": b"x,y"})
+        resp = client.post("/unpack", files={"file": ("bundle.zip", data)})
+
+        assert resp.status_code == 200
+        files = {
+            f["filename"]: base64.b64decode(f["data_b64"]) for f in resp.json()["files"]
+        }
+        assert files == {"bundle.zip/a.txt": b"alpha", "bundle.zip/dir/b.csv": b"x,y"}
+
+    def test_tar_bytes_round_trip(self, client):
+        data = _tar_bytes({"notes.txt": b"tar payload"})
+        resp = client.post("/unpack", files={"file": ("backup.tar", data)})
+
+        assert resp.status_code == 200
+        files = resp.json()["files"]
+        assert files[0]["filename"] == "backup.tar/notes.txt"
+        assert base64.b64decode(files[0]["data_b64"]) == b"tar payload"
+
+    def test_zip_bomb_rejected(self, client, monkeypatch):
+        import attachments._sources.archives as archives_mod
+
+        monkeypatch.setattr(archives_mod, "MAX_ARCHIVE_EXPANSION_BYTES", 64)
+        data = _zip_bytes({"big.bin": b"x" * 4096})
+        resp = client.post("/unpack", files={"file": ("bomb.zip", data)})
+
+        assert resp.status_code == 400
+        assert "expansion" in resp.json()["error"].lower()
+
+    def test_non_archive_bytes_400(self, client):
+        resp = client.post("/unpack", files={"file": ("note.txt", b"just text")})
+
+        assert resp.status_code == 400
+        assert "not a supported archive" in resp.json()["error"]
+
+    def test_oversize_content_length_413_without_body_read(self, monkeypatch):
+        """The cap is enforced from CONTENT_LENGTH before any body read."""
+        monkeypatch.setenv("ATTACHMENTS_MAX_UPLOAD", "16")
+        app = create_app()
+
+        class ExplodingInput:
+            def read(self, *_args):
+                raise AssertionError("body must not be read when oversized")
+
+        raw, ct = _build_multipart_body(
+            field_name="file",
+            filename="big.zip",
+            content=_zip_bytes({"a.txt": b"x" * 256}),
+        )
+        environ = {
+            "REQUEST_METHOD": "POST",
+            "PATH_INFO": "/unpack",
+            "CONTENT_LENGTH": str(len(raw)),
+            "CONTENT_TYPE": ct,
+            "wsgi.input": ExplodingInput(),
+        }
+        captured: dict = {}
+
+        def start_response(status, headers):
+            captured["status"] = status
+
+        payload = b"".join(app(environ, start_response))
+        assert captured["status"].startswith("413")
+        assert "Upload too large" in json.loads(payload)["error"]
+
+    def test_auth_required_when_key_set(self, monkeypatch):
+        httpx = pytest.importorskip("httpx")
+        monkeypatch.setenv("ATTACHMENTS_SERVER_KEY", "s3cret")
+        data = _zip_bytes({"a.txt": b"hi"})
+        with httpx.Client(
+            transport=httpx.WSGITransport(app=create_app()),
+            base_url="http://testserver",
+        ) as client:
+            resp = client.post("/unpack", files={"file": ("a.zip", data)})
+            assert resp.status_code == 401
+
+            resp = client.post(
+                "/unpack",
+                files={"file": ("a.zip", data)},
+                headers={"Authorization": "Bearer s3cret"},
+            )
+            assert resp.status_code == 200
+            assert resp.json()["files"][0]["filename"] == "a.zip/a.txt"
+
+    def test_stdlib_handler_zip_bytes(self, live_server):
+        """The stdlib BaseHTTPRequestHandler path supports multipart too."""
+        host, port = live_server
+        data = _zip_bytes({"inner.txt": b"stdlib path"})
+        body, content_type = _build_multipart_body(
+            field_name="file", filename="arch.zip", content=data
+        )
+
+        status, payload = _request_json(
+            host,
+            port,
+            "POST",
+            "/unpack",
+            body=body,
+            headers={"Content-Type": content_type, "Content-Length": str(len(body))},
+        )
+
+        assert status == 200
+        assert payload["files"][0]["filename"] == "arch.zip/inner.txt"
+        assert base64.b64decode(payload["files"][0]["data_b64"]) == b"stdlib path"
+
+
+class TestVersionPrefixedRoutes:
+    """The hosted default service_url ends in /v1; bare URLs do not.
+
+    The server accepts both spellings of every route so either client
+    configuration works (see _strip_api_version in server.py).
+    """
+
+    def test_wsgi_v1_health_and_process(self, tmp_path):
+        import httpx
+
+        from attachments.server import create_app
+
+        client = httpx.Client(
+            transport=httpx.WSGITransport(app=create_app()),
+            base_url="http://testserver",
+        )
+        r = client.get("/v1/health")
+        assert r.status_code == 200
+        assert r.json()["status"] == "ok"
+
+        r = client.post(
+            "/v1/process",
+            files={"file": ("hello.txt", b"hello from v1 prefix")},
+        )
+        assert r.status_code == 200
+        assert r.json()["text"] == "hello from v1 prefix"
+
+    def test_wsgi_bare_routes_still_work(self):
+        import httpx
+
+        from attachments.server import create_app
+
+        client = httpx.Client(
+            transport=httpx.WSGITransport(app=create_app()),
+            base_url="http://testserver",
+        )
+        assert client.get("/health").status_code == 200
+        assert client.get("/v1/options").status_code == 200
+        # Only the literal /v1 prefix is stripped
+        assert client.get("/v123/health").status_code == 404

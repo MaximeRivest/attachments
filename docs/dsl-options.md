@@ -14,6 +14,7 @@ Regenerate with `uv run python scripts/gen_dsl_assets.py`.
 | `max_dim` | `int` | — | — | `max_dim: 1024` | Downscale so the longest side is at most this many pixels |
 | `rotate` | `int` | — | — | `rotate: 90` | Rotate counterclockwise by this many degrees (negative = clockwise) |
 | `ocr` | `bool_or_auto` | — | `false` | `ocr: true` | Recognize text in the image with RapidOCR: true/false, or auto (only when rapidocr is installed) |
+| `ocr_engine` | `str` | — | `"rapidocr"` | `ocr_engine: lighton` | OCR engine: rapidocr (local, default) or lighton (remote LightOnOCR vLLM endpoint via ATTACHMENTS_LIGHTON_URL) |
 
 ### `.cfg`, `.css`, `.ini`, `.java`, `.js`, `.json`, `.log`, `.markdown`, `.md`, `.py`, `.rst`, `.tex`, `.toml`, `.ts`, `.txt`, `.xml`, `.yaml`, `.yml`, `__text__`
 
@@ -62,6 +63,7 @@ No options declared.
 | `images` | `bool_or_auto` | `render` | `"auto"` | `images: true` | Render pages to PNG: true/false, or auto (only when no text). |
 | `dpi` | `int` | — | `200` | `dpi: 300` | Resolution for rendered page images. |
 | `ocr` | `bool_or_auto` | — | `"auto"` | `ocr: true` | OCR scanned pages with RapidOCR when there is no text layer: true/false, or auto (only when rapidocr is installed). |
+| `ocr_engine` | `str` | — | `"rapidocr"` | `ocr_engine: lighton` | OCR engine: rapidocr (local, default) or lighton (remote LightOnOCR vLLM endpoint via ATTACHMENTS_LIGHTON_URL). |
 | `max_pages` | `int` | — | — | `max_pages: 10` | Hard cap on the number of pages parsed/rendered. |
 
 ### `.pptx`

@@ -206,6 +206,84 @@ def unpack_via_service(
     return files
 
 
+def unpack_bytes_via_service(
+    data: bytes,
+    *,
+    filename: str,
+    api_key: str | None = None,
+) -> list[tuple[str, bytes]]:
+    """Unpack archive bytes via the attachments service.
+
+    Posts the raw archive (zip/tar) as multipart form data to ``/unpack``;
+    the server explodes it with its bomb-guarded archive machinery and
+    returns the member files. Non-archive bytes are rejected by the server
+    with HTTP 400 (raised here as :class:`ServiceError`).
+
+    Args:
+        data: Raw archive bytes (zip or tar family)
+        filename: Archive filename (used as the virtual path prefix)
+        api_key: API key (uses configured key if not provided)
+
+    Returns:
+        List of (filename, bytes) tuples
+
+    Raises:
+        ServiceError: If the service returns an error
+        ImportError: If httpx is not installed
+
+    Example::
+
+        from attachments.service import unpack_bytes_via_service
+
+        files = unpack_bytes_via_service(
+            open("bundle.zip", "rb").read(), filename="bundle.zip"
+        )
+        # [("bundle.zip/a.txt", b"..."), ("bundle.zip/b.csv", b"...")]
+    """
+    httpx = _get_client()
+
+    key = get_api_key(api_key)
+    if not key:
+        raise ServiceError("No API key configured")
+
+    service_url = get_config("service_url")
+    timeout = get_config("timeout", 60)
+
+    log.debug(
+        "POST %s/unpack  filename=%s  size=%d",
+        service_url,
+        filename,
+        len(data),
+    )
+    try:
+        response = httpx.post(
+            f"{service_url}/unpack",
+            headers={"Authorization": f"Bearer {key}"},
+            files={"file": (filename, data)},
+            timeout=timeout,
+        )
+    except httpx.TimeoutException as e:
+        raise ServiceError(f"Service request timed out after {timeout}s") from e
+    except httpx.RequestError as e:
+        raise ServiceError(f"Service request failed: {e}") from e
+
+    if response.status_code >= 400:
+        try:
+            error_detail = response.json().get("error", response.text)
+        except Exception:
+            error_detail = response.text
+        raise ServiceError(
+            f"Service error: {error_detail}", status_code=response.status_code
+        )
+
+    # Parse response - files are base64 encoded
+    result = response.json()
+    files = []
+    for item in result.get("files", []):
+        files.append((item["filename"], base64.b64decode(item["data_b64"])))
+    return files
+
+
 def check_service_health(api_key: str | None = None) -> dict:
     """Check if the service is available and API key is valid.
 

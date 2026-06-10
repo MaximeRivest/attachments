@@ -110,6 +110,13 @@ Source text: [ANNOUNCEMENT.md](ANNOUNCEMENT.md) (HN/Reddit/blog ready).
 - 0.25.x stays maintenance-only on the `v1-maintenance` branch; backport
   nothing, fix only breakage.
 
+### Service tier: deploying api.attachments.dev
+
+The production EC2 deploy kit (Dockerfile, compose, nginx, bootstrap,
+runbook with sizing/costs/smoke tests) lives in
+[deploy/RUNBOOK.md](deploy/RUNBOOK.md). Deploy only AFTER §7 below is
+resolved (the domain must be owned before the default URL is live).
+
 ## 7. BLOCKER before `uv publish` — the service_url default
 
 `attachments.config` defaults `service_url` to `https://api.attachments.dev/v1`.

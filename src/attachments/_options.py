@@ -581,7 +581,7 @@ def options(key: str | None = None) -> dict[str, Any] | list[dict[str, Any]]:
 
     Examples:
         >>> [o["name"] for o in options(".pdf")]
-        ['pages', 'password', 'images', 'dpi', 'ocr', 'max_pages']
+        ['pages', 'password', 'images', 'dpi', 'ocr', 'ocr_engine', 'max_pages']
         >>> options(".unknown-ext")
         (no options declared)
         >>> options()["version"]

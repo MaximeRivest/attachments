@@ -119,6 +119,7 @@ class _Att:
         max_pages: int = ...,
         model: str = ...,
         ocr: bool | str = ...,
+        ocr_engine: str = ...,
         outputs: bool = ...,
         pages: int | str | tuple[int, int] = ...,
         page: int | str | tuple[int, int] = ...,

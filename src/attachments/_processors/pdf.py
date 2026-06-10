@@ -8,9 +8,11 @@ from typing import Any
 
 from .._options import Option, register_options
 from ..types import (
+    ERROR_INVALID_OPTION,
     ERROR_MISSING_DEPENDENCY,
     ERROR_PARSE,
     ERROR_PASSWORD_REQUIRED,
+    ERROR_PROCESSING,
     error_artifact,
     make_artifact,
 )
@@ -354,6 +356,7 @@ def process_pdf(
     images_dpi: int = 200,
     # OCR options
     ocr: bool | str = "auto",  # False | True/"always" | "auto"
+    ocr_engine: str = "rapidocr",  # "rapidocr" | "lighton"
     **_opts: Any,
 ) -> dict:
     """
@@ -375,6 +378,14 @@ def process_pdf(
                                      ocr_hint; True with rapidocr missing
                                      returns the typed missing-dependency
                                      artifact; False never OCRs.
+      - ocr_engine: str              "rapidocr" (local, default) or "lighton"
+                                     (remote LightOnOCR vLLM endpoint, a
+                                     SERVER capability configured via the
+                                     ATTACHMENTS_LIGHTON_URL env var). With
+                                     ocr="auto" and the env var unset, falls
+                                     back to rapidocr silently
+                                     (extra.ocr_engine_fallback); with forced
+                                     OCR it is an invalid-option error.
 
     Dependencies:
       - Text: pypdf (preferred) or PyPDF2; fallback to pdfminer.six.
@@ -497,7 +508,40 @@ def process_pdf(
     ocr_forced = ocr is True or str(ocr).lower() == "always"
     ocr_auto = isinstance(ocr, str) and ocr.lower() == "auto"
     if text.strip() == "" and (ocr_forced or ocr_auto):
-        if check_dep("ocr").available:
+        from .image import (
+            LIGHTON_URL_ENV,
+            LIGHTON_URL_UNSET_MSG,
+            OCR_ENGINES,
+            _lighton_url,
+            _ocr_image_bytes,
+            _ocr_image_bytes_lighton,
+        )
+
+        def _ocr_error(code: str, message: str) -> dict:
+            artifact = error_artifact(source, code, message)
+            artifact["meta"]["kind"] = "pdf"
+            artifact["meta"]["extra"] = extra
+            return artifact
+
+        # Engine dispatch: rapidocr (local, default) or lighton (remote).
+        engine = str(ocr_engine or "rapidocr").lower()
+        if engine not in OCR_ENGINES:
+            return _ocr_error(
+                ERROR_INVALID_OPTION,
+                f"Unknown ocr_engine {ocr_engine!r} "
+                f"(expected one of: {', '.join(OCR_ENGINES)})",
+            )
+        lighton_url: str | None = None
+        if engine == "lighton":
+            lighton_url = _lighton_url()
+            if lighton_url is None:
+                if ocr_forced:
+                    return _ocr_error(ERROR_INVALID_OPTION, LIGHTON_URL_UNSET_MSG)
+                # ocr=auto: fall back to the local engine silently.
+                engine = "rapidocr"
+                extra["ocr_engine_fallback"] = "rapidocr"
+
+        if engine == "lighton" or check_dep("ocr").available:
             ocr_images = images
             if not ocr_images:
                 # Render pages just for OCR at an OCR-suitable resolution.
@@ -510,15 +554,27 @@ def process_pdf(
                         data, page_start, page_end, max_pages, ocr_dpi, filename
                     )
             if ocr_images:
-                from .image import _ocr_image_bytes
-
                 ordered = sorted(ocr_images, key=lambda im: im["page"])
-                page_texts = [_ocr_image_bytes(im["bytes"]) for im in ordered]
+                if engine == "lighton":
+                    try:
+                        page_texts = [
+                            _ocr_image_bytes_lighton(im["bytes"], url=lighton_url)
+                            for im in ordered
+                        ]
+                    except Exception as e:
+                        return _ocr_error(
+                            ERROR_PROCESSING,
+                            f"LightOn OCR request failed: {e}. Check that the "
+                            f"vLLM endpoint at {LIGHTON_URL_ENV} ({lighton_url})"
+                            f" is running and reachable.",
+                        )
+                else:
+                    page_texts = [_ocr_image_bytes(im["bytes"]) for im in ordered]
                 ocr_text, ocr_segments = _join_pages_with_segments(
                     page_texts, ordered[0]["page"] - 1
                 )
                 extra["ocr"] = True
-                extra["ocr_backend"] = "rapidocr"
+                extra["ocr_backend"] = engine
                 if ocr_text.strip():
                     text = ocr_text
                     segments = ocr_segments
@@ -605,6 +661,16 @@ register_options(
                 "true/false, or auto (only when rapidocr is installed)."
             ),
             example="ocr: true",
+        ),
+        Option(
+            "ocr_engine",
+            "str",
+            default="rapidocr",
+            help=(
+                "OCR engine: rapidocr (local, default) or lighton (remote "
+                "LightOnOCR vLLM endpoint via ATTACHMENTS_LIGHTON_URL)."
+            ),
+            example="ocr_engine: lighton",
         ),
         Option(
             "max_pages",
