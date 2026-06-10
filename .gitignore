@@ -115,3 +115,6 @@ _build
 
 # Auto-generated documentation files
 docs/_generated_dsl_cheatsheet.md
+
+# MRMD editor state (auto-added)
+.mrmd/

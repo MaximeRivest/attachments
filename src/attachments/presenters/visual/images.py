@@ -96,15 +96,37 @@ def images(att: Attachment, doc: "docx.Document") -> Attachment:
 
             # Create persistent temporary directory for PDF output
             temp_dir = tempfile.mkdtemp()
-            docx_path_obj = Path(docx_path)
+            docx_path_obj = Path(docx_path) if docx_path else None
+            # If the provided path doesn't exist, save the in-memory doc to a temp file
+            try:
+                if not docx_path_obj or not docx_path_obj.exists():
+                    tmp_input = Path(temp_dir) / "input.docx"
+                    # Save current document to a temp path
+                    try:
+                        doc.save(str(tmp_input))  # type: ignore[attr-defined]
+                        docx_path_obj = tmp_input
+                    except Exception:
+                        # If saving fails for some reason, fall back to original value
+                        docx_path_obj = Path(docx_path) if docx_path else tmp_input
+                else:
+                    docx_path_obj = docx_path_obj.resolve()
+            except Exception:
+                # As a last resort, try to use the provided path as-is
+                docx_path_obj = Path(docx_path) if docx_path else Path(temp_dir) / "input.docx"
 
-            # Run LibreOffice conversion
+            # Ensure absolute path
+            try:
+                docx_path_obj = docx_path_obj.resolve()
+            except Exception:
+                pass
+
+            # Run LibreOffice conversion (force Writer PDF filter for reliability)
             result = subprocess.run(
                 [
                     soffice,
                     "--headless",
                     "--convert-to",
-                    "pdf",
+                    "pdf:writer_pdf_Export",
                     "--outdir",
                     temp_dir,
                     str(docx_path_obj),
@@ -409,15 +431,34 @@ def images(att: Attachment, pres: "pptx.Presentation") -> Attachment:
 
             # Create persistent temporary directory for PDF output
             temp_dir = tempfile.mkdtemp()
-            pptx_path_obj = Path(pptx_path)
+            pptx_path_obj = Path(pptx_path) if pptx_path else None
+            # If the provided path doesn't exist, save the in-memory presentation to a temp file
+            try:
+                if not pptx_path_obj or not pptx_path_obj.exists():
+                    tmp_input = Path(temp_dir) / "input.pptx"
+                    try:
+                        pres.save(str(tmp_input))  # type: ignore[attr-defined]
+                        pptx_path_obj = tmp_input
+                    except Exception:
+                        pptx_path_obj = Path(pptx_path) if pptx_path else tmp_input
+                else:
+                    pptx_path_obj = pptx_path_obj.resolve()
+            except Exception:
+                pptx_path_obj = Path(pptx_path) if pptx_path else Path(temp_dir) / "input.pptx"
 
-            # Run LibreOffice conversion
+            # Ensure absolute path
+            try:
+                pptx_path_obj = pptx_path_obj.resolve()
+            except Exception:
+                pass
+
+            # Run LibreOffice conversion (force Impress PDF filter for reliability)
             result = subprocess.run(
                 [
                     soffice,
                     "--headless",
                     "--convert-to",
-                    "pdf",
+                    "pdf:impress_pdf_Export",
                     "--outdir",
                     temp_dir,
                     str(pptx_path_obj),
@@ -579,15 +620,34 @@ def images(att: Attachment, workbook: "openpyxl.Workbook") -> Attachment:
 
             # Create persistent temporary directory for PDF output
             temp_dir = tempfile.mkdtemp()
-            excel_path_obj = Path(excel_path)
+            excel_path_obj = Path(excel_path) if excel_path else None
+            # If the provided path doesn't exist, save the in-memory workbook to a temp file
+            try:
+                if not excel_path_obj or not excel_path_obj.exists():
+                    tmp_input = Path(temp_dir) / "input.xlsx"
+                    try:
+                        workbook.save(str(tmp_input))  # type: ignore[attr-defined]
+                        excel_path_obj = tmp_input
+                    except Exception:
+                        excel_path_obj = Path(excel_path) if excel_path else tmp_input
+                else:
+                    excel_path_obj = excel_path_obj.resolve()
+            except Exception:
+                excel_path_obj = Path(excel_path) if excel_path else Path(temp_dir) / "input.xlsx"
 
-            # Run LibreOffice conversion
+            # Ensure absolute path
+            try:
+                excel_path_obj = excel_path_obj.resolve()
+            except Exception:
+                pass
+
+            # Run LibreOffice conversion (force Calc PDF filter for reliability)
             result = subprocess.run(
                 [
                     soffice,
                     "--headless",
                     "--convert-to",
-                    "pdf",
+                    "pdf:calc_pdf_Export",
                     "--outdir",
                     temp_dir,
                     str(excel_path_obj),

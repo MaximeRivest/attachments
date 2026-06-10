@@ -4,6 +4,8 @@
 
 Most users will not have to learn anything more than: `Attachments("path/to/file.pdf")`
 
+> 🧭 **Contributing or wondering where the project is headed?** Read [VISION.md](VISION.md) — the artifact protocol, the DSL principles, and the epic/sprint roadmap. It's the source of truth for what to build next.
+
 ## 🎬 Demo
 
 ![Demo](https://github.com/MaximeRivest/attachments/raw/main/demo_full.gif)
