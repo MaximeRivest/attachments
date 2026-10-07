@@ -142,6 +142,8 @@ class TestPptxProcessor:
         # Titles become both labels and "# <title>" heading lines.
         assert segments[0]["label"] == "Quarterly Review"
         assert segments[1]["label"] == "Next Steps"
+        # Slide numbers live in `page` (labels are titles, never parsed).
+        assert [s["page"] for s in segments] == [1, 2]
         assert (
             text[segments[0]["start"] : segments[0]["end"]]
             == "# Quarterly Review\nRevenue grew 12 percent."

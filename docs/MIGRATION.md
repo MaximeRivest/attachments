@@ -67,6 +67,11 @@ The bracket syntax survives, now with per-processor declared schemas:
   page selection).
 - `[limit: N]` → `[rows: N]` (CSV/TSV, XLSX, XLS).
 - `[select: css]` — unchanged for HTML (alias `css:`).
+- Web pages: 0.25 listed every link in a "Links" section after the text
+  and took a screenshot by default. 1.0 writes the main content as Markdown
+  (tables and code blocks included, which 0.25 dropped), links as plain
+  text unless `[links: true]`, and screenshots only with
+  `[screenshot: true]`. `[main: false]` keeps navigation and footers.
 - `[format: ...]` — gone; there is one canonical text per format.
 - Unknown keys never fail silently — they warn in `meta["warnings"]`:
   `"Unknown option 'sheets' for .xlsx — did you mean 'sheet'?"`.
@@ -78,8 +83,11 @@ The bracket syntax survives, now with per-processor declared schemas:
 
 - Operator composition (`|`, `+` on pipeline stages) and the global
   pipeline registry: intentionally removed (see [VISION.md](../VISION.md)).
-- Highlight/CSS screenshot options for URL rendering (browser-based):
-  not ported; plain HTML extraction (`select:`) covers the text path.
+- Highlighting matched elements in URL screenshots (`[select: ...]` drew
+  boxes on the screenshot): not ported. Page screenshots themselves are
+  back as an opt-in: `att("https://x.org[screenshot: true]")` (needs
+  `attachments[browser]`). Unlike 0.25 they are screen-sized 1280×800
+  images rather than one very tall picture, so a vision model can read them.
 - `.dspy()` adapter: not ported — `a.text` and `a.images` plug into any
   framework.
 

@@ -53,7 +53,8 @@
         "kind": { "type": "string", "enum": ["page", "sheet", "slide", "section"] },
         "label": { "type": "string" },
         "start": { "type": "integer", "minimum": 0 },
-        "end": { "type": "integer", "minimum": 0 }
+        "end": { "type": "integer", "minimum": 0 },
+        "page": { "type": "integer", "minimum": 1 }
       }
     },
     "meta": {

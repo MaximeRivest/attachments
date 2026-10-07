@@ -51,6 +51,12 @@ DEPENDENCY_MAP: dict[str, tuple[tuple[str, ...], str]] = {
     "ocr": (("rapidocr_onnxruntime",), "pip install attachments[ocr]"),
     "audio": (("faster_whisper",), "pip install attachments[audio]"),
     "mcp": (("mcp",), "pip install attachments[mcp]"),
+    # Web page screenshots (html `screenshot: true`): the Python package
+    # here; the Chromium it drives is a separate `playwright install`.
+    "browser": (
+        ("playwright",),
+        "pip install attachments[browser] && playwright install chromium",
+    ),
     # Future processors/sources (ocr, audio, s3, gcs, gdrive, ...) are added
     # here together with their processor module and pyproject extra.
     # Service

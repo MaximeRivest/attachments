@@ -68,6 +68,7 @@ pip install attachments[xlsx]        # Add Excel support
 pip install attachments[docx]        # Add Word support
 pip install attachments[pptx]        # Add PowerPoint support
 pip install attachments[html]        # Add HTML support
+pip install attachments[browser]     # Add web page screenshots (+ playwright install chromium)
 pip install attachments[image]       # Add image support (Pillow)
 pip install attachments[service]     # Add service mode (httpx)
 pip install attachments[clipboard]   # CLI clipboard support (`att --copy`)
@@ -632,7 +633,9 @@ src/attachments/
     ├── pdf.py               # PDF (pypdf, pymupdf)
     ├── xlsx.py              # Excel .xlsx (openpyxl, pandas) + legacy .xls (xlrd)
     ├── docx.py              # Word (python-docx)
-    ├── html.py              # HTML, CSS select (beautifulsoup4, lxml)
+    ├── html.py              # HTML / web pages, CSS select (beautifulsoup4, lxml)
+    ├── _html_md.py          # HTML -> Markdown, main-content rules
+    ├── _browser.py          # screenshots (playwright, optional)
     ├── pptx.py              # PowerPoint (python-pptx)
     ├── csv.py               # CSV/TSV tables (stdlib; optional pandas summary)
     ├── svg.py               # SVG/SVGZ text (stdlib; optional cairosvg raster)

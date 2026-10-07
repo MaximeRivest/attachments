@@ -25,8 +25,13 @@ import pytest
 
 from attachments import att
 from attachments._processors import processors as _registry
-from attachments.server import _encode_artifact_for_wire, create_app
-from attachments.types import missing_dep_artifact, normalize_artifact
+from attachments.server import create_app
+from attachments.types import (
+    artifact_from_wire,
+    artifact_to_wire,
+    missing_dep_artifact,
+    normalize_artifact,
+)
 
 SPEC_DIR = Path(__file__).resolve().parent.parent / "spec"
 SCHEMA_PATH = SPEC_DIR / "artifact.schema.json"
@@ -42,18 +47,24 @@ VALIDATOR = jsonschema.Draft202012Validator(ARTIFACT_SCHEMA)
 
 
 def encode_for_wire(artifact: dict) -> dict:
-    """Wire-encode a DEEP COPY of *artifact* (bytes -> bytes_b64).
+    """Wire-encode *artifact* (bytes -> bytes_b64) with the public encoder.
 
-    Reuses the server's encoder so the test exercises the exact transport
-    transformation; the copy keeps the in-process artifact untouched.
+    ``artifact_to_wire`` is the one implementation the server, the service
+    client and the CLI share, so this exercises the exact transport
+    transformation. It returns a new dict; the in-process artifact stays
+    untouched (asserted in :func:`assert_conformant`).
     """
-    return _encode_artifact_for_wire(copy.deepcopy(artifact))
+    return artifact_to_wire(artifact)
 
 
 def assert_conformant(artifact: dict) -> None:
-    """Assert *artifact* (in-process form) validates against the schema."""
+    """Assert *artifact* (in-process form) validates against the schema,
+    survives a JSON round trip unchanged, and is not modified by encoding."""
+    before = copy.deepcopy(artifact)
     wire = encode_for_wire(artifact)
+    assert artifact == before, "artifact_to_wire modified its input"
     _assert_wire_conformant(wire)
+    assert artifact_from_wire(json.loads(json.dumps(wire))) == artifact
 
 
 def _assert_wire_conformant(wire: dict) -> None:

@@ -78,9 +78,13 @@ def att_help() -> None:
         '  a = att("report.pdf[pages: 1-4, images: true]")  # DSL options inline',
         '  a.claude("Summarize.")          # Claude messages (a.openai(...) too)',
         "  a.chunk(max_chars=4000)         # segment-aware RAG chunks",
+        "  a.parts(sources=False)          # text/image parts by page, no file names",
+        "  a.raise_for_errors()            # stop on failures (att() never raises)",
+        "  a.to_wire()                     # JSON-ready (Artifacts.from_wire back)",
         "",
         "More:",
         "  att.options('.pdf')   options for one processor (att.options() = all)",
+        "  att --skill --install teach Claude Code, Pi and Codex to use attachments",
         "  docs/dsl-options.md   generated cheatsheet",
         "  spec/                 the binding IR contract & DSL grammar",
     ]

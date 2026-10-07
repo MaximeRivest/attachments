@@ -158,6 +158,7 @@ def _process_single(
     options: dict[str, Any] | None = None,
     api_key: str | None = None,
     prefer: str | None = None,
+    url: str | None = None,
 ) -> dict:
     """Process a single file with local/service fallback logic.
 
@@ -177,6 +178,11 @@ def _process_single(
         options: Raw options (merged DSL + explicit kwargs)
         api_key: Optional API key for service mode
         prefer: Processing preference (local/service/local-only/service-only)
+        url: Address the bytes were downloaded from, if any. When the
+            matched processor declares a ``url`` option (html does) and the
+            caller did not set one, it receives this address — so a web
+            page resolves its relative links and loads in a browser from
+            where it really lives. Sent to the service the same way.
 
     Returns:
         Artifact dict
@@ -194,11 +200,15 @@ def _process_single(
     resolved: dict[str, Any] = {}
     warnings: list[str] = []
     if proc is not None:
+        schema = get_options(proc_key)
         resolved, warnings = resolve_options(
-            get_options(proc_key),
+            schema,
             options,
             context=_option_context(filename, proc_key),
         )
+        if url and "url" not in resolved and any(o.name == "url" for o in schema):
+            resolved["url"] = url
+            options = {**options, "url": url}  # the service gets it too
 
     def _run_local() -> dict:
         result = proc(data, filename=filename, **resolved)
@@ -390,6 +400,8 @@ def att(
             - With options: "document.pdf[pages: 1-4]"
             - Directory: "docs/"
             - URL: "https://example.com/file.pdf[pages: 5-10]"
+            - Web page: "https://example.com/post" (Markdown of the main
+              content; ``[links: true]``, ``[screenshot: true]``, ...)
             - GitHub: "github://owner/repo[ref: main]"
             - Excel: "data.xlsx[sheet: Sales, rows: 100]"
         api_key: Optional API key for service mode. If provided, enables
@@ -506,16 +518,26 @@ def att(
                 [error_artifact(input, ERROR_UNPACK, f"unpack failed: {e}")]
             )
 
-    # Process each file
+    # Process each file. Downloads are SourceFiles: (name, bytes) pairs
+    # that also carry the final URL and any source warnings.
     out = Artifacts()
-    for fname, data in pairs:
+    for pair in pairs:
+        fname, data = pair
+        origin = getattr(pair, "url", None)
         artifact = _process_single(
             fname,
             data,
             options=merged_options,
             api_key=api_key,
             prefer=prefer,
+            url=origin,
         )
-        out.append(normalize_artifact(artifact, fname))
+        artifact = normalize_artifact(artifact, fname)
+        if origin:
+            # A downloaded file is known by its address, not by the last
+            # path segment ("download", "index.html").
+            artifact["meta"]["source"] = origin
+        _attach_warnings(artifact, list(getattr(pair, "warnings", ()) or ()))
+        out.append(artifact)
 
     return out

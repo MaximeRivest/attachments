@@ -15,6 +15,9 @@ exists and circular-import), and add tests — see DEVELOPMENT.md
 from __future__ import annotations
 
 import os
+from collections.abc import Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from urllib.request import HTTPRedirectHandler
 
 # --- Added/changed for HTTP(S) support ---
@@ -43,6 +46,39 @@ MAX_ARCHIVE_DEPTH = int(os.environ.get("ATT_MAX_ARCHIVE_DEPTH", "8"))
 BLOCK_PRIVATE_URLS_DEFAULT = os.environ.get(
     "ATT_BLOCK_PRIVATE_URLS", ""
 ).strip().lower() in ("1", "true", "yes", "on")
+
+#: Per-request override of BLOCK_PRIVATE_URLS_DEFAULT for fetches that happen
+#: while PROCESSING (not unpacking) — today the html processor's browser
+#: screenshots. The server sets it around each request (``private_url_guard``)
+#: so a page it renders cannot reach internal addresses.
+_PRIVATE_URL_GUARD: ContextVar[bool | None] = ContextVar(
+    "attachments_private_url_guard", default=None
+)
+
+
+def private_urls_blocked() -> bool:
+    """Whether fetches made while processing must pass the SSRF guard.
+
+    Examples:
+        >>> with private_url_guard(True):
+        ...     private_urls_blocked()
+        True
+        >>> with private_url_guard(False):
+        ...     private_urls_blocked()
+        False
+    """
+    value = _PRIVATE_URL_GUARD.get()
+    return BLOCK_PRIVATE_URLS_DEFAULT if value is None else value
+
+
+@contextmanager
+def private_url_guard(enabled: bool) -> Iterator[None]:
+    """Block (or allow) private addresses for processing in this context."""
+    token = _PRIVATE_URL_GUARD.set(enabled)
+    try:
+        yield
+    finally:
+        _PRIVATE_URL_GUARD.reset(token)
 
 
 def _sanitize_member_name(name: str) -> str:

@@ -517,3 +517,192 @@ class TestPdfOcrLighton:
         error = result["meta"]["error"]
         assert error["code"] == ERROR_INVALID_OPTION
         assert "bogus" in error["message"]
+
+
+# =============================================================================
+# Page image size and format (max_dim, image_format, quality)
+# =============================================================================
+
+
+def _pdf(*sizes: tuple[float, float]) -> bytes:
+    """A PDF with one page per (width, height) in points, each with text."""
+    pymupdf = pytest.importorskip("pymupdf")
+    doc = pymupdf.open()
+    for number, (width, height) in enumerate(sizes, start=1):
+        doc.new_page(width=width, height=height).insert_text((36, 36), f"page {number}")
+    data = doc.tobytes()
+    doc.close()
+    return data
+
+
+def _dims(payload: bytes) -> tuple[int, int]:
+    from attachments._imagesize import image_size
+
+    size = image_size(payload)
+    assert size is not None
+    return size
+
+
+@pytest.mark.skipif(
+    not check_dep("pdf-images").available, reason="PyMuPDF needed to render pages"
+)
+class TestPdfPageImageOptions:
+    SLIDE = (960, 540)  # 16:9, 2667 x 1500 at 200 dpi
+    LETTER = (612, 792)  # 1700 x 2200 at 200 dpi
+
+    def test_default_caps_the_longest_side_at_2000(self):
+        result = processors[".pdf"](_pdf(self.SLIDE, self.LETTER), render_images=True)
+        assert [_dims(i["bytes"]) for i in result["images"]] == [
+            (2000, 1125),
+            (1546, 2000),  # PyMuPDF rounds partial pixels up
+        ]
+        assert result["meta"]["extra"]["render_downscaled_pages"] == 2
+        assert {i["mimetype"] for i in result["images"]} == {"image/png"}
+
+    def test_small_pages_keep_their_dpi(self):
+        result = processors[".pdf"](_pdf((300, 200)), render_images=True)
+        assert _dims(result["images"][0]["bytes"]) == (834, 556)  # 200 dpi, rounded up
+        assert "render_downscaled_pages" not in result["meta"]["extra"]
+
+    def test_max_dim_zero_turns_the_cap_off(self):
+        result = processors[".pdf"](_pdf(self.SLIDE), render_images=True, max_dim=0)
+        assert _dims(result["images"][0]["bytes"]) == (2667, 1500)
+
+    @pytest.mark.parametrize("cap", [1568, 1000, 777])
+    def test_max_dim_is_exact(self, cap: int):
+        result = processors[".pdf"](
+            _pdf(self.SLIDE, self.LETTER), render_images=True, max_dim=cap
+        )
+        assert [max(_dims(i["bytes"])) for i in result["images"]] == [cap, cap]
+
+    def test_rotated_pages_are_capped_on_their_visible_long_side(self):
+        pymupdf = pytest.importorskip("pymupdf")
+        doc = pymupdf.open(stream=_pdf(self.LETTER))
+        doc[0].set_rotation(90)
+        result = processors[".pdf"](doc.tobytes(), render_images=True, max_dim=1000)
+        assert _dims(result["images"][0]["bytes"]) == (1000, 773)
+
+    def test_jpeg_output(self):
+        data = _pdf(self.SLIDE)
+        png = processors[".pdf"](data, render_images=True)["images"][0]
+        jpeg = processors[".pdf"](data, render_images=True, image_format="jpeg")
+        image = jpeg["images"][0]
+        assert image["mimetype"] == "image/jpeg"
+        assert image["name"].endswith("-page-1.jpg")
+        assert image["bytes"][:3] == b"\xff\xd8\xff"
+        assert _dims(image["bytes"]) == _dims(png["bytes"])
+        low = processors[".pdf"](
+            data, render_images=True, image_format="jpg", quality=20
+        )
+        assert len(low["images"][0]["bytes"]) < len(image["bytes"])
+
+    def test_dsl_and_kwargs_reach_the_processor(self, tmp_path):
+        from attachments import att
+
+        path = tmp_path / "s.pdf"
+        path.write_bytes(_pdf(self.SLIDE))
+        via_dsl = att(
+            f"{path}[images: true, max_dim: 1568, image_format: jpeg, quality: 70]"
+        )
+        via_kwargs = att(
+            str(path), images=True, max_dim=1568, image_format="jpeg", quality=70
+        )
+        assert via_dsl == via_kwargs
+        assert _dims(via_dsl.images[0]["bytes"]) == (1568, 882)
+        assert "warnings" not in via_dsl[0]["meta"]
+
+    @pytest.mark.parametrize(
+        "options, fragment",
+        [
+            ({"image_format": "gif"}, "image_format must be png or jpeg"),
+            ({"quality": 0}, "quality must be an integer from 1 to 95"),
+            ({"quality": 96}, "quality must be an integer from 1 to 95"),
+            ({"max_dim": -5}, "max_dim must be an integer >= 0"),
+        ],
+    )
+    def test_invalid_values_are_invalid_option_errors(self, options, fragment):
+        result = processors[".pdf"](_pdf(self.LETTER), **options)
+        assert result["meta"]["error"]["code"] == "invalid-option"
+        assert fragment in result["meta"]["error"]["message"]
+        assert result["meta"]["kind"] == "pdf"
+
+    def test_segments_carry_page_numbers_matching_images(self):
+        result = processors[".pdf"](
+            _pdf(self.LETTER, self.LETTER, self.LETTER),
+            render_images=True,
+            page_start=1,
+            page_end=3,
+        )
+        assert [s["page"] for s in result["meta"]["segments"]] == [2, 3]
+        assert [i["page"] for i in result["images"]] == [2, 3]
+
+    def test_pdf2image_fallback_applies_the_same_options(self, monkeypatch):
+        """PyMuPDF unavailable for rendering: pdf2image (stubbed) is used."""
+        from PIL import Image
+
+        from attachments._processors import pdf as pdf_module
+
+        def no_pymupdf(*args, **kwargs):
+            return [], None, {"note": "unavailable"}
+
+        class FakePdf2image:
+            @staticmethod
+            def convert_from_bytes(data, dpi, first_page, last_page, fmt):
+                return [Image.new("RGB", (2667, 1500), "white")]
+
+        monkeypatch.setattr(pdf_module, "_render_pages_with_pymupdf", no_pymupdf)
+        monkeypatch.setitem(sys.modules, "pdf2image", FakePdf2image)
+        result = processors[".pdf"](
+            _pdf(self.SLIDE), render_images=True, image_format="jpeg", max_dim=1568
+        )
+        image = result["images"][0]
+        assert result["meta"]["extra"]["image_backend"] == "pdf2image"
+        assert image["mimetype"] == "image/jpeg"
+        assert _dims(image["bytes"]) == (1568, 882)
+        assert result["meta"]["extra"]["render_fallback_downscaled_pages"] == 1
+
+
+@pytest.mark.skipif(
+    not check_dep("pdf-images").available, reason="PyMuPDF needed to render pages"
+)
+def test_ocr_reads_full_size_png_even_when_delivered_images_are_small(monkeypatch):
+    """Shrunk or JPEG page images are for the model; OCR gets its own
+    full-size lossless render (OCR accuracy drops on small/JPEG pages)."""
+    pymupdf = pytest.importorskip("pymupdf")
+    from attachments._processors import image as image_module
+
+    seen: list[bytes] = []
+
+    def fake_ocr(payload: bytes) -> str:
+        seen.append(payload)
+        return "RECOGNIZED"
+
+    monkeypatch.setattr(image_module, "_ocr_image_bytes", fake_ocr)
+    monkeypatch.setattr(
+        "attachments.deps.check_dep",
+        lambda name: type("S", (), {"available": True, "missing": []})(),
+    )
+    doc = pymupdf.open()
+    doc.new_page(width=960, height=540)  # blank: no text layer
+    data = doc.tobytes()
+
+    result = processors[".pdf"](
+        data, render_images=True, ocr=True, max_dim=500, image_format="jpeg"
+    )
+    assert result["text"] == "RECOGNIZED"
+    assert result["images"][0]["mimetype"] == "image/jpeg"
+    assert max(_dims(result["images"][0]["bytes"])) == 500
+    assert seen[0][:8] == b"\x89PNG\r\n\x1a\n"
+    assert _dims(seen[0]) == (2667, 1500)
+
+
+@pytest.mark.skipif(not check_dep("pdf-fallback").available, reason="pdfminer needed")
+def test_unreadable_pdf_fails_fast():
+    """Regression: when pdfminer could not count pages, the fallback built a
+    set of 10**9 page numbers (minutes and gigabytes per broken PDF)."""
+    import time
+
+    started = time.monotonic()
+    result = processors[".pdf"](b"not a pdf", filename="bad.pdf")
+    assert result["meta"]["error"]["code"] == "parse-error"
+    assert time.monotonic() - started < 10

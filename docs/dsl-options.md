@@ -11,8 +11,10 @@ Regenerate with `uv run python scripts/gen_dsl_assets.py`.
 
 | Option | Type | Aliases | Default | Example | Description |
 | --- | --- | --- | --- | --- | --- |
-| `max_dim` | `int` | — | — | `max_dim: 1024` | Downscale so the longest side is at most this many pixels |
+| `max_dim` | `int` | — | — | `max_dim: 1024` | Downscale so the longest side is at most this many pixels (0 = no limit) |
 | `rotate` | `int` | — | — | `rotate: 90` | Rotate counterclockwise by this many degrees (negative = clockwise) |
+| `image_format` | `str` | — | — | `image_format: jpeg` | Output format: png or jpeg (default: keep jpeg, other formats png) |
+| `quality` | `int` | — | — | `quality: 75` | JPEG quality, 1-95 (default 85 when encoding jpeg) |
 | `ocr` | `bool_or_auto` | — | `false` | `ocr: true` | Recognize text in the image with RapidOCR: true/false, or auto (only when rapidocr is installed) |
 | `ocr_engine` | `str` | — | `"rapidocr"` | `ocr_engine: lighton` | OCR engine: rapidocr (local, default) or lighton (remote LightOnOCR vLLM endpoint via ATTACHMENTS_LIGHTON_URL) |
 
@@ -45,8 +47,16 @@ No options declared.
 
 | Option | Type | Aliases | Default | Example | Description |
 | --- | --- | --- | --- | --- | --- |
-| `images` | `bool` | `render` | `false` | `images: true` | Extract inline data-URI images. |
 | `select` | `str` | `css` | — | `select: "h1, .article"` | CSS selector; extract only matching elements |
+| `main` | `bool` | — | `true` | `main: false` | Keep only the main content: skip navigation, site header and footer, sidebars, cookie/share widgets (false: whole page) |
+| `links` | `bool` | — | `false` | `links: true` | Write links as [text](url) and images as ![alt](url) (default: plain text) |
+| `url` | `str` | — | — | `url: https://example.com/docs/` | The page's address: resolves relative links; screenshots load it. Set automatically for web pages |
+| `images` | `bool` | `render` | `false` | `images: true` | Extract inline data-URI images. |
+| `screenshot` | `bool` | — | `false` | `screenshot: true` | Add screenshots of the page rendered in a browser, 1280x800 screens from the top (needs attachments[browser]) |
+| `max_screens` | `int` | — | `5` | `max_screens: 2` | Most screenshots to take, from the top of the page (0 = whole page) |
+| `max_dim` | `int` | — | — | `max_dim: 1024` | Longest side of each screenshot in pixels (0 = no limit) |
+| `image_format` | `str` | — | `"png"` | `image_format: jpeg` | Screenshot format: png (sharpest text) or jpeg (smaller) |
+| `quality` | `int` | — | — | `quality: 75` | JPEG quality, 1-95 (used with image_format: jpeg) |
 
 ### `.ipynb`
 
@@ -60,8 +70,11 @@ No options declared.
 | --- | --- | --- | --- | --- | --- |
 | `pages` | `pages` | `page` | — | `pages: 1-4` | Pages to include: a 1-based page number or range. |
 | `password` | `str` | `pw` | — | `password: secret` | Password for encrypted PDFs. |
-| `images` | `bool_or_auto` | `render` | `"auto"` | `images: true` | Render pages to PNG: true/false, or auto (only when no text). |
-| `dpi` | `int` | — | `200` | `dpi: 300` | Resolution for rendered page images. |
+| `images` | `bool_or_auto` | `render` | `"auto"` | `images: true` | Render pages to images: true/false, or auto (only when no text). |
+| `dpi` | `int` | — | `200` | `dpi: 300` | Resolution for rendered page images (max_dim caps the result). |
+| `max_dim` | `int` | — | `2000` | `max_dim: 1568` | Longest side of each page image in pixels, applied after dpi; 0 = no cap. |
+| `image_format` | `str` | — | `"png"` | `image_format: jpeg` | png (lossless, best for text) or jpeg (far smaller for scans). |
+| `quality` | `int` | — | `85` | `quality: 75` | JPEG quality, 1-95 (used with image_format: jpeg). |
 | `ocr` | `bool_or_auto` | — | `"auto"` | `ocr: true` | OCR scanned pages with RapidOCR when there is no text layer: true/false, or auto (only when rapidocr is installed). |
 | `ocr_engine` | `str` | — | `"rapidocr"` | `ocr_engine: lighton` | OCR engine: rapidocr (local, default) or lighton (remote LightOnOCR vLLM endpoint via ATTACHMENTS_LIGHTON_URL). |
 | `max_pages` | `int` | — | — | `max_pages: 10` | Hard cap on the number of pages parsed/rendered. |

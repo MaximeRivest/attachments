@@ -42,6 +42,7 @@ Segment = {
     "label": str,                 # "page 1", "Sales", "Q3 Review"
     "start": int,                 # offset into artifact["text"] (inclusive)
     "end": int,                   # offset into artifact["text"] (exclusive)
+    "page": int,                  # optional, 1-based page/slide number
 }
 ```
 
@@ -49,6 +50,10 @@ Rules:
 - Keys outside this shape are forbidden at the top level and inside `meta`
   (processor-specific data goes in `meta.extra`).
 - Optional meta keys are ABSENT when not applicable, never None.
+- `Segment.page` and `ImageItem.page` are the same 1-based number for the
+  same page or slide: that is how a consumer puts each image next to its
+  page's text. `Segment.label` is for people (a slide's label is its
+  title) and must never be parsed for a number.
 - `meta.error.message` for missing deps must include the pip install remedy.
 
 ## Error codes (constants in `attachments.types`)
@@ -74,6 +79,12 @@ Rules:
   messages is forbidden.
 - `normalize_artifact(artifact, source) -> Artifact` — fills required keys,
   sets `meta.source` if absent.
+- `artifact_to_wire(artifact) -> dict` — the wire form (below) as a NEW dict;
+  never modifies its input.
+- `artifact_from_wire(data) -> Artifact` — the inverse; raises `ValueError`
+  on invalid base64 or wrongly typed `text`/`images`/`meta`.
+- `AttachmentsError` — raised only by the opt-in
+  `Artifacts.raise_for_errors()`; carries `.errors` and `.artifacts`.
 
 ## Processor contract
 
@@ -82,7 +93,8 @@ A processor is a pure function `(data: bytes, *, filename=None, **options) -> Ar
 - Never raises for bad input — returns `error_artifact(...)`.
 - Sets `meta.kind`; puts backend details, counts, etc. in `meta.extra`.
 - Population of `meta.segments` (offsets into `text`) is required for
-  multi-part formats: pdf (pages), xlsx (sheets), pptx (slides).
+  multi-part formats: pdf (pages), xlsx (sheets), pptx (slides). Page and
+  slide segments carry `page`.
 
 ## Routing contract (core.py)
 
@@ -92,11 +104,17 @@ A processor is a pure function `(data: bytes, *, filename=None, **options) -> Ar
 - No processor for extension and not text → empty artifact with
   `meta.note = "no processor available"` (not an error).
 - Errors NEVER raise out of `att()`; they come back as error artifacts.
+- A file downloaded over HTTP(S) has `meta.source` = its URL (final, after
+  redirects). If its processor declares a `url` option and the caller set
+  none, core passes that URL as `url` (locally and to the service).
 
 ## Wire format (service.py / server.py)
 
 - JSON transport replaces each image's `bytes` with `bytes_b64` (standard
   base64); the client decodes back to `bytes` and removes `bytes_b64`.
+  `artifact_to_wire` / `artifact_from_wire` are the one implementation
+  (server, service client, CLI `--json`, `Artifacts.to_wire()` /
+  `Artifacts.from_wire()`).
 - The server response body is exactly an Artifact (with `bytes_b64` images).
 - `meta` passes through transport unchanged (minus image encoding).
 

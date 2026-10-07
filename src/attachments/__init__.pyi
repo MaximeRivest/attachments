@@ -27,10 +27,12 @@ from .deps import has_service as has_service
 from .dsl import format_dsl as format_dsl
 from .dsl import parse_dsl as parse_dsl
 from .render import chunk as chunk
+from .render import estimate_tokens as estimate_tokens
 from .render import render_text as render_text
 from .render import to_claude_content as to_claude_content
 from .render import to_claude_messages as to_claude_messages
 from .render import to_openai_messages as to_openai_messages
+from .render import to_parts as to_parts
 from .types import ERROR_INVALID_OPTION as ERROR_INVALID_OPTION
 from .types import ERROR_MISSING_DEPENDENCY as ERROR_MISSING_DEPENDENCY
 from .types import ERROR_PARSE as ERROR_PARSE
@@ -39,11 +41,14 @@ from .types import ERROR_PROCESSING as ERROR_PROCESSING
 from .types import ERROR_SERVICE as ERROR_SERVICE
 from .types import ERROR_UNPACK as ERROR_UNPACK
 from .types import Artifact as Artifact
+from .types import AttachmentsError as AttachmentsError
 from .types import ErrorInfo as ErrorInfo
 from .types import ImageItem as ImageItem
 from .types import Meta as Meta
 from .types import Processor as Processor
 from .types import Segment as Segment
+from .types import artifact_from_wire as artifact_from_wire
+from .types import artifact_to_wire as artifact_to_wire
 from .types import error_artifact as error_artifact
 from .types import is_missing_dependency as is_missing_dependency
 from .types import make_artifact as make_artifact
@@ -64,6 +69,9 @@ __all__ = [
     "missing_dep_artifact",
     "is_missing_dependency",
     "normalize_artifact",
+    "artifact_to_wire",
+    "artifact_from_wire",
+    "AttachmentsError",
     "ERROR_MISSING_DEPENDENCY",
     "ERROR_PASSWORD_REQUIRED",
     "ERROR_PARSE",
@@ -85,10 +93,12 @@ __all__ = [
     "has_local",
     "has_service",
     "render_text",
+    "to_parts",
     "to_claude_content",
     "to_claude_messages",
     "to_openai_messages",
     "chunk",
+    "estimate_tokens",
     "processors",
     "register_processor",
     "processor",
@@ -112,11 +122,15 @@ class _Att:
         delimiter: str = ...,
         sep: str = ...,
         dpi: int = ...,
+        image_format: str = ...,
         images: bool | str = ...,
         render: bool | str = ...,
         language: str = ...,
+        links: bool = ...,
+        main: bool = ...,
         max_dim: int = ...,
         max_pages: int = ...,
+        max_screens: int = ...,
         model: str = ...,
         ocr: bool | str = ...,
         ocr_engine: str = ...,
@@ -125,6 +139,7 @@ class _Att:
         page: int | str | tuple[int, int] = ...,
         password: str = ...,
         pw: str = ...,
+        quality: int = ...,
         ref: str = ...,
         branch: str = ...,
         tag: str = ...,
@@ -132,10 +147,12 @@ class _Att:
         rows: int = ...,
         limit: int = ...,
         max_rows: int = ...,
+        screenshot: bool = ...,
         select: str = ...,
         css: str = ...,
         sheet: str | int = ...,
         summary: bool = ...,
+        url: str = ...,
         **options: Any,
     ) -> Artifacts: ...
     def options(

@@ -30,6 +30,7 @@ from ..types import (
     missing_dep_artifact,
 )
 from . import register_processor
+from ._imageout import check_image_output, limit, output_format, pil_encode
 
 #: Formats served as-is (original bytes + mimetype) when no resize is needed.
 _PASSTHROUGH = {
@@ -37,12 +38,6 @@ _PASSTHROUGH = {
     "JPEG": ("image/jpeg", "jpg"),
     "GIF": ("image/gif", "gif"),
     "WEBP": ("image/webp", "webp"),
-}
-
-#: Image modes each encoder accepts; anything else is converted to RGB first.
-_ENCODABLE_MODES = {
-    "PNG": ("1", "L", "LA", "P", "RGB", "RGBA"),
-    "JPEG": ("L", "RGB", "CMYK"),
 }
 
 
@@ -226,6 +221,8 @@ def image_processor(
     filename: str | None = None,
     max_dim: int | None = None,
     rotate: int | None = None,
+    image_format: str | None = None,
+    quality: int | None = None,
     ocr: bool | str = False,
     ocr_engine: str = "rapidocr",
     **_: Any,
@@ -234,11 +231,19 @@ def image_processor(
 
     Options:
         filename: Original filename (used for metadata and the image name).
-        max_dim: Downscale so the longest side is at most this many pixels.
+        max_dim: Downscale so the longest side is at most this many pixels
+            (``None`` or ``0``: no limit).
         rotate: Rotate counterclockwise by this many degrees (PIL-native
             direction; negative values rotate clockwise). Normalized modulo
             360; applied before ``max_dim``. ``expand=True`` grows the canvas,
             so non-right angles get background fill in the corners.
+        image_format: ``"png"`` or ``"jpeg"`` to choose the output format.
+            Default ``None``: keep JPEG as JPEG and web formats as they
+            are; exotic formats become PNG. JPEG output of a transparent
+            image is flattened onto white.
+        quality: JPEG quality, 1-95 (default 85 when encoding JPEG).
+            Given explicitly, it re-encodes a JPEG even when nothing else
+            changes (to make it smaller).
         ocr: ``True`` runs RapidOCR and the recognized text becomes the
             artifact text (``extra.ocr = True``); missing rapidocr yields the
             typed missing-dependency artifact. ``"auto"`` behaves like
@@ -254,16 +259,27 @@ def image_processor(
             is an ``invalid-option`` error.
 
     Behavior:
-        - png/jpeg/gif/webp with no resize/rotate needed: bytes pass through.
-        - ``max_dim`` exceeded or nonzero ``rotate``: transform and re-encode —
-          JPEG (quality 85) when the original was JPEG, PNG otherwise.
-        - Exotic formats (bmp/tiff/heic/...): re-encode to PNG.
+        - png/jpeg/gif/webp with nothing to change: bytes pass through.
+        - ``max_dim`` exceeded, nonzero ``rotate``, another ``image_format``,
+          or an explicit ``quality`` for JPEG output: transform and
+          re-encode — in ``image_format`` when given, else JPEG (quality
+          85) when the original was JPEG, PNG otherwise.
+        - Exotic formats (bmp/tiff/heic/...): re-encode (PNG by default).
+        - OCR reads the full-size, lossless image, not a shrunk or JPEG copy.
 
     Never raises: corrupt bytes yield a ``parse-error`` artifact and a
     missing Pillow (or pillow-heif for HEIC inputs) yields the typed
     ``missing-dependency`` artifact.
     """
     source = filename or "image"
+
+    invalid = check_image_output(
+        max_dim=max_dim, image_format=image_format, quality=quality
+    )
+    if invalid:
+        artifact = error_artifact(source, ERROR_INVALID_OPTION, invalid)
+        artifact["meta"]["kind"] = "image"
+        return artifact
 
     # HEIC needs pillow-heif registered with Pillow *before* Image.open. This
     # branch runs only for HEIC inputs so a missing pillow_heif never affects
@@ -300,29 +316,35 @@ def image_processor(
             # nothing is cropped (non-right angles get corner fill).
             img = img.rotate(degrees, expand=True)
 
-        limit = None if max_dim is None else int(max_dim)
-        resized = limit is not None and max(img.size) > limit
+        cap = limit(max_dim)
+        resized = cap is not None and max(img.size) > cap
+        if image_format is not None:
+            out_format, mimetype, ext = output_format(image_format)
+        elif original_format == "JPEG":
+            out_format, mimetype, ext = output_format("jpeg")
+        else:
+            out_format, mimetype, ext = output_format("png")
+        reencode = (
+            resized
+            or bool(degrees)
+            or original_format not in _PASSTHROUGH
+            or (image_format is not None and out_format != original_format)
+            or (quality is not None and out_format == "JPEG")
+        )
 
-        if not resized and not degrees and original_format in _PASSTHROUGH:
+        # OCR wants the full-size, lossless image: keep it when the
+        # delivered copy is shrunk or lossy (see the OCR block below).
+        ocr_source: Any = None
+        if not reencode:
             mimetype, ext = _PASSTHROUGH[original_format]
             name = filename or f"image.{ext}"
             image_bytes = data
         else:
+            if resized or out_format == "JPEG":
+                ocr_source = img.copy() if resized else img
             if resized:
-                img.thumbnail((limit, limit))  # in-place, preserves aspect
-            # Keep it simple: JPEG stays JPEG (quality 85), everything else PNG.
-            out_format = "JPEG" if original_format == "JPEG" else "PNG"
-            if img.mode not in _ENCODABLE_MODES[out_format]:
-                img = img.convert("RGB")
-            buf = io.BytesIO()
-            save_kwargs: dict[str, Any] = (
-                {"quality": 85} if out_format == "JPEG" else {}
-            )
-            img.save(buf, format=out_format, **save_kwargs)
-            image_bytes = buf.getvalue()
-            mimetype, ext = (
-                ("image/jpeg", "jpg") if out_format == "JPEG" else ("image/png", "png")
-            )
+                img.thumbnail((cap, cap))  # in-place, preserves aspect
+            image_bytes = pil_encode(img, out_format, quality)
             stem = source.rsplit(".", 1)[0] if "." in source else source
             name = f"{stem}.{ext}"
 
@@ -340,6 +362,10 @@ def image_processor(
 
         text = ""
         if ocr is True or str(ocr).lower() == "always" or str(ocr).lower() == "auto":
+            if ocr_source is not None:
+                ocr_bytes, ocr_mimetype = pil_encode(ocr_source, "PNG"), "image/png"
+            else:
+                ocr_bytes, ocr_mimetype = image_bytes, mimetype
             ocr_forced = ocr is True or str(ocr).lower() == "always"
             engine = str(ocr_engine or "rapidocr").lower()
             if engine not in OCR_ENGINES:
@@ -362,7 +388,7 @@ def image_processor(
                 else:
                     try:
                         text = _ocr_image_bytes_lighton(
-                            image_bytes, url=url, mimetype=mimetype
+                            ocr_bytes, url=url, mimetype=ocr_mimetype
                         )
                     except Exception as e:
                         return error_artifact(
@@ -378,7 +404,7 @@ def image_processor(
                 from ..deps import check_dep
 
                 if check_dep("ocr").available:
-                    text = _ocr_image_bytes(image_bytes)
+                    text = _ocr_image_bytes(ocr_bytes)
                     extra["ocr"] = True
                     extra["ocr_backend"] = "rapidocr"
                 elif ocr_forced:
@@ -415,7 +441,7 @@ OPTIONS = (
     Option(
         name="max_dim",
         type="int",
-        help="Downscale so the longest side is at most this many pixels",
+        help="Downscale so the longest side is at most this many pixels (0 = no limit)",
         example="max_dim: 1024",
     ),
     Option(
@@ -423,6 +449,18 @@ OPTIONS = (
         type="int",
         help="Rotate counterclockwise by this many degrees (negative = clockwise)",
         example="rotate: 90",
+    ),
+    Option(
+        name="image_format",
+        type="str",
+        help="Output format: png or jpeg (default: keep jpeg, other formats png)",
+        example="image_format: jpeg",
+    ),
+    Option(
+        name="quality",
+        type="int",
+        help="JPEG quality, 1-95 (default 85 when encoding jpeg)",
+        example="quality: 75",
     ),
     Option(
         name="ocr",

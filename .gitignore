@@ -34,3 +34,9 @@ z-claude.md
 # Deployment state (machine-specific resource IDs) and live env
 deploy/DEPLOYED.md
 deploy/.env
+
+# skill evaluation results (large: agent sessions)
+evals/skill/runs/
+
+# Personal agent settings
+.claude/settings.local.json

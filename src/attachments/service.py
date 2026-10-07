@@ -19,6 +19,7 @@ import logging
 from typing import Any
 
 from .config import get_api_key, get_config, service_configured
+from .types import artifact_from_wire
 
 log = logging.getLogger("attachments.service")
 
@@ -147,13 +148,12 @@ def process_via_service(
     # Parse response
     result = response.json()
 
-    # Decode base64 images if present
-    if "images" in result:
-        for img in result["images"]:
-            if "bytes_b64" in img:
-                img["bytes"] = base64.b64decode(img.pop("bytes_b64"))
-
-    return result
+    # Wire form -> in-process artifact (bytes_b64 -> bytes). A response that
+    # is not a valid artifact is the service's failure, not the file's.
+    try:
+        return artifact_from_wire(result)
+    except (TypeError, ValueError) as exc:
+        raise ServiceError(f"Service returned an invalid artifact: {exc}") from exc
 
 
 def unpack_via_service(

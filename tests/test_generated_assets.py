@@ -9,6 +9,7 @@ GOOD tests:
     - spec/dsl-schema.json on disk == the live dsl_schema() serialization
       (CI fails when option declarations change without regenerating)
     - docs/dsl-options.md on disk == the regenerated cheatsheet
+    - src/attachments/skill/options.md on disk == the regenerated tables
     - src/attachments/__init__.pyi on disk == the regenerated typing stub
       (covers the public exports AND every declared option/alias kwarg)
     - The stub parses as valid Python and re-exports all of __all__
@@ -44,6 +45,7 @@ GENERATOR_PATH = REPO_ROOT / "scripts" / "gen_dsl_assets.py"
 SCHEMA_PATH = REPO_ROOT / "spec" / "dsl-schema.json"
 DOCS_PATH = REPO_ROOT / "docs" / "dsl-options.md"
 STUB_PATH = REPO_ROOT / "src" / "attachments" / "__init__.pyi"
+SKILL_OPTIONS_PATH = REPO_ROOT / "src" / "attachments" / "skill" / "options.md"
 
 REGEN_HINT = "stale — regenerate with: uv run python scripts/gen_dsl_assets.py"
 
@@ -135,3 +137,9 @@ def test_init_stub_types_every_declared_option_and_alias() -> None:
                 for alias in option["aliases"]:
                     assert alias in kwarg_names
     assert {"api_key", "prefer"} <= kwarg_names
+
+
+def test_skill_options_in_sync(generator: ModuleType) -> None:
+    expected = generator.render_skill_options(dsl_schema())
+    on_disk = SKILL_OPTIONS_PATH.read_text(encoding="utf-8")
+    assert on_disk == expected, f"src/attachments/skill/options.md {REGEN_HINT}"

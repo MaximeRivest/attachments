@@ -32,6 +32,9 @@ import logging
 import os
 from typing import Any
 
+from ._sources._guards import private_url_guard
+from .types import artifact_to_wire
+
 # Server deps are optional
 try:
     import urllib.parse
@@ -53,19 +56,6 @@ def _allow_private_urls() -> bool:
     """
     flag = os.environ.get("ATTACHMENTS_ALLOW_PRIVATE_URLS", "")
     return flag.strip().lower() in ("1", "true", "yes", "on")
-
-
-def _encode_artifact_for_wire(artifact: dict) -> dict:
-    """Replace each image's raw ``bytes`` with base64 ``bytes_b64``.
-
-    Per the IR wire format, JSON transport carries ``bytes_b64`` only —
-    never raw ``bytes``. ``meta`` passes through unchanged.
-    """
-    for img in artifact.get("images", []):
-        if "bytes" in img and isinstance(img["bytes"], bytes):
-            img["bytes_b64"] = base64.b64encode(img["bytes"]).decode("ascii")
-            del img["bytes"]
-    return artifact
 
 
 def _unpack_bytes_response(file_data: bytes, filename: str) -> dict:
@@ -291,17 +281,20 @@ def _make_handler():
 
                 # Options travel as a plain dict so a field named "prefer"
                 # or "filename" can never collide with named parameters.
-                artifact = _process_single(
-                    filename,
-                    file_data,
-                    options=options,
-                    prefer="local-only",
-                )
+                # A page this server renders (html screenshot) must not
+                # reach internal addresses either (SSRF guard).
+                with private_url_guard(not _allow_private_urls()):
+                    artifact = _process_single(
+                        filename,
+                        file_data,
+                        options=options,
+                        prefer="local-only",
+                    )
 
                 # Response body is exactly an Artifact (meta envelope,
                 # images encoded as bytes_b64 for JSON transport).
                 artifact = normalize_artifact(artifact, filename)
-                self._send_json(_encode_artifact_for_wire(artifact))
+                self._send_json(artifact_to_wire(artifact))
 
             except ValueError as e:
                 self._send_error(str(e), 400)
@@ -515,9 +508,10 @@ def create_app():
             try:
                 # Plain options dict: field names can never collide with
                 # _process_single's named parameters.
-                artifact = _process_single(
-                    filename, file_data, options=options, prefer="local-only"
-                )
+                with private_url_guard(not _allow_private_urls()):
+                    artifact = _process_single(
+                        filename, file_data, options=options, prefer="local-only"
+                    )
             except Exception:
                 # Never leak internal exception details to the client;
                 # the full traceback stays in the server log.
@@ -527,7 +521,7 @@ def create_app():
             # Response body is exactly an Artifact (meta envelope,
             # images encoded as bytes_b64 for JSON transport).
             artifact = normalize_artifact(artifact, filename)
-            return _json_response(_encode_artifact_for_wire(artifact))
+            return _json_response(artifact_to_wire(artifact))
 
         # --- POST /unpack ---
         if path == "/unpack":

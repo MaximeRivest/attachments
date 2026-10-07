@@ -60,7 +60,7 @@ def test_render_text_without_sources():
         _text_artifact("Alpha.", source="a.txt"),
         _text_artifact("Beta.", source="b.txt"),
     ]
-    assert render_text(artifacts, include_sources=False) == "Alpha.\n\nBeta."
+    assert render_text(artifacts, sources=False) == "Alpha.\n\nBeta."
 
 
 def test_render_text_skips_empty_and_whitespace_only_artifacts():
@@ -85,10 +85,9 @@ def test_render_text_notes_image_only_artifacts():
         meta={"source": "scan.pdf"},
     )
     assert render_text([art]) == "## scan.pdf\n[image: p-1.png]\n[image: p-2.png]"
-    # Without sources the image notes still appear (never silently lost).
-    assert render_text([art], include_sources=False) == (
-        "[image: p-1.png]\n[image: p-2.png]"
-    )
+    # Without sources the notes stay (never silently lost) but lose the
+    # names, which would leak labels (a photo called tabby_cat.png).
+    assert render_text([art], sources=False) == "[image]\n[image]"
 
 
 def test_render_text_text_artifact_with_images_renders_text_only():
@@ -166,8 +165,11 @@ def test_to_claude_content_skips_images_without_payload():
         images=[{"name": "ghost.png", "mimetype": "image/png"}],
         meta={"source": "g.pdf"},
     )
-    blocks = to_claude_content([art])
-    # The [image: ...] note remains in the text block, but no image block.
+    # An image with no data cannot be sent, so it never becomes a block.
+    # Interleaved (default) the artifact has nothing else: no blocks.
+    assert to_claude_content([art]) == []
+    # The text-first layout keeps render_text's [image: ...] note.
+    blocks = to_claude_content([art], interleave=False)
     assert [b["type"] for b in blocks] == ["text"]
     assert "[image: ghost.png]" in blocks[0]["text"]
 
@@ -202,7 +204,9 @@ def test_to_openai_messages_shape_and_data_url_round_trip():
     assert messages[0]["role"] == "user"
     parts = messages[0]["content"]
     assert [p["type"] for p in parts] == ["text", "image_url", "text"]
-    assert parts[0] == {"type": "text", "text": render_text(artifacts)}
+    # The image-only artifact gets its header, then its image (no
+    # [image: ...] note: the image itself follows).
+    assert parts[0] == {"type": "text", "text": "## a.txt\nHello.\n\n## scan.pdf"}
     url = parts[1]["image_url"]["url"]
     prefix = "data:image/png;base64,"
     assert url.startswith(prefix)

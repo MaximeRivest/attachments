@@ -15,8 +15,10 @@ Quick Start::
 
 ``att()`` returns :class:`Artifacts` — a ``list`` subclass of plain
 artifact dicts with shortcuts: ``.text``, ``.images``, ``.errors``,
-``.claude(prompt=None)``, ``.openai(prompt=None)``, ``.chunk()``. Lost?
-``att.help()`` prints a one-screen overview.
+``.raise_for_errors()``, ``.parts()``, ``.claude(prompt=None)``,
+``.openai(prompt=None)``, ``.chunk()``, ``.estimate_tokens()``,
+``.to_wire()`` / ``Artifacts.from_wire()``. Lost? ``att.help()`` prints a
+one-screen overview.
 
 With Service Fallback::
 
@@ -36,7 +38,8 @@ Every DSL option has a keyword-argument twin (kwargs win):
 
     >>> from attachments import att
     >>> [o["name"] for o in att.options(".pdf")]
-    ['pages', 'password', 'images', 'dpi', 'ocr', 'ocr_engine', 'max_pages']
+    ['pages', 'password', 'images', 'dpi', 'max_dim', 'image_format', 'quality', \
+'ocr', 'ocr_engine', 'max_pages']
 
 Check Available Features:
 
@@ -91,10 +94,12 @@ from .deps import check_dep, check_deps, has_local, has_service
 from .dsl import format_dsl, parse_dsl
 from .render import (
     chunk,
+    estimate_tokens,
     render_text,
     to_claude_content,
     to_claude_messages,
     to_openai_messages,
+    to_parts,
 )
 from .types import (
     ERROR_INVALID_OPTION,
@@ -105,11 +110,14 @@ from .types import (
     ERROR_SERVICE,
     ERROR_UNPACK,
     Artifact,
+    AttachmentsError,
     ErrorInfo,
     ImageItem,
     Meta,
     Processor,
     Segment,
+    artifact_from_wire,
+    artifact_to_wire,
     error_artifact,
     is_missing_dependency,
     make_artifact,
@@ -134,6 +142,9 @@ __all__ = [
     "missing_dep_artifact",
     "is_missing_dependency",
     "normalize_artifact",
+    "artifact_to_wire",
+    "artifact_from_wire",
+    "AttachmentsError",
     # Error codes
     "ERROR_MISSING_DEPENDENCY",
     "ERROR_PASSWORD_REQUIRED",
@@ -161,10 +172,12 @@ __all__ = [
     "has_service",
     # Last-mile rendering & adapters (attachments.render)
     "render_text",
+    "to_parts",
     "to_claude_content",
     "to_claude_messages",
     "to_openai_messages",
     "chunk",
+    "estimate_tokens",
     # Processor registry & decorators
     "processors",
     "register_processor",
@@ -183,4 +196,4 @@ __all__ = [
 att.options = options  # type: ignore[attr-defined]
 att.help = att_help  # type: ignore[attr-defined]
 
-__version__ = "1.0.0a1"  # pre-release; see VISION.md
+__version__ = "1.0.0a2"  # pre-release; see VISION.md

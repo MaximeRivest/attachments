@@ -142,7 +142,11 @@ def unpack(
       - TAR archives (.tar, .tar.gz, .tgz, .tar.bz2, .tbz2, .tar.xz, .txz)
       - GitHub repos via ``github://owner/repo`` or
         ``https://github.com/owner/repo`` (shallow clone of repo root)
-      - HTTP/HTTPS single files (follows redirects; expands archives **by extension**)
+      - HTTP/HTTPS single files (follows redirects; expands archives **by
+        extension**). The file is a ``SourceFile``: still a ``(name, bytes)``
+        pair, plus ``.url`` (final address) and ``.warnings``; its name
+        agrees with the server's Content-Type (a page at ``.../README.md``
+        served as HTML becomes ``README.md.html``).
 
     Safety:
       - Archive expansion is capped (``MAX_ARCHIVE_EXPANSION_BYTES`` total
@@ -180,12 +184,14 @@ def unpack(
     # --- Added: HTTP/HTTPS single-file download ---
     if input.startswith("http://") or input.startswith("https://"):
         # If it's a GitHub URL but NOT a repo root, treat it as a file download
-        name, data = _download_http_or_https(
+        downloaded = _download_http_or_https(
             input, block_private_urls=block_private_urls
         )
+        name, data = downloaded
         if _is_raw_archive_name(name):
             return _explode_archive_bytes(name, data)
-        return [(name, data)]
+        # A SourceFile: still a (name, bytes) pair, plus the final URL.
+        return [downloaded]
     # --- end ---
 
     # Local directory
@@ -211,6 +217,7 @@ def unpack(
 
 
 __all__ = [
+    "SourceFile",
     "unpack",
     "register_unpack_handler",
     "source",
@@ -222,6 +229,7 @@ __all__ = [
 # above (``from . import source`` / ``register_unpack_handler``) without a
 # circular import — same layout as ``_processors/__init__.py``. New built-in
 # source modules get their import line HERE, not in the top import block.
+from ._file import SourceFile  # noqa: E402
 from .archives import _explode_archive_bytes, _is_raw_archive_name  # noqa: E402
 from .github import _clone_github_to_temp, _is_github_repo_root_url  # noqa: E402
 from .http import _download_http_or_https  # noqa: E402

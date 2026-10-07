@@ -17,8 +17,23 @@ from ..types import (
     make_artifact,
 )
 from . import register_processor
+from ._imageout import (
+    DEFAULT_QUALITY,
+    check_image_output,
+    limit,
+    output_format,
+    pil_encode,
+)
 
 _PAGE_SEPARATOR = "\n\n"
+
+#: Default longest side of a rendered page image, in pixels. 200 dpi alone
+#: gives 2200 px for a Letter page and 2667 px for a 16:9 slide, more than
+#: models use: Claude shrinks anything over 1568 px, OpenAI anything over
+#: 2048 px. 2000 also stays within Anthropic's per-image limit for requests
+#: with more than 20 images (2000 x 2000), which a long PDF reaches.
+#: ``max_dim: 0`` turns the cap off.
+DEFAULT_MAX_DIM = 2000
 
 #: Note + extra.ocr_hint when a PDF has no text layer and rapidocr is
 #: missing (ocr="auto"). Local remedy first, free hosted tier second;
@@ -60,15 +75,16 @@ def _join_pages_with_segments(
 ) -> tuple[str, list[dict]]:
     """Join per-page texts and build page segments (IR contract: meta.segments).
 
-    Each segment carries a 1-based page label and start/end offsets into the
-    joined text.
+    Each segment carries a 1-based page label, the 1-based ``page`` number
+    (the same number as ``ImageItem.page`` on that page's render), and
+    start/end offsets into the joined text.
 
     Examples:
         >>> text, segs = _join_pages_with_segments(["one", "two"], 0)
         >>> text
         'one\\n\\ntwo'
         >>> segs[0]
-        {'kind': 'page', 'label': 'page 1', 'start': 0, 'end': 3}
+        {'kind': 'page', 'label': 'page 1', 'start': 0, 'end': 3, 'page': 1}
         >>> text[segs[1]["start"] : segs[1]["end"]]
         'two'
     """
@@ -84,6 +100,7 @@ def _join_pages_with_segments(
                 "label": f"page {first_page + idx + 1}",
                 "start": offset,
                 "end": offset + len(page_text),
+                "page": first_page + idx + 1,
             }
         )
         parts.append(page_text)
@@ -217,7 +234,11 @@ def _extract_text_with_pdfminer(
         if max_pages is not None:
             stop = min(stop, start + int(max_pages))
 
-        page_numbers = set(range(start, stop))  # pdfminer expects 0-based indices
+        # pdfminer expects 0-based indices and only tests membership, so a
+        # lazy range is enough. Never a set: with an unknown page count the
+        # bound is 10**9, and materializing it took minutes and gigabytes
+        # for every PDF too broken to count its pages.
+        page_numbers = range(start, stop)
 
         raw = (
             extract_text(
@@ -250,22 +271,36 @@ def _extract_text_with_pdfminer(
         return (None, None, 0, None, extra, [])
 
 
-def _render_pages_to_png_with_pymupdf(
+def _render_pages_with_pymupdf(
     data: bytes,
     page_start: int,
     page_end: int | None,
     max_pages: int | None,
     dpi: int,
     filename: str | None,
+    *,
+    max_dim: int | None = None,
+    image_format: str = "png",
+    quality: int = DEFAULT_QUALITY,
 ) -> tuple[list[dict], str | None, dict]:
     """Return (images, backend_name, extra).
 
-    Each image is a dict with keys: name, mimetype, bytes, page.
+    Each image is a dict with keys: name, mimetype, bytes, page. Pages are
+    drawn at *dpi*, or smaller when that would exceed *max_dim* pixels on
+    the longest side: the zoom is chosen so the page is drawn at the final
+    size directly (sharper and faster than drawing large and shrinking).
+    ``extra["downscaled_pages"]`` counts pages the cap made smaller.
     """
     extra: dict[str, Any] = {}
     try:
-        import fitz  # PyMuPDF
+        try:  # PyMuPDF; its old module name `fitz` warns since 1.24
+            import pymupdf as fitz
+        except ImportError:
+            import fitz
 
+        _pil_format, mimetype, ext = output_format(image_format)
+        jpeg = mimetype == "image/jpeg"
+        cap = limit(max_dim)
         doc = fitz.open(stream=data, filetype="pdf")
         try:
             total = doc.page_count
@@ -273,23 +308,37 @@ def _render_pages_to_png_with_pymupdf(
             stop = total if page_end is None else min(int(page_end), total)
             if max_pages is not None:
                 stop = min(stop, start + int(max_pages))
-            scale = dpi / 72.0
-            mat = fitz.Matrix(scale, scale)
 
             images: list[dict] = []
+            downscaled = 0
             for i in range(start, stop):
                 page = doc.load_page(i)
-                pix = page.get_pixmap(matrix=mat, alpha=False)
+                zoom = dpi / 72.0
+                longest = max(page.rect.width, page.rect.height)
+                if cap and longest * zoom > cap:
+                    zoom = cap / longest
+                    downscaled += 1
+                pix = page.get_pixmap(matrix=fitz.Matrix(zoom, zoom), alpha=False)
+                if cap and max(pix.width, pix.height) > cap:  # pixel rounding
+                    zoom *= (cap - 0.5) / max(pix.width, pix.height)
+                    pix = page.get_pixmap(matrix=fitz.Matrix(zoom, zoom), alpha=False)
+                payload = (
+                    pix.tobytes("jpg", jpg_quality=quality)
+                    if jpeg
+                    else pix.tobytes("png")
+                )
                 images.append(
                     {
-                        "name": f"{(filename or 'document')}-page-{i + 1}.png",
-                        "mimetype": "image/png",
-                        "bytes": pix.tobytes("png"),
+                        "name": f"{(filename or 'document')}-page-{i + 1}.{ext}",
+                        "mimetype": mimetype,
+                        "bytes": payload,
                         "page": i + 1,
                     }
                 )
             extra["rendered_pages"] = len(images)
             extra["total_pages_seen"] = total
+            if downscaled:
+                extra["downscaled_pages"] = downscaled
             return images, "pymupdf", extra
         finally:
             doc.close()
@@ -298,21 +347,31 @@ def _render_pages_to_png_with_pymupdf(
         return [], None, extra
 
 
-def _render_pages_to_png_with_pdf2image(
+def _render_pages_with_pdf2image(
     data: bytes,
     page_start: int,
     page_end: int | None,
     max_pages: int | None,
     dpi: int,
     filename: str | None,
+    *,
+    max_dim: int | None = None,
+    image_format: str = "png",
+    quality: int = DEFAULT_QUALITY,
 ) -> tuple[list[dict], str | None, dict]:
     """
     Fallback renderer using pdf2image (requires poppler on system).
+
+    Same output and options as :func:`_render_pages_with_pymupdf`; pages
+    over *max_dim* are shrunk with Pillow (which pdf2image depends on).
     """
     extra: dict[str, Any] = {}
     try:
         from pdf2image import convert_from_bytes
+        from PIL import Image
 
+        pil_format, mimetype, ext = output_format(image_format)
+        cap = limit(max_dim)
         start = max(0, int(page_start or 0))
         last = page_end
         if max_pages is not None:
@@ -331,19 +390,23 @@ def _render_pages_to_png_with_pdf2image(
             fmt="png",
         )
         images: list[dict] = []
+        downscaled = 0
         for idx, im in enumerate(pil_pages):
-            buf = io.BytesIO()
-            im.save(buf, format="PNG")
+            if cap and max(im.size) > cap:
+                im.thumbnail((cap, cap), Image.Resampling.LANCZOS)
+                downscaled += 1
             page_no = start + idx + 1
             images.append(
                 {
-                    "name": f"{(filename or 'document')}-page-{page_no}.png",
-                    "mimetype": "image/png",
-                    "bytes": buf.getvalue(),
+                    "name": f"{(filename or 'document')}-page-{page_no}.{ext}",
+                    "mimetype": mimetype,
+                    "bytes": pil_encode(im, pil_format, quality),
                     "page": page_no,
                 }
             )
         extra["rendered_pages"] = len(images)
+        if downscaled:
+            extra["downscaled_pages"] = downscaled
         return images, "pdf2image", extra
     except Exception as e:
         extra["note"] = f"image rendering via pdf2image unavailable: {e}"
@@ -362,6 +425,9 @@ def process_pdf(
     # Image rendering options
     render_images: bool | str = "auto",  # False | True/"always" | "auto"
     images_dpi: int = 200,
+    max_dim: int | None = DEFAULT_MAX_DIM,
+    image_format: str = "png",
+    quality: int = DEFAULT_QUALITY,
     # OCR options
     ocr: bool | str = "auto",  # False | True/"always" | "auto"
     ocr_engine: str = "rapidocr",  # "rapidocr" | "lighton"
@@ -377,7 +443,13 @@ def process_pdf(
       - max_pages: int | None        Hard cap on pages to parse/render.
       - render_images:               False | True/"always" | "auto"
                                      "auto" renders only if text is empty.
-      - images_dpi: int              PNG rendering resolution when rendering.
+      - images_dpi: int              Rendering resolution (default 200).
+      - max_dim: int | None          Longest side of a page image in pixels
+                                     (default 2000; 0 or None = no cap). The
+                                     cap wins over images_dpi: a page that
+                                     would be larger is drawn smaller.
+      - image_format: str            "png" (default, lossless) or "jpeg".
+      - quality: int                 JPEG quality 1-95 (default 85).
       - ocr:                         False | True/"always" | "auto"
                                      OCR runs ONLY when the extracted text
                                      layer is empty (a text layer always
@@ -404,6 +476,34 @@ def process_pdf(
     from ..types import missing_dep_artifact
 
     source = filename or "document.pdf"
+
+    invalid = check_image_output(
+        max_dim=max_dim, image_format=image_format, quality=quality
+    )
+    if invalid:
+        artifact = error_artifact(source, ERROR_INVALID_OPTION, invalid)
+        artifact["meta"]["kind"] = "pdf"
+        return artifact
+
+    def _render(dpi: int, *, delivered: bool) -> tuple[list[dict], str | None, dict]:
+        """Render pages: PyMuPDF first, pdf2image as fallback.
+
+        Delivered images follow the size/format options; OCR inputs
+        (``delivered=False``) are full-size PNG, whatever the options.
+        """
+        settings: dict[str, Any] = (
+            {"max_dim": max_dim, "image_format": image_format, "quality": quality}
+            if delivered
+            else {"max_dim": None, "image_format": "png"}
+        )
+        args = (data, page_start, page_end, max_pages, dpi, filename)
+        imgs, backend, info = _render_pages_with_pymupdf(*args, **settings)
+        if backend:
+            return imgs, backend, {f"render_{k}": v for k, v in info.items()}
+        imgs2, backend2, info2 = _render_pages_with_pdf2image(*args, **settings)
+        merged = {f"render_{k}": v for k, v in info.items()}
+        merged.update({f"render_fallback_{k}": v for k, v in info2.items()})
+        return imgs2, backend2, merged
 
     # Typed missing-dependency signal: no text backend importable at all.
     if not (check_dep("pdf-text").available or check_dep("pdf-fallback").available):
@@ -492,23 +592,19 @@ def process_pdf(
         # "auto" or anything else truthy -> only render if no text
         return text.strip() == ""
 
+    # Whether the delivered page images are exactly what OCR wants (full
+    # size, lossless); otherwise OCR renders its own copy below.
+    images_full_quality = False
     if _should_render():
-        imgs, img_backend, extra_img = _render_pages_to_png_with_pymupdf(
-            data, page_start, page_end, max_pages, images_dpi, filename
-        )
-        extra.update({f"render_{k}": v for k, v in extra_img.items()})
+        imgs, img_backend, extra_img = _render(int(images_dpi), delivered=True)
+        extra.update(extra_img)
         if img_backend:
             extra["image_backend"] = img_backend
             images = imgs
-        else:
-            # try pdf2image fallback
-            imgs2, img_backend2, extra_img2 = _render_pages_to_png_with_pdf2image(
-                data, page_start, page_end, max_pages, images_dpi, filename
+            images_full_quality = str(image_format).lower() == "png" and not (
+                extra_img.get("render_downscaled_pages")
+                or extra_img.get("render_fallback_downscaled_pages")
             )
-            extra.update({f"render_fallback_{k}": v for k, v in extra_img2.items()})
-            if img_backend2:
-                extra["image_backend"] = img_backend2
-                images = imgs2
 
     # ---- OCR (optional; only when there is no text layer) ----
     # A text layer always wins: OCR runs only when extracted text is empty.
@@ -550,17 +646,13 @@ def process_pdf(
                 extra["ocr_engine_fallback"] = "rapidocr"
 
         if engine == "lighton" or check_dep("ocr").available:
-            ocr_images = images
+            ocr_images = images if images_full_quality else []
             if not ocr_images:
-                # Render pages just for OCR at an OCR-suitable resolution.
+                # Render pages just for OCR at an OCR-suitable resolution:
+                # full size and lossless, whatever max_dim/image_format the
+                # delivered images use (shrunk or JPEG pages OCR worse).
                 ocr_dpi = max(int(images_dpi), 200)
-                ocr_images, _backend, _ = _render_pages_to_png_with_pymupdf(
-                    data, page_start, page_end, max_pages, ocr_dpi, filename
-                )
-                if not _backend:
-                    ocr_images, _backend, _ = _render_pages_to_png_with_pdf2image(
-                        data, page_start, page_end, max_pages, ocr_dpi, filename
-                    )
+                ocr_images, _backend, _ = _render(ocr_dpi, delivered=False)
             if ocr_images:
                 ordered = sorted(ocr_images, key=lambda im: im["page"])
                 if engine == "lighton":
@@ -648,7 +740,7 @@ register_options(
             aliases=("render",),
             param="render_images",
             default="auto",
-            help="Render pages to PNG: true/false, or auto (only when no text).",
+            help="Render pages to images: true/false, or auto (only when no text).",
             example="images: true",
         ),
         Option(
@@ -656,8 +748,32 @@ register_options(
             "int",
             param="images_dpi",
             default=200,
-            help="Resolution for rendered page images.",
+            help="Resolution for rendered page images (max_dim caps the result).",
             example="dpi: 300",
+        ),
+        Option(
+            "max_dim",
+            "int",
+            default=DEFAULT_MAX_DIM,
+            help=(
+                "Longest side of each page image in pixels, applied after dpi; "
+                "0 = no cap."
+            ),
+            example="max_dim: 1568",
+        ),
+        Option(
+            "image_format",
+            "str",
+            default="png",
+            help="png (lossless, best for text) or jpeg (far smaller for scans).",
+            example="image_format: jpeg",
+        ),
+        Option(
+            "quality",
+            "int",
+            default=DEFAULT_QUALITY,
+            help="JPEG quality, 1-95 (used with image_format: jpeg).",
+            example="quality: 75",
         ),
         Option(
             "ocr",

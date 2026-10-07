@@ -118,7 +118,7 @@ class TestHtmlProcessor:
             b"<body><p>Body.</p></body></html>"
         )
         result = processors[".html"](html)
-        assert result["text"].startswith("My Title")
+        assert result["text"].startswith("# My Title\n\nBody.")
 
     def test_no_duplicate_title(self):
         """If the title already appears in body text, don't double it."""
@@ -173,7 +173,7 @@ class TestHtmlSelect:
     def test_single_match_no_title_prefix(self):
         result = processors[".html"](SELECT_HTML, select="h1")
 
-        assert result["text"] == "Heading One"
+        assert result["text"] == "# Heading One"  # a heading stays a heading
         assert "Select Page" not in result["text"]
         extra = result["meta"]["extra"]
         assert extra["selector"] == "h1"
@@ -256,7 +256,7 @@ class TestHtmlSelect:
         assert warnings == []
 
         result = processors[".html"](SELECT_HTML, **kwargs)
-        assert result["text"] == "Heading One"
+        assert result["text"] == "# Heading One"
 
     def test_select_with_images_only_inside_selection(self):
         html = (
@@ -288,17 +288,115 @@ class TestHtmlSelect:
         extra = result["meta"]["extra"]
         assert "selector" not in extra
         assert "selected_count" not in extra
-        # No-select path: title prefix behavior intact
-        assert result["text"].startswith("Select Page")
+        # No-select path: the page has its own <h1>, so no title prefix
+        assert result["text"].startswith("# Heading One")
+        assert "Select Page" not in result["text"]
 
     def test_options_registration(self):
         from attachments._options import get_options
 
         for ext in (".html", ".htm"):
             names = sorted(o.name for o in get_options(ext))
-            assert names == ["images", "select"]
+            assert names == [
+                "image_format",
+                "images",
+                "links",
+                "main",
+                "max_dim",
+                "max_screens",
+                "quality",
+                "screenshot",
+                "select",
+                "url",
+            ]
 
 
 # Missing-dependency behavior is covered by the always-runnable tests in
 # tests/test_processors/test_missing_deps.py (this module is skipped
 # entirely when bs4 is absent, so such tests could never run here).
+
+
+# ---------------------------------------------------------------------------
+# Web-page behaviour: title, links/url, JS note, option validation
+# ---------------------------------------------------------------------------
+
+
+class TestHtmlPage:
+    def test_title_not_prefixed_when_page_has_h1(self):
+        html = b"<title>Site - Page</title><h1>Page</h1><p>Body.</p>"
+        assert processors[".html"](html)["text"] == "# Page\n\nBody."
+
+    def test_url_resolves_relative_links(self):
+        html = b"<p><a href='intro.html'>Intro</a></p>"
+        result = processors[".html"](
+            html, links=True, url="https://docs.example.com/guide/"
+        )
+        assert result["text"] == "[Intro](https://docs.example.com/guide/intro.html)"
+        assert result["meta"]["extra"]["url"] == "https://docs.example.com/guide/"
+        assert result["meta"]["extra"]["links"] is True
+
+    def test_base_href_wins_and_resolves_against_url(self):
+        html = b"<head><base href='/v2/'></head><p><a href='a'>A</a></p>"
+        result = processors[".html"](html, links=True, url="https://x.org/v1/page")
+        assert result["text"] == "[A](https://x.org/v2/a)"
+
+    def test_extra_records_content_scope(self):
+        html = b"<body><nav>n</nav><main><p>Body text here.</p></main></body>"
+        assert processors[".html"](html)["meta"]["extra"]["content"] == "main"
+        assert (
+            processors[".html"](html, main=False)["meta"]["extra"]["content"] == "page"
+        )
+
+    def test_javascript_shell_page_gets_a_note(self):
+        html = (
+            b"<html><head><title>App</title><script src='app.js'></script></head>"
+            b"<body><div id='root'></div></body></html>"
+        )
+        result = processors[".html"](html)
+        assert "JavaScript" in result["meta"]["note"]
+        assert "screenshot: true" in result["meta"]["note"]
+
+    def test_no_note_for_pages_with_text(self):
+        html = b"<script>x()</script><p>" + b"Real content. " * 20 + b"</p>"
+        assert "note" not in processors[".html"](html)["meta"]
+
+    @pytest.mark.parametrize(
+        ("options", "fragment"),
+        [
+            ({"max_screens": -1}, "max_screens"),
+            ({"max_screens": True}, "max_screens"),
+            ({"image_format": "gif"}, "image_format"),
+            ({"quality": 0}, "quality"),
+            ({"url": 5}, "url"),
+        ],
+    )
+    def test_invalid_options_are_typed_errors(self, options, fragment):
+        result = processors[".html"](SIMPLE_HTML, **options)
+        error = result["meta"]["error"]
+        assert error["code"] == "invalid-option"
+        assert fragment in error["message"]
+        assert result["meta"]["kind"] == "html"
+
+    def test_screenshot_without_playwright_is_missing_dependency(self, monkeypatch):
+        from attachments import deps
+        from attachments.types import is_missing_dependency
+
+        real = deps.check_dep
+
+        def fake(feature):
+            status = real(feature)
+            if feature == "browser":
+                return status._replace(available=False)
+            return status
+
+        monkeypatch.setattr("attachments._processors.html.check_dep", fake)
+        result = processors[".html"](SIMPLE_HTML, screenshot=True)
+        assert is_missing_dependency(result)
+        assert "attachments[browser]" in result["meta"]["error"]["message"]
+        assert "playwright install chromium" in result["meta"]["error"]["message"]
+
+    def test_deeply_nested_markup_does_not_crash(self):
+        html = b"<div>" * 3000 + b"deep words" + b"</div>" * 3000
+        result = processors[".html"](html)
+        assert "deep words" in result["text"]
+        assert "error" not in result["meta"]

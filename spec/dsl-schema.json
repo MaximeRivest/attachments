@@ -5,7 +5,7 @@
         "aliases": [],
         "default": null,
         "example": "max_dim: 1024",
-        "help": "Downscale so the longest side is at most this many pixels",
+        "help": "Downscale so the longest side is at most this many pixels (0 = no limit)",
         "name": "max_dim",
         "param": null,
         "type": "int"
@@ -16,6 +16,24 @@
         "example": "rotate: 90",
         "help": "Rotate counterclockwise by this many degrees (negative = clockwise)",
         "name": "rotate",
+        "param": null,
+        "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "image_format: jpeg",
+        "help": "Output format: png or jpeg (default: keep jpeg, other formats png)",
+        "name": "image_format",
+        "param": null,
+        "type": "str"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "quality: 75",
+        "help": "JPEG quality, 1-95 (default 85 when encoding jpeg)",
+        "name": "quality",
         "param": null,
         "type": "int"
       },
@@ -112,7 +130,7 @@
         "aliases": [],
         "default": null,
         "example": "max_dim: 1024",
-        "help": "Downscale so the longest side is at most this many pixels",
+        "help": "Downscale so the longest side is at most this many pixels (0 = no limit)",
         "name": "max_dim",
         "param": null,
         "type": "int"
@@ -123,6 +141,24 @@
         "example": "rotate: 90",
         "help": "Rotate counterclockwise by this many degrees (negative = clockwise)",
         "name": "rotate",
+        "param": null,
+        "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "image_format: jpeg",
+        "help": "Output format: png or jpeg (default: keep jpeg, other formats png)",
+        "name": "image_format",
+        "param": null,
+        "type": "str"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "quality: 75",
+        "help": "JPEG quality, 1-95 (default 85 when encoding jpeg)",
+        "name": "quality",
         "param": null,
         "type": "int"
       },
@@ -150,7 +186,7 @@
         "aliases": [],
         "default": null,
         "example": "max_dim: 1024",
-        "help": "Downscale so the longest side is at most this many pixels",
+        "help": "Downscale so the longest side is at most this many pixels (0 = no limit)",
         "name": "max_dim",
         "param": null,
         "type": "int"
@@ -161,6 +197,24 @@
         "example": "rotate: 90",
         "help": "Rotate counterclockwise by this many degrees (negative = clockwise)",
         "name": "rotate",
+        "param": null,
+        "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "image_format: jpeg",
+        "help": "Output format: png or jpeg (default: keep jpeg, other formats png)",
+        "name": "image_format",
+        "param": null,
+        "type": "str"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "quality: 75",
+        "help": "JPEG quality, 1-95 (default 85 when encoding jpeg)",
+        "name": "quality",
         "param": null,
         "type": "int"
       },
@@ -188,7 +242,7 @@
         "aliases": [],
         "default": null,
         "example": "max_dim: 1024",
-        "help": "Downscale so the longest side is at most this many pixels",
+        "help": "Downscale so the longest side is at most this many pixels (0 = no limit)",
         "name": "max_dim",
         "param": null,
         "type": "int"
@@ -199,6 +253,24 @@
         "example": "rotate: 90",
         "help": "Rotate counterclockwise by this many degrees (negative = clockwise)",
         "name": "rotate",
+        "param": null,
+        "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "image_format: jpeg",
+        "help": "Output format: png or jpeg (default: keep jpeg, other formats png)",
+        "name": "image_format",
+        "param": null,
+        "type": "str"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "quality: 75",
+        "help": "JPEG quality, 1-95 (default 85 when encoding jpeg)",
+        "name": "quality",
         "param": null,
         "type": "int"
       },
@@ -224,6 +296,44 @@
     ".htm": [
       {
         "aliases": [
+          "css"
+        ],
+        "default": null,
+        "example": "select: \"h1, .article\"",
+        "help": "CSS selector; extract only matching elements",
+        "name": "select",
+        "param": null,
+        "type": "str"
+      },
+      {
+        "aliases": [],
+        "default": true,
+        "example": "main: false",
+        "help": "Keep only the main content: skip navigation, site header and footer, sidebars, cookie/share widgets (false: whole page)",
+        "name": "main",
+        "param": null,
+        "type": "bool"
+      },
+      {
+        "aliases": [],
+        "default": false,
+        "example": "links: true",
+        "help": "Write links as [text](url) and images as ![alt](url) (default: plain text)",
+        "name": "links",
+        "param": null,
+        "type": "bool"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "url: https://example.com/docs/",
+        "help": "The page's address: resolves relative links; screenshots load it. Set automatically for web pages",
+        "name": "url",
+        "param": null,
+        "type": "str"
+      },
+      {
+        "aliases": [
           "render"
         ],
         "default": false,
@@ -234,20 +344,92 @@
         "type": "bool"
       },
       {
-        "aliases": [
-          "css"
-        ],
+        "aliases": [],
+        "default": false,
+        "example": "screenshot: true",
+        "help": "Add screenshots of the page rendered in a browser, 1280x800 screens from the top (needs attachments[browser])",
+        "name": "screenshot",
+        "param": null,
+        "type": "bool"
+      },
+      {
+        "aliases": [],
+        "default": 5,
+        "example": "max_screens: 2",
+        "help": "Most screenshots to take, from the top of the page (0 = whole page)",
+        "name": "max_screens",
+        "param": null,
+        "type": "int"
+      },
+      {
+        "aliases": [],
         "default": null,
-        "example": "select: \"h1, .article\"",
-        "help": "CSS selector; extract only matching elements",
-        "name": "select",
+        "example": "max_dim: 1024",
+        "help": "Longest side of each screenshot in pixels (0 = no limit)",
+        "name": "max_dim",
+        "param": null,
+        "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": "png",
+        "example": "image_format: jpeg",
+        "help": "Screenshot format: png (sharpest text) or jpeg (smaller)",
+        "name": "image_format",
         "param": null,
         "type": "str"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "quality: 75",
+        "help": "JPEG quality, 1-95 (used with image_format: jpeg)",
+        "name": "quality",
+        "param": null,
+        "type": "int"
       }
     ],
     ".html": [
       {
         "aliases": [
+          "css"
+        ],
+        "default": null,
+        "example": "select: \"h1, .article\"",
+        "help": "CSS selector; extract only matching elements",
+        "name": "select",
+        "param": null,
+        "type": "str"
+      },
+      {
+        "aliases": [],
+        "default": true,
+        "example": "main: false",
+        "help": "Keep only the main content: skip navigation, site header and footer, sidebars, cookie/share widgets (false: whole page)",
+        "name": "main",
+        "param": null,
+        "type": "bool"
+      },
+      {
+        "aliases": [],
+        "default": false,
+        "example": "links: true",
+        "help": "Write links as [text](url) and images as ![alt](url) (default: plain text)",
+        "name": "links",
+        "param": null,
+        "type": "bool"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "url: https://example.com/docs/",
+        "help": "The page's address: resolves relative links; screenshots load it. Set automatically for web pages",
+        "name": "url",
+        "param": null,
+        "type": "str"
+      },
+      {
+        "aliases": [
           "render"
         ],
         "default": false,
@@ -258,15 +440,49 @@
         "type": "bool"
       },
       {
-        "aliases": [
-          "css"
-        ],
+        "aliases": [],
+        "default": false,
+        "example": "screenshot: true",
+        "help": "Add screenshots of the page rendered in a browser, 1280x800 screens from the top (needs attachments[browser])",
+        "name": "screenshot",
+        "param": null,
+        "type": "bool"
+      },
+      {
+        "aliases": [],
+        "default": 5,
+        "example": "max_screens: 2",
+        "help": "Most screenshots to take, from the top of the page (0 = whole page)",
+        "name": "max_screens",
+        "param": null,
+        "type": "int"
+      },
+      {
+        "aliases": [],
         "default": null,
-        "example": "select: \"h1, .article\"",
-        "help": "CSS selector; extract only matching elements",
-        "name": "select",
+        "example": "max_dim: 1024",
+        "help": "Longest side of each screenshot in pixels (0 = no limit)",
+        "name": "max_dim",
+        "param": null,
+        "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": "png",
+        "example": "image_format: jpeg",
+        "help": "Screenshot format: png (sharpest text) or jpeg (smaller)",
+        "name": "image_format",
         "param": null,
         "type": "str"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "quality: 75",
+        "help": "JPEG quality, 1-95 (used with image_format: jpeg)",
+        "name": "quality",
+        "param": null,
+        "type": "int"
       }
     ],
     ".ini": [],
@@ -287,7 +503,7 @@
         "aliases": [],
         "default": null,
         "example": "max_dim: 1024",
-        "help": "Downscale so the longest side is at most this many pixels",
+        "help": "Downscale so the longest side is at most this many pixels (0 = no limit)",
         "name": "max_dim",
         "param": null,
         "type": "int"
@@ -298,6 +514,24 @@
         "example": "rotate: 90",
         "help": "Rotate counterclockwise by this many degrees (negative = clockwise)",
         "name": "rotate",
+        "param": null,
+        "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "image_format: jpeg",
+        "help": "Output format: png or jpeg (default: keep jpeg, other formats png)",
+        "name": "image_format",
+        "param": null,
+        "type": "str"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "quality: 75",
+        "help": "JPEG quality, 1-95 (default 85 when encoding jpeg)",
+        "name": "quality",
         "param": null,
         "type": "int"
       },
@@ -325,7 +559,7 @@
         "aliases": [],
         "default": null,
         "example": "max_dim: 1024",
-        "help": "Downscale so the longest side is at most this many pixels",
+        "help": "Downscale so the longest side is at most this many pixels (0 = no limit)",
         "name": "max_dim",
         "param": null,
         "type": "int"
@@ -336,6 +570,24 @@
         "example": "rotate: 90",
         "help": "Rotate counterclockwise by this many degrees (negative = clockwise)",
         "name": "rotate",
+        "param": null,
+        "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "image_format: jpeg",
+        "help": "Output format: png or jpeg (default: keep jpeg, other formats png)",
+        "name": "image_format",
+        "param": null,
+        "type": "str"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "quality: 75",
+        "help": "JPEG quality, 1-95 (default 85 when encoding jpeg)",
+        "name": "quality",
         "param": null,
         "type": "int"
       },
@@ -472,7 +724,7 @@
         ],
         "default": "auto",
         "example": "images: true",
-        "help": "Render pages to PNG: true/false, or auto (only when no text).",
+        "help": "Render pages to images: true/false, or auto (only when no text).",
         "name": "images",
         "param": "render_images",
         "type": "bool_or_auto"
@@ -481,9 +733,36 @@
         "aliases": [],
         "default": 200,
         "example": "dpi: 300",
-        "help": "Resolution for rendered page images.",
+        "help": "Resolution for rendered page images (max_dim caps the result).",
         "name": "dpi",
         "param": "images_dpi",
+        "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": 2000,
+        "example": "max_dim: 1568",
+        "help": "Longest side of each page image in pixels, applied after dpi; 0 = no cap.",
+        "name": "max_dim",
+        "param": null,
+        "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": "png",
+        "example": "image_format: jpeg",
+        "help": "png (lossless, best for text) or jpeg (far smaller for scans).",
+        "name": "image_format",
+        "param": null,
+        "type": "str"
+      },
+      {
+        "aliases": [],
+        "default": 85,
+        "example": "quality: 75",
+        "help": "JPEG quality, 1-95 (used with image_format: jpeg).",
+        "name": "quality",
+        "param": null,
         "type": "int"
       },
       {
@@ -519,7 +798,7 @@
         "aliases": [],
         "default": null,
         "example": "max_dim: 1024",
-        "help": "Downscale so the longest side is at most this many pixels",
+        "help": "Downscale so the longest side is at most this many pixels (0 = no limit)",
         "name": "max_dim",
         "param": null,
         "type": "int"
@@ -530,6 +809,24 @@
         "example": "rotate: 90",
         "help": "Rotate counterclockwise by this many degrees (negative = clockwise)",
         "name": "rotate",
+        "param": null,
+        "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "image_format: jpeg",
+        "help": "Output format: png or jpeg (default: keep jpeg, other formats png)",
+        "name": "image_format",
+        "param": null,
+        "type": "str"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "quality: 75",
+        "help": "JPEG quality, 1-95 (default 85 when encoding jpeg)",
+        "name": "quality",
         "param": null,
         "type": "int"
       },
@@ -599,7 +896,7 @@
         "aliases": [],
         "default": null,
         "example": "max_dim: 1024",
-        "help": "Downscale so the longest side is at most this many pixels",
+        "help": "Downscale so the longest side is at most this many pixels (0 = no limit)",
         "name": "max_dim",
         "param": null,
         "type": "int"
@@ -610,6 +907,24 @@
         "example": "rotate: 90",
         "help": "Rotate counterclockwise by this many degrees (negative = clockwise)",
         "name": "rotate",
+        "param": null,
+        "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "image_format: jpeg",
+        "help": "Output format: png or jpeg (default: keep jpeg, other formats png)",
+        "name": "image_format",
+        "param": null,
+        "type": "str"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "quality: 75",
+        "help": "JPEG quality, 1-95 (default 85 when encoding jpeg)",
+        "name": "quality",
         "param": null,
         "type": "int"
       },
@@ -637,7 +952,7 @@
         "aliases": [],
         "default": null,
         "example": "max_dim: 1024",
-        "help": "Downscale so the longest side is at most this many pixels",
+        "help": "Downscale so the longest side is at most this many pixels (0 = no limit)",
         "name": "max_dim",
         "param": null,
         "type": "int"
@@ -648,6 +963,24 @@
         "example": "rotate: 90",
         "help": "Rotate counterclockwise by this many degrees (negative = clockwise)",
         "name": "rotate",
+        "param": null,
+        "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "image_format: jpeg",
+        "help": "Output format: png or jpeg (default: keep jpeg, other formats png)",
+        "name": "image_format",
+        "param": null,
+        "type": "str"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "quality: 75",
+        "help": "JPEG quality, 1-95 (default 85 when encoding jpeg)",
+        "name": "quality",
         "param": null,
         "type": "int"
       },
@@ -732,7 +1065,7 @@
         "aliases": [],
         "default": null,
         "example": "max_dim: 1024",
-        "help": "Downscale so the longest side is at most this many pixels",
+        "help": "Downscale so the longest side is at most this many pixels (0 = no limit)",
         "name": "max_dim",
         "param": null,
         "type": "int"
@@ -743,6 +1076,24 @@
         "example": "rotate: 90",
         "help": "Rotate counterclockwise by this many degrees (negative = clockwise)",
         "name": "rotate",
+        "param": null,
+        "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "image_format: jpeg",
+        "help": "Output format: png or jpeg (default: keep jpeg, other formats png)",
+        "name": "image_format",
+        "param": null,
+        "type": "str"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "quality: 75",
+        "help": "JPEG quality, 1-95 (default 85 when encoding jpeg)",
+        "name": "quality",
         "param": null,
         "type": "int"
       },

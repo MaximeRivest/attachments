@@ -12,11 +12,15 @@ Examples:
     att README.md --copy --prompt "Summarize this"
     att --options          # list every declared DSL option
     att --options .pdf     # options for one processor
+    att --skill            # the coding-agent skill: where it is, who has it
+    att --skill --install  # install/update it for Claude Code, Pi, Codex
+    att --skill --install ~/project/.claude/skills   # or into named folders
 
 Notes:
     - Unknown `--key value` options are converted to DSL options: `[key:value]`.
     - Control options are: `--copy`, `--clipboard`, `--verbose`, `--json`,
-      `--prefer`, `--api-key`, `--prompt`, `--options`, `--help`.
+      `--prefer`, `--api-key`, `--prompt`, `--options`, `--help`;
+      `--skill` is a command of its own and must come first.
     - `--copy` requires pyperclip: `pip install attachments[clipboard]`.
     - Exit status: 0 on success (including partial success), 1 when every
       input failed (each artifact carries `meta.error`) or on usage errors.
@@ -24,7 +28,6 @@ Notes:
 
 from __future__ import annotations
 
-import base64
 import json
 import logging
 import os
@@ -33,6 +36,7 @@ import sys
 from typing import Any
 
 from . import att
+from .types import artifact_to_wire
 
 _CONTROL_KEYS = {
     "h",
@@ -116,16 +120,6 @@ def _build_dsl_from_options(opts: dict[str, str | list[str]]) -> str:
         else:
             parts.append(f"[{key}:{value}]")
     return "".join(parts)
-
-
-def _artifact_to_json_safe(obj: Any) -> Any:
-    if isinstance(obj, bytes):
-        return base64.b64encode(obj).decode("ascii")
-    if isinstance(obj, list):
-        return [_artifact_to_json_safe(v) for v in obj]
-    if isinstance(obj, dict):
-        return {k: _artifact_to_json_safe(v) for k, v in obj.items()}
-    return obj
 
 
 def _render_text(artifacts: list[dict[str, Any]]) -> str:
@@ -227,6 +221,17 @@ def _print_options(key: str | None) -> int:
 def main(argv: list[str] | None = None) -> int:
     args = sys.argv[1:] if argv is None else argv
 
+    if args and args[0] == "--skill":
+        from ._skill import main as skill_main
+
+        return skill_main(args[1:])
+    if "--skill" in args:
+        print(
+            "Error: --skill must come first: att --skill [--install [DIR ...]]",
+            file=sys.stderr,
+        )
+        return 2
+
     if not args or any(a in {"-h", "--help", "help"} for a in args):
         _print_help()
         return 0
@@ -277,7 +282,9 @@ def main(argv: list[str] | None = None) -> int:
     exit_code = 1 if _all_inputs_failed(all_artifacts) else 0
 
     if want_json:
-        print(json.dumps(_artifact_to_json_safe(all_artifacts), indent=2))
+        # The public wire form (images as bytes_b64), same as the server.
+        wire = [artifact_to_wire(artifact) for artifact in all_artifacts]
+        print(json.dumps(wire, indent=2))
         return exit_code
 
     # Surface typed errors (meta.error.code/message) on stderr

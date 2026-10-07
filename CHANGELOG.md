@@ -5,6 +5,135 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 1.0.0a2
+
+Six additions from the FunctAI review
+([docs/review-2026-10-06-functai.md](docs/review-2026-10-06-functai.md)),
+useful to every consumer, plus one severe bug fix; and web pages rebuilt
+(Markdown output, main-content extraction, screenshots).
+
+### Added
+
+- **Public wire form**: `Artifacts.to_wire()` / `Artifacts.from_wire(data)`
+  and the per-artifact `artifact_to_wire()` / `artifact_from_wire()`
+  (images as base64 `bytes_b64`, valid against `spec/artifact.schema.json`).
+  `to_wire` returns new dicts and never modifies its input; `from_wire`
+  raises `ValueError` on invalid base64 or wrongly typed fields. The server,
+  the service client and the CLI now share this one implementation.
+- **`to_parts()` / `Artifacts.parts()`**: provider-neutral content parts
+  (`{"type": "text", "text"}`, `{"type": "image", "media_type", "data"}`),
+  with each page's text followed by that page's images (`interleave=True`,
+  the default). `claude()` / `openai()` and `to_claude_*` /
+  `to_openai_messages` are now built from it and take the same options.
+- **`Artifacts.raise_for_errors()`** and **`AttachmentsError`** (`.errors`,
+  `.artifacts`; picklable). Opt-in: `att()` itself still never raises.
+- **`sources=` everywhere** (`to_text`, `parts`, `claude`, `openai`,
+  `chunk`, and the plain functions): `False` hides file names.
+- **Page image size control for PDFs**: `max_dim`, `image_format`
+  (`png`/`jpeg`) and `quality` (1–95, default 85). Pages are drawn at the
+  final size directly. Pictures gain `image_format` and `quality` with the
+  same meaning; `max_dim: 0` means "no limit" for both.
+- **Image tokens in the estimate**: `estimate_tokens()` /
+  `Artifacts.estimate_tokens()` → `{"text", "images", "total"}`, and
+  `image_tokens(w, h)`. Image sizes are read from PNG/JPEG/GIF/WebP/BMP
+  headers with the standard library only.
+- **A skill for coding agents**, shipped in the package
+  (`attachments/skill/`: `SKILL.md` plus an `options.md` generated from the
+  option schemas), and **`att --skill [--install [DIR ...]]`** to see and
+  install it for Claude Code, Pi and Codex. Installs replace only this
+  skill's own copies, leave links alone, and swap the new copy in
+  atomically. Every Python example in `SKILL.md` runs in the test suite;
+  `evals/skill/` measures it with fresh agents.
+- **`Segment.page`** (optional, 1-based) in the IR: pdf page and pptx slide
+  segments carry the same number as `ImageItem.page`. Additive; schema stays
+  version 1.
+- **Web pages read as Markdown.** HTML (from a URL or a file) becomes
+  headings, lists, pipe tables, fenced code blocks with their language and
+  TeX maths, with sentences kept whole across links and emphasis. Data
+  tables become Markdown tables (`rowspan` values repeat, spacer columns
+  drop); layout tables — whole old-web pages are built from them — read as
+  paragraphs (Mozilla Readability's data-table test).
+- **`main`** (html, default `true`): only the page's main content —
+  navigation, site header/footer, sidebars, dialogs, cookie/share widgets and
+  MediaWiki edit links are skipped, following how browsers expose page
+  landmarks (an article's own header and asides stay). A single `<main>` is
+  used as the scope. Nothing is dropped by text statistics, so content
+  tables and link lists stay; if skipping would leave almost nothing, the
+  whole page is used (`extra.main_fallback`). `main: false` keeps everything.
+- **`links`** (html, default `false`): `[text](url)` links and
+  `![alt](url)` images, with relative addresses resolved.
+- **`url`** (html): the page's address. Filled in automatically for web
+  pages with the final address after redirects (core passes it to any
+  processor that declares a `url` option, locally and to the service), so
+  relative links resolve correctly.
+- **`screenshot`** (html, needs the new `browser` extra and
+  `playwright install chromium`, or `ATTACHMENTS_CHROMIUM` set to a
+  Chromium/Chrome executable): adds pictures of the page rendered in
+  headless Chromium, as 1280×800 screens from the top (`max_screens`,
+  default 5; `0` = whole page), with the shared `max_dim`, `image_format`
+  and `quality` options. A web page is loaded from its address, a local
+  file from its bytes. Runs on a worker thread, so it works in Jupyter.
+  When private addresses are blocked (`ATT_BLOCK_PRIVATE_URLS`, and always
+  on the self-hosted server unless `ATTACHMENTS_ALLOW_PRIVATE_URLS`), every
+  request the page makes must pass the SSRF guard.
+- HTML whose text is almost empty but has scripts gets a `meta.note` saying
+  it is probably built by JavaScript and suggesting `screenshot: true`.
+- `attachments._sources.SourceFile`: what HTTP downloads return from
+  `unpack()` — still exactly a `(name, bytes)` tuple, plus `.url` and
+  `.warnings`.
+
+### Changed
+
+- **PDF page images are capped at 2000 px on the longest side by default**
+  (was: no cap; a 200 dpi slide-sized page was 2667 px). Claude shrinks
+  anything over 1568 px and OpenAI anything over 2048 px, and Anthropic
+  rejects images over 2000 × 2000 in requests with more than 20 images.
+  `max_dim` wins over `dpi`; `max_dim: 0` restores the old output.
+- `.tokens` and the repr now include images:
+  `~3.2k tokens (images ~3.2k)`. An image whose size cannot be read counts
+  as the maximum (~1,600).
+- `claude()` / `openai()` order content page by page (was: all text, then
+  all images). `interleave=False` gives the old order.
+- `render_text(include_sources=...)` is renamed `render_text(sources=...)`.
+  With `sources=False`, image-only notes read `[image]` (was
+  `[image: <name>]`, which leaked the name).
+- An empty `prompt=""` no longer adds an empty text block (APIs reject
+  empty text blocks).
+- CLI `--json` emits the wire form (`bytes_b64`); it used to put base64 under
+  `bytes`, which matched no schema.
+- OCR (pdf and image) reads a full-size, lossless image even when the
+  delivered images are shrunk or JPEG.
+- JPEG output of transparent images is flattened onto white (was: black).
+- **HTML text is Markdown** (was: plain text with a line break at every
+  inline tag). `select:` results are Markdown too (`select: h1` gives
+  `# Title`). The page title is prefixed as `# Title` only when the page has
+  no `<h1>`.
+- **A downloaded file's `meta.source` is its URL** (final, after
+  redirects), so prompts read `## https://example.com/` instead of
+  `## download`. Its name (`extra.filename`) follows the server's
+  Content-Type: a bare `/` is `index.html`, and a specific type that
+  contradicts the extension appends the right one (`README.md` served as a
+  web page becomes `README.md.html`, `/pdf/1706.03762` served as PDF
+  becomes `1706.03762.pdf`). Generic types (`text/plain`,
+  `application/octet-stream`, `application/json`) never rename.
+
+### Fixed
+
+- A PDF too broken to count its pages took about 3 minutes and gigabytes of
+  memory: the pdfminer fallback built a set of 10^9 page numbers. It now
+  fails in well under a second. (Also cut the full test suite from ~7 min
+  to ~1.5 min.)
+- Importing PyMuPDF as `fitz` printed a deprecation warning into users'
+  output with PyMuPDF 1.28; it is now imported as `pymupdf`.
+- `Artifacts`' docstring claimed `json.dumps` works on it; it fails as soon
+  as there is an image. Docs now point to `to_wire()`.
+- A GitHub file page (`https://github.com/o/r/blob/main/README.md`) put
+  ~250,000 characters of raw page HTML into the prompt: the `.md` name sent
+  it to the text processor. It is now read as a web page, with a warning
+  that names the `raw.githubusercontent.com` address of the file itself.
+- Web pages lost their sentence flow (every link, bold word and highlighted
+  code token on its own line), and tables and code had no structure.
+
 ## [1.0.0] - 2026-06-09
 
 A complete rewrite of `attachments`, succeeding the 0.25.x series. The

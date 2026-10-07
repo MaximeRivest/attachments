@@ -318,7 +318,14 @@ class TestRegistration:
     def test_extension_registered_with_options(self, ext):
         assert processors[ext] is image_processor
         names = [o.name for o in get_options(ext)]
-        assert names == ["max_dim", "rotate", "ocr", "ocr_engine"]
+        assert names == [
+            "max_dim",
+            "rotate",
+            "image_format",
+            "quality",
+            "ocr",
+            "ocr_engine",
+        ]
 
 
 def _text_image_bytes(text: str = "HELLO WORLD 42") -> bytes:
@@ -521,3 +528,85 @@ class TestImageOcrLighton:
         error = result["meta"]["error"]
         assert error["code"] == ERROR_INVALID_OPTION
         assert "tesseract" in error["message"]
+
+
+# =============================================================================
+# image_format / quality / max_dim: 0 (same meaning as for PDF pages)
+# =============================================================================
+
+
+@pytest.mark.skipif(not check_dep("image").available, reason="Pillow needed")
+class TestImageOutputOptions:
+    def test_png_to_jpeg(self):
+        data = _make_image_bytes("PNG", size=(40, 20))
+        result = image_processor(data, filename="pic.png", image_format="jpeg")
+        item = result["images"][0]
+        assert item["mimetype"] == "image/jpeg"
+        assert item["name"] == "pic.jpg"
+        assert _decode(item).size == (40, 20)
+
+    def test_transparent_png_to_jpeg_is_flattened_on_white(self):
+        data = _make_image_bytes("PNG", size=(4, 4), mode="RGBA", color=(0, 0, 0, 0))
+        item = image_processor(data, filename="t.png", image_format="jpeg")["images"][0]
+        r, g, b = _decode(item).convert("RGB").getpixel((1, 1))
+        assert min(r, g, b) > 240  # white, not black
+
+    def test_jpeg_to_png(self):
+        data = _make_image_bytes("JPEG", size=(16, 8))
+        item = image_processor(data, filename="p.jpg", image_format="png")["images"][0]
+        assert item["mimetype"] == "image/png"
+        assert item["bytes"][:8] == b"\x89PNG\r\n\x1a\n"
+
+    def test_same_format_without_changes_passes_through(self):
+        data = _make_image_bytes("JPEG", size=(16, 8))
+        item = image_processor(data, filename="p.jpg", image_format="jpeg")["images"][0]
+        assert item["bytes"] == data
+
+    def test_explicit_quality_reencodes_a_jpeg(self):
+        from PIL import Image
+
+        noise = Image.effect_noise((256, 256), 64).convert("RGB")
+        buf = io.BytesIO()
+        noise.save(buf, format="JPEG", quality=95)
+        data = buf.getvalue()
+        item = image_processor(data, filename="n.jpg", quality=30)["images"][0]
+        assert item["mimetype"] == "image/jpeg"
+        assert len(item["bytes"]) < len(data)
+
+    def test_max_dim_zero_means_no_limit(self):
+        data = _make_image_bytes("PNG", size=(64, 32))
+        item = image_processor(data, filename="p.png", max_dim=0)["images"][0]
+        assert item["bytes"] == data
+
+    @pytest.mark.parametrize(
+        "options",
+        [{"image_format": "webp"}, {"quality": 100}, {"max_dim": -1}],
+    )
+    def test_invalid_values_are_invalid_option_errors(self, options):
+        data = _make_image_bytes("PNG")
+        result = image_processor(data, filename="p.png", **options)
+        assert result["meta"]["error"]["code"] == ERROR_INVALID_OPTION
+        assert result["meta"]["kind"] == "image"
+
+    def test_ocr_reads_the_full_size_image_not_the_shrunk_copy(self, monkeypatch):
+        seen: list[bytes] = []
+
+        def fake_ocr(payload: bytes) -> str:
+            seen.append(payload)
+            return "TEXT"
+
+        monkeypatch.setattr(image, "_ocr_image_bytes", fake_ocr)
+        monkeypatch.setattr(
+            "attachments.deps.check_dep",
+            lambda name: type("S", (), {"available": True, "missing": []})(),
+        )
+        data = _make_image_bytes("PNG", size=(400, 200))
+        result = image_processor(
+            data, filename="p.png", max_dim=100, image_format="jpeg", ocr=True
+        )
+        from attachments._imagesize import image_size
+
+        assert result["text"] == "TEXT"
+        assert image_size(result["images"][0]["bytes"]) == (100, 50)
+        assert seen[0][:8] == b"\x89PNG\r\n\x1a\n"
+        assert image_size(seen[0]) == (400, 200)

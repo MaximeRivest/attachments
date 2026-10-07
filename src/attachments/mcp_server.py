@@ -105,6 +105,9 @@ Options go in the `options` dict (or inline DSL in the source string —
   - {"ocr": true}             force OCR on scanned pages/images
   - {"sheet": "Sales"}        one spreadsheet sheet
   - {"select": "table.data"}  CSS selection from HTML
+  - {"links": true}           keep link URLs in web pages (main content
+                              only by default; {"main": false} = whole page)
+  - {"screenshot": true}      add pictures of a rendered web page
 Call att_options to discover every option per format.
 
 Returns extracted text (one "## <source>" block per file) followed by

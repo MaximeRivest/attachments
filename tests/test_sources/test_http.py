@@ -92,3 +92,94 @@ class TestSsrfGuard:
         with pytest.raises(OSError, match="stop before"):
             http_mod._download_http_or_https("http://127.0.0.1:9/x")
         assert seen["url"] == "http://127.0.0.1:9/x"
+
+
+# =============================================================================
+# Content-Type vs filename, SourceFile provenance (real local HTTP server)
+# =============================================================================
+
+
+class TestDownloadNamingAndProvenance:
+    """The name agrees with the declared type; the final URL travels along."""
+
+    def test_html_page_with_file_extension_is_named_html(self, http_server):
+        url = http_server.route("/repo/blob/main/README.md", "<h1>Readme</h1>")
+        [f] = unpack(url)
+        name, data = f
+        assert name == "README.md.html"
+        assert data == b"<h1>Readme</h1>"
+        assert f.url == url
+        assert len(f.warnings) == 1
+        assert "web page" in f.warnings[0] and ".md" in f.warnings[0]
+
+    def test_bare_root_is_index_html(self, http_server):
+        http_server.route("/", "<p>home</p>")
+        [f] = unpack(http_server.url("/"))
+        assert f.name == "index.html"
+        assert f.warnings == ()
+
+    def test_redirect_target_is_the_url(self, http_server):
+        final = http_server.route("/docs/", "<p>docs</p>")
+        start = http_server.redirect("/docs", final)
+        [f] = unpack(start)
+        assert f.url == final  # relative links must resolve against /docs/
+
+    def test_pdf_without_extension_gets_one_silently(self, http_server):
+        url = http_server.route(
+            "/pdf/1706.03762", b"%PDF-1.4 x", content_type="application/pdf"
+        )
+        [f] = unpack(url)
+        assert f.name == "1706.03762.pdf"
+        assert f.warnings == ()
+
+    def test_generic_types_never_override_the_name(self, http_server):
+        http_server.route("/data.csv", "a,b\n1,2\n", content_type="text/plain")
+        http_server.route("/nb.ipynb", "{}", content_type="application/json")
+        http_server.route("/blob", b"\x00", content_type="application/octet-stream")
+        assert unpack(http_server.url("/data.csv"))[0].name == "data.csv"
+        assert unpack(http_server.url("/nb.ipynb"))[0].name == "nb.ipynb"
+        assert unpack(http_server.url("/blob"))[0].name == "blob"
+
+    def test_dynamic_pages_become_html_without_warning(self, http_server):
+        [f] = unpack(http_server.route("/index.php", "<p>x</p>"))
+        assert f.name == "index.php.html"
+        assert f.warnings == ()
+
+    def test_content_disposition_name_still_checked(self, http_server):
+        url = http_server.route(
+            "/dl",
+            "<p>login required</p>",
+            headers={"Content-Disposition": 'attachment; filename="report.pdf"'},
+        )
+        [f] = unpack(url)
+        assert f.name == "report.pdf.html"
+        assert ".pdf" in f.warnings[0]
+
+    def test_archives_still_expand(self, http_server, sample_zip_bytes):
+        url = http_server.route(
+            "/bundle.zip", sample_zip_bytes, content_type="application/zip"
+        )
+        names = [name for name, _ in unpack(url)]
+        assert names and all(n.startswith("bundle.zip/") for n in names)
+
+    def test_github_blob_warning_names_the_raw_file(self):
+        name, warning = http_mod._name_for_content_type(
+            "app.py",
+            "text/html; charset=utf-8",
+            "https://github.com/o/r/blob/main/src/app.py",
+        )
+        assert name == "app.py.html"
+        assert "https://raw.githubusercontent.com/o/r/main/src/app.py" in warning
+
+
+class TestSourceFile:
+    def test_is_a_plain_pair(self):
+        import pickle
+
+        from attachments._sources import SourceFile
+
+        f = SourceFile("a.html", b"x", url="https://a.org/", warnings=["w"])
+        assert f == ("a.html", b"x")
+        assert list(f) == ["a.html", b"x"]
+        copy = pickle.loads(pickle.dumps(f))
+        assert copy == f and copy.url == "https://a.org/" and copy.warnings == ("w",)

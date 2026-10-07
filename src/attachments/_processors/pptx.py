@@ -33,9 +33,11 @@ def _join_slides_with_segments(
 ) -> tuple[str, list[dict]]:
     """Join per-slide texts and build slide segments (IR contract: meta.segments).
 
-    *slides* is a list of ``(label, slide_text)`` pairs. Each segment
-    carries the slide label and start/end offsets that slice the joined
-    text exactly back to that slide's text.
+    *slides* is a list of ``(label, slide_text)`` pairs, one per slide in
+    deck order. Each segment carries the slide label (its title, which may
+    be any text), the 1-based slide number as ``page`` (the same number as
+    ``ImageItem.page`` on that slide's pictures), and start/end offsets
+    that slice the joined text exactly back to that slide's text.
 
     Examples:
         >>> text, segs = _join_slides_with_segments(
@@ -44,14 +46,14 @@ def _join_slides_with_segments(
         >>> text
         '# Intro\\nhello\\n\\nworld'
         >>> segs[0]
-        {'kind': 'slide', 'label': 'Intro', 'start': 0, 'end': 13}
+        {'kind': 'slide', 'label': 'Intro', 'start': 0, 'end': 13, 'page': 1}
         >>> text[segs[1]["start"] : segs[1]["end"]]
         'world'
     """
     parts: list[str] = []
     segments: list[dict] = []
     offset = 0
-    for label, slide_text in slides:
+    for slide_no, (label, slide_text) in enumerate(slides, start=1):
         if parts:
             offset += len(_SLIDE_SEPARATOR)
         segments.append(
@@ -60,6 +62,7 @@ def _join_slides_with_segments(
                 "label": label,
                 "start": offset,
                 "end": offset + len(slide_text),
+                "page": slide_no,
             }
         )
         parts.append(slide_text)

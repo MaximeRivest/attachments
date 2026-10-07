@@ -28,6 +28,8 @@ from __future__ import annotations
 import base64
 import json
 
+import pytest
+
 from attachments import Artifacts, att, render_text
 from attachments.types import ERROR_PARSE, error_artifact, make_artifact
 
@@ -62,7 +64,8 @@ def test_repr_summary_line_counts():
     )
     assert (
         repr(arts).splitlines()[0]
-        == "<Artifacts: 3 artifacts | 11 chars | ~3 tokens | 1 image | 1 error>"
+        == "<Artifacts: 3 artifacts | 11 chars | ~1.6k tokens (images ~1.6k)"
+        " | 1 image | 1 error>"
     )
 
 
@@ -286,8 +289,11 @@ def test_tokens_million_formatting_in_repr():
 
 
 def test_tokens_segment_sits_between_chars_and_images():
+    # The test image's size cannot be read, so it counts as the maximum.
     arts = Artifacts([_image_artifact()])
-    assert repr(arts) == "<Artifacts: 1 artifact | 0 chars | ~0 tokens | 1 image>"
+    assert repr(arts) == (
+        "<Artifacts: 1 artifact | 0 chars | ~1.6k tokens (images ~1.6k) | 1 image>"
+    )
 
 
 def test_repr_markdown_summary_includes_tokens():
@@ -526,3 +532,74 @@ def test_repr_markdown_wire_form_oversized_is_skipped():
     md = arts._repr_markdown_()
     assert "![w.png]" not in md
     assert "+1 more image" in md
+
+
+# =============================================================================
+# raise_for_errors — opt-in raising; att() itself never raises
+# =============================================================================
+
+
+def test_raise_for_errors_returns_self_when_nothing_failed():
+    arts = Artifacts([_text_artifact("fine")])
+    assert arts.raise_for_errors() is arts
+
+
+def test_raise_for_errors_on_a_missing_file(tmp_path):
+    from attachments import AttachmentsError
+
+    arts = att(str(tmp_path / "missing.pdf"))  # att() itself does not raise
+    with pytest.raises(AttachmentsError) as info:
+        arts.raise_for_errors()
+    assert info.value.errors == arts.errors
+    assert info.value.errors[0]["code"] == "unpack-error"
+    assert str(info.value).startswith(f"{tmp_path / 'missing.pdf'}: unpack-error — ")
+
+
+def test_raise_for_errors_lists_every_failure_and_keeps_the_good_files(tmp_path):
+    from attachments import AttachmentsError
+
+    (tmp_path / "good.txt").write_text("fine")
+    (tmp_path / "bad.pdf").write_bytes(b"not a pdf")
+    (tmp_path / "bad2.pdf").write_bytes(b"also not a pdf")
+    (tmp_path / "data.unknownext").write_bytes(b"\x00\x01\x02")  # note, not error
+    arts = att(str(tmp_path))
+    with pytest.raises(AttachmentsError) as info:
+        arts.raise_for_errors()
+    sources = sorted(e["source"] for e in info.value.errors)
+    assert sources == ["bad.pdf", "bad2.pdf"]
+    assert str(info.value).startswith("2 inputs failed:\n")
+    assert info.value.artifacts is arts
+    assert any(a["text"] == "fine" for a in info.value.artifacts)
+
+
+def test_raise_for_errors_ignores_no_processor_notes():
+    arts = Artifacts(
+        [make_artifact(meta={"source": "x.bin", "note": "no processor available"})]
+    )
+    assert arts.raise_for_errors() is arts
+
+
+def test_attachments_error_survives_pickling():
+    import pickle
+
+    from attachments import AttachmentsError
+
+    arts = Artifacts([error_artifact("x.pdf", ERROR_PARSE, "bad")])
+    with pytest.raises(AttachmentsError) as info:
+        arts.raise_for_errors()
+    clone = pickle.loads(pickle.dumps(info.value))
+    assert clone.errors == info.value.errors
+    assert str(clone) == str(info.value)
+    assert clone.artifacts == arts
+
+
+# =============================================================================
+# to_text(sources=...)
+# =============================================================================
+
+
+def test_to_text_hides_names_without_losing_images():
+    arts = Artifacts([_text_artifact("Body.", "notes.txt"), _image_artifact()])
+    assert arts.to_text() == arts.text
+    assert "notes.txt" not in arts.to_text(sources=False)
+    assert arts.to_text(sources=False) == "Body.\n\n[image]"

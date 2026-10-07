@@ -5,7 +5,7 @@ repos:
       - id: uv-lock
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.6.8
+    rev: v0.12.12
     hooks:
       - id: ruff-check
         args: [--fix]

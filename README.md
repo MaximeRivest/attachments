@@ -27,7 +27,8 @@ pip install attachments[pdf]         # PDF support
 pip install attachments[xlsx]        # Excel support
 pip install attachments[docx]        # Word support
 pip install attachments[pptx]        # PowerPoint support
-pip install attachments[html]        # HTML support
+pip install attachments[html]        # HTML and web pages
+pip install attachments[browser]     # web page screenshots (then: playwright install chromium)
 pip install attachments[image]       # png/jpg/gif/webp/bmp/tiff support
 pip install attachments[ocr]         # OCR for scanned PDFs/images (large: pulls onnxruntime)
 pip install attachments[audio]       # mp3/wav/m4a/flac/ogg/opus transcription (large: pulls faster-whisper/ctranslate2)
@@ -71,15 +72,20 @@ collapse into a `+N more errors (see .errors)` line (real runs):
 
 ```python
 >>> att("report.pdf[pages: 1-2, images: true]")
-<Artifacts: 1 artifact | 94 chars | ~24 tokens | 2 images>
+<Artifacts: 1 artifact | 94 chars | ~3.2k tokens (images ~3.2k) | 2 images>
 
 >>> att("missing.pdf")
 <Artifacts: 1 artifact | 0 chars | ~0 tokens | 1 error>
   ! missing.pdf: unpack-error — unpack failed: Unsupported or non-existent input: missing.pdf
 ```
 
-The `~N tokens` segment (also available as `.tokens`) is a fast chars/4
-approximation, not a real tokenizer count.
+The `~N tokens` segment (also `.tokens`, split out by
+`.estimate_tokens()` → `{'text': 24, 'images': 3200, 'total': 3224}`) is a
+rough budget figure, not a tokenizer count: text is characters / 4, and each
+image is about width × height / 750 after shrinking to 1,568 pixels on its
+longest side and at most ~1,600 tokens (Anthropic's published rule; OpenAI
+counts differently). Image sizes are read from the file headers, with no
+extra dependency.
 
 `print()` (or `.text`) gives the full assembled prompt — v1 muscle memory:
 
@@ -96,12 +102,47 @@ and `.images` / `.errors` flatten the parts you reach for most:
 
 ```python
 a = att("report.pdf[pages: 1-2, images: true]")
-a.claude("Summarize in one sentence.")  # Claude messages: [text, image, image, text]
+a.parts()                               # neutral parts, page by page: [text, image, text, image]
+a.claude("Summarize in one sentence.")  # Claude messages: [text, image, text, image, text]
 a.openai("Summarize in one sentence.")  # OpenAI messages (data-URL image parts)
 a.chunk(max_chars=4000)                 # segment-aware RAG chunks
 a.images                                # flattened ImageItem dicts
 a.errors                                # [{"source", "code", "message"}, ...]
+a.raise_for_errors()                    # AttachmentsError if anything failed; returns a
+a.to_wire()                             # JSON-ready list; Artifacts.from_wire() reverses it
 a[:1] + a[1:]                           # slices/concat stay Artifacts; a[0] is a dict
+```
+
+Each page's text is followed by that page's image, so the model never has to
+match page 7's picture to page 7's words by itself (`interleave=False` gives
+the old layout: all text, then all images).
+
+**Hiding file names.** Text starts each file with `## <name>`, and a picture
+reads `[image: <name>]` — useful for a folder of documents, but a giveaway
+when the task is "which animal is this?". `sources=False` works everywhere
+(`to_text`, `parts`, `claude`, `openai`, `chunk`) (real run):
+
+```python
+>>> c = att("tabby_cat.png")
+>>> c.text, c.to_text(sources=False)
+('## tabby_cat.png\n[image: tabby_cat.png]', '[image]')
+>>> [p["type"] for p in c.parts(sources=False)]   # no name anywhere
+['image']
+```
+
+**Saving results.** Images hold raw bytes, which JSON cannot carry, so
+`json.dumps(a)` fails as soon as there is an image. `a.to_wire()` returns the
+wire form the server uses (images as base64 `bytes_b64`, valid against
+[spec/artifact.schema.json](spec/artifact.schema.json)), and never modifies
+`a`:
+
+```python
+import json
+from attachments import Artifacts
+
+json.dump(a.to_wire(), open("report.json", "w"))
+b = Artifacts.from_wire(json.load(open("report.json")))
+assert b == a
 ```
 
 In Jupyter, a bare `att("report.pdf[images: true]")` cell renders the summary,
@@ -113,18 +154,48 @@ option table (same data as before — `json.dumps` still works), and
 
 ```python
 >>> att.options(".pdf")
-Option     Type          Aliases  Default  Example           Description
-pages      pages         page     —        pages: 1-4        Pages to include: a 1-based
-                                                             page number or range.
-password   str           pw       —        password: secret  Password for encrypted
-                                                             PDFs.
-images     bool_or_auto  render   "auto"   images: true      Render pages to PNG:
-                                                             true/false, or auto (only
-                                                             when no text).
-dpi        int           —        200      dpi: 300          Resolution for rendered
-                                                             page images.
-max_pages  int           —        —        max_pages: 10     Hard cap on the number of
-                                                             pages parsed/rendered.
+Option        Type          Aliases  Default     Example              Description
+pages         pages         page     —           pages: 1-4           Pages to include: a
+                                                                      1-based page number
+                                                                      or range.
+password      str           pw       —           password: secret     Password for
+                                                                      encrypted PDFs.
+images        bool_or_auto  render   "auto"      images: true         Render pages to
+                                                                      images: true/false,
+                                                                      or auto (only when
+                                                                      no text).
+dpi           int           —        200         dpi: 300             Resolution for
+                                                                      rendered page images
+                                                                      (max_dim caps the
+                                                                      result).
+max_dim       int           —        2000        max_dim: 1568        Longest side of each
+                                                                      page image in
+                                                                      pixels, applied
+                                                                      after dpi; 0 = no
+                                                                      cap.
+image_format  str           —        "png"       image_format: jpeg   png (lossless, best
+                                                                      for text) or jpeg
+                                                                      (far smaller for
+                                                                      scans).
+quality       int           —        85          quality: 75          JPEG quality, 1-95
+                                                                      (used with
+                                                                      image_format: jpeg).
+ocr           bool_or_auto  —        "auto"      ocr: true            OCR scanned pages
+                                                                      with RapidOCR when
+                                                                      there is no text
+                                                                      layer: true/false,
+                                                                      or auto (only when
+                                                                      rapidocr is
+                                                                      installed).
+ocr_engine    str           —        "rapidocr"  ocr_engine: lighton  OCR engine: rapidocr
+                                                                      (local, default) or
+                                                                      lighton (remote
+                                                                      LightOnOCR vLLM
+                                                                      endpoint via ATTACHM
+                                                                      ENTS_LIGHTON_URL).
+max_pages     int           —        —           max_pages: 10        Hard cap on the
+                                                                      number of pages
+                                                                      parsed/rendered.
 ```
 
 Editors get the same delight statically: a generated typing stub
@@ -148,9 +219,9 @@ processor produces and every consumer can rely on. A real run:
         "source": "report.pdf",
         "kind": "pdf",
         "segments": [      # Structural segmentation: offsets into text
-            {"kind": "page", "label": "page 1", "start": 0, "end": 46},
-            {"kind": "page", "label": "page 2", "start": 48, "end": 94},
-            {"kind": "page", "label": "page 3", "start": 96, "end": 142},
+            {"kind": "page", "label": "page 1", "start": 0, "end": 46, "page": 1},
+            {"kind": "page", "label": "page 2", "start": 48, "end": 94, "page": 2},
+            {"kind": "page", "label": "page 3", "start": 96, "end": 142, "page": 3},
         ],
         "extra": {"encrypted": False, "text_backend": "pypdf", "pages": 3, "parsed_pages": 3},
     },
@@ -160,7 +231,7 @@ processor produces and every consumer can rely on. A real run:
 `meta` is a **typed envelope**: optional keys (`kind`, `via`, `error`, `note`,
 `warnings`, `segments`, `extra`) are absent when not applicable, never `None`.
 Errors never raise out of `att()` — they come back as artifacts with a typed
-`meta.error` (real runs):
+`meta.error`, so one broken file never sinks a folder of 100 (real runs):
 
 ```python
 >>> att("broken.pdf")[0]["meta"]["error"]
@@ -171,6 +242,20 @@ Errors never raise out of `att()` — they come back as artifacts with a typed
  'message': "Processing 'report.pdf' requires optional dependencies for 'pdf' "
             "(missing: pypdf|PyPDF2, pymupdf). Install with: pip install attachments[pdf]"}
 ```
+
+When a failure must stop the program instead (a missing file would otherwise
+reach the model as an empty document), chain `raise_for_errors()`. Every file
+is still processed; one exception then lists all failures and carries the
+whole result (real run):
+
+```python
+>>> att("missing.pdf").raise_for_errors()
+AttachmentsError: missing.pdf: unpack-error — unpack failed: Unsupported or non-existent input: missing.pdf
+>>> # e.errors: same dicts as .errors; e.artifacts: everything, the good files too
+```
+
+A file type with no processor is not an error (an empty artifact with a
+`meta.note`), so check the text or parts too if empty input must stop you.
 
 The error codes (`missing-dependency`, `password-required`, `parse-error`,
 `unpack-error`, `service-error`, `invalid-option`, `processing-error`) are
@@ -188,15 +273,20 @@ Specify options inline with `[key: value, ...]`:
 # PDF options
 att("doc.pdf[pages: 1-4]")              # Pages 1-4 (1-based)
 att("doc.pdf[pages: 5-10, images: true]") # With image rendering
-att("doc.pdf[dpi: 300]")                # High-res images
+att("doc.pdf[dpi: 300]")                # High-res images (max_dim still caps them)
+att("doc.pdf[images: true, max_dim: 1568, image_format: jpeg]")  # Smaller page images
 att("doc.pdf[password: secret]")        # Encrypted PDF
 
 # Excel options
 att("data.xlsx[sheet: Revenue]")        # Specific sheet
 att("data.xlsx[sheet: 0, rows: 50]")    # First sheet, 50 rows
 
-# HTML options
+# Web pages and HTML: Markdown of the main content (tables, code, maths)
+att("https://example.com/article")      # Main content only (no menus, footers)
 att("page.html[select: h1]")            # Only matching CSS-selected elements
+att("https://example.com[main: false]") # The whole page, navigation included
+att("https://example.com[links: true]") # Keep link addresses: [text](url)
+att("https://example.com[screenshot: true, max_screens: 2]")  # + 1280x800 screenshots
 
 # Image options
 att("photo.jpg[rotate: 90]")            # Rotate 90° counterclockwise
@@ -223,7 +313,7 @@ runtime — `att.options(".pdf")` lists one processor's options,
 
 ```python
 >>> [o["name"] for o in att.options(".pdf")]
-['pages', 'password', 'images', 'dpi', 'max_pages']
+['pages', 'password', 'images', 'dpi', 'max_dim', 'image_format', 'quality', 'ocr', 'ocr_engine', 'max_pages']
 >>> att.options(".pdf")[0]
 {'name': 'pages', 'type': 'pages', 'aliases': ['page'], 'param': None, 'default': None,
  'help': 'Pages to include: a 1-based page number or range.', 'example': 'pages: 1-4'}
@@ -249,7 +339,7 @@ list straight into prompts, API messages, or RAG chunks (all outputs below
 are real runs — `prompt=` is optional in both adapters):
 
 ```python
-from attachments import att, render_text, to_claude_messages, to_openai_messages, chunk
+from attachments import att, render_text, to_parts, to_claude_messages, to_openai_messages, chunk
 
 artifacts = att("report.pdf[pages: 1-2]")
 
@@ -260,7 +350,14 @@ print(render_text(artifacts))
 #
 # Hello from page 2. Quarterly revenue grew 12%.
 
-# Claude Messages API — plain dicts, no anthropic SDK import
+# Provider-neutral parts: each page's text, then that page's images
+to_parts(att("report.pdf[pages: 1-2, images: true]"))
+# [{'type': 'text', 'text': '## report.pdf\nHello from page 1. Quarterly revenue grew 12%.'},
+#  {'type': 'image', 'media_type': 'image/png', 'data': '<base64>'},
+#  {'type': 'text', 'text': 'Hello from page 2. Quarterly revenue grew 12%.'},
+#  {'type': 'image', 'media_type': 'image/png', 'data': '<base64>'}]
+
+# Claude Messages API — plain dicts, no anthropic SDK import (built from to_parts)
 to_claude_messages(artifacts, prompt="Summarize in one sentence.")
 # [{'role': 'user', 'content': [
 #     {'type': 'text', 'text': '## report.pdf\nHello from page 1. ...'},
@@ -386,6 +483,25 @@ $ att --options .xlsx
   rows (max_rows)          int          Maximum number of rows rendered as text per sheet.  e.g. [rows: 100]
 ```
 
+## Coding Agents (Skill)
+
+attachments ships a skill that teaches coding agents (Claude Code, Pi,
+Codex) to write code with it: installing 1.0 rather than 0.25, the options
+that matter, sending files to Claude or OpenAI, hiding file names, stopping
+on unreadable files, request-size limits, caching. Every example in it runs
+in CI.
+
+```bash
+att --skill --install                      # every agent found: Claude Code, Pi, Codex
+att --skill                                # where it is; who has it, up to date or not
+att --skill --install .claude/skills       # one project only
+uvx --from "attachments @ git+https://github.com/maximerivest/attachments" att --skill --install
+```
+
+Re-run `att --skill --install` after upgrading to update the copies; a
+skills folder that is a link (a checkout) is left alone. Whether it helps,
+measured with fresh agents: [evals/skill/README.md](evals/skill/README.md).
+
 ## Agents (MCP)
 
 The same one-call ingestion, as an MCP server: any MCP-capable agent gets
@@ -420,7 +536,8 @@ only attach it to agents you trust.
 ## Status & Contributing
 
 Shipped today: text (20+ extensions), PDF (with OCR for scanned pages),
-XLSX, XLS, DOCX, PPTX, HTML (with `select:` CSS extraction), CSV/TSV
+XLSX, XLS, DOCX, PPTX, HTML and web pages (Markdown of the main content,
+`select:` CSS extraction, optional browser screenshots), CSV/TSV
 (real tables, optional pandas summary), SVG (text extraction + optional
 raster), image (png/jpg/gif/webp/bmp/tiff/heic, with `rotate:` and
 `ocr:`), Jupyter notebook (`.ipynb`, zero-dep, optional cell outputs),

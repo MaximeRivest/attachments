@@ -3,8 +3,9 @@
 ``att()`` returns :class:`Artifacts` — a ``list`` subclass whose elements
 remain plain Artifact dicts (see ``spec/IR-CONTRACT.md``). Everything here
 is sugar AROUND the frozen IR, never a change to it: iteration, indexing,
-``json.dumps``, and every existing consumer of ``list[Artifact]`` keep
-working unchanged.
+and every existing consumer of ``list[Artifact]`` keep working unchanged.
+Each shortcut is one call to a plain function in ``attachments.render`` or
+``attachments.types`` that works on any ``list`` of artifact dicts.
 
 What the sugar buys you in a REPL or notebook::
 
@@ -14,9 +15,13 @@ What the sugar buys you in a REPL or notebook::
     a.text  # same string, as a property
     a.images  # flattened ImageItem dicts across artifacts
     a.errors  # [{"source", "code", "message"}, ...]
+    a.raise_for_errors()  # AttachmentsError if anything failed; returns a
+    a.parts()  # provider-neutral text/image parts, page by page
     a.claude("Go")  # Claude Messages API messages
     a.openai("Go")  # OpenAI Chat Completions messages
     a.chunk()  # RAG chunks
+    a.estimate_tokens()  # {"text", "images", "total"}
+    a.to_wire()  # JSON-ready list; Artifacts.from_wire(data) reverses it
     a[0]  # still a plain dict; a[:2] is Artifacts again
 
 Underscore-prefixed module (repo convention): the public re-export is
@@ -32,7 +37,14 @@ import re
 from typing import Any
 
 from .render import chunk as _chunk
-from .render import render_text, to_claude_messages, to_openai_messages
+from .render import (
+    estimate_tokens,
+    render_text,
+    to_claude_messages,
+    to_openai_messages,
+    to_parts,
+)
+from .types import AttachmentsError, artifact_from_wire, artifact_to_wire
 
 __all__ = ["Artifacts"]
 
@@ -128,6 +140,22 @@ def _collapse_lines(entries: list[tuple[str, str]]) -> list[str]:
     ]
 
 
+def _compact(n: int) -> str:
+    """Compact count: exact under 1,000, else one decimal + ``k``/``M``.
+
+    Examples:
+        >>> _compact(842), _compact(3200), _compact(2_000_000)
+        ('842', '3.2k', '2M')
+    """
+    if n >= 1_000_000:
+        value, suffix = n / 1_000_000, "M"
+    elif n >= 1000:
+        value, suffix = n / 1000, "k"
+    else:
+        return str(n)
+    return f"{f'{value:.1f}'.removesuffix('.0')}{suffix}"
+
+
 def _format_tokens(n: int) -> str:
     """Compact ``~N tokens`` summary segment for *n* estimated tokens.
 
@@ -148,13 +176,7 @@ def _format_tokens(n: int) -> str:
         >>> _format_tokens(2_000_000)
         '~2M tokens'
     """
-    if n >= 1_000_000:
-        value, suffix = n / 1_000_000, "M"
-    elif n >= 1000:
-        value, suffix = n / 1000, "k"
-    else:
-        return f"~{n} tokens"
-    return f"~{f'{value:.1f}'.removesuffix('.0')}{suffix} tokens"
+    return f"~{_compact(n)} tokens"
 
 
 def _fence(content: str) -> str:
@@ -220,8 +242,13 @@ class Artifacts(list):
 
     Elements are plain dicts per ``spec/IR-CONTRACT.md`` — this class adds
     behavior, never state: slicing and concatenation return ``Artifacts``,
-    a single index returns the dict as-is, and ``json.dumps`` works
-    because ``Artifacts`` *is* a list.
+    and a single index returns the dict as-is.
+
+    **JSON:** images hold raw ``bytes``, which JSON cannot carry, so
+    ``json.dumps(a)`` fails as soon as there is an image. Use
+    ``json.dumps(a.to_wire())`` (images as base64 ``bytes_b64``, valid
+    against ``spec/artifact.schema.json``) and
+    ``Artifacts.from_wire(json.loads(s))`` to get them back.
 
     Examples:
         >>> from attachments.types import error_artifact, make_artifact
@@ -254,18 +281,26 @@ class Artifacts(list):
 
         ``chars`` counts artifact text characters (summed across
         artifacts, before ``render_text`` adds headers); ``~N tokens``
-        is the :attr:`tokens` estimate, compact-formatted.
+        is the :meth:`estimate_tokens` total, compact-formatted, with the
+        image share in parentheses when there are images.
 
         Examples:
             >>> from attachments.types import make_artifact
             >>> Artifacts([make_artifact(text="hi")])._summary()
             '1 artifact | 2 chars | ~1 tokens'
+            >>> img = {"name": "x.bin", "mimetype": "image/png", "bytes": b"?"}
+            >>> Artifacts([make_artifact(text="hi", images=[img])])._summary()
+            '1 artifact | 2 chars | ~1.6k tokens (images ~1.6k) | 1 image'
         """
         chars = sum(len(artifact.get("text") or "") for artifact in self)
+        estimate = self.estimate_tokens()
+        tokens = _format_tokens(estimate["total"])
+        if estimate["images"]:
+            tokens += f" (images ~{_compact(estimate['images'])})"
         parts = [
             _plural(len(self), "artifact"),
             f"{chars:,} chars",
-            _format_tokens(self.tokens),
+            tokens,
         ]
         n_images = len(self.images)
         if n_images:
@@ -341,7 +376,8 @@ class Artifacts(list):
 
     @property
     def text(self) -> str:
-        """The assembled prompt text (``render_text(self)``).
+        """The assembled prompt text (``render_text(self)``), file names
+        included. :meth:`to_text` takes ``sources=False`` to drop them.
 
         Examples:
             >>> from attachments.types import make_artifact
@@ -353,14 +389,50 @@ class Artifacts(list):
         """
         return render_text(self)
 
+    def to_text(self, *, sources: bool = True) -> str:
+        """The assembled prompt text; ``sources=False`` hides file names.
+
+        With ``sources=False`` there are no ``## <source>`` headers and
+        image notes carry no name: documents give just their text,
+        separated by a blank line, and a photo gives ``[image]``.
+
+        Examples:
+            >>> from attachments.types import make_artifact
+            >>> img = {"name": "tabby_cat.png", "mimetype": "image/png", "bytes": b""}
+            >>> a = Artifacts(
+            ...     [make_artifact(images=[img], meta={"source": "tabby_cat.png"})]
+            ... )
+            >>> a.to_text()
+            '## tabby_cat.png\\n[image: tabby_cat.png]'
+            >>> a.to_text(sources=False)
+            '[image]'
+        """
+        return render_text(self, sources=sources)
+
+    def estimate_tokens(self) -> dict[str, int]:
+        """Rough token cost: ``{"text", "images", "total"}``.
+
+        See ``attachments.render.estimate_tokens``: text is characters / 4;
+        each image is about ``width * height / 750`` after shrinking to
+        1,568 pixels on its longest side and at most ~1,600 tokens
+        (Anthropic's rule; OpenAI counts differently). An approximation
+        for budgets, not billing math.
+
+        Examples:
+            >>> from attachments.types import make_artifact
+            >>> Artifacts([make_artifact(text="abcdefgh")]).estimate_tokens()
+            {'text': 2, 'images': 0, 'total': 2}
+        """
+        return estimate_tokens(self)
+
     @property
     def tokens(self) -> int:
-        """Estimated token count over all artifact text.
+        """Estimated token count, text and images (``estimate_tokens()["total"]``).
 
-        A FAST APPROXIMATION, not a tokenizer: total artifact text
-        characters divided by 4, rounded up (``ceil(chars / 4)``). Real
-        token counts vary by model and content; use this for quick
-        budget checks, not billing math.
+        A FAST APPROXIMATION, not a tokenizer: text characters divided by
+        4, rounded up, plus each image's estimate (see
+        :meth:`estimate_tokens`). Real token counts vary by model and
+        content; use this for quick budget checks, not billing math.
 
         Examples:
             >>> from attachments.types import make_artifact
@@ -373,8 +445,7 @@ class Artifacts(list):
             >>> Artifacts([make_artifact(text="ab"), make_artifact(text="cd")]).tokens
             1
         """
-        chars = sum(len(artifact.get("text") or "") for artifact in self)
-        return -(-chars // 4)  # ceil(chars / 4) without importing math
+        return self.estimate_tokens()["total"]
 
     @property
     def images(self) -> list[dict]:
@@ -418,10 +489,77 @@ class Artifacts(list):
                 )
         return out
 
+    def raise_for_errors(self) -> Artifacts:
+        """Raise :class:`~attachments.AttachmentsError` if any artifact failed.
+
+        ``att()`` never raises (a missing file is an artifact with
+        ``meta.error`` and empty text). Chain this when a failure must stop
+        the program instead of reaching a model as an empty document::
+
+            a = att("folder/").raise_for_errors()
+
+        Every input is still processed first; one exception then lists all
+        failures (``e.errors``, same dicts as :attr:`errors`) and carries
+        the whole result (``e.artifacts``), so the files that worked are
+        not lost. Returns ``self`` when nothing failed.
+
+        Not errors, by contract: a file type with no processor (empty
+        artifact with ``meta.note``) and an empty document. Check
+        ``a.text`` or ``a.parts()`` if empty input must also stop you.
+
+        Examples:
+            >>> from attachments.types import error_artifact, make_artifact
+            >>> ok = Artifacts([make_artifact(text="fine")])
+            >>> ok.raise_for_errors() is ok
+            True
+            >>> Artifacts(
+            ...     [error_artifact("x.pdf", "parse-error", "bad")]
+            ... ).raise_for_errors()
+            Traceback (most recent call last):
+            ...
+            attachments.types.AttachmentsError: x.pdf: parse-error — bad
+        """
+        errors = self.errors
+        if errors:
+            raise AttachmentsError(errors, self)
+        return self
+
     # -- last-mile shortcuts (sugar over attachments.render) -----------------
 
-    def claude(self, prompt: str | None = None) -> list[dict[str, Any]]:
+    def parts(
+        self,
+        *,
+        sources: bool = True,
+        interleave: bool = True,
+        prompt: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Provider-neutral content parts (see ``render.to_parts``).
+
+        ``{"type": "text", "text"}`` and ``{"type": "image", "media_type",
+        "data"}`` (base64) dicts; each page's text is followed by that
+        page's images. ``sources=False`` keeps every file name out.
+
+        Examples:
+            >>> from attachments.types import make_artifact
+            >>> img = {"name": "cat.png", "mimetype": "image/png", "bytes": b"\\x89PNG"}
+            >>> a = Artifacts([make_artifact(images=[img], meta={"source": "cat.png"})])
+            >>> [p["type"] for p in a.parts()]
+            ['text', 'image']
+            >>> [p["type"] for p in a.parts(sources=False)]
+            ['image']
+        """
+        return to_parts(self, sources=sources, interleave=interleave, prompt=prompt)
+
+    def claude(
+        self,
+        prompt: str | None = None,
+        *,
+        sources: bool = True,
+        interleave: bool = True,
+    ) -> list[dict[str, Any]]:
         """Claude Messages API ``messages`` (see ``render.to_claude_messages``).
+
+        Built from :meth:`parts`, with the same options.
 
         Examples:
             >>> from attachments.types import make_artifact
@@ -430,11 +568,23 @@ class Artifacts(list):
             ['text', 'text']
             >>> [b["type"] for b in a.claude()[0]["content"]]
             ['text']
+            >>> a.claude(sources=False)[0]["content"][0]["text"]
+            'hi'
         """
-        return to_claude_messages(self, prompt=prompt)
+        return to_claude_messages(
+            self, prompt=prompt, sources=sources, interleave=interleave
+        )
 
-    def openai(self, prompt: str | None = None) -> list[dict[str, Any]]:
+    def openai(
+        self,
+        prompt: str | None = None,
+        *,
+        sources: bool = True,
+        interleave: bool = True,
+    ) -> list[dict[str, Any]]:
         """OpenAI Chat Completions ``messages`` (``render.to_openai_messages``).
+
+        Built from :meth:`parts`, with the same options.
 
         Examples:
             >>> from attachments.types import make_artifact
@@ -444,10 +594,13 @@ class Artifacts(list):
             >>> [p["type"] for p in a.openai()[0]["content"]]
             ['text']
         """
-        return to_openai_messages(self, prompt=prompt)
+        return to_openai_messages(
+            self, prompt=prompt, sources=sources, interleave=interleave
+        )
 
     def chunk(self, **kwargs: Any) -> list[str]:
-        """Segment-aware RAG chunks (see ``render.chunk``).
+        """Segment-aware RAG chunks (see ``render.chunk``; ``sources=False``
+        drops the ``## <source>`` headers).
 
         Examples:
             >>> from attachments.types import make_artifact
@@ -458,6 +611,56 @@ class Artifacts(list):
             ['## a.txt\\nalpha ', '## a.txt\\nbeta']
         """
         return _chunk(self, **kwargs)
+
+    # -- JSON wire form (spec/IR-CONTRACT.md, "Wire format") -------------------
+
+    def to_wire(self) -> list[dict[str, Any]]:
+        """JSON-ready copy: a plain list of artifact dicts, images as base64.
+
+        Each image's raw ``bytes`` become ``bytes_b64`` (standard base64),
+        the format the server already sends; every item validates against
+        ``spec/artifact.schema.json``. Returns new dicts — ``self`` is
+        never modified. The result is data, not a string: pass it to
+        ``json.dumps`` / ``json.dump``.
+
+        Examples:
+            >>> import json
+            >>> from attachments.types import make_artifact
+            >>> img = {"name": "p.png", "mimetype": "image/png", "bytes": b"hi"}
+            >>> a = Artifacts([make_artifact(images=[img], meta={"source": "p.pdf"})])
+            >>> wire = a.to_wire()
+            >>> wire[0]["images"][0]["bytes_b64"]
+            'aGk='
+            >>> Artifacts.from_wire(json.loads(json.dumps(wire))) == a
+            True
+        """
+        return [artifact_to_wire(artifact) for artifact in self]
+
+    @classmethod
+    def from_wire(cls, data: list[dict[str, Any]]) -> Artifacts:
+        """Rebuild :class:`Artifacts` from :meth:`to_wire` output (or a server
+        response list): base64 images back to raw ``bytes``.
+
+        Bad data fails loudly: ``TypeError`` when *data* is not a list (a
+        single artifact dict: wrap it, ``[artifact]``), ``ValueError`` for
+        invalid base64 or a wrongly typed ``text``/``images``/``meta``.
+
+        Examples:
+            >>> a = Artifacts.from_wire(
+            ...     [{"text": "hi", "images": [], "meta": {"source": "a.txt"}}]
+            ... )
+            >>> a.text
+            '## a.txt\\nhi'
+            >>> Artifacts.from_wire({"text": "hi"})
+            Traceback (most recent call last):
+            ...
+            TypeError: from_wire expects a list of artifacts, got dict
+        """
+        if not isinstance(data, list):
+            raise TypeError(
+                f"from_wire expects a list of artifacts, got {type(data).__name__}"
+            )
+        return cls(artifact_from_wire(item) for item in data)
 
     # -- list behavior that stays in the family ------------------------------
 
@@ -529,7 +732,7 @@ class Artifacts(list):
             ...     [make_artifact(text="hi", images=[img], meta={"source": "a"})]
             ... )
             >>> md = a._repr_markdown_()
-            >>> "### Artifacts — 1 artifact | 2 chars | ~1 tokens | 1 image" in md
+            >>> "| ~1.6k tokens (images ~1.6k) | 1 image" in md
             True
             >>> "![p.png](data:image/png;base64," in md
             True

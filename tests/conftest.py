@@ -400,3 +400,82 @@ def assert_artifact():
             assert len(artifact["images"]) > 0, "Expected images"
 
     return _assert
+
+
+# =============================================================================
+# LOCAL HTTP SERVER - real HTTP on 127.0.0.1, no internet
+# =============================================================================
+
+
+class LocalHttpServer:
+    """A tiny HTTP server on 127.0.0.1 with per-path canned responses.
+
+    ``route(path, body, content_type=..., status=200, headers=None)``
+    registers a response; ``redirect(path, to)`` a 302. Every request path
+    is appended to ``requests`` (so tests can assert something was NOT
+    fetched). Unknown paths get a 404.
+    """
+
+    def __init__(self) -> None:
+        import threading
+        from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+        self.routes: dict[str, tuple[int, dict[str, str], bytes]] = {}
+        self.requests: list[str] = []
+        server = self
+
+        class Handler(BaseHTTPRequestHandler):
+            def do_GET(self):  # noqa: N802 (http.server API)
+                server.requests.append(self.path)
+                status, headers, body = server.routes.get(
+                    self.path, (404, {"Content-Type": "text/plain"}, b"not found")
+                )
+                self.send_response(status)
+                for key, value in headers.items():
+                    self.send_header(key, value)
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, *args):  # keep test output quiet
+                pass
+
+        self._httpd = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        self.port = self._httpd.server_address[1]
+        self._thread = threading.Thread(target=self._httpd.serve_forever, daemon=True)
+        self._thread.start()
+
+    def url(self, path: str = "/") -> str:
+        return f"http://127.0.0.1:{self.port}{path}"
+
+    def route(
+        self,
+        path: str,
+        body: bytes | str,
+        *,
+        content_type: str = "text/html; charset=utf-8",
+        status: int = 200,
+        headers: dict[str, str] | None = None,
+    ) -> str:
+        data = body.encode() if isinstance(body, str) else body
+        all_headers = {"Content-Type": content_type, **(headers or {})}
+        self.routes[path] = (status, all_headers, data)
+        return self.url(path)
+
+    def redirect(self, path: str, to: str) -> str:
+        self.routes[path] = (302, {"Location": to}, b"")
+        return self.url(path)
+
+    def close(self) -> None:
+        self._httpd.shutdown()
+        self._httpd.server_close()
+
+
+@pytest.fixture
+def http_server():
+    """A ``LocalHttpServer`` on 127.0.0.1 for the duration of one test."""
+    server = LocalHttpServer()
+    try:
+        yield server
+    finally:
+        server.close()
