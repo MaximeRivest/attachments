@@ -595,19 +595,23 @@ def _list_folder(
                 report.skip(UNREADABLE, rel)
                 continue
             if is_dir:
+                # A pattern decides first which folders matter at all, so
+                # skips are only reported where matches could have been.
+                if pattern_depth is not None and rel.count("/") + 1 >= pattern_depth:
+                    continue  # deeper than the pattern can reach
+                if pattern_components is not None and not _could_match(
+                    rel, pattern_components, hidden
+                ):
+                    continue
                 reason = engine.check(rel, is_dir=True)
                 if reason:
                     report.skip(reason, rel, folder=True)
                 elif pattern is None and not opts.recursive:
                     report.skip(NOT_RECURSIVE, rel, folder=True)
-                elif pattern_depth is not None and rel.count("/") + 1 >= pattern_depth:
-                    continue  # deeper than the pattern can reach
-                elif pattern_components is not None and not _could_match(
-                    rel, pattern_components, hidden
-                ):
-                    continue
                 else:
                     subfolders.append(rel)
+                continue
+            if pattern is not None and not pattern.fullmatch(rel):
                 continue
             if is_link:
                 if not _inside(Path(entry.path), root_real):
@@ -615,8 +619,6 @@ def _list_folder(
                     continue
                 if os.path.isdir(entry.path):
                     continue  # a link to a folder inside the tree: read it there
-            if pattern is not None and not pattern.fullmatch(rel):
-                continue
             try:
                 info = os.stat(entry.path)
             except OSError:
@@ -826,6 +828,12 @@ def read_pattern(
     return files, report
 
 
+#: Skip reasons the ignore rules decide (``[ignore: none]`` lifts them).
+_RULE_REASONS = frozenset(
+    {"ignore option", "secret", "generated", "hidden", "ignore file"}
+)
+
+
 def _no_match_message(pattern: str, report: TreeReport | None = None) -> str:
     """Error for a pattern with zero files, explaining skips and DSL mistakes.
 
@@ -835,17 +843,26 @@ def _no_match_message(pattern: str, report: TreeReport | None = None) -> str:
     ``[...]`` names an existing file, say that instead.
     """
     msg = f"Glob pattern matched no files: {pattern}"
+    hint = _dsl_hint(msg, pattern)
+    if hint:
+        return hint  # the real problem: options written outside the grammar
     if report is not None and report.skipped:
         counts = ", ".join(
             f"{reason}: {s.files + s.folders}"
             for reason, s in report.skipped.items()
-            if reason != GLOB_OPTION
+            if reason in _RULE_REASONS
         )
         if counts:
             msg += (
-                f" — matching files or folders were skipped ({counts}); "
+                f" — skipped: {counts} (matching files, or folders that were "
+                "not searched); "
                 "add [ignore: none] (and [hidden: true] for dot files) to include them"
             )
+    return msg
+
+
+def _dsl_hint(msg: str, pattern: str) -> str | None:
+    """The message for a malformed ``[...]`` options block after a real file."""
     if pattern.endswith("]"):
         depth = 0
         for i in range(len(pattern) - 1, -1, -1):
@@ -864,4 +881,4 @@ def _no_match_message(pattern: str, report: TreeReport | None = None) -> str:
                             "so it was treated as part of the path."
                         )
                     break
-    return msg
+    return None

@@ -493,3 +493,10 @@ def test_archive_overview_only(tmp_path: Path):
     (tmp_path / "b.zip").write_bytes(_zip({"x/a.txt": "1", "x/.env": "s"}))
     res = resolve(str(tmp_path / "b.zip"), options={"files": False})
     assert res.files == [] and [e.path for e in res.reports[0].entries] == ["x/a.txt"]
+
+
+def test_no_match_counts_only_what_the_pattern_could_match(tmp_path: Path):
+    _tree(tmp_path, {".hidden/x.txt": "", "node_modules/y.js": "", "a.md": ""})
+    with pytest.raises(ValueError) as info:
+        unpack(str(tmp_path / "*.pdf"))
+    assert "skipped" not in str(info.value)  # nothing skipped could have matched
