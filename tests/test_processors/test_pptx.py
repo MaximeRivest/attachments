@@ -185,7 +185,7 @@ class TestPptxProcessor:
 
     def test_images_extracted_when_requested(self, pptx_with_image):
         result = processors[".pptx"](
-            pptx_with_image, filename="deck.pptx", render_images=True
+            pptx_with_image, filename="deck.pptx", embedded_images=True
         )
 
         assert len(result["images"]) == 1
@@ -223,8 +223,17 @@ class TestPptxProcessor:
         from attachments._options import get_options, resolve_options
 
         schema = get_options(".pptx")
-        assert [o.name for o in schema] == ["images"]
-        assert schema[0].type == "bool_or_auto"
+        assert [o.name for o in schema] == [
+            "pages",
+            "images",
+            "embedded_images",
+            "dpi",
+            "max_dim",
+            "image_format",
+            "quality",
+        ]
+        images = next(o for o in schema if o.name == "images")
+        assert images.type == "bool_or_auto"
 
         kwargs, warnings = resolve_options(schema, {"images": "true"}, context=".pptx")
         assert kwargs == {"render_images": True}

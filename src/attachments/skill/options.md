@@ -14,7 +14,7 @@ only a warning (`meta["warnings"]`), never an error.
 | Option | Type | Aliases | Default | Example | Description |
 | --- | --- | --- | --- | --- | --- |
 | `max_dim` | `int` | — | — | `max_dim: 1024` | Downscale so the longest side is at most this many pixels (0 = no limit) |
-| `rotate` | `int` | — | — | `rotate: 90` | Rotate counterclockwise by this many degrees (negative = clockwise) |
+| `rotate` | `int` | — | — | `rotate: 90` | Rotate clockwise by this many degrees (negative = counterclockwise) |
 | `image_format` | `str` | — | — | `image_format: jpeg` | Output format: png or jpeg (default: keep jpeg, other formats png) |
 | `quality` | `int` | — | — | `quality: 75` | JPEG quality, 1-95 (default 85 when encoding jpeg) |
 | `ocr` | `bool_or_auto` | — | `false` | `ocr: true` | Recognize text in the image with RapidOCR: true/false, or auto (only when rapidocr is installed) |
@@ -32,7 +32,12 @@ only a warning (`meta["warnings"]`), never an error.
 
 | Option | Type | Aliases | Default | Example | Description |
 | --- | --- | --- | --- | --- | --- |
-| `images` | `bool` | `render` | `false` | `images: true` | Extract embedded images. |
+| `images` | `bool_or_auto` | `render` | `false` | `images: true` | Pictures of each page, drawn by LibreOffice: true/false, or auto (only when LibreOffice is installed) |
+| `embedded_images` | `bool` | — | `false` | `embedded_images: true` | The pictures stored inside the file (photos, logos), as they are |
+| `dpi` | `int` | — | `200` | `dpi: 150` | Resolution of the page pictures (max_dim caps the result) |
+| `max_dim` | `int` | — | `2000` | `max_dim: 1568` | Longest side of each page picture in pixels; 0 = no cap |
+| `image_format` | `str` | — | `"png"` | `image_format: jpeg` | png (sharpest text) or jpeg (smaller) |
+| `quality` | `int` | — | `85` | `quality: 75` | JPEG quality, 1-95 (used with image_format: jpeg) |
 
 ### `.flac`, `.m4a`, `.mp3`, `.ogg`, `.opus`, `.wav`
 
@@ -66,7 +71,13 @@ only a warning (`meta["warnings"]`), never an error.
 
 | Option | Type | Aliases | Default | Example | Description |
 | --- | --- | --- | --- | --- | --- |
-| `images` | `bool_or_auto` | `render` | `false` | `images: true` | Extract embedded slide pictures: true/false ('auto'/'always' behave like true; slides are never rasterized). |
+| `pages` | `pages` | `slides`, `page` | — | `pages: 1-5` | Slides to read: 3, 2-5, 7- (to the end), 1,3,5, -1 (last) |
+| `images` | `bool_or_auto` | `render` | `false` | `images: true` | Pictures of each slide, drawn by LibreOffice: true/false, or auto (only when LibreOffice is installed) |
+| `embedded_images` | `bool` | — | `false` | `embedded_images: true` | The pictures stored inside the file (photos, logos), as they are |
+| `dpi` | `int` | — | `200` | `dpi: 150` | Resolution of the slide pictures (max_dim caps the result) |
+| `max_dim` | `int` | — | `2000` | `max_dim: 1568` | Longest side of each slide picture in pixels; 0 = no cap |
+| `image_format` | `str` | — | `"png"` | `image_format: jpeg` | png (sharpest text) or jpeg (smaller) |
+| `quality` | `int` | — | `85` | `quality: 75` | JPEG quality, 1-95 (used with image_format: jpeg) |
 
 ### `.ods`, `.xls`, `.xlsx`
 
@@ -74,12 +85,17 @@ only a warning (`meta["warnings"]`), never an error.
 | --- | --- | --- | --- | --- | --- |
 | `sheet` | `str_or_int` | — | — | `sheet: Sales` | Sheet to render: a sheet name or 0-based index. Omit to render all sheets. |
 | `rows` | `int` | `max_rows` | `200` | `rows: 100` | Maximum number of rows rendered as text per sheet. |
+| `images` | `bool_or_auto` | `render` | `false` | `images: true` | Pictures of each sheet, drawn by LibreOffice: true/false, or auto (only when LibreOffice is installed) |
+| `dpi` | `int` | — | `200` | `dpi: 150` | Resolution of the sheet pictures (max_dim caps the result) |
+| `max_dim` | `int` | — | `2000` | `max_dim: 1568` | Longest side of each sheet picture in pixels; 0 = no cap |
+| `image_format` | `str` | — | `"png"` | `image_format: jpeg` | png (sharpest text) or jpeg (smaller) |
+| `quality` | `int` | — | `85` | `quality: 75` | JPEG quality, 1-95 (used with image_format: jpeg) |
 
 ### `.pdf`
 
 | Option | Type | Aliases | Default | Example | Description |
 | --- | --- | --- | --- | --- | --- |
-| `pages` | `pages` | `page` | — | `pages: 1-4` | Pages to include: a 1-based page number or range. |
+| `pages` | `pages` | `page` | — | `pages: 1-4` | Pages to read: 3, 2-5, 7- (to the end), 1,3,5, -1 (last), -3- (last three) |
 | `password` | `str` | `pw` | — | `password: secret` | Password for encrypted PDFs. |
 | `images` | `bool_or_auto` | `render` | `"auto"` | `images: true` | Render pages to images: true/false, or auto (only when no text). |
 | `dpi` | `int` | — | `200` | `dpi: 300` | Resolution for rendered page images (max_dim caps the result). |

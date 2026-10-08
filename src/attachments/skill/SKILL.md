@@ -67,13 +67,15 @@ Options belong to the file type: `print(att.options(".pdf"))` (or
 
 | file | option | effect |
 |---|---|---|
-| pdf | `pages: 2-4`, `max_pages: 10` | 1-based page range; cap on pages read |
+| pdf, pptx | `pages: 2-4`, `pages: 1,3,-1`, `max_pages: 10` | pages or slides (`-1` = last); cap on pages read (pdf) |
 | pdf | `images: true` | page pictures. The default (`auto`) draws pages only for PDFs with no text at all, so **charts, tables drawn as graphics and layout are invisible unless you ask** |
 | pdf | `max_dim: 1568`, `image_format: jpeg`, `quality: 80`, `dpi: 200` | page picture size and format (default PNG, longest side 2000 px) |
 | pdf, images | `ocr: true` | read the text of scans (needs the `ocr` extra; pdf does it by itself for scans when the extra is installed) |
 | xlsx | `sheet: Sales`, `rows: 100` | one sheet; rows per sheet |
 | csv, tsv | `rows: 100`, `delimiter: ";"`, `summary: true` | |
-| pptx, docx, html | `images: true` | embedded pictures (pptx: tagged with their slide) |
+| docx, pptx, xlsx | `images: true` | a picture of each page, slide or sheet, numbered like the text (needs LibreOffice; `auto` = only if installed) |
+| docx, pptx | `embedded_images: true` | the pictures stored in the file |
+| html | `images: true` | inline data-URI pictures |
 | doc, ppt, odt, odp, ods | as docx / pptx / xlsx | converted by LibreOffice (a program to install, not an extra) |
 | html, web pages | `select: article` | CSS selector |
 | html, web pages | `main: false`, `links: true` | whole page instead of the main content; keep link addresses |

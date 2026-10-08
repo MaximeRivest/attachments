@@ -4,22 +4,31 @@
 #   rm -rf dist && uv build --wheel           # exactly one dist/attachments-*.whl
 #   docker build -f deploy/Dockerfile -t attachments-api .
 #
-# Built and tested with Podman 5 on amd64 (2026-10-08): 1.72 GB, of which
-# LibreOffice is 0.42 GB (1.30 GB without it). Tested in the running
-# container: .doc/.odt/.ppt/.odp/.ods over POST /process (1.4-1.9 s each), 6
-# parallel conversions (peak 365 MB), a hung conversion killed with all its
-# child processes, and a client without LibreOffice falling back to it.
+# Built and tested with Podman 5 on amd64 (2026-10-08): 1.87 GB — LibreOffice
+# 0.42 GB, fonts 0.15 GB (1.30 GB without both). Tested in the running
+# container: .doc/.odt/.ppt/.odp/.ods over POST /process (1.4-1.9 s each),
+# page/slide/sheet pictures (Latin, CJK, Arabic, Devanagari text), 6
+# parallel slide decks drawn (peak 524 MB), a hung conversion killed with
+# its child processes, and a client without LibreOffice falling back to it.
 # Base images are fully qualified (docker.io/...) so Podman resolves them.
 
 FROM docker.io/library/python:3.12-slim
 
 # curl: HEALTHCHECK. libgl/glib: onnxruntime/opencv runtime libs used by
 # rapidocr. tini: PID 1 that reaps processes LibreOffice leaves behind.
-# LibreOffice (writer/impress/calc, no GUI): .doc/.ppt/.odt/.odp/.ods.
+# LibreOffice (writer/impress/calc, no GUI): .doc/.ppt/.odt/.odp/.ods, and
+# pictures of Office pages/slides/sheets (images: true).
+# Fonts, for those pictures: Liberation, Carlito and Caladea have the exact
+# widths of Arial/Times/Courier, Calibri and Cambria, so lines and page
+# breaks fall where Word and PowerPoint put them; Noto covers other
+# scripts (core: Arabic, Hebrew, Indic, Thai, ...; cjk: Chinese, Japanese,
+# Korean), which would otherwise draw as empty boxes.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         curl libgl1 libglib2.0-0 tini \
         libreoffice-writer-nogui libreoffice-impress-nogui libreoffice-calc-nogui \
+        fonts-liberation2 fonts-crosextra-carlito fonts-crosextra-caladea \
+        fonts-noto-core fonts-noto-cjk \
     && rm -rf /var/lib/apt/lists/*
 
 # --- Install attachments[server] from the LOCAL wheel (pre-publish) -------

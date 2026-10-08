@@ -16,6 +16,30 @@ types 0.25 had back.
 
 ### Added
 
+- **Pictures of Office pages, slides and sheets** (`images: true`), drawn
+  by LibreOffice and the PDF page renderer, with the same `dpi`, `max_dim`,
+  `image_format` and `quality` as PDF pages — as 0.25 had. Word, `.doc`
+  and `.odt`: one picture per page. PowerPoint, `.ppt` and `.odp`: one per
+  slide, hidden slides included so picture N is slide N. Excel, `.xls` and
+  `.ods`: one per sheet (whole sheet on one page), in workbook order;
+  empty sheets get none. `images: auto` draws them only when LibreOffice is
+  installed. Old formats are drawn from the original file, not the
+  converted copy. Sheet segments now carry the sheet's position as `page`,
+  matching its picture.
+- **`embedded_images: true`** (Word, PowerPoint): the pictures stored in the
+  file — what `images: true` used to mean.
+- **Page lists and pages from the end**: `pages: 1,3,5`, `-1` (last),
+  `-3-` (last three), `7-` (to the end), `2--2`; in document order, each
+  page once (`attachments._pages`). A selection with no page in the
+  document says so instead of returning nothing silently.
+- **`pages` for PowerPoint** (alias `slides`): pick slides; their pictures
+  and embedded images follow the selection.
+- **DSL**: a segment without `:` continues the previous value, so
+  `[pages: 1,3,5]` and `[select: h1, p]` need no quotes
+  (spec/dsl-grammar.md rule 2a; every previously valid input parses the
+  same; new test vectors).
+- **Python 3.11** supported (3.11–3.13 in CI); the full suite passes on 3.11
+  and 3.13.
 - **Folders skip what should not reach a model.** One set of rules for
   folders, patterns, GitHub repos and archive members
   (`_sources/_ignore.py`): secrets (`.env` files, private keys, credential
@@ -61,6 +85,11 @@ types 0.25 had back.
   (`ATTACHMENTS_LIBREOFFICE` points at a specific `soffice`). Each
   conversion gets its own profile and is killed after
   `ATTACHMENTS_LIBREOFFICE_TIMEOUT` seconds (default 120).
+- **Server image draws Office pages**: fonts with the widths of Arial,
+  Times, Courier, Calibri and Cambria (Liberation, Carlito, Caladea) so
+  pages break where Office breaks them, and Noto for other scripts
+  (Arabic, Hebrew, Indic, Chinese, Japanese, Korean...); +150 MB, 1.87 GB.
+  The build also draws a page (`warmup.py --strict`).
 - **Server image converts old Office files**: `deploy/Dockerfile` installs
   LibreOffice (writer/impress/calc, no GUI; +0.42 GB, 1.72 GB total) and
   `tini` as PID 1, caps conversions at 60 s (under gunicorn's 120 s), and
@@ -162,6 +191,13 @@ types 0.25 had back.
 - OCR (pdf and image) reads a full-size, lossless image even when the
   delivered images are shrunk or JPEG.
 - JPEG output of transparent images is flattened onto white (was: black).
+- **`images: true` on Word and PowerPoint draws pages and slides** (was:
+  the embedded pictures, now `embedded_images: true`).
+- **`rotate` turns clockwise** (was counterclockwise), like 0.25, CSS and
+  ImageMagick; negative values turn counterclockwise.
+- **Photos are delivered upright**: an EXIF orientation tag is applied to
+  the pixels (`extra.exif_orientation`). Re-encoded photos used to drop the
+  tag and come out sideways; `rotate` is now relative to what you see.
 - **Folders read differently**: they start with the overview artifact
   (so `att("docs/")[0]` is no longer the first file — `[tree: false]`
   restores that), and secrets, dependencies, hidden and `.gitignore`'d

@@ -7,6 +7,13 @@ import logging
 from typing import Any
 
 from .._options import Option, register_options
+from .._pages import (
+    PagePicker,
+    PageSelectionError,
+    describe_pages,
+    page_picker,
+    parse_pages,
+)
 from ..types import (
     ERROR_INVALID_OPTION,
     ERROR_MISSING_DEPENDENCY,
@@ -71,7 +78,7 @@ def _quiet_pdf_loggers():
 
 
 def _join_pages_with_segments(
-    page_texts: list[str], first_page: int
+    page_texts: list[str], page_numbers: list[int]
 ) -> tuple[str, list[dict]]:
     """Join per-page texts and build page segments (IR contract: meta.segments).
 
@@ -80,27 +87,27 @@ def _join_pages_with_segments(
     start/end offsets into the joined text.
 
     Examples:
-        >>> text, segs = _join_pages_with_segments(["one", "two"], 0)
+        >>> text, segs = _join_pages_with_segments(["one", "two"], [1, 3])
         >>> text
         'one\\n\\ntwo'
         >>> segs[0]
         {'kind': 'page', 'label': 'page 1', 'start': 0, 'end': 3, 'page': 1}
-        >>> text[segs[1]["start"] : segs[1]["end"]]
-        'two'
+        >>> segs[1]["page"], text[segs[1]["start"] : segs[1]["end"]]
+        (3, 'two')
     """
     parts: list[str] = []
     segments: list[dict] = []
     offset = 0
-    for idx, page_text in enumerate(page_texts):
+    for page_number, page_text in zip(page_numbers, page_texts, strict=False):
         if parts:
             offset += len(_PAGE_SEPARATOR)
         segments.append(
             {
                 "kind": "page",
-                "label": f"page {first_page + idx + 1}",
+                "label": f"page {page_number}",
                 "start": offset,
                 "end": offset + len(page_text),
-                "page": first_page + idx + 1,
+                "page": page_number,
             }
         )
         parts.append(page_text)
@@ -112,9 +119,7 @@ def _join_pages_with_segments(
 def _extract_text_with_pypdf_or_pyPDF2(
     data: bytes,
     password: str | None,
-    page_start: int,
-    page_end: int | None,
-    max_pages: int | None,
+    pick: PagePicker,
 ) -> tuple[str | None, int | None, int, str | None, dict, list[dict]]:
     """
     Returns (text, total_pages, parsed_pages, backend_name, extra, segments)
@@ -155,14 +160,11 @@ def _extract_text_with_pypdf_or_pyPDF2(
                 return (None, None, 0, backend, extra, [])
 
         total_pages = len(reader.pages)
-        start = max(0, int(page_start or 0))
-        stop = total_pages if page_end is None else min(int(page_end), total_pages)
-        if max_pages is not None:
-            stop = min(stop, start + int(max_pages))
+        indices = pick(total_pages)
 
         page_texts: list[str] = []
         parsed = 0
-        for i in range(start, stop):
+        for i in indices:
             try:
                 page = reader.pages[i]
                 t = page.extract_text() or ""
@@ -171,7 +173,7 @@ def _extract_text_with_pypdf_or_pyPDF2(
                 t = ""
             page_texts.append(t.strip())
 
-        text, segments = _join_pages_with_segments(page_texts, start)
+        text, segments = _join_pages_with_segments(page_texts, [i + 1 for i in indices])
         return (text, total_pages, parsed, backend, extra, segments)
     except ImportError as e:
         # Neither pypdf nor PyPDF2 is installed
@@ -192,9 +194,7 @@ def _extract_text_with_pypdf_or_pyPDF2(
 def _extract_text_with_pdfminer(
     data: bytes,
     password: str | None,
-    page_start: int,
-    page_end: int | None,
-    max_pages: int | None,
+    pick: PagePicker,
 ) -> tuple[str | None, int | None, int, str | None, dict, list[dict]]:
     """
     Returns (text, total_pages, parsed_pages, backend_name, extra, segments)
@@ -219,26 +219,13 @@ def _extract_text_with_pdfminer(
         except Exception:
             total_pages = None
 
-        start = max(0, int(page_start or 0))
-        if page_end is None:
-            stop = (
-                total_pages if total_pages is not None else start + (max_pages or 10**9)
-            )
-        else:
-            stop = (
-                min(int(page_end), total_pages)
-                if total_pages is not None
-                else int(page_end)
-            )
-
-        if max_pages is not None:
-            stop = min(stop, start + int(max_pages))
-
-        # pdfminer expects 0-based indices and only tests membership, so a
-        # lazy range is enough. Never a set: with an unknown page count the
-        # bound is 10**9, and materializing it took minutes and gigabytes
-        # for every PDF too broken to count its pages.
-        page_numbers = range(start, stop)
+        if total_pages is None:
+            # pypdf failed too and the page count is unknown: a selection
+            # (which may count from the end) cannot be resolved.
+            extra["note"] = "pdfminer.six could not count the pages"
+            return (None, None, 0, None, extra, [])
+        indices = pick(total_pages)
+        page_numbers = set(indices)
 
         raw = (
             extract_text(
@@ -253,7 +240,7 @@ def _extract_text_with_pdfminer(
         page_texts = [p.strip() for p in raw.split("\x0c")]
         if page_texts and page_texts[-1] == "":
             page_texts.pop()
-        text, segments = _join_pages_with_segments(page_texts, start)
+        text, segments = _join_pages_with_segments(page_texts, [i + 1 for i in indices])
         parsed = len(page_texts)
         return (text, total_pages, parsed, "pdfminer.six", extra, segments)
     except ImportError as e:
@@ -273,9 +260,7 @@ def _extract_text_with_pdfminer(
 
 def _render_pages_with_pymupdf(
     data: bytes,
-    page_start: int,
-    page_end: int | None,
-    max_pages: int | None,
+    pick: PagePicker,
     dpi: int,
     filename: str | None,
     *,
@@ -304,14 +289,10 @@ def _render_pages_with_pymupdf(
         doc = fitz.open(stream=data, filetype="pdf")
         try:
             total = doc.page_count
-            start = max(0, int(page_start or 0))
-            stop = total if page_end is None else min(int(page_end), total)
-            if max_pages is not None:
-                stop = min(stop, start + int(max_pages))
 
             images: list[dict] = []
             downscaled = 0
-            for i in range(start, stop):
+            for i in pick(total):
                 page = doc.load_page(i)
                 zoom = dpi / 72.0
                 longest = max(page.rect.width, page.rect.height)
@@ -349,9 +330,7 @@ def _render_pages_with_pymupdf(
 
 def _render_pages_with_pdf2image(
     data: bytes,
-    page_start: int,
-    page_end: int | None,
-    max_pages: int | None,
+    pick: PagePicker,
     dpi: int,
     filename: str | None,
     *,
@@ -372,38 +351,35 @@ def _render_pages_with_pdf2image(
 
         pil_format, mimetype, ext = output_format(image_format)
         cap = limit(max_dim)
-        start = max(0, int(page_start or 0))
-        last = page_end
-        if max_pages is not None:
-            last = (
-                (start + int(max_pages))
-                if last is None
-                else min(int(last), start + int(max_pages))
-            )
+        from pdf2image import pdfinfo_from_bytes
 
-        # pdf2image uses 1-based page indices
-        pil_pages = convert_from_bytes(
-            data,
-            dpi=dpi,
-            first_page=start + 1,
-            last_page=(int(last) if last is not None else None),
-            fmt="png",
-        )
+        total = int(pdfinfo_from_bytes(data)["Pages"])
+        indices = pick(total)
         images: list[dict] = []
         downscaled = 0
-        for idx, im in enumerate(pil_pages):
-            if cap and max(im.size) > cap:
-                im.thumbnail((cap, cap), Image.Resampling.LANCZOS)
-                downscaled += 1
-            page_no = start + idx + 1
-            images.append(
-                {
-                    "name": f"{(filename or 'document')}-page-{page_no}.{ext}",
-                    "mimetype": mimetype,
-                    "bytes": pil_encode(im, pil_format, quality),
-                    "page": page_no,
-                }
+        # One call per run of consecutive pages (pdf2image takes first/last).
+        runs: list[list[int]] = []
+        for i in indices:
+            if runs and i == runs[-1][-1] + 1:
+                runs[-1].append(i)
+            else:
+                runs.append([i])
+        for run in runs:
+            pil_pages = convert_from_bytes(
+                data, dpi=dpi, first_page=run[0] + 1, last_page=run[-1] + 1, fmt="png"
             )
+            for i, im in zip(run, pil_pages, strict=False):
+                if cap and max(im.size) > cap:
+                    im.thumbnail((cap, cap), Image.Resampling.LANCZOS)
+                    downscaled += 1
+                images.append(
+                    {
+                        "name": f"{(filename or 'document')}-page-{i + 1}.{ext}",
+                        "mimetype": mimetype,
+                        "bytes": pil_encode(im, pil_format, quality),
+                        "page": i + 1,
+                    }
+                )
         extra["rendered_pages"] = len(images)
         if downscaled:
             extra["downscaled_pages"] = downscaled
@@ -411,6 +387,12 @@ def _render_pages_with_pdf2image(
     except Exception as e:
         extra["note"] = f"image rendering via pdf2image unavailable: {e}"
         return [], None, extra
+
+
+def _describe(selection: Any, page_start: int, page_end: int | None) -> str:
+    return describe_pages(
+        {"page_selection": selection, "page_start": page_start, "page_end": page_end}
+    )
 
 
 def process_pdf(
@@ -422,6 +404,7 @@ def process_pdf(
     page_start: int = 0,
     page_end: int | None = None,
     max_pages: int | None = None,
+    page_selection: Any = None,
     # Image rendering options
     render_images: bool | str = "auto",  # False | True/"always" | "auto"
     images_dpi: int = 200,
@@ -440,6 +423,10 @@ def process_pdf(
       - password: str | None         PDF password for encrypted docs.
       - page_start: int              0-based start page (default 0).
       - page_end: int | None         Stop BEFORE this 0-based page index.
+      - page_selection:              Pages to read instead of the range:
+                                     "1,3,5", "-1" (last), "-3-" (last
+                                     three), "2-" ... (see attachments._pages;
+                                     the ``pages`` option sets it).
       - max_pages: int | None        Hard cap on pages to parse/render.
       - render_images:               False | True/"always" | "auto"
                                      "auto" renders only if text is empty.
@@ -485,6 +472,16 @@ def process_pdf(
         artifact["meta"]["kind"] = "pdf"
         return artifact
 
+    selection = None
+    if page_selection is not None:
+        try:
+            selection = parse_pages(page_selection)
+        except PageSelectionError as e:
+            artifact = error_artifact(source, ERROR_INVALID_OPTION, str(e))
+            artifact["meta"]["kind"] = "pdf"
+            return artifact
+    pick = page_picker(page_start, page_end, max_pages, selection)
+
     def _render(dpi: int, *, delivered: bool) -> tuple[list[dict], str | None, dict]:
         """Render pages: PyMuPDF first, pdf2image as fallback.
 
@@ -496,7 +493,7 @@ def process_pdf(
             if delivered
             else {"max_dim": None, "image_format": "png"}
         )
-        args = (data, page_start, page_end, max_pages, dpi, filename)
+        args = (data, pick, dpi, filename)
         imgs, backend, info = _render_pages_with_pymupdf(*args, **settings)
         if backend:
             return imgs, backend, {f"render_{k}": v for k, v in info.items()}
@@ -516,9 +513,7 @@ def process_pdf(
 
     # ---- TEXT extraction ----
     text1, total_pages, parsed_pages, backend1, extra1, segments1 = (
-        _extract_text_with_pypdf_or_pyPDF2(
-            data, password, page_start, page_end, max_pages
-        )
+        _extract_text_with_pypdf_or_pyPDF2(data, password, pick)
     )
     extra.update(extra1)
     if backend1:
@@ -539,7 +534,7 @@ def process_pdf(
     if text1 is None or text1.strip() == "":
         # fallback to pdfminer.six
         text2, total_pages2, parsed_pages2, backend2, extra2, segments2 = (
-            _extract_text_with_pdfminer(data, password, page_start, page_end, max_pages)
+            _extract_text_with_pdfminer(data, password, pick)
         )
         extra.update({f"pdfminer_{k}": v for k, v in extra2.items()})
         if extra2.get("password_required"):
@@ -582,6 +577,21 @@ def process_pdf(
     if total_pages is not None:
         extra["pages"] = int(total_pages)
     extra["parsed_pages"] = int(parsed_pages)
+    if selection is not None:
+        extra["page_selection"] = str(selection)
+    asked = selection is not None or page_start or page_end is not None
+    if asked and total_pages and not pick(int(total_pages)):
+        # Nothing to read: say so, rather than "scanned PDF, try OCR".
+        return make_artifact(
+            meta={
+                "kind": "pdf",
+                "extra": extra,
+                "warnings": [
+                    f"pages: {_describe(selection, page_start, page_end)} "
+                    f"selects no page of this {int(total_pages)}-page document"
+                ],
+            }
+        )
 
     # ---- IMAGE rendering (optional) ----
     def _should_render() -> bool:
@@ -671,7 +681,7 @@ def process_pdf(
                 else:
                     page_texts = [_ocr_image_bytes(im["bytes"]) for im in ordered]
                 ocr_text, ocr_segments = _join_pages_with_segments(
-                    page_texts, ordered[0]["page"] - 1
+                    page_texts, [im["page"] for im in ordered]
                 )
                 extra["ocr"] = True
                 extra["ocr_backend"] = engine
@@ -724,7 +734,10 @@ register_options(
             "pages",
             "pages",
             aliases=("page",),
-            help="Pages to include: a 1-based page number or range.",
+            help=(
+                "Pages to read: 3, 2-5, 7- (to the end), 1,3,5, -1 (last), "
+                "-3- (last three)"
+            ),
             example="pages: 1-4",
         ),
         Option(

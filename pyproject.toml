@@ -7,7 +7,7 @@ name = "attachments"
 version = "1.0.0a2"  # pre-release: pip install attachments will NOT pick this up; see VISION.md
 description = "Turn anything into LLM-ready artifacts. Universal file and source processing."
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 authors = [{ name = "Maxime Rivest", email = "mrive052@gmail.com" }]
 license = "MIT"
 license-files = ["LICENSE"]
@@ -25,6 +25,7 @@ keywords = [
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Topic :: Software Development :: Libraries",
@@ -171,7 +172,7 @@ att = "attachments.cli:app"
 
 [tool.ruff]
 line-length = 88
-target-version = "py312"
+target-version = "py311"
 extend-exclude = ["docs/_freeze", "build", "dist"]
 
 [tool.ruff.lint]

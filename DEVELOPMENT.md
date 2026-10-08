@@ -625,6 +625,7 @@ src/attachments/
 ├── utils.py                 # Encoding detection, magic-byte detection, helpers
 ├── render.py                # Last mile: render_text, to_claude/openai_messages, chunk
 ├── _overview.py             # Folder overview artifact (kind "directory") from a TreeReport
+├── _pages.py                # Page selections: pages: 1,3,-1 / -3- / 7- (PDF, PowerPoint)
 ├── _mentions.py             # att.from_prompt: files a prompt mentions (untrusted input)
 ├── _sources/                # Input resolution (WHERE files come from)
 │   ├── __init__.py          # Source registry, @source, resolve() + unpack() dispatch
@@ -651,7 +652,8 @@ src/attachments/
     ├── image.py             # Images png/jpg/gif/webp/bmp/tiff/heic (Pillow, pillow-heif) + shared OCR layer (rapidocr)
     ├── ipynb.py             # Jupyter notebooks (stdlib json/base64; optional cell outputs)
     ├── audio.py             # Audio transcription mp3/wav/m4a/flac/ogg/opus (faster-whisper)
-    └── legacy_office.py     # .doc/.ppt/.odt/.odp/.ods via LibreOffice, then docx/pptx/xlsx
+    ├── legacy_office.py     # .doc/.ppt/.odt/.odp/.ods via LibreOffice, then docx/pptx/xlsx
+    └── _office_pages.py     # images: true for Office files: LibreOffice -> PDF -> pictures
 ```
 
 ---

@@ -1,7 +1,7 @@
 # api.attachments.dev — launch-day runbook
 
 > **Build status:** the image builds and serves on amd64 (Podman 5,
-> 2026-10-08; 1.72 GB). The build itself fails if OCR or LibreOffice does not
+> 2026-10-08; 1.87 GB). The build itself fails if OCR or LibreOffice does not
 > work (`warmup.py --strict`). Not yet built on arm64 (c7g). From the repo
 > root:
 >
@@ -27,12 +27,13 @@ https://aws.amazon.com/ec2/pricing/on-demand/.
 | c7a.xlarge | 4 / 8 GiB    | If launch traffic spikes     | ~$150             | `WEB_CONCURRENCY=4`, `API_MEM_LIMIT=6g` |
 | g6.xlarge  | 4 / 16 GiB + L4 24 GB | GPU phase 2 (vLLM + LightOnOCR-2-1B) | ~$580 on-demand / spot often ~60-70% less | Run only while needed; spot is fine (stateless) |
 
-Disk: 30 GB gp3 is plenty (1.7 GB image + models + logs).
+Disk: 30 GB gp3 is plenty (1.9 GB image + models + logs).
 
 Memory: a LibreOffice conversion (`.doc`, `.ppt`, `.odt`, `.odp`, `.ods`)
 runs a separate `soffice` process for ~1.5-2 s; with the sync workers at
 most `WEB_CONCURRENCY` run at once. Measured: 6 parallel requests peaked at
-365 MB for the whole container.
+365 MB for the whole container; 6 parallel slide decks drawn as pictures
+(`images: true`) at 524 MB.
 
 ## 2. DNS
 

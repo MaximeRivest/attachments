@@ -88,6 +88,13 @@ def warm_libreoffice(strict: bool = False) -> None:
         if "warmup 123" not in result.get("text", ""):
             raise RuntimeError(f"unexpected result: {result.get('meta')}")
         print(f"[warmup] LibreOffice converts (.doc) in {time.time() - t0:.1f}s")
+        t1 = time.time()
+        drawn = processors[".docx"](
+            buf.getvalue(), filename="warmup.docx", render_images=True
+        )
+        if len(drawn.get("images", [])) != 1:
+            raise RuntimeError(f"page picture failed: {drawn.get('meta')}")
+        print(f"[warmup] LibreOffice draws pages in {time.time() - t1:.1f}s")
     except Exception as exc:  # noqa: BLE001 — warmup must never kill the server
         if strict:
             raise

@@ -8,8 +8,10 @@ jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false  # see every version that fails, not just the first
       matrix:
-        python-version: ["3.12"]
+        # Oldest and newest supported, plus the one the deploy image uses.
+        python-version: ["3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
 

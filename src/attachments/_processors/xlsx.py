@@ -7,6 +7,14 @@ from typing import Any
 from .._options import Option, register_options
 from ..types import ERROR_PARSE, error_artifact, make_artifact, missing_dep_artifact
 from . import register_processor
+from ._office_pages import (
+    DEFAULT_DPI,
+    DEFAULT_MAX_DIM,
+    check_render_options,
+    office_pictures,
+    render_options,
+    wants_pictures,
+)
 
 _SHEET_SEPARATOR = "\n\n"
 
@@ -83,36 +91,40 @@ def _render_sheet_block(
 
 def _join_blocks_with_segments(
     blocks: list[tuple[str, str]],
+    pages: list[int] | None = None,
 ) -> tuple[str, list[dict[str, Any]]]:
     """Join rendered sheet blocks and build ``meta.segments`` (IR: xlsx sheets).
 
-    Each segment slices exactly one sheet's rendered block, heading included.
+    Each segment slices exactly one sheet's rendered block, heading included,
+    and carries the sheet's 1-based position in the workbook as ``page`` —
+    the same number as ``ImageItem.page`` on that sheet's picture.
 
     Examples:
         >>> text, segs = _join_blocks_with_segments(
-        ...     [("A", "# A\\n1"), ("B", "# B\\n2")]
+        ...     [("A", "# A\\n1"), ("B", "# B\\n2")], [1, 2]
         ... )
         >>> text
         '# A\\n1\\n\\n# B\\n2'
         >>> segs[1]
-        {'kind': 'sheet', 'label': 'B', 'start': 7, 'end': 12}
+        {'kind': 'sheet', 'label': 'B', 'start': 7, 'end': 12, 'page': 2}
         >>> text[segs[0]["start"] : segs[0]["end"]]
         '# A\\n1'
     """
     parts: list[str] = []
     segments: list[dict[str, Any]] = []
     offset = 0
-    for label, block in blocks:
+    for index, (label, block) in enumerate(blocks):
         if parts:
             offset += len(_SHEET_SEPARATOR)
-        segments.append(
-            {
-                "kind": "sheet",
-                "label": label,
-                "start": offset,
-                "end": offset + len(block),
-            }
-        )
+        segment: dict[str, Any] = {
+            "kind": "sheet",
+            "label": label,
+            "start": offset,
+            "end": offset + len(block),
+        }
+        if pages is not None:
+            segment["page"] = pages[index]
+        segments.append(segment)
         parts.append(block)
         offset += len(block)
     return _SHEET_SEPARATOR.join(parts), segments
@@ -139,7 +151,9 @@ def _xlsx_with_openpyxl(
             truncated = truncated or t
             blocks.append((name, block))
 
-        text, segments = _join_blocks_with_segments(blocks)
+        text, segments = _join_blocks_with_segments(
+            blocks, [names.index(n) + 1 for n in targets]
+        )
         extra: dict[str, Any] = {"sheets": names, "engine": "openpyxl"}
         if len(targets) == 1:
             ws = wb[targets[0]]
@@ -179,7 +193,9 @@ def _xlsx_with_pandas(
         blocks.append((name, block))
         shape = (int(df.shape[0]), int(df.shape[1]))
 
-    text, segments = _join_blocks_with_segments(blocks)
+    text, segments = _join_blocks_with_segments(
+        blocks, [names.index(n) + 1 for n in targets]
+    )
     extra: dict[str, Any] = {"sheets": names, "engine": "pandas"}
     if len(targets) == 1 and shape is not None:
         extra["sheet_used"] = targets[0]
@@ -235,7 +251,9 @@ def _xls_with_xlrd(
         truncated = truncated or t
         blocks.append((name, block))
 
-    text, segments = _join_blocks_with_segments(blocks)
+    text, segments = _join_blocks_with_segments(
+        blocks, [names.index(n) + 1 for n in targets]
+    )
     extra: dict[str, Any] = {"sheets": names, "engine": "xlrd"}
     if len(targets) == 1:
         sh = wb.sheet_by_name(targets[0])
@@ -245,6 +263,56 @@ def _xls_with_xlrd(
     if truncated:
         extra["rows_truncated"] = True
     return text, segments, extra
+
+
+def _with_sheet_pictures(
+    artifact: dict[str, Any], data: bytes, ext: str, options: dict[str, Any]
+) -> dict[str, Any]:
+    """Add one picture per sheet when ``images`` asks for them.
+
+    With ``sheet``, only that sheet is drawn. Pictures carry the sheet's
+    position in the workbook as ``page``, like the sheet segments.
+    """
+    mode = wants_pictures(options.get("render_images"))
+    if not mode or artifact["meta"].get("error"):
+        return artifact
+    source = options.get("filename") or f"workbook{ext}"
+    settings = {
+        "dpi": options.get("dpi", DEFAULT_DPI),
+        "max_dim": options.get("max_dim", DEFAULT_MAX_DIM),
+        "image_format": options.get("image_format", "png"),
+        "quality": options.get("quality"),
+    }
+    invalid = check_render_options(source=source, kind="table", **settings)
+    if invalid:
+        return invalid
+    extra = artifact["meta"].setdefault("extra", {})
+    pick = None
+    if extra.get("sheet_used") in extra.get("sheets", []):
+        position = extra["sheets"].index(extra["sheet_used"])
+
+        def pick(total: int) -> list[int]:
+            return [position] if position < total else []
+
+    pictures = office_pictures(
+        *(options.get("_render_from") or (data, ext)),
+        source=source,
+        kind="table",
+        mode=mode,
+        pick=pick,
+        dpi=settings["dpi"],
+        max_dim=settings["max_dim"],
+        image_format=settings["image_format"],
+        quality=settings["quality"] or 85,
+    )
+    if isinstance(pictures, dict):  # an error artifact
+        return pictures
+    images, picture_extra, note = pictures
+    artifact["images"] = images
+    extra.update(picture_extra)
+    if note:
+        artifact["meta"]["note"] = note
+    return artifact
 
 
 def xls_processor(data: bytes, **options: Any) -> dict[str, Any]:
@@ -271,7 +339,9 @@ def xls_processor(data: bytes, **options: Any) -> dict[str, Any]:
     meta: dict[str, Any] = {"kind": "table", "extra": extra}
     if segments:
         meta["segments"] = segments
-    return make_artifact(text=text, meta=meta)
+    return _with_sheet_pictures(
+        make_artifact(text=text, meta=meta), data, ".xls", options
+    )
 
 
 def xlsx_processor(data: bytes, **options: Any) -> dict[str, Any]:
@@ -295,7 +365,9 @@ def xlsx_processor(data: bytes, **options: Any) -> dict[str, Any]:
         meta: dict[str, Any] = {"kind": "table", "extra": extra}
         if segments:
             meta["segments"] = segments
-        return make_artifact(text=text, meta=meta)
+        return _with_sheet_pictures(
+            make_artifact(text=text, meta=meta), data, ".xlsx", options
+        )
     except ImportError:  # pragma: no cover - optional dep
         pass
     except Exception as e:
@@ -307,7 +379,9 @@ def xlsx_processor(data: bytes, **options: Any) -> dict[str, Any]:
         meta = {"kind": "table", "extra": extra}
         if segments:
             meta["segments"] = segments
-        return make_artifact(text=text, meta=meta)
+        return _with_sheet_pictures(
+            make_artifact(text=text, meta=meta), data, ".xlsx", options
+        )
     except ImportError:  # pragma: no cover - optional dep
         pass
     except Exception as e:
@@ -346,6 +420,7 @@ _SHEET_OPTIONS = (
         help="Maximum number of rows rendered as text per sheet.",
         example="rows: 100",
     ),
+    *render_options(unit="sheet", embedded=False),
 )
 
 register_processor(".xlsx", xlsx_processor)

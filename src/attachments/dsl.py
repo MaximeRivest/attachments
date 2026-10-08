@@ -130,8 +130,10 @@ def parse_dsl(input: str) -> tuple[str, dict[str, Any]]:
     """Parse an input string into ``(source, raw_options)``.
 
     The options block is the final balanced ``[...]`` group, recognized only
-    when the input ends with ``]`` and every comma-separated segment contains
-    a ``:`` outside quotes. Otherwise the whole group stays in the source.
+    when the input ends with ``]`` and its first comma-separated segment
+    contains a ``:`` outside quotes; otherwise the whole group stays in the
+    source. A later segment without ``:`` continues the previous value, so
+    ``[pages: 1,3,5]`` and ``[select: h1, p]`` need no quotes.
     Keys are normalized; values are typed but NOT resolved against any
     processor schema (that happens in ``attachments._options``).
 
@@ -150,6 +152,10 @@ def parse_dsl(input: str) -> tuple[str, dict[str, Any]]:
         ('doc.pdf', {})
         >>> parse_dsl("archive[backup]")  # no colon -> not an options block
         ('archive[backup]', {})
+        >>> parse_dsl("doc.pdf[pages: 1,3,5, images: true]")  # continuation
+        ('doc.pdf', {'pages': '1,3,5', 'images': True})
+        >>> parse_dsl("page.html[select: h1, p]")
+        ('page.html', {'select': 'h1, p'})
     """
     input = input.strip()
     if not input.endswith("]"):
@@ -181,13 +187,18 @@ def parse_dsl(input: str) -> tuple[str, dict[str, Any]]:
     if len(segments) > 1 and not segments[-1].strip():
         segments.pop()
 
-    # Every segment must contain ':' outside quotes, else the whole group
-    # is part of the source.
+    # The first segment must contain ':' outside quotes, else the whole group
+    # is part of the source. A later segment without ':' continues the
+    # previous value (commas inside a value: page lists, CSS selectors).
     splits: list[tuple[str, str]] = []
     for segment in segments:
         colon = _find_colon_outside_quotes(segment)
         if colon == -1:
-            return input, {}
+            if not splits:
+                return input, {}
+            key, value = splits[-1]
+            splits[-1] = (key, f"{value},{segment}")
+            continue
         splits.append((segment[:colon], segment[colon + 1 :]))
 
     options: dict[str, Any] = {}

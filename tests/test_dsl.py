@@ -115,10 +115,12 @@ class TestRecognitionRules:
         assert parse_dsl("archive[backup]") == ("archive[backup]", {})
         assert parse_dsl("weird[1].bin") == ("weird[1].bin", {})
 
-    def test_mixed_segments_without_colon_stay_in_source(self):
-        source, opts = parse_dsl("f[a: 1, b]")
-        assert source == "f[a: 1, b]"
-        assert opts == {}
+    def test_segment_without_colon_continues_the_previous_value(self):
+        # Revision 2026-10 (spec rule 2a); this used to stay in the source.
+        assert parse_dsl("f[a: 1, b]") == ("f", {"a": "1, b"})
+
+    def test_first_segment_without_colon_stays_in_source(self):
+        assert parse_dsl("f[b, a: 1]") == ("f[b, a: 1]", {})
 
     def test_not_ending_with_bracket(self):
         assert parse_dsl("doc[pages: 1].pdf") == ("doc[pages: 1].pdf", {})

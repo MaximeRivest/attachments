@@ -341,7 +341,9 @@ def test_real_pptx_puts_slide_picture_after_its_slide():
 
     from attachments._processors import processors
 
-    art = processors[".pptx"](buf.getvalue(), filename="deck.pptx", render_images=True)
+    art = processors[".pptx"](
+        buf.getvalue(), filename="deck.pptx", embedded_images=True
+    )
     art["meta"]["source"] = "deck.pptx"
     assert [s["page"] for s in art["meta"]["segments"]] == [1, 2, 3]
     parts = to_parts([art], sources=False)

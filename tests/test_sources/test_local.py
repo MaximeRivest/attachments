@@ -486,7 +486,9 @@ def test_malformed_dsl_block_is_explained(tmp_path: Path):
     page = tmp_path / "page.html"
     page.write_text("<h1>x</h1>")
     with pytest.raises(ValueError, match="is not a valid DSL options block"):
-        unpack(f"{page}[select: h1,p]")
+        unpack(f"{page}[h1, select: p]")  # must start with "key: value"
+    with pytest.raises(ValueError, match=r"are options: att\(\) reads them"):
+        unpack(f"{page}[select: h1,p]")  # valid options, given to unpack()
 
 
 def test_archive_overview_only(tmp_path: Path):

@@ -137,11 +137,9 @@ def html_processor(
 
     DSL note: the parser takes the final *balanced* bracket group, so
     attribute selectors work inline — ``page.html[select: a[href]]``.
-    Comma groups must be quoted in DSL (``[select: "h1, p"]``): segments
-    split on commas outside quotes, and a segment without a colon (like
-    the bare ``p`` in ``[select: h1,p]``) invalidates the WHOLE bracket
-    group, which then stays in the source and is misrouted as a glob
-    pattern. The kwargs twin (``att(..., select="h1, p")``) always works.
+    Comma groups work unquoted (``[select: h1, p]``): a segment without a
+    colon continues the previous value (DSL rule 2a). A value with a comma
+    followed by ``key:``-like text must be quoted.
 
     Examples:
         >>> art = html_processor(

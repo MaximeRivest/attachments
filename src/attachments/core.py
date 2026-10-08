@@ -524,8 +524,8 @@ def att(
         >>> # Explicit kwargs override DSL
         >>> artifacts = att("doc.pdf[pages: 1-4]", pages="1-2")  # pages 1-2
         >>> # Discover the options a processor declares
-        >>> [o["name"] for o in att.options(".xlsx")]
-        ['sheet', 'rows']
+        >>> [o["name"] for o in att.options(".xlsx")][:3]
+        ['sheet', 'rows', 'images']
     """
     out = Artifacts()
     for item in _input_items(input):

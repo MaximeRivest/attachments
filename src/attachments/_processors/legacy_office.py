@@ -19,6 +19,7 @@ LibreOffice does not run document macros when converting.
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import signal
@@ -58,8 +59,21 @@ def _timeout() -> float:
         return DEFAULT_TIMEOUT
 
 
-def convert(data: bytes, source_ext: str, target_ext: str, soffice: str) -> bytes:
-    """Convert *data* with LibreOffice; returns the converted file's bytes."""
+def convert(
+    data: bytes,
+    source_ext: str,
+    target_ext: str,
+    soffice: str,
+    *,
+    export_filter: str | None = None,
+    filter_options: dict[str, Any] | None = None,
+) -> bytes:
+    """Convert *data* with LibreOffice; returns the converted file's bytes.
+
+    ``export_filter`` / ``filter_options`` select a LibreOffice export filter
+    and its settings (JSON filter options, LibreOffice 7.4+), e.g.
+    ``impress_pdf_Export`` with ``{"ExportHiddenSlides": True}``.
+    """
     with tempfile.TemporaryDirectory(prefix="attachments-lo-") as tmp:
         work = Path(tmp)
         # A fixed, plain name: the user's file name never reaches a command line.
@@ -75,7 +89,7 @@ def convert(data: bytes, source_ext: str, target_ext: str, soffice: str) -> byte
             "--nodefault",
             "--nologo",
             "--convert-to",
-            target_ext.lstrip("."),
+            _convert_to(target_ext, export_filter, filter_options),
             "--outdir",
             str(out_dir),
             str(src),
@@ -111,6 +125,33 @@ def convert(data: bytes, source_ext: str, target_ext: str, soffice: str) -> byte
         return result.read_bytes()
 
 
+def _convert_to(
+    target_ext: str, export_filter: str | None, filter_options: dict[str, Any] | None
+) -> str:
+    """The ``--convert-to`` argument.
+
+    Examples:
+        >>> _convert_to(".docx", None, None)
+        'docx'
+        >>> _convert_to(".pdf", "calc_pdf_Export", {"SinglePageSheets": True})
+        'pdf:calc_pdf_Export:{"SinglePageSheets":{"type":"boolean","value":"true"}}'
+    """
+    target = target_ext.lstrip(".")
+    if not export_filter:
+        return target
+    if not filter_options:
+        return f"{target}:{export_filter}"
+    typed = {}
+    for key, value in filter_options.items():
+        if isinstance(value, bool):
+            typed[key] = {"type": "boolean", "value": "true" if value else "false"}
+        elif isinstance(value, int):
+            typed[key] = {"type": "long", "value": str(value)}
+        else:
+            typed[key] = {"type": "string", "value": str(value)}
+    return f"{target}:{export_filter}:{json.dumps(typed, separators=(',', ':'))}"
+
+
 def legacy_office_processor(
     data: bytes, *, filename: str | None = None, **options: Any
 ) -> dict[str, Any]:
@@ -128,7 +169,11 @@ def legacy_office_processor(
     except (ConversionError, OSError) as e:
         log.warning("LibreOffice conversion failed for %s: %s", source, e)
         return error_artifact(source, ERROR_PARSE, f"Failed to read {ext} file: {e}")
-    artifact = processors[target](converted, filename=source, **options)
+    # Pictures (images: true) are drawn from the ORIGINAL file: one
+    # LibreOffice run instead of two, and nothing lost in conversion.
+    artifact = processors[target](
+        converted, filename=source, _render_from=(data, ext), **options
+    )
     extra = artifact.setdefault("meta", {}).setdefault("extra", {})
     extra["converted_from"] = ext
     extra["converter"] = "libreoffice"

@@ -873,12 +873,19 @@ def _dsl_hint(msg: str, pattern: str) -> str | None:
                 if depth == 0:
                     base = pattern[:i].strip()
                     if base and os.path.isfile(base) and ":" in pattern[i:]:
+                        from ..dsl import parse_dsl
+
+                        if parse_dsl(pattern)[1]:
+                            return (
+                                f"{msg} — {base!r} exists and {pattern[i:]!r} "
+                                "are options: att() reads them; unpack() takes "
+                                "a plain path."
+                            )
                         return (
                             f"{msg} — but {base!r} exists. The trailing "
                             f"{pattern[i:]!r} is not a valid DSL options block "
-                            "(every comma-separated segment needs 'key: value'; "
-                            'quote values containing commas, e.g. [select: "h1, p"]), '
-                            "so it was treated as part of the path."
+                            "(it must start with 'key: value', e.g. "
+                            "[pages: 1-4]), so it was treated as part of the path."
                         )
                     break
     return None

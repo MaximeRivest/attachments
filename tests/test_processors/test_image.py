@@ -200,7 +200,7 @@ class TestRotate:
         img.save(buf, format="PNG")
         return buf.getvalue()
 
-    def test_rotate_90_is_counterclockwise(self):
+    def test_rotate_90_is_clockwise(self):
         data = self._two_tone_png((64, 32))
 
         result = image_processor(data, filename="wide.png", rotate=90)
@@ -208,13 +208,23 @@ class TestRotate:
         item = result["images"][0]
         decoded = _decode(item)
         assert decoded.size == (32, 64)
-        # CCW: the blue top-left corner moves to the bottom-left corner.
-        assert decoded.getpixel((0, 63)) == (0, 0, 255)
+        # Clockwise (like 0.25, CSS, ImageMagick): the blue top-left corner
+        # moves to the top-right corner.
+        assert decoded.getpixel((31, 0)) == (0, 0, 255)
         assert decoded.getpixel((0, 0)) == (255, 0, 0)
         extra = result["meta"]["extra"]
         assert extra["rotated"] == 90
         assert extra["width"] == 32
         assert extra["height"] == 64
+
+    def test_negative_rotate_is_counterclockwise(self):
+        data = self._two_tone_png((64, 32))
+
+        result = image_processor(data, rotate=-90)
+
+        decoded = _decode(result["images"][0])
+        assert decoded.getpixel((0, 63)) == (0, 0, 255)  # top-left -> bottom-left
+        assert result["meta"]["extra"]["rotated"] == 270
 
     def test_rotate_forces_reencode_for_png(self):
         # Two-tone so the rotated pixels (and thus the bytes) actually differ.
@@ -610,3 +620,43 @@ class TestImageOutputOptions:
         assert image_size(result["images"][0]["bytes"]) == (100, 50)
         assert seen[0][:8] == b"\x89PNG\r\n\x1a\n"
         assert image_size(seen[0]) == (400, 200)
+
+
+class TestExifOrientation:
+    """Phone photos store "turn me" as an EXIF tag; deliver them upright."""
+
+    @staticmethod
+    def _sideways_jpeg(orientation: int) -> bytes:
+        from PIL import Image
+
+        # Stored 32x64 with a blue marker; the tag says how to show it.
+        img = Image.new("RGB", (32, 64), (255, 0, 0))
+        img.paste((0, 0, 255), (0, 0, 16, 16))
+        exif = Image.Exif()
+        exif[0x0112] = orientation
+        buf = io.BytesIO()
+        img.save(buf, "JPEG", exif=exif.tobytes(), quality=95)
+        return buf.getvalue()
+
+    def test_orientation_is_applied(self):
+        result = image_processor(self._sideways_jpeg(6), filename="phone.jpg")
+
+        decoded = _decode(result["images"][0])
+        assert decoded.size == (64, 32)  # shown as landscape
+        assert decoded.getexif().get(0x0112) is None  # no tag to apply twice
+        extra = result["meta"]["extra"]
+        assert extra["exif_orientation"] == 6
+        assert (extra["width"], extra["height"]) == (64, 32)
+
+    def test_rotate_is_relative_to_the_upright_photo(self):
+        result = image_processor(self._sideways_jpeg(6), rotate=90)
+
+        assert _decode(result["images"][0]).size == (32, 64)
+
+    def test_normal_orientation_passes_through(self):
+        data = self._sideways_jpeg(1)
+
+        result = image_processor(data, filename="ok.jpg")
+
+        assert result["images"][0]["bytes"] == data
+        assert "exif_orientation" not in result["meta"]["extra"]

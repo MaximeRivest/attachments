@@ -14,7 +14,7 @@
         "aliases": [],
         "default": null,
         "example": "rotate: 90",
-        "help": "Rotate counterclockwise by this many degrees (negative = clockwise)",
+        "help": "Rotate clockwise by this many degrees (negative = counterclockwise)",
         "name": "rotate",
         "param": null,
         "type": "int"
@@ -99,10 +99,55 @@
         ],
         "default": false,
         "example": "images: true",
-        "help": "Extract embedded images.",
+        "help": "Pictures of each page, drawn by LibreOffice: true/false, or auto (only when LibreOffice is installed)",
         "name": "images",
         "param": "render_images",
+        "type": "bool_or_auto"
+      },
+      {
+        "aliases": [],
+        "default": false,
+        "example": "embedded_images: true",
+        "help": "The pictures stored inside the file (photos, logos), as they are",
+        "name": "embedded_images",
+        "param": null,
         "type": "bool"
+      },
+      {
+        "aliases": [],
+        "default": 200,
+        "example": "dpi: 150",
+        "help": "Resolution of the page pictures (max_dim caps the result)",
+        "name": "dpi",
+        "param": null,
+        "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": 2000,
+        "example": "max_dim: 1568",
+        "help": "Longest side of each page picture in pixels; 0 = no cap",
+        "name": "max_dim",
+        "param": null,
+        "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": "png",
+        "example": "image_format: jpeg",
+        "help": "png (sharpest text) or jpeg (smaller)",
+        "name": "image_format",
+        "param": null,
+        "type": "str"
+      },
+      {
+        "aliases": [],
+        "default": 85,
+        "example": "quality: 75",
+        "help": "JPEG quality, 1-95 (used with image_format: jpeg)",
+        "name": "quality",
+        "param": null,
+        "type": "int"
       }
     ],
     ".docx": [
@@ -112,10 +157,55 @@
         ],
         "default": false,
         "example": "images: true",
-        "help": "Extract embedded images.",
+        "help": "Pictures of each page, drawn by LibreOffice: true/false, or auto (only when LibreOffice is installed)",
         "name": "images",
         "param": "render_images",
+        "type": "bool_or_auto"
+      },
+      {
+        "aliases": [],
+        "default": false,
+        "example": "embedded_images: true",
+        "help": "The pictures stored inside the file (photos, logos), as they are",
+        "name": "embedded_images",
+        "param": null,
         "type": "bool"
+      },
+      {
+        "aliases": [],
+        "default": 200,
+        "example": "dpi: 150",
+        "help": "Resolution of the page pictures (max_dim caps the result)",
+        "name": "dpi",
+        "param": null,
+        "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": 2000,
+        "example": "max_dim: 1568",
+        "help": "Longest side of each page picture in pixels; 0 = no cap",
+        "name": "max_dim",
+        "param": null,
+        "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": "png",
+        "example": "image_format: jpeg",
+        "help": "png (sharpest text) or jpeg (smaller)",
+        "name": "image_format",
+        "param": null,
+        "type": "str"
+      },
+      {
+        "aliases": [],
+        "default": 85,
+        "example": "quality: 75",
+        "help": "JPEG quality, 1-95 (used with image_format: jpeg)",
+        "name": "quality",
+        "param": null,
+        "type": "int"
       }
     ],
     ".flac": [
@@ -152,7 +242,7 @@
         "aliases": [],
         "default": null,
         "example": "rotate: 90",
-        "help": "Rotate counterclockwise by this many degrees (negative = clockwise)",
+        "help": "Rotate clockwise by this many degrees (negative = counterclockwise)",
         "name": "rotate",
         "param": null,
         "type": "int"
@@ -208,7 +298,7 @@
         "aliases": [],
         "default": null,
         "example": "rotate: 90",
-        "help": "Rotate counterclockwise by this many degrees (negative = clockwise)",
+        "help": "Rotate clockwise by this many degrees (negative = counterclockwise)",
         "name": "rotate",
         "param": null,
         "type": "int"
@@ -264,7 +354,7 @@
         "aliases": [],
         "default": null,
         "example": "rotate: 90",
-        "help": "Rotate counterclockwise by this many degrees (negative = clockwise)",
+        "help": "Rotate clockwise by this many degrees (negative = counterclockwise)",
         "name": "rotate",
         "param": null,
         "type": "int"
@@ -525,7 +615,7 @@
         "aliases": [],
         "default": null,
         "example": "rotate: 90",
-        "help": "Rotate counterclockwise by this many degrees (negative = clockwise)",
+        "help": "Rotate clockwise by this many degrees (negative = counterclockwise)",
         "name": "rotate",
         "param": null,
         "type": "int"
@@ -581,7 +671,7 @@
         "aliases": [],
         "default": null,
         "example": "rotate: 90",
-        "help": "Rotate counterclockwise by this many degrees (negative = clockwise)",
+        "help": "Rotate clockwise by this many degrees (negative = counterclockwise)",
         "name": "rotate",
         "param": null,
         "type": "int"
@@ -671,14 +761,71 @@
     ".odp": [
       {
         "aliases": [
+          "slides",
+          "page"
+        ],
+        "default": null,
+        "example": "pages: 1-5",
+        "help": "Slides to read: 3, 2-5, 7- (to the end), 1,3,5, -1 (last)",
+        "name": "pages",
+        "param": null,
+        "type": "pages"
+      },
+      {
+        "aliases": [
           "render"
         ],
         "default": false,
         "example": "images: true",
-        "help": "Extract embedded slide pictures: true/false ('auto'/'always' behave like true; slides are never rasterized).",
+        "help": "Pictures of each slide, drawn by LibreOffice: true/false, or auto (only when LibreOffice is installed)",
         "name": "images",
         "param": "render_images",
         "type": "bool_or_auto"
+      },
+      {
+        "aliases": [],
+        "default": false,
+        "example": "embedded_images: true",
+        "help": "The pictures stored inside the file (photos, logos), as they are",
+        "name": "embedded_images",
+        "param": null,
+        "type": "bool"
+      },
+      {
+        "aliases": [],
+        "default": 200,
+        "example": "dpi: 150",
+        "help": "Resolution of the slide pictures (max_dim caps the result)",
+        "name": "dpi",
+        "param": null,
+        "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": 2000,
+        "example": "max_dim: 1568",
+        "help": "Longest side of each slide picture in pixels; 0 = no cap",
+        "name": "max_dim",
+        "param": null,
+        "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": "png",
+        "example": "image_format: jpeg",
+        "help": "png (sharpest text) or jpeg (smaller)",
+        "name": "image_format",
+        "param": null,
+        "type": "str"
+      },
+      {
+        "aliases": [],
+        "default": 85,
+        "example": "quality: 75",
+        "help": "JPEG quality, 1-95 (used with image_format: jpeg)",
+        "name": "quality",
+        "param": null,
+        "type": "int"
       }
     ],
     ".ods": [
@@ -701,6 +848,53 @@
         "name": "rows",
         "param": "max_rows",
         "type": "int"
+      },
+      {
+        "aliases": [
+          "render"
+        ],
+        "default": false,
+        "example": "images: true",
+        "help": "Pictures of each sheet, drawn by LibreOffice: true/false, or auto (only when LibreOffice is installed)",
+        "name": "images",
+        "param": "render_images",
+        "type": "bool_or_auto"
+      },
+      {
+        "aliases": [],
+        "default": 200,
+        "example": "dpi: 150",
+        "help": "Resolution of the sheet pictures (max_dim caps the result)",
+        "name": "dpi",
+        "param": null,
+        "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": 2000,
+        "example": "max_dim: 1568",
+        "help": "Longest side of each sheet picture in pixels; 0 = no cap",
+        "name": "max_dim",
+        "param": null,
+        "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": "png",
+        "example": "image_format: jpeg",
+        "help": "png (sharpest text) or jpeg (smaller)",
+        "name": "image_format",
+        "param": null,
+        "type": "str"
+      },
+      {
+        "aliases": [],
+        "default": 85,
+        "example": "quality: 75",
+        "help": "JPEG quality, 1-95 (used with image_format: jpeg)",
+        "name": "quality",
+        "param": null,
+        "type": "int"
       }
     ],
     ".odt": [
@@ -710,10 +904,55 @@
         ],
         "default": false,
         "example": "images: true",
-        "help": "Extract embedded images.",
+        "help": "Pictures of each page, drawn by LibreOffice: true/false, or auto (only when LibreOffice is installed)",
         "name": "images",
         "param": "render_images",
+        "type": "bool_or_auto"
+      },
+      {
+        "aliases": [],
+        "default": false,
+        "example": "embedded_images: true",
+        "help": "The pictures stored inside the file (photos, logos), as they are",
+        "name": "embedded_images",
+        "param": null,
         "type": "bool"
+      },
+      {
+        "aliases": [],
+        "default": 200,
+        "example": "dpi: 150",
+        "help": "Resolution of the page pictures (max_dim caps the result)",
+        "name": "dpi",
+        "param": null,
+        "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": 2000,
+        "example": "max_dim: 1568",
+        "help": "Longest side of each page picture in pixels; 0 = no cap",
+        "name": "max_dim",
+        "param": null,
+        "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": "png",
+        "example": "image_format: jpeg",
+        "help": "png (sharpest text) or jpeg (smaller)",
+        "name": "image_format",
+        "param": null,
+        "type": "str"
+      },
+      {
+        "aliases": [],
+        "default": 85,
+        "example": "quality: 75",
+        "help": "JPEG quality, 1-95 (used with image_format: jpeg)",
+        "name": "quality",
+        "param": null,
+        "type": "int"
       }
     ],
     ".ogg": [
@@ -763,7 +1002,7 @@
         ],
         "default": null,
         "example": "pages: 1-4",
-        "help": "Pages to include: a 1-based page number or range.",
+        "help": "Pages to read: 3, 2-5, 7- (to the end), 1,3,5, -1 (last), -3- (last three)",
         "name": "pages",
         "param": null,
         "type": "pages"
@@ -868,7 +1107,7 @@
         "aliases": [],
         "default": null,
         "example": "rotate: 90",
-        "help": "Rotate counterclockwise by this many degrees (negative = clockwise)",
+        "help": "Rotate clockwise by this many degrees (negative = counterclockwise)",
         "name": "rotate",
         "param": null,
         "type": "int"
@@ -913,27 +1152,141 @@
     ".ppt": [
       {
         "aliases": [
-          "render"
+          "slides",
+          "page"
         ],
-        "default": false,
-        "example": "images: true",
-        "help": "Extract embedded slide pictures: true/false ('auto'/'always' behave like true; slides are never rasterized).",
-        "name": "images",
-        "param": "render_images",
-        "type": "bool_or_auto"
-      }
-    ],
-    ".pptx": [
+        "default": null,
+        "example": "pages: 1-5",
+        "help": "Slides to read: 3, 2-5, 7- (to the end), 1,3,5, -1 (last)",
+        "name": "pages",
+        "param": null,
+        "type": "pages"
+      },
       {
         "aliases": [
           "render"
         ],
         "default": false,
         "example": "images: true",
-        "help": "Extract embedded slide pictures: true/false ('auto'/'always' behave like true; slides are never rasterized).",
+        "help": "Pictures of each slide, drawn by LibreOffice: true/false, or auto (only when LibreOffice is installed)",
         "name": "images",
         "param": "render_images",
         "type": "bool_or_auto"
+      },
+      {
+        "aliases": [],
+        "default": false,
+        "example": "embedded_images: true",
+        "help": "The pictures stored inside the file (photos, logos), as they are",
+        "name": "embedded_images",
+        "param": null,
+        "type": "bool"
+      },
+      {
+        "aliases": [],
+        "default": 200,
+        "example": "dpi: 150",
+        "help": "Resolution of the slide pictures (max_dim caps the result)",
+        "name": "dpi",
+        "param": null,
+        "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": 2000,
+        "example": "max_dim: 1568",
+        "help": "Longest side of each slide picture in pixels; 0 = no cap",
+        "name": "max_dim",
+        "param": null,
+        "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": "png",
+        "example": "image_format: jpeg",
+        "help": "png (sharpest text) or jpeg (smaller)",
+        "name": "image_format",
+        "param": null,
+        "type": "str"
+      },
+      {
+        "aliases": [],
+        "default": 85,
+        "example": "quality: 75",
+        "help": "JPEG quality, 1-95 (used with image_format: jpeg)",
+        "name": "quality",
+        "param": null,
+        "type": "int"
+      }
+    ],
+    ".pptx": [
+      {
+        "aliases": [
+          "slides",
+          "page"
+        ],
+        "default": null,
+        "example": "pages: 1-5",
+        "help": "Slides to read: 3, 2-5, 7- (to the end), 1,3,5, -1 (last)",
+        "name": "pages",
+        "param": null,
+        "type": "pages"
+      },
+      {
+        "aliases": [
+          "render"
+        ],
+        "default": false,
+        "example": "images: true",
+        "help": "Pictures of each slide, drawn by LibreOffice: true/false, or auto (only when LibreOffice is installed)",
+        "name": "images",
+        "param": "render_images",
+        "type": "bool_or_auto"
+      },
+      {
+        "aliases": [],
+        "default": false,
+        "example": "embedded_images: true",
+        "help": "The pictures stored inside the file (photos, logos), as they are",
+        "name": "embedded_images",
+        "param": null,
+        "type": "bool"
+      },
+      {
+        "aliases": [],
+        "default": 200,
+        "example": "dpi: 150",
+        "help": "Resolution of the slide pictures (max_dim caps the result)",
+        "name": "dpi",
+        "param": null,
+        "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": 2000,
+        "example": "max_dim: 1568",
+        "help": "Longest side of each slide picture in pixels; 0 = no cap",
+        "name": "max_dim",
+        "param": null,
+        "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": "png",
+        "example": "image_format: jpeg",
+        "help": "png (sharpest text) or jpeg (smaller)",
+        "name": "image_format",
+        "param": null,
+        "type": "str"
+      },
+      {
+        "aliases": [],
+        "default": 85,
+        "example": "quality: 75",
+        "help": "JPEG quality, 1-95 (used with image_format: jpeg)",
+        "name": "quality",
+        "param": null,
+        "type": "int"
       }
     ],
     ".py": [],
@@ -979,7 +1332,7 @@
         "aliases": [],
         "default": null,
         "example": "rotate: 90",
-        "help": "Rotate counterclockwise by this many degrees (negative = clockwise)",
+        "help": "Rotate clockwise by this many degrees (negative = counterclockwise)",
         "name": "rotate",
         "param": null,
         "type": "int"
@@ -1035,7 +1388,7 @@
         "aliases": [],
         "default": null,
         "example": "rotate: 90",
-        "help": "Rotate counterclockwise by this many degrees (negative = clockwise)",
+        "help": "Rotate clockwise by this many degrees (negative = counterclockwise)",
         "name": "rotate",
         "param": null,
         "type": "int"
@@ -1148,7 +1501,7 @@
         "aliases": [],
         "default": null,
         "example": "rotate: 90",
-        "help": "Rotate counterclockwise by this many degrees (negative = clockwise)",
+        "help": "Rotate clockwise by this many degrees (negative = counterclockwise)",
         "name": "rotate",
         "param": null,
         "type": "int"
@@ -1210,6 +1563,53 @@
         "name": "rows",
         "param": "max_rows",
         "type": "int"
+      },
+      {
+        "aliases": [
+          "render"
+        ],
+        "default": false,
+        "example": "images: true",
+        "help": "Pictures of each sheet, drawn by LibreOffice: true/false, or auto (only when LibreOffice is installed)",
+        "name": "images",
+        "param": "render_images",
+        "type": "bool_or_auto"
+      },
+      {
+        "aliases": [],
+        "default": 200,
+        "example": "dpi: 150",
+        "help": "Resolution of the sheet pictures (max_dim caps the result)",
+        "name": "dpi",
+        "param": null,
+        "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": 2000,
+        "example": "max_dim: 1568",
+        "help": "Longest side of each sheet picture in pixels; 0 = no cap",
+        "name": "max_dim",
+        "param": null,
+        "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": "png",
+        "example": "image_format: jpeg",
+        "help": "png (sharpest text) or jpeg (smaller)",
+        "name": "image_format",
+        "param": null,
+        "type": "str"
+      },
+      {
+        "aliases": [],
+        "default": 85,
+        "example": "quality: 75",
+        "help": "JPEG quality, 1-95 (used with image_format: jpeg)",
+        "name": "quality",
+        "param": null,
+        "type": "int"
       }
     ],
     ".xlsx": [
@@ -1231,6 +1631,53 @@
         "help": "Maximum number of rows rendered as text per sheet.",
         "name": "rows",
         "param": "max_rows",
+        "type": "int"
+      },
+      {
+        "aliases": [
+          "render"
+        ],
+        "default": false,
+        "example": "images: true",
+        "help": "Pictures of each sheet, drawn by LibreOffice: true/false, or auto (only when LibreOffice is installed)",
+        "name": "images",
+        "param": "render_images",
+        "type": "bool_or_auto"
+      },
+      {
+        "aliases": [],
+        "default": 200,
+        "example": "dpi: 150",
+        "help": "Resolution of the sheet pictures (max_dim caps the result)",
+        "name": "dpi",
+        "param": null,
+        "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": 2000,
+        "example": "max_dim: 1568",
+        "help": "Longest side of each sheet picture in pixels; 0 = no cap",
+        "name": "max_dim",
+        "param": null,
+        "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": "png",
+        "example": "image_format: jpeg",
+        "help": "png (sharpest text) or jpeg (smaller)",
+        "name": "image_format",
+        "param": null,
+        "type": "str"
+      },
+      {
+        "aliases": [],
+        "default": 85,
+        "example": "quality: 75",
+        "help": "JPEG quality, 1-95 (used with image_format: jpeg)",
+        "name": "quality",
+        "param": null,
         "type": "int"
       }
     ],

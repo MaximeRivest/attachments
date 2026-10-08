@@ -173,13 +173,25 @@ class TestPagesCoercion:
         kwargs, _ = resolve_options(PDF_SCHEMA, {"page": "3"}, context=".pdf")
         assert kwargs == {"page_start": 2, "page_end": 3}
 
-    def test_page_list_string_not_supported_yet(self):
+    def test_page_list_becomes_a_selection(self):
         kwargs, warnings = resolve_options(
             PDF_SCHEMA, {"pages": "1,3-5"}, context=".pdf"
         )
-        assert kwargs == {}
-        assert len(warnings) == 1
-        assert "not supported yet" in warnings[0]
+        assert str(kwargs["page_selection"]) == "1,3-5"
+        assert "page_start" not in kwargs and warnings == []
+
+    @pytest.mark.parametrize("raw", [-1, "-1", "-3-", "7-", "2--2"])
+    def test_pages_from_the_end_and_open_ranges(self, raw):
+        kwargs, warnings = resolve_options(PDF_SCHEMA, {"pages": raw}, context=".pdf")
+        assert warnings == []
+        assert kwargs  # page_selection, or page_start/page_end for "7-"
+
+    def test_python_lists_other_than_a_range_are_refused(self):
+        kwargs, warnings = resolve_options(
+            PDF_SCHEMA, {"pages": [1, 3, 5]}, context=".pdf"
+        )
+        assert kwargs == {} and "as text" not in warnings[0]  # generic help
+        assert "1,3,5" in warnings[0]
 
     def test_zero_page_rejected(self):
         kwargs, warnings = resolve_options(PDF_SCHEMA, {"pages": 0}, context=".pdf")
@@ -289,7 +301,15 @@ class TestSchemaExport:
 
     def test_options_single_key(self):
         names = [o["name"] for o in options(".xlsx")]
-        assert names == ["sheet", "rows"]
+        assert names == [
+            "sheet",
+            "rows",
+            "images",
+            "dpi",
+            "max_dim",
+            "image_format",
+            "quality",
+        ]
         assert options(".unknown-ext") == []
 
     def test_options_all(self):

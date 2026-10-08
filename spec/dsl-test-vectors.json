@@ -33,6 +33,11 @@
     { "name": "page list stays string", "input": "doc.pdf[pages: \"1,3-5\"]", "source": "doc.pdf", "options": { "pages": "1,3-5" } },
     { "name": "leading-trailing input whitespace", "input": "  doc.pdf[dpi: 72]  ", "source": "doc.pdf", "options": { "dpi": 72 } },
     { "name": "range with spaces", "input": "doc.pdf[pages: 1 - 4]", "source": "doc.pdf", "options": { "pages": [1, 4] } },
-    { "name": "not ending with bracket", "input": "doc[pages: 1].pdf", "source": "doc[pages: 1].pdf", "options": {} }
+    { "name": "not ending with bracket", "input": "doc[pages: 1].pdf", "source": "doc[pages: 1].pdf", "options": {} },
+    { "name": "unquoted page list continues the value", "input": "doc.pdf[pages: 1,3,5]", "source": "doc.pdf", "options": { "pages": "1,3,5" } },
+    { "name": "continuation then another option", "input": "doc.pdf[pages: 1-3,7, images: true]", "source": "doc.pdf", "options": { "pages": "1-3,7", "images": true } },
+    { "name": "continuation keeps inner spaces", "input": "page.html[select: h1, p.intro]", "source": "page.html", "options": { "select": "h1, p.intro" } },
+    { "name": "first segment without colon is source", "input": "data[1,2]", "source": "data[1,2]", "options": {} },
+    { "name": "first segment without colon even if a later one has one", "input": "data[1, a: b]", "source": "data[1, a: b]", "options": {} }
   ]
 }

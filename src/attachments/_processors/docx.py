@@ -1,6 +1,8 @@
 """Processor for Word documents (.docx).
 
-Extracts text from paragraphs and tables, plus embedded images.
+Extracts text from paragraphs and tables. ``images: true`` adds a picture
+of every page (drawn by LibreOffice, see ``_office_pages``);
+``embedded_images: true`` adds the pictures stored in the file.
 Requires ``python-docx``: ``pip install attachments[docx]``
 """
 
@@ -9,9 +11,17 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from .._options import Option, register_options
+from .._options import register_options
 from ..types import ERROR_PARSE, error_artifact, make_artifact, missing_dep_artifact
 from . import register_processor
+from ._office_pages import (
+    DEFAULT_DPI,
+    DEFAULT_MAX_DIM,
+    check_render_options,
+    office_pictures,
+    render_options,
+    wants_pictures,
+)
 
 log = logging.getLogger("attachments.processors.docx")
 
@@ -25,15 +35,47 @@ def _extract_table_text(table) -> str:
     return "\n".join(rows)
 
 
-def docx_processor(data: bytes, **options: Any) -> dict[str, Any]:
+def docx_processor(
+    data: bytes,
+    *,
+    filename: str | None = None,
+    render_images: bool | str = False,
+    embedded_images: bool = False,
+    dpi: int = DEFAULT_DPI,
+    max_dim: int | None = DEFAULT_MAX_DIM,
+    image_format: str = "png",
+    quality: int | None = None,
+    _render_from: tuple[bytes, str] | None = None,
+    **_: Any,
+) -> dict[str, Any]:
     """Convert .docx bytes to an artifact.
 
     Options:
         filename: Original filename (for metadata).
-        images: If ``True``, extract embedded images (default ``False``).
+        render_images: (DSL ``images``) ``True``: a picture of every page,
+            drawn by LibreOffice; ``"auto"``: only when LibreOffice is
+            installed. Default ``False``.
+        embedded_images: The pictures stored in the document. Default ``False``.
+        dpi / max_dim / image_format / quality: page picture size and format,
+            as for PDF page images.
+        _render_from: ``(bytes, ext)`` to draw the pages from instead of
+            *data* (``.doc``/``.odt`` read through a converted copy are drawn
+            from the original).
     """
-    filename = options.get("filename", "document.docx")
-    extract_images = bool(options.get("images") or options.get("render_images"))
+    filename = filename or "document.docx"
+    extract_images = bool(embedded_images)
+    mode = wants_pictures(render_images)
+    if mode:
+        invalid = check_render_options(
+            source=filename,
+            kind="document",
+            dpi=dpi,
+            max_dim=max_dim,
+            image_format=image_format,
+            quality=quality,
+        )
+        if invalid:
+            return invalid
 
     try:
         from docx import Document
@@ -91,33 +133,33 @@ def docx_processor(data: bytes, **options: Any) -> dict[str, Any]:
                 except Exception as exc:
                     log.debug("skipping image %d: %s", i, exc)
 
-    return make_artifact(
-        text=full_text,
-        images=images,
-        meta={
-            "kind": "document",
-            "extra": {
-                "filename": filename,
-                "paragraphs": len(doc.paragraphs),
-                "tables": len(doc.tables),
-                "images_extracted": len(images),
-            },
-        },
-    )
+    extra: dict[str, Any] = {
+        "filename": filename,
+        "paragraphs": len(doc.paragraphs),
+        "tables": len(doc.tables),
+        "images_extracted": len(images),
+    }
+    meta: dict[str, Any] = {"kind": "document", "extra": extra}
+    if mode:
+        pictures = office_pictures(
+            *(_render_from or (data, ".docx")),
+            source=filename,
+            kind="document",
+            mode=mode,
+            dpi=dpi,
+            max_dim=max_dim,
+            image_format=image_format,
+            quality=quality or 85,
+        )
+        if isinstance(pictures, dict):  # an error artifact
+            return pictures
+        page_images, picture_extra, note = pictures
+        images = page_images + images
+        extra.update(picture_extra)
+        if note:
+            meta["note"] = note
+    return make_artifact(text=full_text, images=images, meta=meta)
 
 
 register_processor(".docx", docx_processor)
-register_options(
-    ".docx",
-    (
-        Option(
-            "images",
-            "bool",
-            aliases=("render",),
-            param="render_images",
-            default=False,
-            help="Extract embedded images.",
-            example="images: true",
-        ),
-    ),
-)
+register_options(".docx", render_options(unit="page"))

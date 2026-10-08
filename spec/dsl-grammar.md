@@ -14,8 +14,9 @@ normative: a conforming parser passes every vector.
 
 ```ebnf
 input        = source , [ options-block ] ;
-options-block= "[" , [ option , { "," , option } , [ "," ] ] , "]" ;
+options-block= "[" , [ option , { "," , ( option | continuation ) } , [ "," ] ] , "]" ;
 option       = key , ":" , value ;
+continuation = { any character except ":" "," "]" } ;  (* joins the previous value *)
 key          = { any character except ":" "," "]" } ;   (* trimmed *)
 value        = quoted-string | bare-value ;
 quoted-string= '"' , { any character except '"' } , '"'
@@ -28,10 +29,16 @@ bare-value   = { any character except "," "]" } ;       (* trimmed *)
 1. The options block is the **final** balanced `[...]` group, and only when the
    input **ends** with `]`. Brackets elsewhere in the source are untouched
    (`https://x.com/a[1]/b` has no options block).
-2. The group is an options block only if **every** comma-separated segment
-   contains a `:` (outside quotes). Otherwise the whole group is part of the
-   source (`weird[1].bin` parses as a bare source). Exception: an **empty**
-   group `[]` is an empty options block and is stripped.
+2. The group is an options block only if its **first** comma-separated
+   segment contains a `:` (outside quotes). Otherwise the whole group is part
+   of the source (`weird[1].bin`, `data[1,2]` parse as bare sources).
+   Exception: an **empty** group `[]` is an empty options block and is
+   stripped.
+2a. A **later** segment without a `:` continues the previous option's value:
+   the comma and the segment are appended to it, verbatim, before trimming
+   and typing (`pages: 1,3,5` → `"1,3,5"`; `select: h1, p` → `"h1, p"`).
+   *(Revision 2026-10: before it, such a group was part of the source. Every
+   input valid under the earlier rule parses the same.)*
 3. Key/value are split on the **first** `:` in the segment; later colons belong
    to the value (`password: a:b` → value `a:b`).
 4. Commas inside quoted values do not split options.

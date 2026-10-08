@@ -30,6 +30,8 @@ import textwrap
 from dataclasses import dataclass
 from typing import Any
 
+from ._pages import PageSelection, PageSelectionError, parse_pages
+
 log = logging.getLogger("attachments.options")
 
 #: Valid values for :attr:`Option.type`.
@@ -43,8 +45,6 @@ OPTION_TYPES = (
     "str_or_int",
 )
 
-_PAGE_RANGE_RE = re.compile(r"\s*([0-9]+)\s*-\s*([0-9]+)\s*")
-_PAGE_SINGLE_RE = re.compile(r"\s*([0-9]+)\s*")
 _BOOL_WORDS = {
     "true": True,
     "yes": True,
@@ -65,7 +65,8 @@ class Option:
         aliases: Alternative DSL keys (e.g. ``("page",)``).
         param: Processor kwarg name; ``None`` means same as ``name``.
             Ignored for type ``"pages"`` — the resolver always emits
-            ``page_start``/``page_end``. The param also acts as a hidden
+            ``page_start``/``page_end`` (a plain range) or ``page_selection``
+            (lists, pages counted from the end). The param also acts as a hidden
             alias so kwargs like ``max_rows=`` keep working.
         default: Default value (informational, for docs/schema export).
         help: One-line human description.
@@ -229,44 +230,15 @@ class _CoercionError(Exception):
         super().__init__(expected)
 
 
-def _coerce_pages(value: Any) -> tuple[int, int]:
-    """Coerce a pages value to a 0-based ``(page_start, page_end)`` pair."""
-    expected = "a 1-based page number or range like '1-4'"
-    if isinstance(value, bool):
-        raise _CoercionError(expected)
-    if isinstance(value, int):
-        if value < 1:
-            raise _CoercionError(expected)
-        return (value - 1, value)
-    if isinstance(value, tuple | list) and len(value) == 2:
-        start, end = value
-        if (
-            isinstance(start, int)
-            and isinstance(end, int)
-            and not isinstance(start, bool)
-            and not isinstance(end, bool)
-            and start >= 1
-        ):
-            return (start - 1, end)
-        raise _CoercionError(expected)
-    if isinstance(value, str):
-        match = _PAGE_RANGE_RE.fullmatch(value)
-        if match:
-            start, end = int(match.group(1)), int(match.group(2))
-            if start < 1:
-                raise _CoercionError(expected)
-            return (start - 1, end)
-        match = _PAGE_SINGLE_RE.fullmatch(value)
-        if match:
-            page = int(match.group(1))
-            if page < 1:
-                raise _CoercionError(expected)
-            return (page - 1, page)
-        if "," in value:
-            raise _CoercionError(
-                "a single page or range — page lists like '1,3-5' are not supported yet"
-            )
-    raise _CoercionError(expected)
+def _coerce_pages(value: Any) -> PageSelection:
+    """Coerce a pages value to a :class:`PageSelection` (``attachments._pages``)."""
+    try:
+        return parse_pages(value)
+    except PageSelectionError as exc:
+        raise _CoercionError(
+            "a 1-based page (3), a range (2-5, 7-), a list (1,3,5) or pages "
+            "counted from the end (-1 = last, -3- = last three)"
+        ) from exc
 
 
 def _coerce(option: Option, value: Any) -> Any:
@@ -331,7 +303,8 @@ def resolve_options(
 
     Each raw key is matched against canonical names, aliases, and param
     names (the param acts as a hidden alias). Matched values are coerced to
-    the declared type; ``pages`` emits 0-based ``page_start``/``page_end``.
+    the declared type; ``pages`` emits 0-based ``page_start``/``page_end``
+    for a plain range, else ``page_selection``.
     Unknown keys and coercion failures produce a warning and are dropped —
     resolution never raises. Later raw keys win on collision, so merging
     explicit kwargs after DSL options makes kwargs override the DSL.
@@ -392,7 +365,14 @@ def resolve_options(
             warnings.append(message)
             continue
         if option.type == "pages":
-            kwargs["page_start"], kwargs["page_end"] = coerced
+            # A plain range keeps the page_start/page_end kwargs every
+            # pages-aware processor accepts; lists and pages counted from
+            # the end arrive as page_selection.
+            plain = coerced.as_range()
+            if plain is not None:
+                kwargs["page_start"], kwargs["page_end"] = plain
+            else:
+                kwargs["page_selection"] = coerced
         else:
             kwargs[option.param or option.name] = coerced
 

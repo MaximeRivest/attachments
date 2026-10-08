@@ -51,8 +51,10 @@ Rules:
   (processor-specific data goes in `meta.extra`).
 - Optional meta keys are ABSENT when not applicable, never None.
 - `Segment.page` and `ImageItem.page` are the same 1-based number for the
-  same page or slide: that is how a consumer puts each image next to its
-  page's text. `Segment.label` is for people (a slide's label is its
+  same page, slide or sheet (a sheet's number is its position in the
+  workbook): that is how a consumer puts each image next to its page's
+  text. A selection keeps the document's numbers (`pages: 2,5` gives
+  segments and images numbered 2 and 5). `Segment.label` is for people (a slide's label is its
   title) and must never be parsed for a number.
 - `meta.error.message` for missing deps must include the pip install remedy.
 
@@ -93,8 +95,8 @@ A processor is a pure function `(data: bytes, *, filename=None, **options) -> Ar
 - Never raises for bad input — returns `error_artifact(...)`.
 - Sets `meta.kind`; puts backend details, counts, etc. in `meta.extra`.
 - Population of `meta.segments` (offsets into `text`) is required for
-  multi-part formats: pdf (pages), xlsx (sheets), pptx (slides). Page and
-  slide segments carry `page`.
+  multi-part formats: pdf (pages), xlsx (sheets), pptx (slides). Page,
+  slide and sheet segments carry `page`.
 
 ## Routing contract (core.py)
 

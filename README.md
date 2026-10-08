@@ -277,6 +277,7 @@ Specify options inline with `[key: value, ...]`:
 ```python
 # PDF options
 att("doc.pdf[pages: 1-4]")              # Pages 1-4 (1-based)
+att("doc.pdf[pages: 1,3,-1]")           # Pages 1 and 3, and the last page
 att("doc.pdf[pages: 5-10, images: true]") # With image rendering
 att("doc.pdf[dpi: 300]")                # High-res images (max_dim still caps them)
 att("doc.pdf[images: true, max_dim: 1568, image_format: jpeg]")  # Smaller page images
@@ -294,7 +295,12 @@ att("https://example.com[links: true]") # Keep link addresses: [text](url)
 att("https://example.com[screenshot: true, max_screens: 2]")  # + 1280x800 screenshots
 
 # Image options
-att("photo.jpg[rotate: 90]")            # Rotate 90° counterclockwise
+att("photo.jpg[rotate: 90]")            # Rotate 90° clockwise (photos are upright first)
+
+# Word, PowerPoint, Excel: pictures drawn by LibreOffice
+att("deck.pptx[pages: 2-4, images: true]")  # Slides 2-4, a picture of each
+att("report.docx[images: auto]")        # Page pictures if LibreOffice is installed
+att("deck.pptx[embedded_images: true]") # The pictures stored in the slides
 
 # Folders, patterns, repos and archives (att.options("file://"))
 att("repo/[files: false]")              # Overview only: tree, git, what was skipped

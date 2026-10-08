@@ -4,7 +4,12 @@ Identifies the image with Pillow and emits a single ImageItem. Web-friendly
 formats (png/jpeg/gif/webp) pass through untouched; exotic formats (bmp,
 tiff, heic, ...) are re-encoded to PNG; an optional ``max_dim`` downscales
 the longest side while preserving the aspect ratio, and an optional
-``rotate`` turns the image counterclockwise (applied before ``max_dim``).
+``rotate`` turns the image clockwise (applied before ``max_dim``).
+
+Photos are delivered upright: a camera's EXIF orientation tag ("this photo
+is sideways, turn it when showing") is applied to the pixels, because
+models and APIs do not reliably read the tag, and OCR cannot read sideways
+text. ``rotate`` then turns the image as you see it.
 
 Requires Pillow: ``pip install attachments[image]``
 HEIC/HEIF additionally requires pillow-heif: ``pip install attachments[heic]``
@@ -215,6 +220,15 @@ def _looks_heic(data: bytes, filename: str | None) -> bool:
     return data[4:8] == b"ftyp" and data[8:12].startswith((b"hei", b"mif1", b"msf1"))
 
 
+def _exif_orientation(img: Any) -> int | None:
+    """EXIF orientation tag (1-8), or ``None`` when absent or unreadable."""
+    try:
+        value = img.getexif().get(0x0112)
+    except Exception:  # malformed EXIF must not fail the image
+        return None
+    return value if isinstance(value, int) and 1 <= value <= 8 else None
+
+
 def image_processor(
     data: bytes,
     *,
@@ -233,10 +247,11 @@ def image_processor(
         filename: Original filename (used for metadata and the image name).
         max_dim: Downscale so the longest side is at most this many pixels
             (``None`` or ``0``: no limit).
-        rotate: Rotate counterclockwise by this many degrees (PIL-native
-            direction; negative values rotate clockwise). Normalized modulo
-            360; applied before ``max_dim``. ``expand=True`` grows the canvas,
-            so non-right angles get background fill in the corners.
+        rotate: Rotate clockwise by this many degrees, as the image is seen
+            (after its EXIF orientation); negative values rotate
+            counterclockwise. Normalized modulo 360; applied before
+            ``max_dim``. The canvas grows, so non-right angles get
+            background fill in the corners.
         image_format: ``"png"`` or ``"jpeg"`` to choose the output format.
             Default ``None``: keep JPEG as JPEG and web formats as they
             are; exotic formats become PNG. JPEG output of a transparent
@@ -310,11 +325,19 @@ def image_processor(
     mode = img.mode
 
     try:
+        # EXIF orientation 2-8: the pixels are stored turned or mirrored.
+        orientation = _exif_orientation(img)
+        if orientation not in (None, 1):
+            from PIL import ImageOps
+
+            img = ImageOps.exif_transpose(img)
+
         degrees = 0 if rotate is None else int(rotate) % 360
         if degrees:
-            # PIL-native counterclockwise; expand=True grows the canvas so
-            # nothing is cropped (non-right angles get corner fill).
-            img = img.rotate(degrees, expand=True)
+            # Clockwise, like CSS, ImageMagick and 0.25 (PIL's own rotate is
+            # counterclockwise); expand=True grows the canvas so nothing is
+            # cropped (non-right angles get corner fill).
+            img = img.rotate(-degrees, expand=True)
 
         cap = limit(max_dim)
         resized = cap is not None and max(img.size) > cap
@@ -327,6 +350,7 @@ def image_processor(
         reencode = (
             resized
             or bool(degrees)
+            or orientation not in (None, 1)
             or original_format not in _PASSTHROUGH
             or (image_format is not None and out_format != original_format)
             or (quality is not None and out_format == "JPEG")
@@ -359,6 +383,8 @@ def image_processor(
             extra["resized"] = True
         if degrees:
             extra["rotated"] = degrees
+        if orientation not in (None, 1):
+            extra["exif_orientation"] = orientation  # applied: now upright
 
         text = ""
         if ocr is True or str(ocr).lower() == "always" or str(ocr).lower() == "auto":
@@ -447,7 +473,7 @@ OPTIONS = (
     Option(
         name="rotate",
         type="int",
-        help="Rotate counterclockwise by this many degrees (negative = clockwise)",
+        help="Rotate clockwise by this many degrees (negative = counterclockwise)",
         example="rotate: 90",
     ),
     Option(

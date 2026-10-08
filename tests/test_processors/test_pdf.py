@@ -647,6 +647,10 @@ class TestPdfPageImageOptions:
 
         class FakePdf2image:
             @staticmethod
+            def pdfinfo_from_bytes(data):
+                return {"Pages": 1}
+
+            @staticmethod
             def convert_from_bytes(data, dpi, first_page, last_page, fmt):
                 return [Image.new("RGB", (2667, 1500), "white")]
 

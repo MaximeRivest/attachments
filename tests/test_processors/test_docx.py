@@ -113,7 +113,7 @@ class TestDocxProcessor:
         assert result["images"] == []
 
     def test_image_extraction_when_requested(self, docx_with_image):
-        result = processors[".docx"](docx_with_image, images=True)
+        result = processors[".docx"](docx_with_image, embedded_images=True)
         assert len(result["images"]) >= 1
         img = result["images"][0]
         assert "name" in img

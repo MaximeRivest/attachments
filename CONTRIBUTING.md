@@ -32,7 +32,7 @@ uv run pytest -q       # tests
 
 Prerequisites
 -------------
-- Python 3.12+
+- Python 3.11+
 - `uv` for dependency and environment management
 - Git
 

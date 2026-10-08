@@ -24,7 +24,7 @@ while you migrate.
 | | 0.25 | 1.0 |
 |---|---|---|
 | Install | `pip install attachments` | until 1.0 is on PyPI: `pip install "attachments[pdf,docx,image] @ git+https://github.com/maximerivest/attachments"` (plain `pip install attachments` still gets 0.25) |
-| Python | 3.10+ | **3.12+** |
+| Python | 3.10+ | **3.11+** (3.10 ends its life in October 2026) |
 | Always-installed packages | 12 (requests, beautifulsoup4, pillow, pydantic, pdfplumber, pillow-heif, nbformat, copykitten, typer, pyperclip, pytesseract, pypdfium2) | **none** — install the formats you use as extras |
 | OCR | Tesseract (a program to install) via pytesseract | RapidOCR, a pip extra: `attachments[ocr]` |
 | Web pages | needed Playwright + Chromium for every page | plain download; Chromium only for opt-in screenshots: `attachments[browser]` |
@@ -103,11 +103,12 @@ how likely you are to notice:
    Charts and diagrams are invisible to the model until you add
    `[images: true]`. No tiling: one image per page, longest side 2000 px by
    default (`max_dim`, `image_format: jpeg`, `quality` to make them smaller).
-2. **Word, PowerPoint and Excel: no page, slide or sheet pictures.** 0.25
-   converted them with LibreOffice (when installed) and added a picture of
-   every page or slide by default. 1.0 reads their text, tables and slides, and with
-   `[images: true]` extracts the pictures embedded in them — but does not
-   draw whole pages or slides. *(Under consideration for 1.0 final.)*
+2. **Word, PowerPoint and Excel: pictures only when you ask.** 0.25 drew a
+   picture of every page or slide by default (with LibreOffice, when
+   installed). 1.0 does it with `[images: true]` — one picture per page,
+   slide (hidden slides included) or sheet, numbered like the text — and
+   `[images: auto]` draws them only when LibreOffice is installed. The
+   pictures stored inside a file are `[embedded_images: true]`.
 3. **Folders: files are read, with an overview first.** For a plain folder
    (`att .` on the command line) 0.25 showed only the tree unless you added
    `[files: true]`. 1.0 starts with an overview (the tree, git branch and
@@ -132,9 +133,9 @@ how likely you are to notice:
    (`[links: true]` keeps addresses). Screenshots are opt-in
    (`[screenshot: true]`) and come as 1280×800 screens a model can read,
    not one very tall picture. 10× faster without a browser.
-6. **`[rotate: 90]` turns the other way.** 0.25 rotated clockwise; 1.0
-   rotates counterclockwise (negative values: clockwise).
-   *(Under consideration for 1.0 final.)*
+6. **Photos come out upright.** A phone photo's orientation tag is applied
+   to the pixels, so the model sees it the way you do; `[rotate: 90]` then
+   turns it clockwise, as in 0.25.
 7. **The text is just the content.** No "File Info", "Document Analysis",
    "Processing Summary" or "Object type" sections; each file is one
    `## <name>` block. Fewer tokens for the same content.
@@ -151,10 +152,10 @@ how likely you are to notice:
     `meta["warnings"]` with a suggestion ("did you mean 'sheet'?") and the
     file is read without it. The output is quiet: no "[Attachments] Applying
     step ..." lines.
-11. **Page lists and "last page" are not supported yet.** `[pages: 1,3,5]`
-    and `[pages: -1]` read the whole document, with a warning. Ranges and
-    single pages work: `[pages: 2-4]`, `[pages: 3]`. Bare `[3-9]` is no
-    longer page selection: write `[pages: 3-9]`.
+11. **Pages must be named.** `[pages: 1,3,5]`, `[pages: -1]` (last page),
+    `[pages: 2-4]` work as in 0.25 — plus `-3-` (last three) and `7-` (to
+    the end) — but bare `[3-9]` is no longer page selection: write
+    `[pages: 3-9]`. PowerPoint takes `pages` (or `slides`) too.
 
 ---
 
@@ -166,9 +167,8 @@ the full reference is [dsl-options.md](dsl-options.md).
 
 | 0.25 | 1.0 |
 |---|---|
-| `pages: 1-4` | same |
-| `pages: 1,3,5`, `pages: -1` | not yet (warning, whole document) |
-| `images: true/false` | same name; **defaults changed** (see above) |
+| `pages: 1-4`, `pages: 1,3,5`, `pages: -1` | same (PDF, PowerPoint); plus `-3-` and `7-` |
+| `images: true/false` | same name and meaning (pictures of pages/slides/sheets); **off by default** |
 | `format: plain/markdown/xml/code` | gone — one canonical text per format; shape output with `to_text`, `parts`, `chunk` |
 | `select: css` | same (alias `css`); results are Markdown |
 | `limit: N` (CSV) | `rows: N` (CSV, TSV, XLSX, XLS); on CSV/TSV the old name `limit` still works |
@@ -177,9 +177,9 @@ the full reference is [dsl-options.md](dsl-options.md).
 | `prompt: ...` | `a.claude("...")` / `a.openai("...")` |
 | `truncate: N` | `a.chunk(max_chars=N)` or slice `a.text` |
 | `split: paragraphs/sentences/tokens/...` | `a.chunk(max_chars=...)` or `max_tokens=` — page-, sheet- and slide-aware, one strategy |
-| `tile: 2x2` | gone |
+| `tile: 2x2` | gone (one picture per page) |
 | `resize_images: 50%` / `800x600`, `resize` | `max_dim: 800` (longest side in pixels) |
-| `rotate: 90` | same name, **opposite direction** (see above) |
+| `rotate: 90` | same (clockwise), applied to the upright photo |
 | `crop`, `watermark` | gone |
 | `ocr: true/auto` | same (RapidOCR); `ocr_engine: lighton` for a remote engine |
 | `lang: fra` (Tesseract) | gone: RapidOCR's default models are made for English and Chinese; for other languages try `ocr_engine: lighton` |
@@ -192,7 +192,7 @@ the full reference is [dsl-options.md](dsl-options.md).
 | `max_files`, `glob`, `recursive` | same; plus `max_size` (default 256 MiB) and `hidden` |
 | `dirs_only_with_files`, `mode`, `force` | gone |
 | `wait`, `viewport`, `fullpage` (screenshots) | `screenshot: true`, `max_screens` (1280×800 screens; the page settles by itself) |
-| — | new: `password` (PDF), `sheet` (XLSX), `delimiter` (CSV), `dpi`, `max_pages`, `image_format`, `quality`, `outputs` (notebooks), `model`/`language` (audio), `main`/`links` (web pages), `ref` (GitHub), `tree` |
+| — | new: `password` (PDF), `sheet` (XLSX), `delimiter` (CSV), `dpi`, `max_pages`, `image_format`, `quality`, `embedded_images`, `outputs` (notebooks), `model`/`language` (audio), `main`/`links` (web pages), `ref` (GitHub), `tree` |
 
 ---
 
@@ -201,9 +201,9 @@ the full reference is [dsl-options.md](dsl-options.md).
 | | 0.25 | 1.0 |
 |---|---|---|
 | PDF | text + page images (pdfplumber) | text (pypdf, pdfminer fallback), page images on request, encrypted PDFs (`password`), OCR for scans |
-| Word `.docx` | text + page pictures (LibreOffice) | text, tables, embedded pictures |
-| PowerPoint `.pptx` | text + slide pictures (LibreOffice) | text per slide, slide segments, embedded pictures |
-| Excel `.xlsx` | text (+ sheet pictures with LibreOffice) | one text block per sheet, sheet segments, `sheet`, `rows`; no pictures |
+| Word `.docx` | text + page pictures (LibreOffice) | text, tables; page pictures (`images`), embedded pictures (`embedded_images`) |
+| PowerPoint `.pptx` | text + slide pictures (LibreOffice) | text per slide, slide segments, `pages`; slide pictures, embedded pictures |
+| Excel `.xlsx` | text (+ sheet pictures with LibreOffice) | one text block per sheet, sheet segments, `sheet`, `rows`; one picture per sheet |
 | Old `.doc`, `.ppt`; `.odt`, `.odp`, `.ods` | — | **new** (with LibreOffice) |
 | `.xls` | matched, but its text reader (openpyxl) cannot open it | **reads** (xlrd) |
 | CSV | text table | Markdown table, delimiter sniffing, optional summary; **TSV new** |
@@ -238,6 +238,8 @@ the full reference is [dsl-options.md](dsl-options.md).
 - **Token estimates** that include pictures: `a.tokens`,
   `a.estimate_tokens()`.
 - **JSON in and out**: `a.to_wire()` / `Artifacts.from_wire()`.
+- **Upright photos**: phone photos are turned the way they are displayed
+  before the model sees them.
 - **Remote processing**: a self-hosted server (`attachments-server`) or the
   hosted service does what your machine can't (OCR, LibreOffice), with
   automatic fallback when a dependency is missing locally.
