@@ -296,6 +296,10 @@ def missing_dep_artifact(source: str, feature: str) -> Artifact:
 
     if feature in DEPENDENCY_MAP:
         status = check_dep(feature)
+        if not status.install_hint.startswith("pip "):
+            # A program, not a Python package (LibreOffice).
+            message = f"Processing {source!r} needs {feature}: {status.install_hint}"
+            return error_artifact(source, ERROR_MISSING_DEPENDENCY, message)
         missing = f" (missing: {', '.join(status.missing)})" if status.missing else ""
         message = (
             f"Processing {source!r} requires optional dependencies "

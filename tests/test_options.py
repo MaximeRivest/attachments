@@ -269,7 +269,18 @@ class TestSchemaExport:
             "example",
         }
         assert entry["aliases"] == ["page"]
-        assert [o["name"] for o in schema["sources"]["github://"]] == ["ref"]
+        tree = [
+            "files",
+            "tree",
+            "ignore",
+            "hidden",
+            "glob",
+            "recursive",
+            "max_files",
+            "max_size",
+        ]
+        assert [o["name"] for o in schema["sources"]["github://"]] == ["ref", *tree]
+        assert [o["name"] for o in schema["sources"]["file://"]] == tree
 
     def test_dsl_schema_is_json_serializable(self):
         import json

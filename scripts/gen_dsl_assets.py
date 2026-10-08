@@ -12,7 +12,8 @@ Writes three files from ``attachments.dsl_schema()``:
 - ``src/attachments/__init__.pyi`` — the typing stub that gives editors
   kwargs autocomplete on ``att()``: one named parameter per declared
   option AND alias across all schemas, plus typed ``att.options`` /
-  ``att.help``. Re-exports are derived from the real ``__init__.py``.
+  ``att.help`` / ``att.from_prompt``. Re-exports are derived from the
+  real ``__init__.py``.
 
 Run from the repo root::
 
@@ -252,6 +253,8 @@ def render_init_stub(schema: dict[str, Any]) -> str:
         f"# {GENERATED_WARNING}",
         '"""Typed public surface of attachments (kwargs autocomplete for att())."""',
         "",
+        "import os",
+        "from collections.abc import Iterable",
         "from typing import Any, Literal",
         "",
     ]
@@ -273,7 +276,7 @@ def render_init_stub(schema: dict[str, Any]) -> str:
         "class _Att:",
         "    def __call__(",
         "        self,",
-        "        input: str,",
+        "        input: str | os.PathLike[str] | Iterable[str | os.PathLike[str]],",
         "        *,",
         "        api_key: str | None = ...,",
         '        prefer: Literal["local", "service", "local-only", "service-only"]'
@@ -290,6 +293,18 @@ def render_init_stub(schema: dict[str, Any]) -> str:
         "        self, key: str | None = None",
         "    ) -> dict[str, Any] | list[dict[str, Any]]: ...",
         "    def help(self) -> None: ...",
+        "    def from_prompt(",
+        "        self,",
+        "        prompt: str,",
+        "        *,",
+        "        root: str | os.PathLike[str] | Iterable[str | os.PathLike[str]]"
+        " | None = ...,",
+        "        urls: bool = ...,",
+        "        api_key: str | None = ...,",
+        '        prefer: Literal["local", "service", "local-only", "service-only"]'
+        " | None = ...,",
+        "        **options: Any,",
+        "    ) -> Artifacts: ...",
         "",
         "att: _Att",
     ]

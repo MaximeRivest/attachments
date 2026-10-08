@@ -20,7 +20,9 @@ hand to an LLM right away:
 Every function takes ``sources=`` (default ``True``): whether file names
 (``## <source>`` headers, ``[image: <name>]`` notes) reach the output.
 Turn it off when the names would tell the model the answer (a photo
-called ``tabby_cat.png`` in a "which animal?" task).
+called ``tabby_cat.png`` in a "which animal?" task). Folder overviews
+(``meta.kind == "directory"``) are made of names, so ``sources=False``
+leaves them out entirely.
 
 Everything here accepts plain dicts shaped like :class:`attachments.types.
 Artifact`, in-process (``bytes``) or wire form (``bytes_b64``), imports
@@ -115,6 +117,20 @@ def _image_part(image: dict) -> dict[str, Any] | None:
 # ---------------------------------------------------------------------------
 
 
+def _shown(artifacts: list[dict], sources: bool) -> list[dict]:
+    """The artifacts to present: without file names, no folder overviews.
+
+    Examples:
+        >>> tree = {"text": "docs/\\n└── cat.jpg", "meta": {"kind": "directory"}}
+        >>> photo = {"text": "", "images": [], "meta": {}}
+        >>> len(_shown([tree, photo], True)), len(_shown([tree, photo], False))
+        (2, 1)
+    """
+    if sources:
+        return list(artifacts)
+    return [a for a in artifacts if (a.get("meta") or {}).get("kind") != "directory"]
+
+
 def render_text(artifacts: list[dict], *, sources: bool = True) -> str:
     """Assemble artifacts into one prompt-ready string.
 
@@ -157,7 +173,7 @@ def render_text(artifacts: list[dict], *, sources: bool = True) -> str:
         ''
     """
     blocks: list[str] = []
-    for artifact in artifacts:
+    for artifact in _shown(artifacts, sources):
         text = (artifact.get("text") or "").strip()
         if text:
             lines = [text]
@@ -349,6 +365,7 @@ def to_parts(
         else:
             parts.append(part)
 
+    artifacts = _shown(artifacts, sources)
     if interleave:
         for artifact in artifacts:
             pieces = _artifact_pieces(artifact, interleave=True)
@@ -744,7 +761,7 @@ def chunk(
     overlap = max(0, min(int(overlap), max_chars - 1))
 
     chunks: list[str] = []
-    for artifact in artifacts:
+    for artifact in _shown(artifacts, sources):
         text = artifact.get("text") or ""
         if not text.strip():
             continue

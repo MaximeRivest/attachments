@@ -19,7 +19,8 @@ The 0.25.x line stays on PyPI in maintenance mode (bug fixes only). Pin
 | `ctx.claude("prompt")` | `a.claude("prompt")` |
 | `ctx.openai("prompt")` / `.openai_chat(...)` | `a.openai("prompt")` |
 | `ctx[0]` (Attachment object) | `a[0]` (plain artifact dict — see [spec/IR-CONTRACT.md](../spec/IR-CONTRACT.md)) |
-| `Attachments("a.pdf", "b.csv")` | `att("a.pdf") + att("b.csv")` (concatenation stays `Artifacts`) |
+| `Attachments("a.pdf", "b.csv")` / `Attachments([...])` | `att(["a.pdf", "b.csv"])` (or `att("a.pdf") + att("b.csv")`) |
+| `auto_attach(prompt, root_dir=...)` | `att.from_prompt(prompt, root=...)`, then `.claude(prompt)` — URLs need `urls=True` |
 | exceptions on bad input | never raises — errors are artifacts with typed `meta["error"]` |
 
 All verified against 1.0:
@@ -78,6 +79,31 @@ The bracket syntax survives, now with per-processor declared schemas:
 - Discover everything at runtime: `att.options(".pdf")`, `att.options()`,
   `att --options`, or the generated cheatsheet in
   [docs/dsl-options.md](dsl-options.md).
+
+## Folders
+
+Folder options keep their names; what they do is more careful:
+
+| 0.25 | 1.0 |
+|---|---|
+| `[files: false]` — structure only | same: the overview (tree, git, what was skipped) without reading files |
+| `[files: true]` | the default: an overview, then the files (`[tree: false]` for files only) |
+| `[ignore: standard]` / `auto` / `gitignore` | the default rules: secrets, dependencies, hidden files, `.gitignore` and `.attachmentsignore` (full git rules) |
+| `[ignore: raw,none]` | `[ignore: none]` (only `.git` stays out) |
+| `[ignore: "*.log,tests"]` | `[ignore: "*.log, tests/"]` — added to the defaults, `.gitignore` syntax, `!name` brings a skipped file back |
+| `[ignore: minimal]` | not supported (warns, default rules apply) |
+| `[max_files: N]` | same; default 1000, `0` = no limit; plus `max_size` (default 256 MiB) |
+| `[glob: "*.py"]` | same, comma-separated, `.gitignore` syntax (alias `include`) |
+| `[recursive: false]` | same |
+
+Differences to know:
+
+- 0.25 skipped `build/`, `dist/`, `bin/`, `vendor/`, `env/`, `out/`, `tmp/` and
+  `*.log` by name. 1.0 does not guess from names (real code lives there
+  often enough): a project's `.gitignore` decides. Virtual environments and
+  caches are recognised by their marker files instead.
+- Wildcard patterns follow the same skip rules (0.25 applied none).
+- `.doc` and `.ppt` work with LibreOffice installed.
 
 ## What has no replacement
 

@@ -21,6 +21,7 @@ import tempfile
 from pathlib import Path
 
 from .._options import Option, register_options, snapshot_option_defaults
+from .local import TREE_OPTIONS
 
 _GITHUB_OWNER_REPO_RE = re.compile(
     r"^[a-zA-Z0-9][-a-zA-Z0-9_.]*[a-zA-Z0-9]?/[a-zA-Z0-9][-a-zA-Z0-9_.]*[a-zA-Z0-9]?(\.git)?$"
@@ -39,6 +40,8 @@ register_options(
             help="Git branch, tag, or ref to clone.",
             example="ref: main",
         ),
+        # A clone is read like a local folder, with the same options.
+        *TREE_OPTIONS,
     ),
 )
 snapshot_option_defaults()
@@ -135,3 +138,25 @@ def _is_github_repo_root_url(url: str) -> bool:
 
     parts = [p for p in urlparse(url).path.split("/") if p]
     return len(parts) == 2  # /owner/repo or /owner/repo.git
+
+
+def _github_display_name(spec: str) -> str:
+    """``owner/repo`` (plus ``@ref``) for the overview of a cloned repository.
+
+    Examples:
+        >>> _github_display_name("github://psf/requests?ref=v2.0")
+        'psf/requests@v2.0'
+        >>> _github_display_name("https://github.com/psf/requests.git")
+        'psf/requests'
+    """
+    from urllib.parse import parse_qsl, urlsplit
+
+    if spec.startswith("github://"):
+        rest = spec[len("github://") :]
+        path, _, query = rest.partition("?")
+    else:
+        parts = urlsplit(spec)
+        path, query = parts.path, parts.query
+    name = path.strip("/").removesuffix(".git")
+    ref = dict(parse_qsl(query)).get("ref")
+    return f"{name}@{ref}" if ref else name

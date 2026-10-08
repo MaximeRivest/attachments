@@ -432,8 +432,8 @@ def dsl_schema() -> dict[str, Any]:
         True
         >>> any(o["name"] == "pages" for o in schema["processors"][".pdf"])
         True
-        >>> [o["name"] for o in schema["sources"]["github://"]]
-        ['ref']
+        >>> [o["name"] for o in schema["sources"]["github://"]][:2]
+        ['ref', 'files']
     """
     return {
         "version": 1,

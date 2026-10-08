@@ -25,7 +25,7 @@ ImageItem = {
 
 Meta = {
     "source": str,                # required after normalization (core sets it)
-    "kind": str,                  # optional: "text"|"pdf"|"table"|"document"|"html"|"slides"|"image"|...
+    "kind": str,                  # optional: "text"|"pdf"|"table"|"document"|"html"|"slides"|"image"|"directory"|...
     "via": str,                   # optional: "service" when processed remotely (absent = local)
     "error": {                    # optional; present only on failure
         "code": str,              # one of ERROR CODES below
@@ -104,6 +104,10 @@ A processor is a pure function `(data: bytes, *, filename=None, **options) -> Ar
 - No processor for extension and not text → empty artifact with
   `meta.note = "no processor available"` (not an error).
 - Errors NEVER raise out of `att()`; they come back as error artifacts.
+- A folder, repository, pattern or archive may produce a first artifact with
+  `meta.kind = "directory"` (the overview: tree, git, what was skipped;
+  numbers in `meta.extra`), sourced as the input was written. Presenters
+  leave it out when file names are hidden (`sources=False`).
 - A file downloaded over HTTP(S) has `meta.source` = its URL (final, after
   redirects). If its processor declares a `url` option and the caller set
   none, core passes that URL as `url` (locally and to the service).

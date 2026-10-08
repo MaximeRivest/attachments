@@ -16,18 +16,28 @@ def test_parse_mixed_args_paths_and_options():
     assert opts["lang"] == "en"
 
 
-def test_build_dsl_from_options_excludes_control():
-    dsl = cli._build_dsl_from_options(
+def test_options_from_flags_excludes_control():
+    options = cli._options_from_flags(
         {
             "copy": "true",
             "pages": "1-4",
             "sheet": "Sales",
             "verbose": "true",
+            "max-files": "3",
         }
     )
-    assert "[pages:1-4]" in dsl
-    assert "[sheet:Sales]" in dsl
-    assert "copy" not in dsl
+    assert options == {"pages": (1, 4), "sheet": "Sales", "max_files": 3}
+
+
+def test_several_flags_and_path_options_combine(tmp_path: Path, capsys):
+    # Each flag used to become its own [..] group, and only the last was read.
+    for i in range(5):
+        (tmp_path / f"f{i}.txt").write_text(f"file {i}")
+    code = cli.main([f"{tmp_path}[tree: false]", "--max-files", "2", "--glob", "*.txt"])
+    out = capsys.readouterr().out
+    assert code == 0
+    assert "file 1" in out and "file 2" not in out
+    assert "Stopped at max_files: 2" in out
 
 
 def test_main_renders_meta_error_to_stderr(tmp_path: Path, capsys):

@@ -14,6 +14,7 @@ _GROUP_BY_MODULE = {
     "xlsx": "office",
     "docx": "office",
     "pptx": "office",
+    "legacy_office": "office",
     "html": "html",
     "image": "images",
 }
@@ -60,7 +61,10 @@ def att_help() -> None:
     from . import __version__
     from ._sources import extra_unpack_handlers
 
-    sources = "local files, directories, zip/tar archives, http(s)://, github://"
+    sources = (
+        "files (also ~, file://), folders (att.options('file://')), "
+        "src/*/x.py patterns, zip/tar, http(s)://, github://, lists of these"
+    )
     extra = sorted(prefix for prefix in extra_unpack_handlers)
     if extra:
         sources += ", " + ", ".join(extra)
@@ -76,6 +80,7 @@ def att_help() -> None:
         "",
         "Try:",
         '  a = att("report.pdf[pages: 1-4, images: true]")  # DSL options inline',
+        '  a = att.from_prompt("compare `a.pdf` with b.csv")  # files a prompt names',
         '  a.claude("Summarize.")          # Claude messages (a.openai(...) too)',
         "  a.chunk(max_chars=4000)         # segment-aware RAG chunks",
         "  a.parts(sources=False)          # text/image parts by page, no file names",

@@ -31,11 +31,11 @@ from __future__ import annotations
 import json
 import logging
 import os
-import re
 import sys
 from typing import Any
 
 from . import att
+from .dsl import parse_dsl
 from .types import artifact_to_wire
 
 _CONTROL_KEYS = {
@@ -59,13 +59,6 @@ def _resolve_path(path: str) -> str:
     if path in {".", "./"}:
         return os.getcwd()
     return path
-
-
-def _extract_dsl_from_path(path: str) -> tuple[str, str]:
-    match = re.search(r"^([^\[]+)(\[.+\])$", path)
-    if match:
-        return match.group(1), match.group(2)
-    return path, ""
 
 
 def _add_option_value(opts: dict[str, str | list[str]], key: str, value: str) -> None:
@@ -110,16 +103,29 @@ def _parse_mixed_args(args: list[str]) -> tuple[list[str], dict[str, str | list[
     return paths, opts
 
 
-def _build_dsl_from_options(opts: dict[str, str | list[str]]) -> str:
-    parts: list[str] = []
+def _options_from_flags(opts: dict[str, str | list[str]]) -> dict[str, Any]:
+    """Option flags -> ``att()`` keyword options, typed like DSL values.
+
+    ``--max-files 2`` becomes ``max_files=2``; a repeated flag joins its
+    values with commas (``--glob '*.py' --glob '*.md'``).
+
+    Examples:
+        >>> _options_from_flags({"max-files": "2", "images": "true", "copy": "true"})
+        {'max_files': 2, 'images': True}
+        >>> _options_from_flags({"glob": ["*.py", "*.md"]})
+        {'glob': '*.py, *.md'}
+    """
+    from .dsl import _normalize_key, _type_value
+
+    out: dict[str, Any] = {}
     for key, value in opts.items():
         if key in _CONTROL_KEYS:
             continue
         if isinstance(value, list):
-            parts.append(f"[{key}:{','.join(str(v) for v in value)}]")
+            out[_normalize_key(key)] = ", ".join(str(v) for v in value)
         else:
-            parts.append(f"[{key}:{value}]")
-    return "".join(parts)
+            out[_normalize_key(key)] = _type_value(value)
+    return out
 
 
 def _render_text(artifacts: list[dict[str, Any]]) -> str:
@@ -259,19 +265,23 @@ def main(argv: list[str] | None = None) -> int:
     if verbose:
         logging.basicConfig(level=logging.DEBUG)
 
-    dsl_from_opts = _build_dsl_from_options(opts)
-
-    expanded_inputs: list[str] = []
-    for path in paths:
-        resolved = _resolve_path(path)
-        clean, embedded_dsl = _extract_dsl_from_path(resolved)
-        expanded_inputs.append(clean + embedded_dsl + dsl_from_opts)
+    flag_options = _options_from_flags(opts)
 
     all_artifacts: list[dict[str, Any]] = []
 
     try:
-        for input_item in expanded_inputs:
-            all_artifacts.extend(att(input_item, api_key=api_key, prefer=prefer))
+        for path in paths:
+            # Options inside the path ("doc.pdf[pages: 1-2]") and flags
+            # ("--images true") merge into one set; flags win on collision.
+            clean, embedded = parse_dsl(_resolve_path(path))
+            all_artifacts.extend(
+                att(
+                    clean,
+                    api_key=api_key,
+                    prefer=prefer,
+                    **{**embedded, **flag_options},
+                )
+            )
     except Exception as exc:  # noqa: BLE001
         print(f"Error: {exc}", file=sys.stderr)
         return 1

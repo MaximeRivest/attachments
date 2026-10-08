@@ -44,14 +44,23 @@ from attachments import att
 a = att("report.pdf[pages: 2-4, images: true]")  # options in [...]
 a = att("report.pdf", pages="2-4", images=True)  # the same, as keywords
 a = att("docs/")                                 # a folder (recursive); also .zip, .tar
-a = att("scans/*.pdf")                           # a wildcard
+a = att("scans/*.pdf")                           # a wildcard (anywhere: "*/a.md")
 a = att("https://example.com/paper.pdf")         # a URL
 a = att("github://owner/repo[ref: main]")        # a repository
-a = att("report.pdf") + att("chart.png")         # several inputs: add them
+a = att(["report.pdf", "chart.png"])             # several inputs (str or Path)
 ```
 
 `print(a)` or `a.text` is the prompt text, each file under `## <name>`;
 `a[0]` is a plain dict; `a.images` lists `{name, mimetype, bytes, page}`.
+
+**Folders** start with an overview artifact (`meta["kind"] == "directory"`:
+file tree, git branch, what was skipped), so `att("docs/")[0]` is not a
+file; `[tree: false]` drops it. Secrets (`.env`, keys), dependencies,
+hidden and `.gitignore`'d files are skipped, and reading stops at 1000
+files / 256 MiB: `ignore`, `hidden`, `glob`, `max_files`, `max_size`,
+`files: false` (overview only) — `att.options("file://")`.
+`att.from_prompt(text)` attaches the files a prompt names (inside the
+current folder; URLs only with `urls=True`).
 
 Options belong to the file type: `print(att.options(".pdf"))` (or
 `att --options .pdf`) lists them. The ones that matter most:
@@ -65,6 +74,7 @@ Options belong to the file type: `print(att.options(".pdf"))` (or
 | xlsx | `sheet: Sales`, `rows: 100` | one sheet; rows per sheet |
 | csv, tsv | `rows: 100`, `delimiter: ";"`, `summary: true` | |
 | pptx, docx, html | `images: true` | embedded pictures (pptx: tagged with their slide) |
+| doc, ppt, odt, odp, ods | as docx / pptx / xlsx | converted by LibreOffice (a program to install, not an extra) |
 | html, web pages | `select: article` | CSS selector |
 | html, web pages | `main: false`, `links: true` | whole page instead of the main content; keep link addresses |
 | html, web pages | `screenshot: true`, `max_screens: 2` | pictures of the rendered page (`browser` extra + `playwright install chromium`) |

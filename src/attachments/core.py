@@ -11,15 +11,23 @@ from __future__ import annotations
 
 import logging
 import os
+from collections.abc import Iterable, Mapping
 from typing import Any
 
 from ._artifacts import Artifacts
 from ._options import get_options, resolve_options, source_option_schemas
 from ._processors import processors
-from ._sources import unpack
+from ._sources import (
+    InvalidSourceOption,
+    extra_unpack_handlers,
+    resolve,
+)
+from ._sources.archives import RAW_ARCHIVE_SUFFIXES
+from ._sources.local import TREE_OPTIONS
 from .config import get_api_key, get_prefer, service_configured
 from .dsl import parse_dsl
 from .types import (
+    ERROR_INVALID_OPTION,
     ERROR_MISSING_DEPENDENCY,
     ERROR_PROCESSING,
     ERROR_SERVICE,
@@ -320,14 +328,61 @@ def _process_via_service(
 def _source_schema_for(input: str) -> tuple | None:
     """Return the declared source option schema matching *input*, if any.
 
-    GitHub repo-root https URLs share the ``github://`` schema.
+    GitHub repo-root https URLs share the ``github://`` schema. Local
+    paths (no scheme) and URLs of archives get the folder options
+    (``file://``): an archive is read like a folder.
+
+    Examples:
+        >>> [o.name for o in _source_schema_for("docs/")][:2]
+        ['files', 'tree']
+        >>> _source_schema_for("https://example.com/page") is None
+        True
+        >>> "max_files" in [o.name for o in _source_schema_for("https://x.org/a.zip")]
+        True
     """
     if input.startswith("https://github.com/") and input.count("/") <= 4:
         return source_option_schemas.get("github://")
     for prefix, schema in source_option_schemas.items():
         if input.startswith(prefix):
             return schema
-    return None
+    if any(input.startswith(prefix) for prefix in extra_unpack_handlers):
+        return None
+    if input.startswith(("http://", "https://")):
+        path = input.split("?", 1)[0].split("#", 1)[0].lower()
+        if path.endswith(RAW_ARCHIVE_SUFFIXES):
+            return source_option_schemas.get("file://")
+        return None
+    return source_option_schemas.get("file://")
+
+
+_TREE_NAMES = {o.name for o in TREE_OPTIONS}
+
+
+def _take_tree_options(input: str, options: dict) -> dict[str, Any]:
+    """Pop the folder options that apply to *input* from *options*.
+
+    They go to ``resolve()`` as plain values instead of the per-file
+    processors (which would warn "Unknown option"). Raw values: typed by
+    ``resolve_options`` against ``TREE_OPTIONS`` afterwards.
+
+    Examples:
+        >>> opts = {"max_files": 3, "pages": "1-2"}
+        >>> _take_tree_options("docs/", opts), opts
+        ({'max_files': 3}, {'pages': '1-2'})
+        >>> opts = {"max_files": 3}
+        >>> _take_tree_options("https://example.com/page", opts), opts
+        ({}, {'max_files': 3})
+    """
+    schema = _source_schema_for(input)
+    if not schema:
+        return {}
+    taken: dict[str, Any] = {}
+    for option in schema:
+        if option.name not in _TREE_NAMES:
+            continue
+        for key in [k for k in options if k in {option.name, *option.aliases}]:
+            taken[key] = options.pop(key)
+    return taken
 
 
 def _apply_source_options(input: str, options: dict) -> str:
@@ -384,7 +439,7 @@ def _apply_source_options(input: str, options: dict) -> str:
 
 
 def att(
-    input: str,
+    input: str | os.PathLike[str] | Iterable[str | os.PathLike[str]],
     *,
     api_key: str | None = None,
     prefer: str | None = None,
@@ -395,10 +450,15 @@ def att(
     This is the main entry point for the attachments library.
 
     Args:
-        input: Source to process. Supports inline options via DSL:
-            - Local file: "document.pdf"
+        input: Source to process — a string, a ``pathlib.Path``, or a list
+            (any iterable) of them, read in order (``**options`` apply to
+            each). Strings support inline options via DSL:
+            - Local file: "document.pdf" ("~/..." and "file:///..." too)
             - With options: "document.pdf[pages: 1-4]"
-            - Directory: "docs/"
+            - Directory: "docs/" (an overview first, then the files; secrets,
+              dependencies, hidden and .gitignore'd files are skipped —
+              see ``att.options("file://")``)
+            - Pattern: "src/**/*.py", "reports/*/summary.md"
             - URL: "https://example.com/file.pdf[pages: 5-10]"
             - Web page: "https://example.com/post" (Markdown of the main
               content; ``[links: true]``, ``[screenshot: true]``, ...)
@@ -467,20 +527,102 @@ def att(
         >>> [o["name"] for o in att.options(".xlsx")]
         ['sheet', 'rows']
     """
+    out = Artifacts()
+    for item in _input_items(input):
+        if isinstance(item, dict):  # an input that is not a path: an error artifact
+            out.append(item)
+        else:
+            out.extend(_att_one(item, api_key=api_key, prefer=prefer, options=options))
+    return out
+
+
+def _input_items(value: Any) -> list[Any]:
+    """Flatten ``att()``'s input into strings (or error artifacts), in order.
+
+    Paths become strings; lists, tuples and generators are read in order
+    (nested ones too); sets are sorted so the result is deterministic.
+    Anything else becomes an ``unpack-error`` artifact — ``att()`` never
+    raises.
+
+    Examples:
+        >>> from pathlib import Path
+        >>> _input_items(["a.txt", (Path("b.pdf"), "c.csv")])
+        ['a.txt', 'b.pdf', 'c.csv']
+        >>> _input_items({"z.txt", "a.txt"})
+        ['a.txt', 'z.txt']
+        >>> _input_items(42)[0]["meta"]["error"]["code"]
+        'unpack-error'
+    """
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, os.PathLike):
+        return [os.fsdecode(os.fspath(value))]
+    if isinstance(value, bytes | bytearray | memoryview):
+        return [
+            error_artifact(
+                "<bytes>",
+                ERROR_UNPACK,
+                "att() takes paths and URLs, not file contents. To read bytes, "
+                "save them to a file, or call a processor directly: "
+                "attachments.processors['.pdf'](data, filename='x.pdf').",
+            )
+        ]
+    if isinstance(value, Mapping) or not isinstance(value, Iterable):
+        return [
+            error_artifact(
+                repr(value)[:80],
+                ERROR_UNPACK,
+                "att() takes a path or URL (str or pathlib.Path), or a list of "
+                f"them; got {type(value).__name__}.",
+            )
+        ]
+    items = list(value)
+    if isinstance(value, set | frozenset):
+        items.sort(key=_sort_key)
+    out: list[Any] = []
+    for item in items:
+        out.extend(_input_items(item))
+    return out
+
+
+def _sort_key(value: Any) -> str:
+    if isinstance(value, str | os.PathLike):
+        return os.fsdecode(os.fspath(value))
+    return repr(value)
+
+
+def _att_one(
+    input: str,
+    *,
+    api_key: str | None,
+    prefer: str | None,
+    options: dict[str, Any],
+) -> Artifacts:
+    """``att()`` for one input string."""
     # Parse DSL options from input string
     input, dsl_options = parse_dsl(input)
 
     # Merge options: explicit kwargs override DSL options
     merged_options = {**dsl_options, **options}
 
-    # Handle source-specific options (e.g., GitHub ref)
+    # Folder options (files, tree, ignore, max_files, ...) go to the source;
+    # other source options (e.g. GitHub ref) travel in the input string.
+    tree_raw = _take_tree_options(input, merged_options)
+    tree_options, tree_warnings = resolve_options(
+        TREE_OPTIONS, tree_raw, context="folders"
+    )
     input = _apply_source_options(input, merged_options)
 
     log.info("att(%r)  prefer=%s  options=%s", input, prefer, merged_options or "{}")
 
     # Handle unpack with potential service fallback
+    reports: list[Any] = []
     try:
-        pairs: list[tuple[str, bytes]] = unpack(input)
+        resolution = resolve(input, options=tree_options)
+        pairs: list[tuple[str, bytes]] = resolution.files
+        reports = resolution.reports
+    except InvalidSourceOption as e:
+        return Artifacts([error_artifact(input, ERROR_INVALID_OPTION, str(e))])
     except Exception as e:
         # Check if we can use service for unpacking
         key = get_api_key(api_key)
@@ -518,9 +660,27 @@ def att(
                 [error_artifact(input, ERROR_UNPACK, f"unpack failed: {e}")]
             )
 
+    out = Artifacts()
+
+    # One overview per folder/repository/pattern/archive, before its files.
+    from ._overview import needs_overview, overview_artifact
+
+    for report in reports:
+        report.warnings[:0] = tree_warnings
+        if needs_overview(report):
+            out.append(overview_artifact(report))
+    if tree_raw and not reports:
+        names = ", ".join(sorted(tree_raw))
+        tree_warnings = [
+            *tree_warnings,
+            f"Folder options ({names}) apply to folders, patterns, repositories "
+            "and archives; ignored for a single file.",
+        ]
+    elif reports:
+        tree_warnings = []
+
     # Process each file. Downloads are SourceFiles: (name, bytes) pairs
     # that also carry the final URL and any source warnings.
-    out = Artifacts()
     for pair in pairs:
         fname, data = pair
         origin = getattr(pair, "url", None)
@@ -537,7 +697,9 @@ def att(
             # A downloaded file is known by its address, not by the last
             # path segment ("download", "index.html").
             artifact["meta"]["source"] = origin
-        _attach_warnings(artifact, list(getattr(pair, "warnings", ()) or ()))
+        _attach_warnings(
+            artifact, [*(getattr(pair, "warnings", ()) or ()), *tree_warnings]
+        )
         out.append(artifact)
 
     return out

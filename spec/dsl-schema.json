@@ -92,6 +92,19 @@
         "type": "str"
       }
     ],
+    ".doc": [
+      {
+        "aliases": [
+          "render"
+        ],
+        "default": false,
+        "example": "images: true",
+        "help": "Extract embedded images.",
+        "name": "images",
+        "param": "render_images",
+        "type": "bool"
+      }
+    ],
     ".docx": [
       {
         "aliases": [
@@ -655,6 +668,54 @@
         "type": "str"
       }
     ],
+    ".odp": [
+      {
+        "aliases": [
+          "render"
+        ],
+        "default": false,
+        "example": "images: true",
+        "help": "Extract embedded slide pictures: true/false ('auto'/'always' behave like true; slides are never rasterized).",
+        "name": "images",
+        "param": "render_images",
+        "type": "bool_or_auto"
+      }
+    ],
+    ".ods": [
+      {
+        "aliases": [],
+        "default": null,
+        "example": "sheet: Sales",
+        "help": "Sheet to render: a sheet name or 0-based index. Omit to render all sheets.",
+        "name": "sheet",
+        "param": null,
+        "type": "str_or_int"
+      },
+      {
+        "aliases": [
+          "max_rows"
+        ],
+        "default": 200,
+        "example": "rows: 100",
+        "help": "Maximum number of rows rendered as text per sheet.",
+        "name": "rows",
+        "param": "max_rows",
+        "type": "int"
+      }
+    ],
+    ".odt": [
+      {
+        "aliases": [
+          "render"
+        ],
+        "default": false,
+        "example": "images: true",
+        "help": "Extract embedded images.",
+        "name": "images",
+        "param": "render_images",
+        "type": "bool"
+      }
+    ],
     ".ogg": [
       {
         "aliases": [],
@@ -847,6 +908,19 @@
         "name": "ocr_engine",
         "param": null,
         "type": "str"
+      }
+    ],
+    ".ppt": [
+      {
+        "aliases": [
+          "render"
+        ],
+        "default": false,
+        "example": "images: true",
+        "help": "Extract embedded slide pictures: true/false ('auto'/'always' behave like true; slides are never rasterized).",
+        "name": "images",
+        "param": "render_images",
+        "type": "bool_or_auto"
       }
     ],
     ".pptx": [
@@ -1166,6 +1240,82 @@
     "__text__": []
   },
   "sources": {
+    "file://": [
+      {
+        "aliases": [],
+        "default": true,
+        "example": "files: false",
+        "help": "Read the files (false: only the overview of what is there)",
+        "name": "files",
+        "param": null,
+        "type": "bool"
+      },
+      {
+        "aliases": [],
+        "default": "auto",
+        "example": "tree: false",
+        "help": "Start with an overview: file tree, git branch and commit, what was skipped (auto: on for folders and repos, off for patterns and archives)",
+        "name": "tree",
+        "param": null,
+        "type": "bool_or_auto"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "ignore: \"tests/, *.csv\"",
+        "help": "More to skip, .gitignore syntax, comma-separated; !pattern brings back a skipped file; none skips nothing but .git",
+        "name": "ignore",
+        "param": null,
+        "type": "str"
+      },
+      {
+        "aliases": [],
+        "default": false,
+        "example": "hidden: true",
+        "help": "Include hidden files and folders (names starting with a dot)",
+        "name": "hidden",
+        "param": null,
+        "type": "bool"
+      },
+      {
+        "aliases": [
+          "include"
+        ],
+        "default": null,
+        "example": "glob: \"*.py, *.md\"",
+        "help": "Only files matching these patterns (.gitignore syntax, comma-separated)",
+        "name": "glob",
+        "param": null,
+        "type": "str"
+      },
+      {
+        "aliases": [],
+        "default": true,
+        "example": "recursive: false",
+        "help": "Read subfolders too",
+        "name": "recursive",
+        "param": null,
+        "type": "bool"
+      },
+      {
+        "aliases": [],
+        "default": 1000,
+        "example": "max_files: 200",
+        "help": "Most files read (0 = no limit)",
+        "name": "max_files",
+        "param": null,
+        "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": "256MiB",
+        "example": "max_size: 50MB",
+        "help": "Most bytes read in total, e.g. 50MB (0 = no limit)",
+        "name": "max_size",
+        "param": null,
+        "type": "str_or_int"
+      }
+    ],
     "github://": [
       {
         "aliases": [
@@ -1178,6 +1328,80 @@
         "name": "ref",
         "param": null,
         "type": "str"
+      },
+      {
+        "aliases": [],
+        "default": true,
+        "example": "files: false",
+        "help": "Read the files (false: only the overview of what is there)",
+        "name": "files",
+        "param": null,
+        "type": "bool"
+      },
+      {
+        "aliases": [],
+        "default": "auto",
+        "example": "tree: false",
+        "help": "Start with an overview: file tree, git branch and commit, what was skipped (auto: on for folders and repos, off for patterns and archives)",
+        "name": "tree",
+        "param": null,
+        "type": "bool_or_auto"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "ignore: \"tests/, *.csv\"",
+        "help": "More to skip, .gitignore syntax, comma-separated; !pattern brings back a skipped file; none skips nothing but .git",
+        "name": "ignore",
+        "param": null,
+        "type": "str"
+      },
+      {
+        "aliases": [],
+        "default": false,
+        "example": "hidden: true",
+        "help": "Include hidden files and folders (names starting with a dot)",
+        "name": "hidden",
+        "param": null,
+        "type": "bool"
+      },
+      {
+        "aliases": [
+          "include"
+        ],
+        "default": null,
+        "example": "glob: \"*.py, *.md\"",
+        "help": "Only files matching these patterns (.gitignore syntax, comma-separated)",
+        "name": "glob",
+        "param": null,
+        "type": "str"
+      },
+      {
+        "aliases": [],
+        "default": true,
+        "example": "recursive: false",
+        "help": "Read subfolders too",
+        "name": "recursive",
+        "param": null,
+        "type": "bool"
+      },
+      {
+        "aliases": [],
+        "default": 1000,
+        "example": "max_files: 200",
+        "help": "Most files read (0 = no limit)",
+        "name": "max_files",
+        "param": null,
+        "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": "256MiB",
+        "example": "max_size: 50MB",
+        "help": "Most bytes read in total, e.g. 50MB (0 = no limit)",
+        "name": "max_size",
+        "param": null,
+        "type": "str_or_int"
       }
     ]
   },

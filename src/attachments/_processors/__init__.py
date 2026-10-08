@@ -194,6 +194,9 @@ from . import svg as _svg  # noqa: E402,F401
 from . import ipynb as _ipynb  # noqa: E402,F401
 from . import audio as _audio  # noqa: E402,F401
 
+# After docx/pptx/xlsx: reuses their processors and option schemas.
+from . import legacy_office as _legacy_office  # noqa: E402,F401
+
 # Capture defaults after built-in processors (and their schemas) registered
 _snapshot_defaults()
 snapshot_option_defaults()

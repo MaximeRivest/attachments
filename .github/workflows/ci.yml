@@ -25,6 +25,12 @@ jobs:
       - name: Chromium for web page screenshot tests
         run: uv run playwright install --with-deps --only-shell chromium
 
+      - name: LibreOffice for .doc/.ppt/.odt/.odp/.ods tests
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libreoffice-writer-nogui libreoffice-impress-nogui libreoffice-calc-nogui
+
       - name: Lint
         run: |
           uv run ruff format --check .

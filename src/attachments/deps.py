@@ -51,6 +51,15 @@ DEPENDENCY_MAP: dict[str, tuple[tuple[str, ...], str]] = {
     "ocr": (("rapidocr_onnxruntime",), "pip install attachments[ocr]"),
     "audio": (("faster_whisper",), "pip install attachments[audio]"),
     "mcp": (("mcp",), "pip install attachments[mcp]"),
+    # Old Office and OpenDocument files (.doc, .ppt, .odt, .odp, .ods) are
+    # converted by LibreOffice, a program pip cannot install.
+    "libreoffice": (
+        ("program:libreoffice",),
+        "install LibreOffice (https://www.libreoffice.org/download/; Debian/"
+        "Ubuntu: apt install libreoffice-writer-nogui libreoffice-impress-nogui "
+        "libreoffice-calc-nogui; macOS: brew install --cask libreoffice), or "
+        "set ATTACHMENTS_LIBREOFFICE to its soffice program",
+    ),
     # Web page screenshots (html `screenshot: true`): the Python package
     # here; the Chromium it drives is a separate `playwright install`.
     "browser": (
@@ -88,6 +97,52 @@ def _can_import(module: str) -> bool:
     return importlib.util.find_spec(top_level) is not None
 
 
+#: Features that need a program, not a Python package (no pip extra).
+PROGRAM_FEATURES = frozenset({"libreoffice"})
+
+#: Environment variable naming the LibreOffice program to use.
+LIBREOFFICE_ENV = "ATTACHMENTS_LIBREOFFICE"
+
+_LIBREOFFICE_PLACES = (
+    "/Applications/LibreOffice.app/Contents/MacOS/soffice",
+    r"C:\Program Files\LibreOffice\program\soffice.exe",
+    r"C:\Program Files (x86)\LibreOffice\program\soffice.exe",
+)
+
+
+def find_libreoffice() -> str | None:
+    """Path of LibreOffice's ``soffice`` program, or ``None``.
+
+    ``ATTACHMENTS_LIBREOFFICE`` wins; then ``soffice`` / ``libreoffice``
+    on PATH; then the standard macOS and Windows install locations
+    (installers there do not add it to PATH).
+    """
+    import os
+    import shutil
+
+    configured = os.environ.get(LIBREOFFICE_ENV, "").strip()
+    if configured:
+        return shutil.which(configured) or (
+            configured if os.path.isfile(configured) else None
+        )
+    for name in ("soffice", "libreoffice"):
+        found = shutil.which(name)
+        if found:
+            return found
+    return next((p for p in _LIBREOFFICE_PLACES if os.path.isfile(p)), None)
+
+
+def _available(requirement: str) -> bool:
+    """A module (``"pypdf|PyPDF2"``) or a program (``"program:libreoffice"``).
+
+    Programs are looked up every time (not cached): installing one, or
+    setting its environment variable, takes effect without a restart.
+    """
+    if requirement == "program:libreoffice":
+        return find_libreoffice() is not None
+    return _can_import(requirement)
+
+
 def check_dep(feature: str) -> DepStatus:
     """Check if a specific feature's dependencies are available.
 
@@ -115,7 +170,7 @@ def check_dep(feature: str) -> DepStatus:
         raise ValueError(f"Unknown feature: {feature}. Valid: {valid}")
 
     modules, install_hint = DEPENDENCY_MAP[feature]
-    missing = tuple(m for m in modules if not _can_import(m))
+    missing = tuple(m for m in modules if not _available(m))
 
     return DepStatus(
         available=len(missing) == 0,
@@ -209,7 +264,7 @@ def suggest_install(features: list[str]) -> str:
         >>> suggest_install([])
         ''
     """
-    valid = [f for f in features if f in DEPENDENCY_MAP]
+    valid = [f for f in features if f in DEPENDENCY_MAP and f not in PROGRAM_FEATURES]
     if not valid:
         return ""
     return f"pip install attachments[{','.join(valid)}]"

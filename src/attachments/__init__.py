@@ -74,6 +74,7 @@ Installation Options::
 
 from ._artifacts import Artifacts
 from ._help import att_help
+from ._mentions import from_prompt
 from ._options import Option, dsl_schema, options, register_options
 from ._processors import (
     get_processors_copy,
@@ -193,7 +194,9 @@ __all__ = [
 
 # Runtime discoverability: att.options(".pdf") -> declared option dicts;
 # att.help() -> printed one-screen overview (returns None, like help()).
+# att.from_prompt(prompt) -> the files a prompt mentions (0.25 auto_attach).
 att.options = options  # type: ignore[attr-defined]
 att.help = att_help  # type: ignore[attr-defined]
+att.from_prompt = from_prompt  # type: ignore[attr-defined]
 
 __version__ = "1.0.0a2"  # pre-release; see VISION.md

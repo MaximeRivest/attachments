@@ -93,11 +93,15 @@ permissions — only attach it to agents you trust.
 _ATT_DESCRIPTION = """\
 Turn any source into LLM-ready content — one universal ingestion tool.
 
-Sources: local files ("report.pdf"), directories ("docs/"), glob patterns
-("src/**/*.py"), zip/tar archives, HTTP(S) URLs, and GitHub repos
-("github://owner/repo"). Format support includes PDF, XLSX/XLS, DOCX,
-PPTX, HTML, CSV/TSV, images (with OCR), SVG, Jupyter notebooks, audio
-transcription, and 20+ text/code formats.
+Sources: local files ("report.pdf"), folders ("docs/" — an overview first:
+file tree, git branch, what was skipped), patterns ("src/**/*.py"),
+zip/tar archives, HTTP(S) URLs, and GitHub repos ("github://owner/repo").
+Folders skip secrets (.env, keys), dependencies, hidden and .gitignore'd
+files, and read at most 1000 files / 256 MiB (options: ignore, hidden,
+glob, max_files, max_size, files: false for the overview only). Format
+support includes PDF, XLSX/XLS, DOCX, PPTX, old .doc/.ppt (with
+LibreOffice), HTML, CSV/TSV, images (with OCR), SVG, Jupyter notebooks,
+audio transcription, and 20+ text/code formats.
 
 Options go in the `options` dict (or inline DSL in the source string —
 "report.pdf[pages: 1-4]" is the same as options={"pages": "1-4"}):

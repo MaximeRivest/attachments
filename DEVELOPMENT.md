@@ -334,6 +334,10 @@ Checklist (symmetric to [Building New Processors](#building-new-processors)):
       `s3://bucket/key?region=us-east-1` — parse them the way
       `_sources/github.py` parses `?ref=`
 - [ ] **`deps.py` entry + `pyproject.toml` extra** if it needs dependencies
+- [ ] **A tree of files?** (a bucket prefix, a drive folder) Download it to a
+      temporary folder and return `read_folder(...)` from `_sources/local.py`
+      inside `resolve()` — like `github://` does — so the skip rules, limits,
+      folder options and the overview come for free.
 - [ ] **Tests** in `tests/test_sources/`, including a download path that
       respects the guards in `_sources/_guards.py` (size caps, SSRF guard
       for anything fetched over HTTP)
@@ -620,10 +624,15 @@ src/attachments/
 ├── types.py                 # Artifact / ImageItem TypedDicts, error codes, helpers
 ├── utils.py                 # Encoding detection, magic-byte detection, helpers
 ├── render.py                # Last mile: render_text, to_claude/openai_messages, chunk
+├── _overview.py             # Folder overview artifact (kind "directory") from a TreeReport
+├── _mentions.py             # att.from_prompt: files a prompt mentions (untrusted input)
 ├── _sources/                # Input resolution (WHERE files come from)
-│   ├── __init__.py          # Source registry, @source decorator & unpack() dispatch
+│   ├── __init__.py          # Source registry, @source, resolve() + unpack() dispatch
 │   ├── _guards.py           # Security: expansion budget, sanitization, SSRF guard
-│   ├── local.py             # Local files, glob patterns + deterministic directory walk
+│   ├── _ignore.py           # Skip rules for every tree: secrets, generated, hidden, .gitignore
+│   ├── _git.py              # Branch/commit/remote read from .git (git is never run)
+│   ├── _file.py             # SourceFile: a (name, bytes) pair with a URL
+│   ├── local.py             # Folders, patterns, archive members: list, then read within limits
 │   ├── archives.py          # ZIP/TAR expansion (recursive, bomb-guarded)
 │   ├── http.py              # HTTP(S) single-file download
 │   └── github.py            # github:// + github.com repo roots
@@ -641,7 +650,8 @@ src/attachments/
     ├── svg.py               # SVG/SVGZ text (stdlib; optional cairosvg raster)
     ├── image.py             # Images png/jpg/gif/webp/bmp/tiff/heic (Pillow, pillow-heif) + shared OCR layer (rapidocr)
     ├── ipynb.py             # Jupyter notebooks (stdlib json/base64; optional cell outputs)
-    └── audio.py             # Audio transcription mp3/wav/m4a/flac/ogg/opus (faster-whisper)
+    ├── audio.py             # Audio transcription mp3/wav/m4a/flac/ogg/opus (faster-whisper)
+    └── legacy_office.py     # .doc/.ppt/.odt/.odp/.ods via LibreOffice, then docx/pptx/xlsx
 ```
 
 ---

@@ -28,7 +28,7 @@ only a warning (`meta["warnings"]`), never an error.
 | `summary` | `bool` | — | `false` | `summary: true` | Append a pandas-backed summary (shape, dtypes, numeric stats). |
 | `delimiter` | `str` | `sep` | — | `delimiter: semicolon` | Field delimiter: a literal character or tab/comma/semicolon/pipe. Overrides sniffing. |
 
-### `.docx`
+### `.doc`, `.docx`, `.odt`
 
 | Option | Type | Aliases | Default | Example | Description |
 | --- | --- | --- | --- | --- | --- |
@@ -62,6 +62,19 @@ only a warning (`meta["warnings"]`), never an error.
 | --- | --- | --- | --- | --- | --- |
 | `outputs` | `bool` | — | `false` | `outputs: true` | Include per-cell execution outputs: text outputs as fenced blocks (truncated at ~2000 chars each) and image/png outputs as image items. |
 
+### `.odp`, `.ppt`, `.pptx`
+
+| Option | Type | Aliases | Default | Example | Description |
+| --- | --- | --- | --- | --- | --- |
+| `images` | `bool_or_auto` | `render` | `false` | `images: true` | Extract embedded slide pictures: true/false ('auto'/'always' behave like true; slides are never rasterized). |
+
+### `.ods`, `.xls`, `.xlsx`
+
+| Option | Type | Aliases | Default | Example | Description |
+| --- | --- | --- | --- | --- | --- |
+| `sheet` | `str_or_int` | — | — | `sheet: Sales` | Sheet to render: a sheet name or 0-based index. Omit to render all sheets. |
+| `rows` | `int` | `max_rows` | `200` | `rows: 100` | Maximum number of rows rendered as text per sheet. |
+
 ### `.pdf`
 
 | Option | Type | Aliases | Default | Example | Description |
@@ -77,27 +90,35 @@ only a warning (`meta["warnings"]`), never an error.
 | `ocr_engine` | `str` | — | `"rapidocr"` | `ocr_engine: lighton` | OCR engine: rapidocr (local, default) or lighton (remote LightOnOCR vLLM endpoint via ATTACHMENTS_LIGHTON_URL). |
 | `max_pages` | `int` | — | — | `max_pages: 10` | Hard cap on the number of pages parsed/rendered. |
 
-### `.pptx`
-
-| Option | Type | Aliases | Default | Example | Description |
-| --- | --- | --- | --- | --- | --- |
-| `images` | `bool_or_auto` | `render` | `false` | `images: true` | Extract embedded slide pictures: true/false ('auto'/'always' behave like true; slides are never rasterized). |
-
 ### `.svg`, `.svgz`
 
 | Option | Type | Aliases | Default | Example | Description |
 | --- | --- | --- | --- | --- | --- |
 | `images` | `bool_or_auto` | `render` | `false` | `images: true` | Rasterize the SVG to PNG with cairosvg (true/false/auto/always). |
 
-### `.xls`, `.xlsx`
+### `file://`
 
 | Option | Type | Aliases | Default | Example | Description |
 | --- | --- | --- | --- | --- | --- |
-| `sheet` | `str_or_int` | — | — | `sheet: Sales` | Sheet to render: a sheet name or 0-based index. Omit to render all sheets. |
-| `rows` | `int` | `max_rows` | `200` | `rows: 100` | Maximum number of rows rendered as text per sheet. |
+| `files` | `bool` | — | `true` | `files: false` | Read the files (false: only the overview of what is there) |
+| `tree` | `bool_or_auto` | — | `"auto"` | `tree: false` | Start with an overview: file tree, git branch and commit, what was skipped (auto: on for folders and repos, off for patterns and archives) |
+| `ignore` | `str` | — | — | `ignore: "tests/, *.csv"` | More to skip, .gitignore syntax, comma-separated; !pattern brings back a skipped file; none skips nothing but .git |
+| `hidden` | `bool` | — | `false` | `hidden: true` | Include hidden files and folders (names starting with a dot) |
+| `glob` | `str` | `include` | — | `glob: "*.py, *.md"` | Only files matching these patterns (.gitignore syntax, comma-separated) |
+| `recursive` | `bool` | — | `true` | `recursive: false` | Read subfolders too |
+| `max_files` | `int` | — | `1000` | `max_files: 200` | Most files read (0 = no limit) |
+| `max_size` | `str_or_int` | — | `"256MiB"` | `max_size: 50MB` | Most bytes read in total, e.g. 50MB (0 = no limit) |
 
 ### `github://`
 
 | Option | Type | Aliases | Default | Example | Description |
 | --- | --- | --- | --- | --- | --- |
 | `ref` | `str` | `branch`, `tag` | — | `ref: main` | Git branch, tag, or ref to clone. |
+| `files` | `bool` | — | `true` | `files: false` | Read the files (false: only the overview of what is there) |
+| `tree` | `bool_or_auto` | — | `"auto"` | `tree: false` | Start with an overview: file tree, git branch and commit, what was skipped (auto: on for folders and repos, off for patterns and archives) |
+| `ignore` | `str` | — | — | `ignore: "tests/, *.csv"` | More to skip, .gitignore syntax, comma-separated; !pattern brings back a skipped file; none skips nothing but .git |
+| `hidden` | `bool` | — | `false` | `hidden: true` | Include hidden files and folders (names starting with a dot) |
+| `glob` | `str` | `include` | — | `glob: "*.py, *.md"` | Only files matching these patterns (.gitignore syntax, comma-separated) |
+| `recursive` | `bool` | — | `true` | `recursive: false` | Read subfolders too |
+| `max_files` | `int` | — | `1000` | `max_files: 200` | Most files read (0 = no limit) |
+| `max_size` | `str_or_int` | — | `"256MiB"` | `max_size: 50MB` | Most bytes read in total, e.g. 50MB (0 = no limit) |

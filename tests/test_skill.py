@@ -165,9 +165,12 @@ def skill_files(tmp_path, monkeypatch):
     }
 
     def att(source, *args, **kwargs):
-        return real_att(offline.get(source, source), *args, **kwargs)
+        if isinstance(source, str):
+            source = offline.get(source, source)
+        return real_att(source, *args, **kwargs)
 
     att.options = real_att.options  # type: ignore[attr-defined]
+    att.from_prompt = real_att.from_prompt  # type: ignore[attr-defined]
     monkeypatch.setattr(attachments, "att", att)
     monkeypatch.chdir(tmp_path)
     return tmp_path

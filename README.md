@@ -29,6 +29,7 @@ pip install attachments[docx]        # Word support
 pip install attachments[pptx]        # PowerPoint support
 pip install attachments[html]        # HTML and web pages
 pip install attachments[browser]     # web page screenshots (then: playwright install chromium)
+# .doc/.ppt/.odt/.odp/.ods: install LibreOffice (a program, not a pip package)
 pip install attachments[image]       # png/jpg/gif/webp/bmp/tiff support
 pip install attachments[ocr]         # OCR for scanned PDFs/images (large: pulls onnxruntime)
 pip install attachments[audio]       # mp3/wav/m4a/flac/ogg/opus transcription (large: pulls faster-whisper/ctranslate2)
@@ -38,6 +39,8 @@ pip install attachments[all-local]   # Everything currently shipped (except ocr/
 ```
 
 ```python
+from pathlib import Path
+
 from attachments import att, configure, check_deps
 
 # See what's available
@@ -45,7 +48,9 @@ check_deps()  # {'pdf': True, 'xlsx': True, 'service': False, ...}
 
 # Process anything
 artifacts = att("document.pdf")
-artifacts = att("data/")                    # Directory
+artifacts = att("data/")                    # Folder: an overview, then the files
+artifacts = att("reports/*/summary.md")     # Wildcards anywhere; ** for any depth
+artifacts = att(["a.pdf", Path("b.csv")])   # Several inputs (str, Path, ~, file://)
 artifacts = att("archive.zip")              # Archives (recursive)
 artifacts = att("github://owner/repo")      # GitHub repo
 artifacts = att("https://example.com/f.pdf") # URL
@@ -291,6 +296,14 @@ att("https://example.com[screenshot: true, max_screens: 2]")  # + 1280x800 scree
 # Image options
 att("photo.jpg[rotate: 90]")            # Rotate 90° counterclockwise
 
+# Folders, patterns, repos and archives (att.options("file://"))
+att("repo/[files: false]")              # Overview only: tree, git, what was skipped
+att("repo/[glob: '*.py, *.md']")        # Only matching files
+att('repo/[ignore: "tests/, !uv.lock"]')# Skip more; ! brings a skipped file back
+att("repo/[hidden: true]")              # Include dot files (.github/, ...)
+att("repo/[max_files: 0, max_size: 0]") # No limits (default 1000 files, 256 MiB)
+att("repo/[tree: false]")               # Files only, no overview
+
 # GitHub options
 att("github://org/repo[branch: main]")  # Specific branch
 att("github://org/repo[ref: v1.0.0]")   # Tag
@@ -298,6 +311,32 @@ att("github://org/repo[ref: v1.0.0]")   # Tag
 # Combine with URLs
 att("https://arxiv.org/pdf/2301.00001.pdf[pages: 1-5]")
 ```
+
+### Folders
+
+A folder is read like a careful colleague would hand it over:
+
+- **Skipped by default**: secrets (`.env`, private keys, credential files),
+  dependencies and generated files (`node_modules`, virtual environments,
+  caches, lock files, compiled and minified files), hidden files, and
+  whatever `.gitignore` / `.attachmentsignore` exclude (full git rules,
+  parent folders included). A single file you name is always read.
+- **Limits**: 1000 files and 256 MiB by default; the overview says when
+  reading stopped and how to go further.
+- **Overview first**: the file tree, the git branch and commit, and what was
+  skipped and why. `sources=False` leaves it out (it is made of names).
+- Links leading outside the folder are never followed.
+
+### Files a prompt mentions
+
+```python
+a = att.from_prompt("Compare `q3/report.pdf[pages: 1-3]` with data.csv")
+a.claude("Compare the report with the data")
+```
+
+Mentions are looked up in the current folder (or `root=`) and never outside
+it; secrets are never attached; URLs only with `urls=True` (a prompt's
+author should not pick what your server fetches).
 
 **Values:** numbers, booleans (`true`/`false`), ranges (`1-4`), bare or quoted
 strings. The whole grammar (with shared parser test vectors every
@@ -468,7 +507,8 @@ for Docker, systemd, CI/CD, and the API reference.
 ```bash
 att report.pdf                  # Print extracted text
 att "data.xlsx[sheet: Sales]"   # DSL works here too
-att report.pdf --pages 1-4      # Unknown --key value becomes [key:value]
+att report.pdf --pages 1-4      # Any --option value is a DSL option
+att src --max-files 50 --glob '*.py'  # Flags combine (and with [..] in the path)
 att . --json                    # Whole directory as JSON artifacts
 att README.md --copy --prompt "Summarize this"   # To clipboard, prompt first
                                 # (--copy needs: pip install attachments[clipboard])
@@ -541,17 +581,20 @@ XLSX, XLS, DOCX, PPTX, HTML and web pages (Markdown of the main content,
 (real tables, optional pandas summary), SVG (text extraction + optional
 raster), image (png/jpg/gif/webp/bmp/tiff/heic, with `rotate:` and
 `ocr:`), Jupyter notebook (`.ipynb`, zero-dep, optional cell outputs),
-and audio transcription
-(mp3/wav/m4a/flac/ogg/opus via faster-whisper) processors; local files,
-directories, glob patterns (`att("src/**/*.py")`), zip/tar, HTTP(S), and
-`github://` sources; service client, self-hosted server, and CLI.
+audio transcription
+(mp3/wav/m4a/flac/ogg/opus via faster-whisper), and old Office /
+OpenDocument files (`.doc`, `.ppt`, `.odt`, `.odp`, `.ods`, through
+LibreOffice) processors; local files (`~`, `file://`), folders with skip
+rules and limits, wildcard patterns (`att("src/**/*.py")`), lists of
+inputs, zip/tar, HTTP(S), and `github://` sources; `att.from_prompt`;
+service client, self-hosted server, and CLI.
 The last mile ships too: `render_text` / `to_claude_messages` /
 `to_openai_messages` / `chunk` turn artifact lists straight into prompts,
 API messages, or RAG chunks. The IR contract and DSL grammar are frozen in
 [spec/](spec/) and enforced by a conformance suite; the generated option
 cheatsheet lives in [docs/dsl-options.md](docs/dsl-options.md).
 
-Everything else (legacy `.doc`/`.ppt`, EPS, video, `s3://`,
+Everything else (EPS, video, `s3://`,
 `gdrive://`, `notion://`, …) is the
 long tail we want help with — each new processor is one pure function
 `(bytes, options) -> artifact` plus a declared option schema. Start with

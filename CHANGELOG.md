@@ -9,10 +9,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Six additions from the FunctAI review
 ([docs/review-2026-10-06-functai.md](docs/review-2026-10-06-functai.md)),
-useful to every consumer, plus one severe bug fix; and web pages rebuilt
-(Markdown output, main-content extraction, screenshots).
+useful to every consumer, plus one severe bug fix; web pages rebuilt
+(Markdown output, main-content extraction, screenshots); and folders made
+safe and readable again (skip rules, limits, overview), with the path
+types 0.25 had back.
 
 ### Added
+
+- **Folders skip what should not reach a model.** One set of rules for
+  folders, patterns, GitHub repos and archive members
+  (`_sources/_ignore.py`): secrets (`.env` files, private keys, credential
+  files, Terraform state), dependencies and generated files (`node_modules`,
+  virtual environments found by their `pyvenv.cfg`, caches found by the
+  standard `CACHEDIR.TAG`, lock files, compiled objects, minified bundles),
+  hidden files, and `.gitignore` / `.attachmentsignore` with full git
+  semantics (negation, anchoring, `**`, nested files, parent folders up to
+  the repository root, `.git/info/exclude`) — checked against
+  `git check-ignore` in the tests. Ambiguous names (`build`, `bin`,
+  `vendor`, `env`) are not guessed at; `.gitignore` decides.
+- **Folder options** (`att.options("file://")`, also on `github://`):
+  `ignore` (more patterns; `!name` brings one back; `none` skips nothing
+  but `.git`), `hidden`, `glob` (alias `include`: only matching files),
+  `recursive`, `max_files` (default 1000), `max_size` (default 256 MiB,
+  `50MB`-style values; `0` = no limit), `files: false` (the overview only,
+  nothing read) and `tree`. A file too big for what is left of `max_size`
+  is skipped and reading goes on.
+- **Folder overview**: folders and repositories start with a
+  `kind: "directory"` artifact — the file tree, git branch, commit and
+  origin (credentials removed; read from `.git`, never by running git),
+  and what was skipped, by reason, with how to get it back. Patterns and
+  archives get it only when a limit was hit or nothing was read
+  (`tree: true/false` overrides). `sources=False` leaves overviews out, as
+  they are made of file names.
+- **`att()` takes lists** (any iterable, nested, read in order; options
+  apply to each), **`pathlib.Path`**, **`~/...`** and **`file://` URIs**.
+  An input that is not a path becomes an `unpack-error` artifact.
+- **Wildcards anywhere in a path**: `reports/*/summary.md`, and invalid
+  sets like `[x-f]` are literal. Patterns follow the skip rules too, so
+  `**/*.js` no longer pulls in `node_modules`; when nothing matches because
+  everything was skipped, the error says so and how to include them.
+- **`att.from_prompt(prompt, root=..., urls=False, **options)`**, the
+  successor of 0.25's `auto_attach`: attaches the files a prompt mentions
+  (backticks, quotes, bare names with an extension, DSL options included),
+  in order, once each. Mentions are untrusted: confined to the root folders
+  (no `..`, absolute paths or links out), secrets never attached, URLs only
+  with `urls=True`.
+- **Old Office and OpenDocument files** — `.doc`, `.ppt`, `.odt`, `.odp`,
+  `.ods` — converted by LibreOffice, then read by the docx/pptx/xlsx
+  processors with their options (images, slide segments). LibreOffice is a
+  program, not a pip package: without it the error says how to install it
+  (`ATTACHMENTS_LIBREOFFICE` points at a specific `soffice`). Each
+  conversion gets its own profile and is killed after
+  `ATTACHMENTS_LIBREOFFICE_TIMEOUT` seconds (default 120).
+- `attachments._sources.resolve()` returns files plus a `TreeReport` per
+  tree; `unpack()` keeps its exact shape and gained `options=`.
 
 - **Public wire form**: `Artifacts.to_wire()` / `Artifacts.from_wire(data)`
   and the per-artifact `artifact_to_wire()` / `artifact_from_wire()`
@@ -104,6 +154,16 @@ useful to every consumer, plus one severe bug fix; and web pages rebuilt
 - OCR (pdf and image) reads a full-size, lossless image even when the
   delivered images are shrunk or JPEG.
 - JPEG output of transparent images is flattened onto white (was: black).
+- **Folders read differently**: they start with the overview artifact
+  (so `att("docs/")[0]` is no longer the first file — `[tree: false]`
+  restores that), and secrets, dependencies, hidden and `.gitignore`'d
+  files are skipped (`.gitignore` used to be honoured only at the top
+  level, without `!`). Reading stops at 1000 files / 256 MiB.
+  `unpack()` applies the same rules.
+- Pattern results come in folder order (a folder's files, then its
+  subfolders), like folders; they used to be sorted as full paths.
+- GitHub clones are deleted once read (they used to pile up in the temp
+  folder, one per call).
 - **HTML text is Markdown** (was: plain text with a line break at every
   inline tag). `select:` results are Markdown too (`select: h1` gives
   `# Title`). The page title is prefixed as `# Title` only when the page has
@@ -133,6 +193,16 @@ useful to every consumer, plus one severe bug fix; and web pages rebuilt
   that names the `raw.githubusercontent.com` address of the file itself.
 - Web pages lost their sentence flow (every link, bold word and highlighted
   code token on its own line), and tables and code had no structure.
+- `att(["a.pdf", "b.csv"])` and `att(Path(...))` raised `AttributeError`
+  instead of returning artifacts.
+- CLI: several option flags (`att doc.pdf --pages 1 --images true`) made
+  several `[...]` groups and only the last was read; flags with dashes
+  (`--max-files`) never matched an option. Flags now merge into one set of
+  options, typed like DSL values.
+- A symbolic link inside a folder (or a cloned repository) could make
+  attachments read any file on the machine; links leading outside the
+  folder are no longer followed. Named pipes no longer hang a folder walk,
+  and an unreadable subfolder no longer fails the whole folder.
 
 ## [1.0.0] - 2026-06-09
 

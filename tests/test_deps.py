@@ -254,8 +254,13 @@ class TestDependencyMapCompleteness:
             assert len(modules) > 0, f"{feature} has no modules"
 
     def test_all_entries_have_hints(self):
+        from attachments.deps import PROGRAM_FEATURES
+
         for feature, (_modules, hint) in DEPENDENCY_MAP.items():
-            assert "pip install" in hint, f"{feature} missing pip hint"
+            if feature in PROGRAM_FEATURES:
+                assert "install" in hint and "ATTACHMENTS_" in hint, feature
+            else:
+                assert "pip install" in hint, f"{feature} missing pip hint"
 
     def test_no_empty_module_names(self):
         for feature, (modules, _hint) in DEPENDENCY_MAP.items():

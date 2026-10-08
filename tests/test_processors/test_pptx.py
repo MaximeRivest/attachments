@@ -113,7 +113,10 @@ def pptx_with_table():
 class TestPptxProcessor:
     def test_registered(self):
         assert ".pptx" in processors
-        assert ".ppt" not in processors  # python-pptx cannot read legacy .ppt
+        # python-pptx cannot read legacy .ppt: LibreOffice converts it first.
+        from attachments._processors.legacy_office import legacy_office_processor
+
+        assert processors[".ppt"] is legacy_office_processor
 
     def test_text_and_kind(self, two_slide_pptx):
         result = processors[".pptx"](two_slide_pptx, filename="deck.pptx")
