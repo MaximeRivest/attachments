@@ -1,11 +1,12 @@
 # api.attachments.dev — launch-day runbook
 
-> **Untested build notice:** docker was not available where this kit was
-> authored. Before anything else, validate the image builds, from the repo
+> **Build status:** the image builds and serves on amd64 (Podman 5,
+> 2026-10-08; 1.72 GB). The build itself fails if OCR or LibreOffice does not
+> work (`warmup.py --strict`). Not yet built on arm64 (c7g). From the repo
 > root:
 >
 > ```bash
-> uv build && docker build -f deploy/Dockerfile -t attachments-api .
+> rm -rf dist && uv build --wheel && docker build -f deploy/Dockerfile -t attachments-api .
 > ```
 
 Architecture: one raw EC2 CPU instance runs the whole free tier (nginx TLS →
@@ -26,7 +27,12 @@ https://aws.amazon.com/ec2/pricing/on-demand/.
 | c7a.xlarge | 4 / 8 GiB    | If launch traffic spikes     | ~$150             | `WEB_CONCURRENCY=4`, `API_MEM_LIMIT=6g` |
 | g6.xlarge  | 4 / 16 GiB + L4 24 GB | GPU phase 2 (vLLM + LightOnOCR-2-1B) | ~$580 on-demand / spot often ~60-70% less | Run only while needed; spot is fine (stateless) |
 
-Disk: 30 GB gp3 is plenty (image + models + logs).
+Disk: 30 GB gp3 is plenty (1.7 GB image + models + logs).
+
+Memory: a LibreOffice conversion (`.doc`, `.ppt`, `.odt`, `.odp`, `.ods`)
+runs a separate `soffice` process for ~1.5-2 s; with the sync workers at
+most `WEB_CONCURRENCY` run at once. Measured: 6 parallel requests peaked at
+365 MB for the whole container.
 
 ## 2. DNS
 
@@ -46,8 +52,8 @@ Disk: 30 GB gp3 is plenty (image + models + logs).
 ## 4. Launch sequence
 
 ```bash
-# 0. Locally: build the wheel the image installs
-cd ~/Projects/attachmentsv3 && uv build
+# 0. Locally: build the ONE wheel the image installs
+cd ~/Projects/attachments && rm -rf dist && uv build --wheel
 
 # 1. Launch Ubuntu 24.04 instance (c7a.large, 30GB gp3, Elastic IP, SG above)
 #    with deploy/ec2-user-data.sh as user data. It installs docker, fail2ban,
@@ -89,7 +95,8 @@ print(a[0]["meta"]["via"], a[0]["text"][:200])
 EOF
 
 # Limits behave: an oversized body gets 413 from nginx, rapid POSTs get 429
-# Warm check: the FIRST /process with ocr should NOT pay model-load time
+# Warm check: the FIRST /process with ocr should NOT pay model-load time;
+# warmup also converts a tiny .doc ("LibreOffice converts (.doc) in ...")
 docker compose -f deploy/docker-compose.yml logs api | grep warmup
 ```
 
@@ -104,7 +111,7 @@ docker compose -f deploy/docker-compose.yml logs api | grep warmup
   (json-file, rotated at 50 MB x3). nginx access log includes
   `rt=`/`urt=` upstream timing for spotting slow OCR requests.
 - **Update flow:** `rsync` new tree (or `git pull` post-publish) →
-  `uv build` → `docker compose ... up -d --build`. Post-PyPI: switch the
+  `rm -rf dist && uv build --wheel` → `docker compose ... up -d --build`. Post-PyPI: switch the
   Dockerfile to the commented `pip install attachments[server]==X.Y.Z` line
   and updates become a one-line version bump.
 - **fail2ban:** installed by user-data with defaults (sshd jail). Optional:

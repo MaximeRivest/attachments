@@ -9,9 +9,13 @@ caches. It:
    workers via fork (copy-on-write).
 2. Runs a tiny OCR inference so rapidocr downloads/loads its ONNX models
    and the onnxruntime session is resident in RAM before the first request.
+3. Converts a tiny document with LibreOffice both ways (docx -> doc, then
+   reads the .doc back), so a broken LibreOffice install is caught, and its
+   files are in the page cache before the first .doc/.ppt request.
 
 Usage:
-    python /app/warmup.py
+    python /app/warmup.py            # at container start: problems are logged
+    python /app/warmup.py --strict   # at image build: any problem fails
 """
 
 from __future__ import annotations
@@ -33,7 +37,7 @@ def warm_processors() -> None:
     print(f"[warmup] features: {', '.join(available)}")
 
 
-def warm_ocr() -> None:
+def warm_ocr(strict: bool = False) -> None:
     """Run one tiny OCR inference so the ONNX session is RAM-warm."""
     t0 = time.time()
     try:
@@ -49,19 +53,53 @@ def warm_ocr() -> None:
         buf = io.BytesIO()
         img.save(buf, format="PNG")
 
-        _process_single(
+        result = _process_single(
             "warmup.png", buf.getvalue(), options={"ocr": True}, prefer="local-only"
         )
+        error = result.get("meta", {}).get("error")
+        if error:
+            raise RuntimeError(f"{error['code']}: {error['message']}")
         print(f"[warmup] OCR engine warm in {time.time() - t0:.1f}s")
     except Exception as exc:  # noqa: BLE001 — warmup must never kill the server
+        if strict:
+            raise
         print(f"[warmup] OCR warmup skipped/failed (non-fatal): {exc}", file=sys.stderr)
 
 
-def main() -> None:
+def warm_libreoffice(strict: bool = False) -> None:
+    """Convert a tiny document both ways: LibreOffice installed and working."""
+    t0 = time.time()
+    try:
+        import docx
+
+        from attachments._processors import processors
+        from attachments._processors.legacy_office import convert
+        from attachments.deps import find_libreoffice
+
+        soffice = find_libreoffice()
+        if soffice is None:
+            raise RuntimeError("LibreOffice (soffice) not found")
+        document = docx.Document()
+        document.add_paragraph("warmup 123")
+        buf = io.BytesIO()
+        document.save(buf)
+        doc_bytes = convert(buf.getvalue(), ".docx", ".doc", soffice)
+        result = processors[".doc"](doc_bytes, filename="warmup.doc")
+        if "warmup 123" not in result.get("text", ""):
+            raise RuntimeError(f"unexpected result: {result.get('meta')}")
+        print(f"[warmup] LibreOffice converts (.doc) in {time.time() - t0:.1f}s")
+    except Exception as exc:  # noqa: BLE001 — warmup must never kill the server
+        if strict:
+            raise
+        print(f"[warmup] LibreOffice check failed (non-fatal): {exc}", file=sys.stderr)
+
+
+def main(strict: bool = False) -> None:
     warm_processors()
-    warm_ocr()
+    warm_ocr(strict)
+    warm_libreoffice(strict)
     print("[warmup] done")
 
 
 if __name__ == "__main__":
-    main()
+    main(strict="--strict" in sys.argv[1:])

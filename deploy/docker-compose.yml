@@ -35,7 +35,7 @@ services:
         max-file: "3"
 
   nginx:
-    image: nginx:1.27-alpine
+    image: docker.io/library/nginx:1.27-alpine
     restart: unless-stopped
     depends_on:
       - api
@@ -57,7 +57,7 @@ services:
   # First issuance is done from the host BEFORE nginx can start with TLS —
   # see deploy/RUNBOOK.md "Launch sequence".
   certbot:
-    image: certbot/certbot
+    image: docker.io/certbot/certbot
     restart: unless-stopped
     volumes:
       - certbot-etc:/etc/letsencrypt
@@ -76,7 +76,7 @@ services:
   # CPU instance's SG may reach it).
   # ===========================================================================
   # vllm:
-  #   image: vllm/vllm-openai:latest
+  #   image: docker.io/vllm/vllm-openai:latest
   #   restart: unless-stopped
   #   command: >
   #     --model lightonai/LightOnOCR-2-1B

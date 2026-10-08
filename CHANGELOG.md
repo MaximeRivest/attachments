@@ -61,6 +61,14 @@ types 0.25 had back.
   (`ATTACHMENTS_LIBREOFFICE` points at a specific `soffice`). Each
   conversion gets its own profile and is killed after
   `ATTACHMENTS_LIBREOFFICE_TIMEOUT` seconds (default 120).
+- **Server image converts old Office files**: `deploy/Dockerfile` installs
+  LibreOffice (writer/impress/calc, no GUI; +0.42 GB, 1.72 GB total) and
+  `tini` as PID 1, caps conversions at 60 s (under gunicorn's 120 s), and
+  the build fails unless OCR and a real `.doc` conversion work
+  (`warmup.py --strict`). Clients without LibreOffice get these files
+  converted by the service. Base images are fully qualified so Podman
+  builds it too; the wheel is found by pattern instead of a stale default
+  version. First verified build of the deploy kit.
 - `attachments._sources.resolve()` returns files plus a `TreeReport` per
   tree; `unpack()` keeps its exact shape and gained `options=`.
 
