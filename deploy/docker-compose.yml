@@ -47,6 +47,14 @@ services:
       - ../site:/var/www/site:ro
       - certbot-etc:/etc/letsencrypt:ro
       - certbot-webroot:/var/www/certbot:ro
+    # nginx reads its certificate once, at start: without a reload it keeps
+    # serving the old one after certbot renews it (this let the live cert
+    # expire on 2026-09-08 while renewed copies sat on disk). Reload every
+    # 12 h — the same pace as certbot's renew loop; a reload drops no
+    # connections.
+    command: >
+      /bin/sh -c 'while :; do sleep 12h & wait $${!}; nginx -s reload; done &
+      exec nginx -g "daemon off;"'
     logging:
       driver: json-file
       options:

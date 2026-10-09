@@ -1,0 +1,43 @@
+name: Monitor api.attachments.dev
+
+# Checks the hosted service from outside, every 6 hours. A failed scheduled
+# run emails the person who last changed this file (GitHub's default for
+# scheduled workflows). Catches: the service down, a certificate within 21
+# days of expiry (renewal or nginx reload broken — the 2026-09 outage), and
+# the website down.
+on:
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Service answers
+        run: |
+          body=$(curl -fsS --max-time 20 --retry 3 --retry-delay 10 \
+            https://api.attachments.dev/health)
+          echo "$body"
+          echo "$body" | grep -q '"status": "ok"'
+
+      - name: Website answers
+        run: curl -fsS --max-time 20 --retry 3 --retry-delay 10 -o /dev/null https://attachments.dev/
+
+      - name: Certificates are not about to expire
+        run: |
+          status=0
+          for host in api.attachments.dev attachments.dev; do
+            end=$(echo | openssl s_client -connect "$host:443" -servername "$host" 2>/dev/null \
+              | openssl x509 -noout -enddate | cut -d= -f2)
+            days=$(( ($(date -d "$end" +%s) - $(date +%s)) / 86400 ))
+            echo "$host: certificate expires $end ($days days)"
+            if [ "$days" -lt 21 ]; then
+              echo "::error::$host certificate expires in $days days — certbot renews at 30; check the certbot and nginx containers"
+              status=1
+            fi
+          done
+          exit $status

@@ -108,6 +108,13 @@ docker compose -f deploy/docker-compose.yml logs api | grep warmup
 
 ## 6. Ops
 
+- **Certificates:** certbot renews every 12 h when under 30 days left;
+  nginx reloads every 12 h to pick the new one up (without that reload the
+  live cert expired on 2026-09-08 while renewed copies sat on disk). The
+  `Monitor api.attachments.dev` GitHub workflow fails, and emails, when a
+  cert has under 21 days left or the service is down.
+- **Cost reality (2026-07..09):** ≈ $108/month on m6i.large in ca-central-1,
+  including tax and the public IPv4 address fee.
 - **Logs:** `docker compose -f deploy/docker-compose.yml logs -f api nginx`
   (json-file, rotated at 50 MB x3). nginx access log includes
   `rt=`/`urt=` upstream timing for spotting slow OCR requests.
