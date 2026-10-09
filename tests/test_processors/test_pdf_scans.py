@@ -166,6 +166,34 @@ class TestAutomaticOcrLimit:
         assert "! scan.pdf: ocr: read the first 1 of 2" in repr(att(str(path)))
 
 
+class TestOcrPageSettings:
+    def test_ocr_auto_pages(self, fake_ocr):
+        from attachments import configure, reset_config
+
+        configure(ocr_auto_pages=1)
+        try:
+            result = process_pdf(_pdf("scan", "scan"))
+        finally:
+            reset_config()
+        assert len(fake_ocr) == 1
+        assert "automatic OCR stops there" in result["meta"]["warnings"][0]
+
+    def test_ocr_max_pages_bounds_even_forced_ocr(self, fake_ocr, monkeypatch):
+        monkeypatch.setenv("ATTACHMENTS_OCR_MAX_PAGES", "2")
+        result = process_pdf(_pdf("scan", "scan", "scan"), ocr=True)
+        assert len(fake_ocr) == 2
+        (warning,) = result["meta"]["warnings"]
+        assert "this machine reads at most that many" in warning
+        assert "[pages: 3-] reads the rest" in warning
+        assert "[ocr: true]" not in warning
+
+    def test_ocr_max_pages_lowers_automatic_ocr(self, fake_ocr, monkeypatch):
+        monkeypatch.setenv("ATTACHMENTS_OCR_MAX_PAGES", "1")
+        result = process_pdf(_pdf("scan", "scan"))
+        assert len(fake_ocr) == 1
+        assert "first 1 of 2" in result["meta"]["warnings"][0]
+
+
 class TestTurnedPages:
     def test_picture_of_a_turned_page_is_delivered_upright(self, monkeypatch):
         monkeypatch.setattr(

@@ -49,10 +49,27 @@ DEFAULT_MAX_DIM = 2000
 #: the same; on text and drawings PNG stays sharp and small.
 PHOTO_COVER = 0.5
 
-#: Pages ``ocr: auto`` reads at most in one document; ``ocr: true`` reads
-#: them all. A fixed page count, not a time limit, so the same file always
-#: gives the same text. About a minute on a recent laptop.
+#: Pages ``ocr: auto`` reads at most in one document by default
+#: (``configure(ocr_auto_pages=N)``); ``ocr: true`` reads them all, up to
+#: ``ocr_max_pages`` when a server sets one. A page count, not a time limit,
+#: so the same file always gives the same text. About a minute on a laptop.
 AUTO_OCR_MAX_PAGES = 50
+
+
+def _ocr_limit(forced: bool) -> tuple[int | None, str]:
+    """Most pages OCR may read here, and how to say why it stopped."""
+    from ..config import get_config
+
+    hard = get_config("ocr_max_pages")
+    auto = int(get_config("ocr_auto_pages") or AUTO_OCR_MAX_PAGES)
+    if forced:
+        return (
+            (int(hard), "this machine reads at most that many") if hard else (None, "")
+        )
+    if hard and int(hard) < auto:
+        return int(hard), "this machine reads at most that many"
+    return auto, "automatic OCR stops there"
+
 
 #: OCR draws pages at this resolution (at least): accurate down to 8 pt
 #: print in the measurements, while lower resolutions start to slip.
@@ -627,8 +644,9 @@ def _ocr_pages(
     if engine == "rapidocr" and not check_dep("ocr").available:
         return missing_dep_artifact(source, "ocr") if forced else None
 
-    chosen = pages if forced else pages[:AUTO_OCR_MAX_PAGES]
-    skipped = [] if forced else pages[AUTO_OCR_MAX_PAGES:]
+    most, _why = _ocr_limit(forced)
+    chosen = pages if most is None else pages[:most]
+    skipped = [] if most is None else pages[most:]
     recognize = (
         _ocr.lighton_reader(url) if url and engine == "lighton" else _ocr.recognize
     )
@@ -964,11 +982,16 @@ def process_pdf(
                 read, skipped, made = outcome
                 if skipped:
                     first = skipped[0] + 1
+                    most, why = _ocr_limit(ocr_forced)
+                    how = (
+                        f"[pages: {first}-] reads the rest"
+                        if ocr_forced
+                        else f"[ocr: true] reads them all, [pages: {first}-] the rest"
+                    )
                     warnings.append(
-                        f"ocr: read the first {AUTO_OCR_MAX_PAGES} of "
-                        f"{len(to_look_at)} pages without text (automatic OCR "
-                        f"stops there); pages {first} and later have no text. "
-                        f"[ocr: true] reads them all, [pages: {first}-] the rest"
+                        f"ocr: read the first {most} of {len(to_look_at)} pages "
+                        f"without text ({why}); pages {first} and later have "
+                        f"no text. {how}"
                     )
                 if read:
                     texts = [

@@ -201,4 +201,4 @@ att.options = options  # type: ignore[attr-defined]
 att.help = att_help  # type: ignore[attr-defined]
 att.from_prompt = from_prompt  # type: ignore[attr-defined]
 
-__version__ = "1.0.0b3"  # must equal pyproject.toml (tests/test_version.py)
+__version__ = "1.0.0b4"  # must equal pyproject.toml (tests/test_version.py)

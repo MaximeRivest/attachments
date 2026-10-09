@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0b4] - 2026-10-09
+
+### Added
+
+- **`ocr_auto_pages`** (default 50) and **`ocr_max_pages`** (default no
+  limit) in `configure()` and as `ATTACHMENTS_OCR_AUTO_PAGES` /
+  `ATTACHMENTS_OCR_MAX_PAGES`: pages OCR reads in one document. The second
+  also bounds `ocr: true`, for servers whose requests must end in time;
+  the warning then says `[pages: N-]` reads the rest.
+
+### Changed
+
+- Hosted service settings (`deploy/`): OCR stops at 25 pages a document
+  (2 cores read ~2 s a page; gunicorn ends requests at 120 s), container
+  memory 5 GB (each worker peaks ~1.2 GB reading a scan).
+
 ## [1.0.0b3] - 2026-10-09
 
 Scanned documents: readable text, requests Claude accepts, and no long
@@ -527,6 +543,7 @@ DSL options or their kwarg twins (`att("doc.pdf[pages: 1-4]")`). Custom
 loaders/presenters become processors or unpack handlers (see
 [DEVELOPMENT.md](DEVELOPMENT.md)).
 
+[1.0.0b4]: https://pypi.org/project/attachments/1.0.0b4/
 [1.0.0b3]: https://pypi.org/project/attachments/1.0.0b3/
 [1.0.0b2]: https://pypi.org/project/attachments/1.0.0b2/
 [1.0.0b1]: https://pypi.org/project/attachments/1.0.0b1/

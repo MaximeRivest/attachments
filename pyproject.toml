@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "attachments"
-version = "1.0.0b3"  # pre-release: plain `pip install attachments` still gets 0.25; see LAUNCH.md
+version = "1.0.0b4"  # pre-release: plain `pip install attachments` still gets 0.25; see LAUNCH.md
 description = "Turn anything into LLM-ready artifacts. Universal file and source processing."
 readme = "README.md"
 requires-python = ">=3.11"

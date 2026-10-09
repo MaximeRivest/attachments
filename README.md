@@ -447,6 +447,7 @@ att("scan.pdf")                 # text of up to 50 scanned pages, plus their pic
 att("scan.pdf[ocr: true]")      # every scanned page, however many
 att("scan.pdf[ocr: false]")     # pictures only
 configure(ocr_workers=1)        # one page at a time (each page read holds ~0.6 GB)
+configure(ocr_max_pages=25)     # a server: no document reads more, even with ocr: true
 ```
 
 On realistic test scans (English, French, invoices) under 0.5% of words

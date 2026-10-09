@@ -31,6 +31,8 @@ _DEFAULTS: dict = {
     "service_url": "https://api.attachments.dev/v1",
     "timeout": 60,
     "ocr_workers": None,
+    "ocr_auto_pages": None,
+    "ocr_max_pages": None,
     "progress": True,
 }
 
@@ -40,6 +42,8 @@ _config: dict = {
     "service_url": "https://api.attachments.dev/v1",
     "timeout": 60,  # seconds for service requests
     "ocr_workers": None,  # pages read at once by OCR; None = by cores
+    "ocr_auto_pages": None,  # pages `ocr: auto` reads; None = 50
+    "ocr_max_pages": None,  # most pages any OCR reads (servers); None = all
     "progress": True,  # progress bar for long work, on terminals/notebooks
 }
 
@@ -87,8 +91,8 @@ as a number
                     f"Invalid ATTACHMENTS_TIMEOUT value {raw!r}: "
                     f"expected seconds as a number"
                 ) from None
-    if key == "ocr_workers":
-        return _check_ocr_workers(raw, f"ATTACHMENTS_OCR_WORKERS value {raw!r}")
+    if key in ("ocr_workers", "ocr_auto_pages", "ocr_max_pages"):
+        return _check_ocr_workers(raw, f"ATTACHMENTS_{key.upper()} value {raw!r}")
     if key == "progress":
         value = raw.strip().lower()
         if value in ("1", "true", "yes", "on"):
@@ -141,6 +145,11 @@ def configure(**kwargs) -> None:
         ocr_workers: Pages OCR reads at once (default ``None``: from the
             processor cores, at most 3; each page being read holds about
             0.6 GB).
+        ocr_auto_pages: Pages ``ocr: auto`` reads in one document (default
+            50); a warning names the rest.
+        ocr_max_pages: Most pages any OCR reads in one document, even with
+            ``ocr: true`` (default ``None``: no limit). For servers, so a
+            long scan cannot outlast the request timeout.
         progress: Show a progress bar for long work such as OCR, on a
             terminal or in a notebook (default ``True``; never in logs).
 
@@ -167,10 +176,9 @@ def configure(**kwargs) -> None:
     if invalid_keys:
         raise ValueError(f"Invalid config keys: {invalid_keys}. Valid: {valid_keys}")
 
-    if kwargs.get("ocr_workers") is not None:
-        kwargs["ocr_workers"] = _check_ocr_workers(
-            kwargs["ocr_workers"], f"ocr_workers={kwargs['ocr_workers']!r}"
-        )
+    for key in ("ocr_workers", "ocr_auto_pages", "ocr_max_pages"):
+        if kwargs.get(key) is not None:
+            kwargs[key] = _check_ocr_workers(kwargs[key], f"{key}={kwargs[key]!r}")
     if "progress" in kwargs and not isinstance(kwargs["progress"], bool):
         raise ValueError(
             f"Invalid progress={kwargs['progress']!r}: expected True/False"
@@ -352,6 +360,8 @@ def reset_config() -> None:
         "service_url": "https://api.attachments.dev/v1",
         "timeout": 60,
         "ocr_workers": None,
+        "ocr_auto_pages": None,
+        "ocr_max_pages": None,
         "progress": True,
     }
     _explicitly_set.clear()
