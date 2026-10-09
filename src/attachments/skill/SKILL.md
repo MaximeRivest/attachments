@@ -183,9 +183,11 @@ of prompts too.
 a.estimate_tokens()  # {'text': 295, 'images': 3200, 'total': 3495}; repr shows it too
 ```
 
-Rough figures: text is characters / 4; a picture is width x height / 750,
-at most about 1,600 per picture (Anthropic's rule; OpenAI counts differently).
-`max_dim` lowers **tokens** (`max_dim: 768`: about 450 to 600 per page);
+Rough figures: text is characters / 4; a picture is Claude's count of 28 x 28
+pixel patches: up to 4,784 on Claude 4.7 and later (a default page picture is
+about 4,000), up to 1,568 on other models (`estimate_tokens(tier="standard")`).
+The estimate uses the larger, so budgets hold everywhere; OpenAI counts
+differently. `max_dim` lowers **tokens** (`max_dim: 768`: about 600 a page);
 `image_format: jpeg` lowers **bytes** (request size, logs); the default `auto`
 already uses it for scanned and photo pages, PNG for text pages where it is
 sharp and often smaller.

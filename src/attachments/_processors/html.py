@@ -37,6 +37,7 @@ from ..types import (
 )
 from . import register_processor
 from ._imageout import check_image_output, limit, output_format
+from ._metadata import strip_metadata
 
 log = logging.getLogger("attachments.processors.html")
 
@@ -88,7 +89,7 @@ def _data_uri_images(img_tags: list[Any], filename: str) -> list[dict[str, Any]]
                 {
                     "name": f"{filename}-img-{len(images) + 1}.{ext}",
                     "mimetype": mime,
-                    "bytes": base64.b64decode(b64),
+                    "bytes": strip_metadata(base64.b64decode(b64), mime)[0],
                 }
             )
         except Exception as exc:

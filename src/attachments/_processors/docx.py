@@ -14,6 +14,7 @@ from typing import Any
 from .._options import register_options
 from ..types import ERROR_PARSE, error_artifact, make_artifact, missing_dep_artifact
 from . import register_processor
+from ._metadata import strip_metadata
 from ._office_pages import (
     DEFAULT_DPI,
     DEFAULT_MAX_DIM,
@@ -127,7 +128,8 @@ def docx_processor(
                         {
                             "name": f"{filename}-image-{i + 1}.{ext}",
                             "mimetype": ct,
-                            "bytes": img_bytes,
+                            # No GPS, dates or camera serials to the model.
+                            "bytes": strip_metadata(img_bytes, ct)[0],
                         }
                     )
                 except Exception as exc:

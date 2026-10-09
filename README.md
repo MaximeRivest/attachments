@@ -79,7 +79,7 @@ collapse into a `+N more errors (see .errors)` line (real runs):
 
 ```python
 >>> att("report.pdf[pages: 1-2, images: true]")
-<Artifacts: 1 artifact | 94 chars | ~3.2k tokens (images ~3.2k) | 2 images>
+<Artifacts: 1 artifact | 94 chars | ~8.1k tokens (images ~8.1k) | 2 images>
 
 >>> att("missing.pdf")
 <Artifacts: 1 artifact | 0 chars | ~0 tokens | 1 error>
@@ -87,12 +87,14 @@ collapse into a `+N more errors (see .errors)` line (real runs):
 ```
 
 The `~N tokens` segment (also `.tokens`, split out by
-`.estimate_tokens()` → `{'text': 24, 'images': 3200, 'total': 3224}`) is a
+`.estimate_tokens()` → `{'text': 24, 'images': 8064, 'total': 8088}`) is a
 rough budget figure, not a tokenizer count: text is characters / 4, and each
-image is about width × height / 750 after shrinking to 1,568 pixels on its
-longest side and at most ~1,600 tokens (Anthropic's published rule; OpenAI
-counts differently). Image sizes are read from the file headers, with no
-extra dependency.
+image is Claude's count of 28 × 28 pixel patches after its resizing, on the
+high-resolution tier of Claude 4.7 and later (up to 4,784 a picture), so a
+budget holds for every Claude model; `.estimate_tokens(tier="standard")`
+counts for other Claude models (up to 1,568; 2,992 here). OpenAI counts
+differently. Image sizes are read from the file headers, with no extra
+dependency.
 
 `print()` (or `.text`) gives the full assembled prompt — v1 muscle memory:
 

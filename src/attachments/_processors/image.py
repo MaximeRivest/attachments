@@ -34,6 +34,7 @@ from ..types import (
 )
 from . import register_processor
 from ._imageout import check_image_output, limit, output_format, pil_encode
+from ._metadata import strip_metadata
 
 #: Formats served as-is (original bytes + mimetype) when no resize is needed.
 _PASSTHROUGH = {
@@ -175,6 +176,7 @@ def image_processor(
     quality: int | None = None,
     ocr: bool | str = False,
     ocr_engine: str = "rapidocr",
+    metadata: bool = False,
     **_: Any,
 ) -> dict[str, Any]:
     """Convert image bytes to an artifact carrying one ImageItem.
@@ -201,6 +203,10 @@ def image_processor(
             ``True`` only when rapidocr is installed, otherwise it is a
             no-op that records ``extra.ocr_hint``. ``False`` (default)
             never runs OCR.
+        metadata: ``False`` (default) removes what the file says about its
+            owner: GPS location, dates, camera serial, thumbnails (EXIF,
+            XMP, IPTC), without touching the pixels; the kinds removed are
+            in ``extra.metadata_removed``. ``True`` keeps the file's bytes.
         ocr_engine: ``"rapidocr"`` (default, local) or ``"lighton"`` —
             a remote LightOnOCR vLLM endpoint configured via the
             ``ATTACHMENTS_LIGHTON_URL`` env var (a server capability, not a
@@ -385,6 +391,10 @@ def image_processor(
                 else:
                     extra["ocr_hint"] = OCR_HINT
 
+        if not metadata:
+            image_bytes, removed = strip_metadata(image_bytes, mimetype)
+            if removed:
+                extra["metadata_removed"] = removed
         return make_artifact(
             text=text,
             images=[{"name": name, "mimetype": mimetype, "bytes": image_bytes}],
@@ -433,6 +443,16 @@ OPTIONS = (
         type="int",
         help="JPEG quality, 1-95 (default 85 when encoding jpeg)",
         example="quality: 75",
+    ),
+    Option(
+        name="metadata",
+        type="bool",
+        default=False,
+        help=(
+            "Keep the photo's metadata (GPS location, dates, camera); "
+            "removed by default, pixels untouched"
+        ),
+        example="metadata: true",
     ),
     Option(
         name="ocr",

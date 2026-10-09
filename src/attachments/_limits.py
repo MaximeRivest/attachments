@@ -19,13 +19,12 @@ from __future__ import annotations
 import base64
 import binascii
 import json
-import os
-import sys
 import warnings
 from dataclasses import dataclass
 from typing import Any
 
 from ._imagesize import image_size
+from ._warn import caller_stacklevel
 
 __all__ = ["RequestLimitWarning", "CLAUDE", "OPENAI", "check_request"]
 
@@ -194,18 +193,6 @@ def request_problems(parts: list[dict[str, Any]], limits: Limits) -> list[str]:
     return problems
 
 
-def _caller_stacklevel() -> int:
-    """stacklevel pointing at the first frame outside this package."""
-    package = os.path.dirname(os.path.abspath(__file__))
-    level, frame = 1, sys._getframe(1)
-    while frame is not None and os.path.abspath(frame.f_code.co_filename).startswith(
-        package
-    ):
-        frame = frame.f_back
-        level += 1
-    return level
-
-
 def check_request(parts: list[dict[str, Any]], limits: Limits) -> None:
     """Warn (:class:`RequestLimitWarning`) when *parts* break *limits*."""
     problems = request_problems(parts, limits)
@@ -216,5 +203,5 @@ def check_request(parts: list[dict[str, Any]], limits: Limits) -> None:
         warnings.warn(
             f"This {limits.provider} request would be rejected:\n{body}",
             RequestLimitWarning,
-            stacklevel=_caller_stacklevel(),
+            stacklevel=caller_stacklevel(),
         )

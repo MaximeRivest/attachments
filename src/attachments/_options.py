@@ -27,12 +27,19 @@ import json
 import logging
 import re
 import textwrap
+import warnings as _warnings
 from dataclasses import dataclass
 from typing import Any
 
 from ._pages import PageSelection, PageSelectionError, parse_pages
 
 log = logging.getLogger("attachments.options")
+
+
+class OptionWarning(UserWarning):
+    """An option was not used: unknown name or invalid value (also kept in
+    the artifact's ``meta.warnings`` and shown when the result is printed)."""
+
 
 #: Valid values for :attr:`Option.type`.
 OPTION_TYPES = (
@@ -316,7 +323,8 @@ def resolve_options(
 
     Returns:
         ``(kwargs, warnings)`` — processor kwargs plus human-readable
-        warnings (also emitted via ``log.warning``).
+        warnings (also emitted as :class:`OptionWarning`, pointing at the
+        caller's line).
 
     Examples:
         >>> schema = (
@@ -330,6 +338,12 @@ def resolve_options(
         {}
         >>> warnings
         ["Unknown option 'sheets' for .xlsx — did you mean 'sheet'?"]
+
+        A misspelt alias names the real option:
+
+        >>> pages = (Option("pages", "pages", aliases=("page",), example="pages: 1-4"),)
+        >>> resolve_options(pages, {"pagez": 1}, context=".pdf")[1]
+        ["Unknown option 'pagez' for .pdf — did you mean 'pages'? (e.g. [pages: 1-4])"]
     """
     lookup: dict[str, Option] = {}
     for option in schema:
@@ -338,9 +352,12 @@ def resolve_options(
             lookup.setdefault(alias, option)
         if option.param:
             lookup.setdefault(option.param, option)
-    suggestible = sorted(
-        {o.name for o in schema} | {a for o in schema for a in o.aliases}
-    )
+    # Suggest from names and aliases, but always name the real option.
+    by_spelling = {o.name: o for o in schema}
+    for o in schema:
+        for alias in o.aliases:
+            by_spelling.setdefault(alias, o)
+    suggestible = sorted(by_spelling)
 
     kwargs: dict[str, Any] = {}
     warnings: list[str] = []
@@ -350,7 +367,10 @@ def resolve_options(
             message = f"Unknown option '{key}' for {context}"
             close = difflib.get_close_matches(key, suggestible, n=1)
             if close:
-                message += f" — did you mean '{close[0]}'?"
+                meant = by_spelling[close[0]]
+                message += f" — did you mean '{meant.name}'?"
+                if meant.example:
+                    message += f" (e.g. [{meant.example}])"
             warnings.append(message)
             continue
         try:
@@ -376,8 +396,11 @@ def resolve_options(
         else:
             kwargs[option.param or option.name] = coerced
 
-    for warning in warnings:
-        log.warning("%s", warning)
+    if warnings:
+        from ._warn import caller_stacklevel
+
+        for warning in warnings:
+            _warnings.warn(warning, OptionWarning, stacklevel=caller_stacklevel())
     return kwargs, warnings
 
 

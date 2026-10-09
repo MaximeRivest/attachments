@@ -790,45 +790,85 @@ def chunk(
 # ---------------------------------------------------------------------------
 
 #: Longest image side a model sees; larger images are shrunk first
-#: (Anthropic's published rule for Claude).
-_IMAGE_MAX_EDGE = 1568
+#: Claude's picture limits by resolution tier: (longest edge in px, visual
+#: tokens). "high" is Claude 4.7 and later, "standard" every other model
+#: (docs.claude.com, vision and vision-coordinates pages, read 2026-10-09).
+_TIERS: dict[str, tuple[int, int]] = {"high": (2576, 4784), "standard": (1568, 1568)}
 
-#: Pixels per image token (Anthropic: tokens ~= width * height / 750).
-_PIXELS_PER_TOKEN = 750
-
-#: Most tokens one image costs: Anthropic also shrinks any image over
-#: ~1,600 tokens (~1.2 megapixels). Also the charge for an image whose
-#: size cannot be read — an upper bound, so budgets stay safe.
-_IMAGE_MAX_TOKENS = 1600
+#: Pixels on each side of one visual token (a 28 x 28 patch).
+_PATCH = 28
 
 
-def image_tokens(width: int, height: int) -> int:
-    """Approximate tokens for one image of *width* x *height* pixels.
+def _patches(width: int, height: int) -> int:
+    return -(-width // _PATCH) * -(-height // _PATCH)
 
-    Anthropic's published rule for Claude: shrink so the longest side is
-    at most 1,568 pixels and the image is at most ~1,600 tokens, then
-    count ``width * height / 750``. Other providers count differently
-    (OpenAI's tile rule gives roughly 1,100 for a full page), so treat
-    the result as a budget figure, not billing math.
+
+def _claude_size(width: int, height: int, edge: int, budget: int) -> tuple[int, int]:
+    """The size Claude resizes a picture to (Anthropic's reference code).
+
+    Unchanged when it fits; else the largest aspect-preserving size whose
+    padded sides fit *edge* and whose patches fit *budget*.
 
     Examples:
-        >>> image_tokens(750, 1)
-        1
-        >>> image_tokens(1000, 750)
-        1000
-        >>> image_tokens(2667, 1500)  # a 200 dpi slide-sized page
-        1600
-        >>> image_tokens(3000, 100)  # long and thin: only the edge rule bites
-        110
+        >>> _claude_size(1075, 1520, 1568, 1568)  # the A4 example in the docs
+        (924, 1307)
+    """
+
+    def fits(w: int, h: int) -> bool:
+        return (
+            -(-w // _PATCH) * _PATCH <= edge
+            and -(-h // _PATCH) * _PATCH <= edge
+            and _patches(w, h) <= budget
+        )
+
+    if fits(width, height):
+        return width, height
+    if height > width:
+        h, w = _claude_size(height, width, edge, budget)
+        return w, h
+    aspect = width / height
+    lo, hi = 1, width  # lo always fits, hi never does
+    while lo + 1 < hi:
+        mid = (lo + hi) // 2
+        if fits(mid, max(round(mid / aspect), 1)):
+            lo = mid
+        else:
+            hi = mid
+    return lo, max(round(lo / aspect), 1)
+
+
+def image_tokens(width: int, height: int, *, tier: str = "high") -> int:
+    """Tokens Claude counts for one picture of *width* x *height* pixels.
+
+    Claude cuts a picture into 28 x 28 pixel patches, one token each,
+    after shrinking it to its tier's limits: ``"high"`` (default; Claude
+    4.7 and later: 2,576 px, 4,784 tokens) or ``"standard"`` (other
+    models: 1,568 px, 1,568 tokens). The default is the larger of the two,
+    so a budget built on it holds for every Claude model. Other providers
+    count differently: treat the result as a budget figure.
+
+    Examples:
+        >>> image_tokens(1000, 1000)
+        1296
+        >>> image_tokens(1546, 2000)  # a page picture at the default max_dim
+        4032
+        >>> image_tokens(1546, 2000, tier="standard")
+        1496
+        >>> image_tokens(3000, 100)  # long and thin: the edge limit bites
+        368
     """
     if width <= 0 or height <= 0:
         return 0
-    scale = min(1.0, _IMAGE_MAX_EDGE / max(width, height))
-    pixels = (width * scale) * (height * scale)
-    return max(1, min(_IMAGE_MAX_TOKENS, -(-int(pixels) // _PIXELS_PER_TOKEN)))
+    try:
+        edge, budget = _TIERS[tier]
+    except KeyError:
+        raise ValueError(
+            f"tier must be one of {sorted(_TIERS)}, got {tier!r}"
+        ) from None
+    return _patches(*_claude_size(width, height, edge, budget))
 
 
-def _image_item_tokens(image: dict) -> int:
+def _image_item_tokens(image: dict, tier: str) -> int:
     """Tokens for one ImageItem (in-process or wire form)."""
     raw = image.get("bytes")
     if not isinstance(raw, bytes | bytearray):
@@ -841,18 +881,19 @@ def _image_item_tokens(image: dict) -> int:
             return 0
     size = image_size(bytes(raw))
     if size is None:
-        return _IMAGE_MAX_TOKENS
-    return image_tokens(*size)
+        return _TIERS[tier][1]  # unknown size: the most a picture can cost
+    return image_tokens(*size, tier=tier)
 
 
-def estimate_tokens(artifacts: list[dict]) -> dict[str, int]:
+def estimate_tokens(artifacts: list[dict], *, tier: str = "high") -> dict[str, int]:
     """Rough token cost of *artifacts*: ``{"text", "images", "total"}``.
 
     Text: characters / 4, rounded up (a fast approximation, not a
     tokenizer). Images: :func:`image_tokens` on each image's size, read
-    from its file header (PNG, JPEG, GIF, WebP, BMP); an image whose size
-    cannot be read counts as the maximum, ~1,600. File-name headers that
-    presenters add are not counted.
+    from its file header (PNG, JPEG, GIF, WebP, BMP), for Claude's *tier*
+    (``"high"``, the default and the larger, or ``"standard"``); an image
+    whose size cannot be read counts as the most a picture can cost.
+    File-name headers that presenters add are not counted.
 
     Examples:
         >>> from attachments.types import make_artifact
@@ -864,14 +905,14 @@ def estimate_tokens(artifacts: list[dict]) -> dict[str, int]:
         ...     images=[{"name": "p.png", "mimetype": "image/png", "bytes": png}],
         ... )
         >>> estimate_tokens([art])
-        {'text': 2, 'images': 1000, 'total': 1002}
+        {'text': 2, 'images': 972, 'total': 974}
         >>> estimate_tokens([])
         {'text': 0, 'images': 0, 'total': 0}
     """
     chars = sum(len(artifact.get("text") or "") for artifact in artifacts)
     text = -(-chars // _CHARS_PER_TOKEN)
     images = sum(
-        _image_item_tokens(image)
+        _image_item_tokens(image, tier)
         for artifact in artifacts
         for image in artifact.get("images") or []
     )

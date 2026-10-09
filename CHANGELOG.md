@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0b6] - 2026-10-09
+
+### Changed
+
+- **Photos lose what they say about their owner**: GPS location, dates,
+  camera serial, thumbnails (EXIF, XMP, IPTC, comments, trailing data) are
+  cut out of JPEG, PNG and WebP files without touching the pixels or the
+  colour profile. Applies to images, and to the photos inside Word,
+  PowerPoint and web pages. `[metadata: true]` keeps an image's bytes;
+  `meta.extra.metadata_removed` lists what went.
+- **Token estimates follow Claude's current rule**: 28 x 28 pixel patches
+  after Claude's resizing, on the high-resolution tier of Claude 4.7 and
+  later (up to 4,784 a picture; a default page picture is about 4,000), so
+  budgets hold for every Claude model; `estimate_tokens(tier="standard")`
+  for other models (up to 1,568). The old rule (width x height / 750, at
+  most ~1,600) under-counted pages on current models by about 2.5 times.
+  Checked against Anthropic's reference code (6,014 sizes) and its table.
+- **Mistyped options** name the real option with an example ("did you mean
+  'pages'? (e.g. [pages: 1-4])", not the alias 'page'), and are reported
+  as an `OptionWarning` pointing at your line instead of an unlabelled log
+  line.
+
+### Added
+
+- `OptionWarning`, `image_tokens(..., tier=)`, `estimate_tokens(..., tier=)`.
+
 ## [1.0.0b5] - 2026-10-09
 
 ### Changed
@@ -560,6 +586,7 @@ DSL options or their kwarg twins (`att("doc.pdf[pages: 1-4]")`). Custom
 loaders/presenters become processors or unpack handlers (see
 [DEVELOPMENT.md](DEVELOPMENT.md)).
 
+[1.0.0b6]: https://pypi.org/project/attachments/1.0.0b6/
 [1.0.0b5]: https://pypi.org/project/attachments/1.0.0b5/
 [1.0.0b4]: https://pypi.org/project/attachments/1.0.0b4/
 [1.0.0b3]: https://pypi.org/project/attachments/1.0.0b3/

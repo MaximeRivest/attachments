@@ -64,7 +64,7 @@ def test_repr_summary_line_counts():
     )
     assert (
         repr(arts).splitlines()[0]
-        == "<Artifacts: 3 artifacts | 11 chars | ~1.6k tokens (images ~1.6k)"
+        == "<Artifacts: 3 artifacts | 11 chars | ~4.8k tokens (images ~4.8k)"
         " | 1 image | 1 error>"
     )
 
@@ -292,7 +292,7 @@ def test_tokens_segment_sits_between_chars_and_images():
     # The test image's size cannot be read, so it counts as the maximum.
     arts = Artifacts([_image_artifact()])
     assert repr(arts) == (
-        "<Artifacts: 1 artifact | 0 chars | ~1.6k tokens (images ~1.6k) | 1 image>"
+        "<Artifacts: 1 artifact | 0 chars | ~4.8k tokens (images ~4.8k) | 1 image>"
     )
 
 

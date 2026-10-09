@@ -29,6 +29,7 @@ from ..types import (
     missing_dep_artifact,
 )
 from . import register_processor
+from ._metadata import strip_metadata
 from ._office_pages import (
     DEFAULT_DPI,
     DEFAULT_MAX_DIM,
@@ -249,7 +250,8 @@ def pptx_processor(
                                     f"image-{len(images) + 1}.{ext}"
                                 ),
                                 "mimetype": mimetype,
-                                "bytes": image.blob,
+                                # No GPS, dates or camera serials.
+                                "bytes": strip_metadata(image.blob, mimetype)[0],
                                 "page": slide_no,
                             }
                         )

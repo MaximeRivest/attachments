@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "attachments"
-version = "1.0.0b5"  # pre-release: plain `pip install attachments` still gets 0.25; see LAUNCH.md
+version = "1.0.0b6"  # pre-release: plain `pip install attachments` still gets 0.25; see LAUNCH.md
 description = "Turn anything into LLM-ready artifacts. Universal file and source processing."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -193,3 +193,5 @@ docstring-code-format = true
 minversion = "6.0"
 addopts = "-ra -q --strict-markers --color=yes --cov=attachments --cov-report=term-missing --doctest-modules"
 testpaths = ["tests", "src"]
+# Many tests pass wrong options on purpose and check meta.warnings.
+filterwarnings = ["ignore::attachments.OptionWarning"]

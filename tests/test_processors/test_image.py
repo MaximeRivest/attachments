@@ -333,6 +333,7 @@ class TestRegistration:
             "rotate",
             "image_format",
             "quality",
+            "metadata",
             "ocr",
             "ocr_engine",
         ]
@@ -620,6 +621,12 @@ class TestImageOutputOptions:
         assert seen[0].mode == "RGB"
 
 
+def _pixels(data: bytes) -> bytes:
+    from PIL import Image
+
+    return Image.open(io.BytesIO(data)).convert("RGB").tobytes()
+
+
 class TestExifOrientation:
     """Phone photos store "turn me" as an EXIF tag; deliver them upright."""
 
@@ -656,5 +663,14 @@ class TestExifOrientation:
 
         result = image_processor(data, filename="ok.jpg")
 
-        assert result["images"][0]["bytes"] == data
+        out = result["images"][0]["bytes"]
+        # Not re-encoded: only the metadata segment is cut out.
+        assert _pixels(out) == _pixels(data)
+        assert result["meta"]["extra"]["metadata_removed"] == ["exif"]
+        assert (
+            image_processor(data, filename="ok.jpg", metadata=True)["images"][0][
+                "bytes"
+            ]
+            == data
+        )
         assert "exif_orientation" not in result["meta"]["extra"]

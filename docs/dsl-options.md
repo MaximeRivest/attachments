@@ -15,6 +15,7 @@ Regenerate with `uv run python scripts/gen_dsl_assets.py`.
 | `rotate` | `int` | — | — | `rotate: 90` | Rotate clockwise by this many degrees (negative = counterclockwise) |
 | `image_format` | `str` | — | — | `image_format: jpeg` | Output format: png or jpeg (default: keep jpeg, other formats png) |
 | `quality` | `int` | — | — | `quality: 75` | JPEG quality, 1-95 (default 85 when encoding jpeg) |
+| `metadata` | `bool` | — | `false` | `metadata: true` | Keep the photo's metadata (GPS location, dates, camera); removed by default, pixels untouched |
 | `ocr` | `bool_or_auto` | — | `false` | `ocr: true` | Recognize text in the image with RapidOCR: true/false, or auto (only when rapidocr is installed) |
 | `ocr_engine` | `str` | — | `"rapidocr"` | `ocr_engine: lighton` | OCR engine: rapidocr (local, default) or lighton (remote LightOnOCR vLLM endpoint via ATTACHMENTS_LIGHTON_URL) |
 

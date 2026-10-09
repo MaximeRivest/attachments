@@ -144,15 +144,20 @@ how likely you are to notice:
    default (`watermark: auto`) — which also told the model the file name.
    1.0 never draws on images. To keep names away from the model, use
    `sources=False` on `to_text`, `parts`, `claude`, `openai` and `chunk`.
+   What a photo's file says about its owner (GPS location, dates, camera
+   serial, in EXIF, XMP and IPTC) is removed, pixels untouched, also from
+   photos inside Word, PowerPoint and web pages; `[metadata: true]` keeps a
+   photo's bytes as they are.
 9. **Errors are data, not text or exceptions.** 0.25 sometimes raised and
    sometimes wrote "⚠️ Could not process ..." into the prompt. 1.0 never
    raises; a failed file is an artifact with empty text and a typed
    `meta["error"]` (`missing-dependency`, `parse-error`, `unpack-error`, ...).
    Check `a.errors`, or call `a.raise_for_errors()`.
 10. **Wrong options are reported.** An unknown or invalid option is listed in
-    `meta["warnings"]` with a suggestion ("did you mean 'sheet'?") and the
-    file is read without it. The output is quiet: no "[Attachments] Applying
-    step ..." lines.
+    `meta["warnings"]` and in the printed summary, with a suggestion ("did
+    you mean 'sheet'? (e.g. [sheet: Sales])"), as an `OptionWarning` at your
+    line, and the file is read without it. No "[Attachments] Applying step
+    ..." lines.
 11. **Pages must be named.** `[pages: 1,3,5]`, `[pages: -1]` (last page),
     `[pages: 2-4]` work as in 0.25 — plus `-3-` (last three) and `7-` (to
     the end) — but bare `[3-9]` is no longer page selection: write

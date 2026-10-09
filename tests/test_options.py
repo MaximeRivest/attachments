@@ -365,3 +365,19 @@ class TestOptionsRepr:
         schema = dsl_schema()
         assert type(schema) is dict
         assert all(type(v) is list for v in schema["processors"].values())
+
+
+def test_option_warning_points_at_the_callers_line(tmp_path):
+    """A typo warns at the user's own line, naming the real option."""
+    import warnings
+
+    from attachments import OptionWarning, att
+
+    path = tmp_path / "notes.txt"
+    path.write_text("hello")
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        att(f"{path}[pagez: 1]")
+    (warning,) = [w for w in caught if issubclass(w.category, OptionWarning)]
+    assert warning.filename == __file__
+    assert "Unknown option 'pagez'" in str(warning.message)

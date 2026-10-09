@@ -8,6 +8,7 @@ from typing import Any, Literal
 from ._artifacts import Artifacts as Artifacts
 from ._limits import RequestLimitWarning as RequestLimitWarning
 from ._options import Option as Option
+from ._options import OptionWarning as OptionWarning
 from ._options import dsl_schema as dsl_schema
 from ._options import options as options
 from ._options import register_options as register_options
@@ -76,6 +77,7 @@ __all__ = [
     "artifact_from_wire",
     "AttachmentsError",
     "RequestLimitWarning",
+    "OptionWarning",
     "ERROR_MISSING_DEPENDENCY",
     "ERROR_PASSWORD_REQUIRED",
     "ERROR_PARSE",
@@ -143,6 +145,7 @@ class _Att:
         max_pages: int = ...,
         max_screens: int = ...,
         max_size: str | int = ...,
+        metadata: bool = ...,
         model: str = ...,
         ocr: bool | str = ...,
         ocr_engine: str = ...,

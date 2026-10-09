@@ -290,7 +290,7 @@ class Artifacts(list):
             '1 artifact | 2 chars | ~1 tokens'
             >>> img = {"name": "x.bin", "mimetype": "image/png", "bytes": b"?"}
             >>> Artifacts([make_artifact(text="hi", images=[img])])._summary()
-            '1 artifact | 2 chars | ~1.6k tokens (images ~1.6k) | 1 image'
+            '1 artifact | 2 chars | ~4.8k tokens (images ~4.8k) | 1 image'
         """
         chars = sum(len(artifact.get("text") or "") for artifact in self)
         estimate = self.estimate_tokens()
@@ -435,21 +435,22 @@ class Artifacts(list):
         """
         return render_text(self, sources=sources)
 
-    def estimate_tokens(self) -> dict[str, int]:
+    def estimate_tokens(self, *, tier: str = "high") -> dict[str, int]:
         """Rough token cost: ``{"text", "images", "total"}``.
 
         See ``attachments.render.estimate_tokens``: text is characters / 4;
-        each image is about ``width * height / 750`` after shrinking to
-        1,568 pixels on its longest side and at most ~1,600 tokens
-        (Anthropic's rule; OpenAI counts differently). An approximation
-        for budgets, not billing math.
+        each picture is Claude's count of 28 x 28 pixel patches after its
+        resizing, for the ``"high"`` resolution tier (Claude 4.7 and later,
+        up to 4,784 a picture; the default, so budgets hold for every
+        Claude model) or ``"standard"`` (up to 1,568). OpenAI counts
+        differently. For budgets, not billing math.
 
         Examples:
             >>> from attachments.types import make_artifact
             >>> Artifacts([make_artifact(text="abcdefgh")]).estimate_tokens()
             {'text': 2, 'images': 0, 'total': 2}
         """
-        return estimate_tokens(self)
+        return estimate_tokens(self, tier=tier)
 
     @property
     def tokens(self) -> int:
@@ -758,7 +759,7 @@ class Artifacts(list):
             ...     [make_artifact(text="hi", images=[img], meta={"source": "a"})]
             ... )
             >>> md = a._repr_markdown_()
-            >>> "| ~1.6k tokens (images ~1.6k) | 1 image" in md
+            >>> "| ~4.8k tokens (images ~4.8k) | 1 image" in md
             True
             >>> "![p.png](data:image/png;base64," in md
             True

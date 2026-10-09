@@ -366,7 +366,10 @@ class TestOptionResolutionEndToEnd:
         result = att(f"{file_path}[sheets: 0]")
 
         warnings = result[0]["meta"]["warnings"]
-        assert warnings == ["Unknown option 'sheets' for .xlsx — did you mean 'sheet'?"]
+        assert warnings == [
+            "Unknown option 'sheets' for .xlsx — did you mean 'sheet'? "
+            "(e.g. [sheet: Sales])"
+        ]
         # The bad key is dropped; processing still succeeds
         assert "error" not in result[0]["meta"]
         assert "Alice" in result[0]["text"]
