@@ -33,7 +33,7 @@ pip install "attachments[html]>=1.0.0b1"       # HTML and web pages
 pip install "attachments[browser]>=1.0.0b1"    # web page screenshots (then: playwright install chromium)
 # .doc/.ppt/.odt/.odp/.ods: install LibreOffice (a program, not a pip package)
 pip install "attachments[image]>=1.0.0b1"      # png/jpg/gif/webp/bmp/tiff support
-pip install "attachments[ocr]>=1.0.0b1"        # OCR for scanned PDFs/images (large: pulls onnxruntime)
+pip install "attachments[ocr]>=1.0.0b3"        # OCR for scanned PDFs/images (large: pulls onnxruntime)
 pip install "attachments[audio]>=1.0.0b1"      # mp3/wav/m4a/flac/ogg/opus transcription (large: pulls faster-whisper/ctranslate2)
 pip install "attachments[service]>=1.0.0b1"    # API fallback mode
 pip install "attachments[clipboard]>=1.0.0b1"  # `att --copy` clipboard support
@@ -61,7 +61,7 @@ artifacts = att("https://example.com/f.pdf") # URL
 artifacts = att("report.pdf[pages: 1-4]")
 artifacts = att("report.pdf[pages: 1-10, images: true, dpi: 300]")
 artifacts = att("data.xlsx[sheet: Sales, rows: 100]")
-artifacts = att("scan.pdf[ocr: true]")      # force OCR on a scanned PDF (auto by default)
+artifacts = att("scan.pdf[ocr: true]")      # OCR every scanned page (auto: the first 50)
 artifacts = att("meeting.mp3[model: small, language: en]")  # audio transcription
 artifacts = att("github://org/repo[branch: develop]")
 
@@ -162,15 +162,18 @@ option table (same data as before — `json.dumps` still works), and
 ```python
 >>> att.options(".pdf")
 Option        Type          Aliases  Default     Example              Description
-pages         pages         page     —           pages: 1-4           Pages to include: a
-                                                                      1-based page number
-                                                                      or range.
+pages         pages         page     —           pages: 1-4           Pages to read: 3,
+                                                                      2-5, 7- (to the
+                                                                      end), 1,3,5, -1
+                                                                      (last), -3- (last
+                                                                      three)
 password      str           pw       —           password: secret     Password for
                                                                       encrypted PDFs.
-images        bool_or_auto  render   "auto"      images: true         Render pages to
-                                                                      images: true/false,
-                                                                      or auto (only when
-                                                                      no text).
+images        bool_or_auto  render   "auto"      images: true         Pictures of pages:
+                                                                      true/false, or auto
+                                                                      (the pages with no
+                                                                      text layer, such as
+                                                                      scans).
 dpi           int           —        200         dpi: 300             Resolution for
                                                                       rendered page images
                                                                       (max_dim caps the
@@ -180,20 +183,23 @@ max_dim       int           —        2000        max_dim: 1568        Longest 
                                                                       pixels, applied
                                                                       after dpi; 0 = no
                                                                       cap.
-image_format  str           —        "png"       image_format: jpeg   png (lossless, best
-                                                                      for text) or jpeg
-                                                                      (far smaller for
-                                                                      scans).
+image_format  str           —        "auto"      image_format: jpeg   auto (jpeg for
+                                                                      scanned and photo
+                                                                      pages, png for the
+                                                                      rest), png
+                                                                      (lossless, sharpest
+                                                                      text) or jpeg (far
+                                                                      smaller for scans).
 quality       int           —        85          quality: 75          JPEG quality, 1-95
                                                                       (used with
                                                                       image_format: jpeg).
-ocr           bool_or_auto  —        "auto"      ocr: true            OCR scanned pages
-                                                                      with RapidOCR when
-                                                                      there is no text
-                                                                      layer: true/false,
-                                                                      or auto (only when
-                                                                      rapidocr is
-                                                                      installed).
+ocr           bool_or_auto  —        "auto"      ocr: true            Read pages with no
+                                                                      text layer (scans)
+                                                                      with RapidOCR:
+                                                                      true/false, or auto
+                                                                      (when rapidocr is
+                                                                      installed; first 50
+                                                                      such pages).
 ocr_engine    str           —        "rapidocr"  ocr_engine: lighton  OCR engine: rapidocr
                                                                       (local, default) or
                                                                       lighton (remote
@@ -421,6 +427,31 @@ chunk(att("report.pdf"), max_chars=100)
 # ['## report.pdf\nHello from page 1. Quarterly revenue grew 12%.\n\nHello from page 2. ...',
 #  '## report.pdf\nHello from page 3. Quarterly revenue grew 12%.']
 ```
+
+A request a provider would reject (over Claude's 32 MB, too many pictures,
+pictures too large, a format it does not take) gives a
+`RequestLimitWarning` when it is built, naming the problem and the fix.
+
+### Scanned documents
+
+With `pip install "attachments[ocr]>=1.0.0b3"`, PDF pages that have no text
+layer are read with OCR, page by page: a scanned PDF, or the two scanned
+pages of an otherwise typed one. Those pages also come with their picture,
+as JPEG (about 0.4 MB a page, so a 20-page scan is a 10 MB Claude request).
+OCR runs locally, offline, several pages at once, with a progress bar on a
+terminal or in a notebook; sideways and upside-down pages are turned upright
+(their pictures too), and two-column pages are read column by column.
+
+```python
+att("scan.pdf")                 # text of up to 50 scanned pages, plus their pictures
+att("scan.pdf[ocr: true]")      # every scanned page, however many
+att("scan.pdf[ocr: false]")     # pictures only
+configure(ocr_workers=1)        # one page at a time (each page read holds ~0.6 GB)
+```
+
+On realistic test scans (English, French, invoices) under 0.5% of words
+are wrong, at about 1 s a page on a desktop and 2 s on 2 cores:
+[evals/scans](https://github.com/maximerivest/attachments/blob/main/evals/scans/README.md).
 
 ## Magic-Byte Routing
 

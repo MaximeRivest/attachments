@@ -370,9 +370,7 @@ class TestImageOcr:
         assert result["text"] == ""
         assert "ocr" not in result["meta"]["extra"]
 
-    @pytest.mark.skipif(
-        not check_dep("ocr").available, reason="rapidocr_onnxruntime not installed"
-    )
+    @pytest.mark.skipif(not check_dep("ocr").available, reason="rapidocr not installed")
     def test_ocr_true_recognizes_text(self):
         # Real CPU inference; the first call also loads the model (slow,
         # but the engine is cached at module level for the whole session).
@@ -385,9 +383,7 @@ class TestImageOcr:
         assert extra["ocr_backend"] == "rapidocr"
         assert result["images"]  # the image item is still emitted
 
-    @pytest.mark.skipif(
-        not check_dep("ocr").available, reason="rapidocr_onnxruntime not installed"
-    )
+    @pytest.mark.skipif(not check_dep("ocr").available, reason="rapidocr not installed")
     def test_ocr_auto_behaves_like_true_when_installed(self):
         result = image_processor(_text_image_bytes(), filename="sign.png", ocr="auto")
 
@@ -395,7 +391,7 @@ class TestImageOcr:
         assert result["meta"]["extra"]["ocr"] is True
 
     def test_ocr_true_missing_dep_returns_typed_error(self, mask_modules):
-        mask_modules("rapidocr_onnxruntime")
+        mask_modules("rapidocr")
 
         result = image_processor(_text_image_bytes(), filename="sign.png", ocr=True)
 
@@ -407,7 +403,7 @@ class TestImageOcr:
         assert "attachments.dev" in error["message"]
 
     def test_ocr_auto_missing_dep_is_noop_with_hint(self, mask_modules):
-        mask_modules("rapidocr_onnxruntime")
+        mask_modules("rapidocr")
 
         result = image_processor(_text_image_bytes(), filename="sign.png", ocr="auto")
 
@@ -507,7 +503,7 @@ class TestImageOcrLighton:
         self, monkeypatch, mask_modules
     ):
         monkeypatch.delenv("ATTACHMENTS_LIGHTON_URL", raising=False)
-        mask_modules("rapidocr_onnxruntime")  # fallback path, rapidocr absent
+        mask_modules("rapidocr")  # fallback path, rapidocr absent
 
         result = image_processor(
             _text_image_bytes(), filename="sign.png", ocr="auto", ocr_engine="lighton"
@@ -599,13 +595,15 @@ class TestImageOutputOptions:
         assert result["meta"]["kind"] == "image"
 
     def test_ocr_reads_the_full_size_image_not_the_shrunk_copy(self, monkeypatch):
-        seen: list[bytes] = []
+        from attachments._processors import _ocr
 
-        def fake_ocr(payload: bytes) -> str:
-            seen.append(payload)
-            return "TEXT"
+        seen: list = []
 
-        monkeypatch.setattr(image, "_ocr_image_bytes", fake_ocr)
+        def fake_recognize(picture) -> _ocr.OcrText:
+            seen.append(picture)
+            return _ocr.OcrText("TEXT", 0.99)
+
+        monkeypatch.setattr(_ocr, "recognize", fake_recognize)
         monkeypatch.setattr(
             "attachments.deps.check_dep",
             lambda name: type("S", (), {"available": True, "missing": []})(),
@@ -618,8 +616,8 @@ class TestImageOutputOptions:
 
         assert result["text"] == "TEXT"
         assert image_size(result["images"][0]["bytes"]) == (100, 50)
-        assert seen[0][:8] == b"\x89PNG\r\n\x1a\n"
-        assert image_size(seen[0]) == (400, 200)
+        assert seen[0].size == (400, 200)  # the original pixels, not the JPEG
+        assert seen[0].mode == "RGB"
 
 
 class TestExifOrientation:

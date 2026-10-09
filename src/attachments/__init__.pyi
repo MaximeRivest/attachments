@@ -6,6 +6,7 @@ from collections.abc import Iterable
 from typing import Any, Literal
 
 from ._artifacts import Artifacts as Artifacts
+from ._limits import RequestLimitWarning as RequestLimitWarning
 from ._options import Option as Option
 from ._options import dsl_schema as dsl_schema
 from ._options import options as options
@@ -74,6 +75,7 @@ __all__ = [
     "artifact_to_wire",
     "artifact_from_wire",
     "AttachmentsError",
+    "RequestLimitWarning",
     "ERROR_MISSING_DEPENDENCY",
     "ERROR_PASSWORD_REQUIRED",
     "ERROR_PARSE",

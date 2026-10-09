@@ -7,6 +7,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0b3] - 2026-10-09
+
+Scanned documents: readable text, requests Claude accepts, and no long
+silent waits. Every number below is measured on realistic scans with known
+text ([evals/scans](evals/scans/README.md)).
+
+### Changed
+
+- **OCR engine: RapidOCR 3 with its PP-OCRv6 models** (the `ocr` extra now
+  installs `rapidocr` and `onnxruntime` instead of `rapidocr-onnxruntime`;
+  still local and offline, the models ship in the package). Words read
+  wrong on scanned pages: from 36-60% to under 0.5%. The old engine lost
+  the spaces between words ("Revenuegrewby twelvepercent") and dropped
+  accents ("réunion" read "reunion").
+- **OCR reads several pages at once** (up to 3, 4 threads each, from the
+  machine's cores; `configure(ocr_workers=N)` or
+  `ATTACHMENTS_OCR_WORKERS`), with a progress bar on a terminal or in a
+  notebook (`configure(progress=False)` or `ATTACHMENTS_PROGRESS=0` to
+  hide it). A 20-page scan: 8.3 s a page before, 0.95 s now on a desktop,
+  2 s on 2 cores.
+- **PDFs are handled page by page.** A page without a text layer gets OCR
+  and, with `images: auto`, its picture, also inside an otherwise typed
+  PDF (those pages used to be silently empty); blank pages get neither.
+- **`image_format: auto` is the default** for PDF and Office page pictures:
+  JPEG for a page that pictures (a scan, photos) cover at least half of,
+  PNG for the rest. A scanned page is 0.38 MB instead of 2.3 MB, so a
+  20-page scan is a 10 MB Claude request instead of 60 MB (the API takes
+  32 MB).
+- **Automatic OCR stops at 50 pages** per document (`ocr: auto`), with a
+  warning that says which pages have no text and how to read them
+  (`ocr: true` reads them all). A page count rather than a time limit, so
+  the same file always gives the same text.
+- Warnings (`meta.warnings`: mistyped options, OCR that stopped early) now
+  show in the printed summary, with `!`, and in Jupyter.
+
+### Added
+
+- **`RequestLimitWarning`**: `.claude()` / `to_claude_content()` and
+  `.openai()` / `to_openai_messages()` warn when a request breaks a
+  published limit (Claude: 32 MB a request, 10 MB a picture, 100 pictures
+  for 200k-context models, 8000 px, 2000 px when there are more than 20
+  pictures; OpenAI: 512 MB, 1500 pictures; both: JPEG, PNG, GIF, WebP),
+  naming the problem and the fix.
+- Sideways and upside-down pages are found and read; their pictures are
+  delivered upright (`meta.extra.ocr_turned`, page -> degrees).
+- Two-column pages are read column by column (tables stay in rows), with
+  blank lines between paragraphs.
+- `meta.extra.ocr_pages`: the pages OCR read.
+
+### Fixed
+
+- Encrypted PDFs opened with their password: page pictures were missing.
+
 ## [1.0.0b2] - 2026-10-09
 
 ### Fixed
@@ -474,5 +527,6 @@ DSL options or their kwarg twins (`att("doc.pdf[pages: 1-4]")`). Custom
 loaders/presenters become processors or unpack handlers (see
 [DEVELOPMENT.md](DEVELOPMENT.md)).
 
+[1.0.0b3]: https://pypi.org/project/attachments/1.0.0b3/
 [1.0.0b2]: https://pypi.org/project/attachments/1.0.0b2/
 [1.0.0b1]: https://pypi.org/project/attachments/1.0.0b1/

@@ -35,11 +35,14 @@ def check_image_output(
     max_dim: Any = None,
     image_format: Any = None,
     quality: Any = None,
+    allow_auto: bool = False,
 ) -> str | None:
     """Return an ``invalid-option`` message for bad values, else ``None``.
 
     ``max_dim`` must be an integer >= 0 (0 means no limit); ``image_format``
-    one of png/jpeg/jpg; ``quality`` an integer from 1 to 95.
+    one of png/jpeg/jpg, or ``auto`` where *allow_auto* (page pictures:
+    JPEG for scans and photos, PNG for the rest); ``quality`` an integer
+    from 1 to 95.
 
     Examples:
         >>> check_image_output(max_dim=1568, image_format="JPEG", quality=80) is None
@@ -56,7 +59,12 @@ def check_image_output(
     ):
         return f"max_dim must be an integer >= 0 (0 = no limit), got {max_dim!r}"
     if image_format is not None and str(image_format).lower() not in FORMATS:
-        return f"image_format must be png or jpeg, got {image_format!r}"
+        if allow_auto and str(image_format).lower() == "auto":
+            pass
+        elif allow_auto:
+            return f"image_format must be auto, png or jpeg, got {image_format!r}"
+        else:
+            return f"image_format must be png or jpeg, got {image_format!r}"
     if quality is not None and (
         isinstance(quality, bool)
         or not isinstance(quality, int)

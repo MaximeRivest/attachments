@@ -117,6 +117,26 @@ jobs:
           print("pdf ok:", repr(a))
           EOF
 
+      - name: Smoke test OCR (pdf + ocr extras, newest dependencies)
+        run: |
+          uv venv --python 3.12 /tmp/ocr
+          uv pip install --python /tmp/ocr "$(ls dist/*.whl)[pdf,ocr]"
+          /tmp/ocr/bin/python - <<'EOF'
+          import pymupdf
+          from attachments import att
+          text = "The quick brown fox jumps over the lazy dog. Résumé du café."
+          typed = pymupdf.open()
+          typed.new_page().insert_text((72, 100), text, fontname="tiro", fontsize=14)
+          picture = typed[0].get_pixmap(dpi=200).tobytes("jpg")
+          scan = pymupdf.open()
+          scan.new_page().insert_image(scan[0].rect, stream=picture)
+          scan.save("/tmp/scan.pdf")
+          a = att("/tmp/scan.pdf")
+          assert "quick brown fox jumps over the lazy dog" in a.text, a.text
+          assert a.images[0]["mimetype"] == "image/jpeg", a.images[0]["mimetype"]
+          print("ocr ok:", repr(a.text))
+          EOF
+
       - name: Smoke test the MCP server (mcp extra, newest SDK)
         run: |
           uv venv --python 3.13 /tmp/mcp

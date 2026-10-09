@@ -36,7 +36,7 @@ only a warning (`meta["warnings"]`), never an error.
 | `embedded_images` | `bool` | — | `false` | `embedded_images: true` | The pictures stored inside the file (photos, logos), as they are |
 | `dpi` | `int` | — | `200` | `dpi: 150` | Resolution of the page pictures (max_dim caps the result) |
 | `max_dim` | `int` | — | `2000` | `max_dim: 1568` | Longest side of each page picture in pixels; 0 = no cap |
-| `image_format` | `str` | — | `"png"` | `image_format: jpeg` | png (sharpest text) or jpeg (smaller) |
+| `image_format` | `str` | — | `"auto"` | `image_format: jpeg` | auto (jpeg for a page that is mostly photos, png otherwise), png (sharpest text) or jpeg (smaller) |
 | `quality` | `int` | — | `85` | `quality: 75` | JPEG quality, 1-95 (used with image_format: jpeg) |
 
 ### `.flac`, `.m4a`, `.mp3`, `.ogg`, `.opus`, `.wav`
@@ -76,7 +76,7 @@ only a warning (`meta["warnings"]`), never an error.
 | `embedded_images` | `bool` | — | `false` | `embedded_images: true` | The pictures stored inside the file (photos, logos), as they are |
 | `dpi` | `int` | — | `200` | `dpi: 150` | Resolution of the slide pictures (max_dim caps the result) |
 | `max_dim` | `int` | — | `2000` | `max_dim: 1568` | Longest side of each slide picture in pixels; 0 = no cap |
-| `image_format` | `str` | — | `"png"` | `image_format: jpeg` | png (sharpest text) or jpeg (smaller) |
+| `image_format` | `str` | — | `"auto"` | `image_format: jpeg` | auto (jpeg for a slide that is mostly photos, png otherwise), png (sharpest text) or jpeg (smaller) |
 | `quality` | `int` | — | `85` | `quality: 75` | JPEG quality, 1-95 (used with image_format: jpeg) |
 
 ### `.ods`, `.xls`, `.xlsx`
@@ -88,7 +88,7 @@ only a warning (`meta["warnings"]`), never an error.
 | `images` | `bool_or_auto` | `render` | `false` | `images: true` | Pictures of each sheet, drawn by LibreOffice: true/false, or auto (only when LibreOffice is installed) |
 | `dpi` | `int` | — | `200` | `dpi: 150` | Resolution of the sheet pictures (max_dim caps the result) |
 | `max_dim` | `int` | — | `2000` | `max_dim: 1568` | Longest side of each sheet picture in pixels; 0 = no cap |
-| `image_format` | `str` | — | `"png"` | `image_format: jpeg` | png (sharpest text) or jpeg (smaller) |
+| `image_format` | `str` | — | `"auto"` | `image_format: jpeg` | auto (jpeg for a sheet that is mostly photos, png otherwise), png (sharpest text) or jpeg (smaller) |
 | `quality` | `int` | — | `85` | `quality: 75` | JPEG quality, 1-95 (used with image_format: jpeg) |
 
 ### `.pdf`
@@ -97,12 +97,12 @@ only a warning (`meta["warnings"]`), never an error.
 | --- | --- | --- | --- | --- | --- |
 | `pages` | `pages` | `page` | — | `pages: 1-4` | Pages to read: 3, 2-5, 7- (to the end), 1,3,5, -1 (last), -3- (last three) |
 | `password` | `str` | `pw` | — | `password: secret` | Password for encrypted PDFs. |
-| `images` | `bool_or_auto` | `render` | `"auto"` | `images: true` | Render pages to images: true/false, or auto (only when no text). |
+| `images` | `bool_or_auto` | `render` | `"auto"` | `images: true` | Pictures of pages: true/false, or auto (the pages with no text layer, such as scans). |
 | `dpi` | `int` | — | `200` | `dpi: 300` | Resolution for rendered page images (max_dim caps the result). |
 | `max_dim` | `int` | — | `2000` | `max_dim: 1568` | Longest side of each page image in pixels, applied after dpi; 0 = no cap. |
-| `image_format` | `str` | — | `"png"` | `image_format: jpeg` | png (lossless, best for text) or jpeg (far smaller for scans). |
+| `image_format` | `str` | — | `"auto"` | `image_format: jpeg` | auto (jpeg for scanned and photo pages, png for the rest), png (lossless, sharpest text) or jpeg (far smaller for scans). |
 | `quality` | `int` | — | `85` | `quality: 75` | JPEG quality, 1-95 (used with image_format: jpeg). |
-| `ocr` | `bool_or_auto` | — | `"auto"` | `ocr: true` | OCR scanned pages with RapidOCR when there is no text layer: true/false, or auto (only when rapidocr is installed). |
+| `ocr` | `bool_or_auto` | — | `"auto"` | `ocr: true` | Read pages with no text layer (scans) with RapidOCR: true/false, or auto (when rapidocr is installed; first 50 such pages). |
 | `ocr_engine` | `str` | — | `"rapidocr"` | `ocr_engine: lighton` | OCR engine: rapidocr (local, default) or lighton (remote LightOnOCR vLLM endpoint via ATTACHMENTS_LIGHTON_URL). |
 | `max_pages` | `int` | — | — | `max_pages: 10` | Hard cap on the number of pages parsed/rendered. |
 

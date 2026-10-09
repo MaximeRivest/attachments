@@ -70,8 +70,8 @@ Options belong to the file type: `print(att.options(".pdf"))` (or
 |---|---|---|
 | pdf, pptx | `pages: 2-4`, `pages: 1,3,-1`, `max_pages: 10` | pages or slides (`-1` = last); cap on pages read (pdf) |
 | pdf | `images: true` | page pictures. The default (`auto`) draws pages only for PDFs with no text at all, so **charts, tables drawn as graphics and layout are invisible unless you ask** |
-| pdf | `max_dim: 1568`, `image_format: jpeg`, `quality: 80`, `dpi: 200` | page picture size and format (default PNG, longest side 2000 px) |
-| pdf, images | `ocr: true` | read the text of scans (needs the `ocr` extra; pdf does it by itself for scans when the extra is installed) |
+| pdf | `max_dim: 1568`, `image_format: jpeg`, `quality: 80`, `dpi: 200` | page picture size and format (default `auto`: JPEG for scanned pages, PNG for the rest; longest side 2000 px) |
+| pdf, images | `ocr: true` | read the text of scans (needs the `ocr` extra). A PDF does it by itself, page by page, for pages with no text layer (the first 50; `ocr: true` for all) |
 | xlsx | `sheet: Sales`, `rows: 100` | one sheet; rows per sheet |
 | csv, tsv | `rows: 100`, `delimiter: ";"`, `summary: true` | |
 | docx, pptx, xlsx | `images: true` | a picture of each page, slide or sheet, numbered like the text (needs LibreOffice; `auto` = only if installed) |
@@ -153,11 +153,12 @@ OpenAI().responses.create(
 )
 ```
 
-- Anthropic limits: 32 MB per request, 5 MB per picture, 100 pictures, and
-  at most 2000 x 2000 px each when a request has more than 20. Claude shrinks
-  anything over 1568 px, so `max_dim: 1568` loses nothing. **Scanned PDFs
-  need `image_format: jpeg`**: a 40-page scan is a 126 MB request as PNG (the
-  default) and 22 MB as JPEG. Check with `len(json.dumps(messages))`; long
+- Anthropic limits: 32 MB per request (Bedrock 20 MB), 10 MB per picture
+  (Bedrock 5 MB), 100 pictures (600 on some models), and at most 2000 x 2000
+  px each when a request has more than 20. `claude()` and `openai()` check
+  these and raise a `RequestLimitWarning` naming the problem and the fix;
+  turn warnings into errors in tests to catch it. Scanned pages are JPEG by
+  default (about 0.4 MB a page), so a 20-page scan is a 10 MB request; long
   PDFs: `pages` or several requests.
 
 ## 5. Hide file names when they could give the answer away
@@ -185,8 +186,9 @@ a.estimate_tokens()  # {'text': 295, 'images': 3200, 'total': 3495}; repr shows 
 Rough figures: text is characters / 4; a picture is width x height / 750,
 at most about 1,600 per picture (Anthropic's rule; OpenAI counts differently).
 `max_dim` lowers **tokens** (`max_dim: 768`: about 450 to 600 per page);
-`image_format: jpeg` lowers **bytes** (request size, logs) and suits scans and
-photos; on clean text pages PNG is often smaller.
+`image_format: jpeg` lowers **bytes** (request size, logs); the default `auto`
+already uses it for scanned and photo pages, PNG for text pages where it is
+sharp and often smaller.
 
 ## 7. Text only: prompts, search, RAG
 

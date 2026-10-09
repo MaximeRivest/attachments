@@ -56,7 +56,7 @@ class TestProcessorsMissingDeps:
     - ocr: tests/test_processors/test_image.py (ocr=True typed error,
       ocr="auto" no-op + hint) and tests/test_processors/test_pdf.py
       (auto hint/note, forced-OCR typed error), both masking
-      rapidocr_onnxruntime via the same sys.modules pattern used here.
+      rapidocr via the same sys.modules pattern used here.
     - audio: tests/test_processors/test_audio.py (fully mocked
       faster_whisper, never skips, includes the typed missing-dep test).
     """

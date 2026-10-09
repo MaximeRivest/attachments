@@ -153,7 +153,7 @@ def pptx_processor(
     embedded_images: bool = False,
     dpi: int = DEFAULT_DPI,
     max_dim: int | None = DEFAULT_MAX_DIM,
-    image_format: str = "png",
+    image_format: str = "auto",
     quality: int | None = None,
     _render_from: tuple[bytes, str] | None = None,
     **_opts: Any,

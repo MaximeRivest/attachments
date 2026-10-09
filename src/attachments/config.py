@@ -30,6 +30,8 @@ _DEFAULTS: dict = {
     "prefer": "local",
     "service_url": "https://api.attachments.dev/v1",
     "timeout": 60,
+    "ocr_workers": None,
+    "progress": True,
 }
 
 _config: dict = {
@@ -37,6 +39,8 @@ _config: dict = {
     "prefer": "local",  # local | service | local-only | service-only
     "service_url": "https://api.attachments.dev/v1",
     "timeout": 60,  # seconds for service requests
+    "ocr_workers": None,  # pages read at once by OCR; None = by cores
+    "progress": True,  # progress bar for long work, on terminals/notebooks
 }
 
 # Keys the user explicitly set via configure() — distinguishes an explicit
@@ -83,12 +87,43 @@ as a number
                     f"Invalid ATTACHMENTS_TIMEOUT value {raw!r}: "
                     f"expected seconds as a number"
                 ) from None
+    if key == "ocr_workers":
+        return _check_ocr_workers(raw, f"ATTACHMENTS_OCR_WORKERS value {raw!r}")
+    if key == "progress":
+        value = raw.strip().lower()
+        if value in ("1", "true", "yes", "on"):
+            return True
+        if value in ("0", "false", "no", "off"):
+            return False
+        raise ValueError(
+            f"Invalid ATTACHMENTS_PROGRESS value {raw!r}: expected 1/0, true/false"
+        )
     if key == "prefer":
         if raw not in _VALID_PREFER:
             raise ValueError(
                 f"Invalid ATTACHMENTS_PREFER value {raw!r}. Valid: {_VALID_PREFER}"
             )
     return raw
+
+
+def _check_ocr_workers(value, what: str) -> int:
+    """An ``ocr_workers`` value as a whole number >= 1, else ValueError.
+
+    Examples:
+        >>> _check_ocr_workers("2", "x")
+        2
+        >>> _check_ocr_workers(0, "ocr_workers=0")
+        Traceback (most recent call last):
+        ...
+        ValueError: Invalid ocr_workers=0: expected a whole number >= 1
+    """
+    try:
+        number = int(value)
+    except (TypeError, ValueError):
+        number = 0
+    if isinstance(value, bool) or number < 1 or str(number) != str(value).strip():
+        raise ValueError(f"Invalid {what}: expected a whole number >= 1")
+    return number
 
 
 def configure(**kwargs) -> None:
@@ -103,6 +138,11 @@ def configure(**kwargs) -> None:
             - "service-only": Only use service, fail if no API key
         service_url: Base URL for attachments service API.
         timeout: Timeout in seconds for service requests.
+        ocr_workers: Pages OCR reads at once (default ``None``: from the
+            processor cores, at most 3; each page being read holds about
+            0.6 GB).
+        progress: Show a progress bar for long work such as OCR, on a
+            terminal or in a notebook (default ``True``; never in logs).
 
     Examples:
         >>> reset_config()  # Ensure clean state
@@ -126,6 +166,15 @@ def configure(**kwargs) -> None:
     invalid_keys = set(kwargs.keys()) - valid_keys
     if invalid_keys:
         raise ValueError(f"Invalid config keys: {invalid_keys}. Valid: {valid_keys}")
+
+    if kwargs.get("ocr_workers") is not None:
+        kwargs["ocr_workers"] = _check_ocr_workers(
+            kwargs["ocr_workers"], f"ocr_workers={kwargs['ocr_workers']!r}"
+        )
+    if "progress" in kwargs and not isinstance(kwargs["progress"], bool):
+        raise ValueError(
+            f"Invalid progress={kwargs['progress']!r}: expected True/False"
+        )
 
     if "prefer" in kwargs:
         if kwargs["prefer"] not in _VALID_PREFER:
@@ -302,5 +351,7 @@ def reset_config() -> None:
         "prefer": "local",
         "service_url": "https://api.attachments.dev/v1",
         "timeout": 60,
+        "ocr_workers": None,
+        "progress": True,
     }
     _explicitly_set.clear()

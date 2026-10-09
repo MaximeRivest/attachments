@@ -102,8 +102,11 @@ def render_options(*, unit: str, embedded: bool = True) -> tuple[Option, ...]:
         Option(
             "image_format",
             "str",
-            default="png",
-            help="png (sharpest text) or jpeg (smaller)",
+            default="auto",
+            help=(
+                f"auto (jpeg for a {unit} that is mostly photos, png otherwise), "
+                "png (sharpest text) or jpeg (smaller)"
+            ),
             example="image_format: jpeg",
         ),
         Option(
@@ -143,7 +146,7 @@ def check_render_options(
 ) -> dict[str, Any] | None:
     """An ``invalid-option`` artifact for bad picture options, else ``None``."""
     problem = check_image_output(
-        max_dim=max_dim, image_format=image_format, quality=quality
+        max_dim=max_dim, image_format=image_format, quality=quality, allow_auto=True
     )
     if problem is None and (
         isinstance(dpi, bool) or not isinstance(dpi, int) or not 10 <= dpi <= 1200
@@ -166,7 +169,7 @@ def office_pictures(
     pick: PagePicker | None = None,
     dpi: int = DEFAULT_DPI,
     max_dim: int | None = DEFAULT_MAX_DIM,
-    image_format: str = "png",
+    image_format: str = "auto",
     quality: int = DEFAULT_QUALITY,
 ) -> tuple[list[dict[str, Any]], dict[str, Any], str | None] | dict[str, Any]:
     """Draw the pages of an Office file.

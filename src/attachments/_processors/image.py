@@ -18,10 +18,8 @@ HEIC/HEIF additionally requires pillow-heif: ``pip install attachments[heic]``
 from __future__ import annotations
 
 import base64
-import contextlib
 import io
 import json
-import logging
 import os
 from typing import Any
 
@@ -45,9 +43,6 @@ _PASSTHROUGH = {
     "WEBP": ("image/webp", "webp"),
 }
 
-
-#: Cached RapidOCR engine — model load is expensive, so it happens once.
-_OCR_ENGINE: Any = None
 
 #: Hint stored in meta.extra when OCR could help but rapidocr is missing.
 #: Local remedy first, free hosted tier second (ocr is a HEAVY install).
@@ -136,81 +131,22 @@ def _ocr_image_bytes_lighton(
     return str(body["choices"][0]["message"].get("content") or "")
 
 
-@contextlib.contextmanager
-def _quiet_ocr():
-    """Silence rapidocr/onnxruntime console spew during import + inference.
+def _ocr_input(img: Any) -> Any:
+    """*img* as RGB for OCR; transparency flattened onto white.
 
-    Mirrors pdf.py's ``_quiet_pdf_loggers`` pattern: ``att()`` reports
-    problems in-band, so third-party log noise is suppressed and the
-    previous logger levels are restored afterwards. onnxruntime
-    additionally writes device-discovery warnings straight to file
-    descriptor 2 from C++ (bypassing ``sys.stderr``), so as a last resort
-    fd 2 is pointed at devnull for the duration.
+    Converting a transparent image straight to RGB turns the transparent
+    pixels black, which hides dark text drawn on them.
     """
-    loggers = [logging.getLogger(name) for name in ("rapidocr", "onnxruntime")]
-    previous = [logger.level for logger in loggers]
-    for logger in loggers:
-        logger.setLevel(logging.CRITICAL + 1)
-    saved_fd = devnull_fd = None
-    try:
-        saved_fd = os.dup(2)
-        devnull_fd = os.open(os.devnull, os.O_WRONLY)
-        os.dup2(devnull_fd, 2)
-    except OSError:
-        pass  # fd redirection unavailable; logger suppression still applies
-    # Import AFTER fd 2 is silenced: onnxruntime prints device-discovery
-    # warnings to fd 2 from C++ at import time.
-    try:
-        import onnxruntime  # set native log severity if available
-
-        onnxruntime.set_default_logger_severity(4)  # FATAL only
-    except Exception:
-        pass
-    try:
-        yield
-    finally:
-        if saved_fd is not None:
-            with contextlib.suppress(OSError):
-                os.dup2(saved_fd, 2)
-            os.close(saved_fd)
-        if devnull_fd is not None:
-            os.close(devnull_fd)
-        for logger, level in zip(loggers, previous, strict=True):
-            logger.setLevel(level)
-
-
-def _get_ocr_engine() -> Any:
-    """Construct (once) and return the module-level RapidOCR engine.
-
-    Raises ImportError when rapidocr_onnxruntime is not installed.
-    """
-    global _OCR_ENGINE
-    if _OCR_ENGINE is None:
-        with _quiet_ocr():
-            from rapidocr_onnxruntime import RapidOCR
-
-            _OCR_ENGINE = RapidOCR()
-    return _OCR_ENGINE
-
-
-def _ocr_image_bytes(image_bytes: bytes) -> str:
-    """Run OCR over encoded image bytes and return the recognized text.
-
-    Lines are joined with newlines in reading order (RapidOCR returns
-    detections top-to-bottom). Returns "" when nothing is recognized.
-    """
-    import numpy as np
     from PIL import Image
 
-    engine = _get_ocr_engine()
-    img = Image.open(io.BytesIO(image_bytes))
-    if img.mode != "RGB":
-        img = img.convert("RGB")
-    with _quiet_ocr():
-        result, _elapsed = engine(np.asarray(img))
-    if not result:
-        return ""
-    return "\n".join(str(item[1]).strip() for item in result if item and item[1])
+    if img.mode in ("RGBA", "LA", "PA") or (
+        img.mode == "P" and "transparency" in img.info
+    ):
+        rgba = img.convert("RGBA")
+        background = Image.new("RGB", rgba.size, (255, 255, 255))
+        background.paste(rgba, mask=rgba.getchannel("A"))
+        return background
+    return img if img.mode == "RGB" else img.convert("RGB")
 
 
 def _looks_heic(data: bytes, filename: str | None) -> bool:
@@ -388,10 +324,8 @@ def image_processor(
 
         text = ""
         if ocr is True or str(ocr).lower() == "always" or str(ocr).lower() == "auto":
-            if ocr_source is not None:
-                ocr_bytes, ocr_mimetype = pil_encode(ocr_source, "PNG"), "image/png"
-            else:
-                ocr_bytes, ocr_mimetype = image_bytes, mimetype
+            # The full-size picture, before any shrinking or JPEG.
+            ocr_image = ocr_source if ocr_source is not None else img
             ocr_forced = ocr is True or str(ocr).lower() == "always"
             engine = str(ocr_engine or "rapidocr").lower()
             if engine not in OCR_ENGINES:
@@ -412,6 +346,13 @@ def image_processor(
                     engine = "rapidocr"
                     extra["ocr_engine_fallback"] = "rapidocr"
                 else:
+                    if ocr_source is not None:
+                        ocr_bytes, ocr_mimetype = (
+                            pil_encode(ocr_source, "PNG"),
+                            "image/png",
+                        )
+                    else:
+                        ocr_bytes, ocr_mimetype = image_bytes, mimetype
                     try:
                         text = _ocr_image_bytes_lighton(
                             ocr_bytes, url=url, mimetype=ocr_mimetype
@@ -430,9 +371,14 @@ def image_processor(
                 from ..deps import check_dep
 
                 if check_dep("ocr").available:
-                    text = _ocr_image_bytes(ocr_bytes)
+                    from ._ocr import recognize
+
+                    result = recognize(_ocr_input(ocr_image))
+                    text = result.text
                     extra["ocr"] = True
                     extra["ocr_backend"] = "rapidocr"
+                    if result.turned:
+                        extra["ocr_turned"] = result.turned
                 elif ocr_forced:
                     # Forced OCR without rapidocr is a typed missing-dependency.
                     return missing_dep_artifact(source, "ocr")

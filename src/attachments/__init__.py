@@ -74,6 +74,7 @@ Installation Options::
 
 from ._artifacts import Artifacts
 from ._help import att_help
+from ._limits import RequestLimitWarning
 from ._mentions import from_prompt
 from ._options import Option, dsl_schema, options, register_options
 from ._processors import (
@@ -146,6 +147,7 @@ __all__ = [
     "artifact_to_wire",
     "artifact_from_wire",
     "AttachmentsError",
+    "RequestLimitWarning",
     # Error codes
     "ERROR_MISSING_DEPENDENCY",
     "ERROR_PASSWORD_REQUIRED",
@@ -199,4 +201,4 @@ att.options = options  # type: ignore[attr-defined]
 att.help = att_help  # type: ignore[attr-defined]
 att.from_prompt = from_prompt  # type: ignore[attr-defined]
 
-__version__ = "1.0.0b2"  # must equal pyproject.toml (tests/test_version.py)
+__version__ = "1.0.0b3"  # must equal pyproject.toml (tests/test_version.py)

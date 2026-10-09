@@ -44,6 +44,7 @@ import binascii
 from typing import Any
 
 from ._imagesize import image_size
+from ._limits import CLAUDE, OPENAI, check_request
 
 __all__ = [
     "render_text",
@@ -417,6 +418,10 @@ def to_claude_content(
     the same order (each page's text, then its images), with *prompt* as
     the last text block when given. Wire-form images (``bytes_b64``) work.
 
+    A request that breaks a published Claude limit (32 MB, picture count,
+    size and dimensions, formats) gives a :class:`~attachments.
+    RequestLimitWarning` that names the problem and the fix.
+
     Args:
         artifacts: List of artifact dicts.
         prompt: Optional user instruction appended as the final text block.
@@ -451,10 +456,10 @@ def to_claude_content(
         >>> to_claude_content([])
         []
     """
+    parts = to_parts(artifacts, sources=sources, interleave=interleave, prompt=prompt)
+    check_request(parts, CLAUDE)
     blocks: list[dict[str, Any]] = []
-    for part in to_parts(
-        artifacts, sources=sources, interleave=interleave, prompt=prompt
-    ):
+    for part in parts:
         if part["type"] == "text":
             blocks.append({"type": "text", "text": part["text"]})
         else:
@@ -521,7 +526,8 @@ def to_openai_messages(
     become ``{"type": "image_url", ...}`` with a
     ``data:<mimetype>;base64,<b64>`` URL, in the same order, with
     *prompt* as the last text part when given. Wire-form images
-    (``bytes_b64``) are supported.
+    (``bytes_b64``) are supported. A request over a published OpenAI limit
+    gives a :class:`~attachments.RequestLimitWarning`.
 
     Examples:
         >>> from attachments.types import make_artifact
@@ -539,10 +545,10 @@ def to_openai_messages(
         >>> [p["type"] for p in to_openai_messages([art])[0]["content"]]
         ['text', 'image_url']
     """
+    parts = to_parts(artifacts, sources=sources, interleave=interleave, prompt=prompt)
+    check_request(parts, OPENAI)
     content: list[dict[str, Any]] = []
-    for part in to_parts(
-        artifacts, sources=sources, interleave=interleave, prompt=prompt
-    ):
+    for part in parts:
         if part["type"] == "text":
             content.append({"type": "text", "text": part["text"]})
         else:

@@ -60,9 +60,9 @@ ENV HOME=/home/attachments
 # worker is killed first and LibreOffice is left running.
 ENV ATTACHMENTS_LIBREOFFICE_TIMEOUT=60
 
-# Bake the OCR model download into the image so containers start warm even
-# on a fresh host (rapidocr fetches its ONNX models on first use). --strict:
-# the build fails if OCR or LibreOffice conversion does not work.
+# Check OCR and LibreOffice at build time (rapidocr's models ship in its
+# wheel; this loads them once). --strict: the build fails if OCR or
+# LibreOffice conversion does not work.
 RUN python /app/warmup.py --strict
 
 EXPOSE 8000

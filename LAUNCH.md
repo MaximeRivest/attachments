@@ -7,7 +7,7 @@ The 0.25 code lives on the `legacy-0.25` branch and its `v0.25.x` tags.
 
 | | |
 |---|---|
-| PyPI | `1.0.0b2` (beta) is the 1.0 pre-release; plain `pip install attachments` still gets 0.25.1 |
+| PyPI | `1.0.0b3` (beta) is the 1.0 pre-release; plain `pip install attachments` still gets 0.25.1 |
 | Hosted service | `api.attachments.dev` live, redeployed 2026-10-09 (see `deploy/DEPLOYED.md`, not in git) |
 | Domain | `attachments.dev` is owned and serves the shipped default `service_url` |
 
@@ -49,13 +49,19 @@ updated at pypi.org → attachments → Publishing.
 
 ## Before 1.0.0
 
-- [ ] Scanned PDFs fit Claude's 32 MB request limit by default (JPEG for
-      pages with no text) and `.claude()` / `.openai()` warn, with the fix,
-      when a request is over a provider's limit.
-- [ ] Automatic OCR: pages in parallel, progress shown, time cap; fix the
-      missing spaces seen on the server ("Scanned page1line2lorem…").
-- [ ] Mistyped options show in the result summary, and the hint suggests
-      the real option name (`pages`, not the alias `page`).
+- [x] Scanned PDFs fit Claude's 32 MB request limit by default (JPEG for
+      scanned pages) and `.claude()` / `.openai()` warn, with the fix,
+      when a request is over a provider's limit. (1.0.0b3)
+- [x] Automatic OCR: pages in parallel, progress shown, a page cap (not a
+      time cap: same file, same text); new engine, spaces and accents
+      kept. (1.0.0b3)
+- [ ] Redeploy the hosted service with 1.0.0b3 (new OCR engine).
+- [ ] Token estimate: Claude now counts 28 px tiles, and Claude 4.7+ reads
+      pictures up to 2576 px (up to ~4,800 tokens a page); the estimate
+      still uses the older rule (~1,600 at most).
+- [ ] Mistyped options show in the result summary (done in 1.0.0b3), and
+      the hint suggests the real option name (`pages`, not the alias
+      `page`); the log line duplicates the summary line.
 - [ ] Photos: strip GPS and other camera data unless asked.
 - [ ] Refresh the demo notebook, ANNOUNCEMENT.md and the demo GIF
       (`vhs scripts/demo.tape`) with folders, web pages, slide pictures,

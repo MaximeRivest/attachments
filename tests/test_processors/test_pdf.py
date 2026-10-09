@@ -262,8 +262,8 @@ class TestPdfOcr:
 
     @pytest.fixture
     def mask_ocr(self, monkeypatch):
-        """Simulate rapidocr_onnxruntime being uninstalled."""
-        monkeypatch.setitem(sys.modules, "rapidocr_onnxruntime", None)
+        """Simulate rapidocr being uninstalled."""
+        monkeypatch.setitem(sys.modules, "rapidocr", None)
         clear_cache()
         yield
         clear_cache()
@@ -308,9 +308,7 @@ class TestPdfOcr:
         assert "ocr" not in extra
         assert "ocr_hint" not in extra
 
-    @pytest.mark.skipif(
-        not check_dep("ocr").available, reason="rapidocr_onnxruntime not installed"
-    )
+    @pytest.mark.skipif(not check_dep("ocr").available, reason="rapidocr not installed")
     def test_auto_ocr_recovers_text_from_scanned_pdf(self, scanned_pdf_bytes: bytes):
         # Real CPU inference; the first call also loads the model (slow,
         # but the engine is cached at module level for the whole session).
@@ -328,9 +326,7 @@ class TestPdfOcr:
         text = result["text"]
         assert "HELLO WORLD 42" in text[segments[0]["start"] : segments[0]["end"]]
 
-    @pytest.mark.skipif(
-        not check_dep("ocr").available, reason="rapidocr_onnxruntime not installed"
-    )
+    @pytest.mark.skipif(not check_dep("ocr").available, reason="rapidocr not installed")
     def test_forced_ocr_renders_pages_when_images_disabled(
         self, scanned_pdf_bytes: bytes
     ):
@@ -340,9 +336,7 @@ class TestPdfOcr:
         assert "HELLO WORLD 42" in result["text"]
         assert result["images"] == []  # OCR-only renders are not emitted
 
-    @pytest.mark.skipif(
-        not check_dep("ocr").available, reason="rapidocr_onnxruntime not installed"
-    )
+    @pytest.mark.skipif(not check_dep("ocr").available, reason="rapidocr not installed")
     def test_text_layer_wins_over_ocr(self):
         pymupdf = pytest.importorskip("pymupdf")
         doc = pymupdf.open()
@@ -485,7 +479,7 @@ class TestPdfOcrLighton:
         self, scanned_pdf_bytes: bytes, monkeypatch
     ):
         monkeypatch.delenv("ATTACHMENTS_LIGHTON_URL", raising=False)
-        monkeypatch.setitem(sys.modules, "rapidocr_onnxruntime", None)
+        monkeypatch.setitem(sys.modules, "rapidocr", None)
         clear_cache()
         try:
             result = processors[".pdf"](
@@ -614,7 +608,7 @@ class TestPdfPageImageOptions:
     @pytest.mark.parametrize(
         "options, fragment",
         [
-            ({"image_format": "gif"}, "image_format must be png or jpeg"),
+            ({"image_format": "gif"}, "image_format must be auto, png or jpeg"),
             ({"quality": 0}, "quality must be an integer from 1 to 95"),
             ({"quality": 96}, "quality must be an integer from 1 to 95"),
             ({"max_dim": -5}, "max_dim must be an integer >= 0"),
@@ -669,25 +663,26 @@ class TestPdfPageImageOptions:
 @pytest.mark.skipif(
     not check_dep("pdf-images").available, reason="PyMuPDF needed to render pages"
 )
-def test_ocr_reads_full_size_png_even_when_delivered_images_are_small(monkeypatch):
-    """Shrunk or JPEG page images are for the model; OCR gets its own
-    full-size lossless render (OCR accuracy drops on small/JPEG pages)."""
+def test_ocr_reads_full_size_page_even_when_delivered_images_are_small(monkeypatch):
+    """Shrunk or JPEG page images are for the model; OCR reads the page
+    drawn at full OCR resolution (OCR accuracy drops on small pages)."""
     pymupdf = pytest.importorskip("pymupdf")
-    from attachments._processors import image as image_module
+    from attachments._processors import _ocr
 
-    seen: list[bytes] = []
+    seen: list = []
 
-    def fake_ocr(payload: bytes) -> str:
-        seen.append(payload)
-        return "RECOGNIZED"
+    def fake_recognize(picture) -> _ocr.OcrText:
+        seen.append(picture.size)
+        return _ocr.OcrText("RECOGNIZED", 0.99)
 
-    monkeypatch.setattr(image_module, "_ocr_image_bytes", fake_ocr)
+    monkeypatch.setattr(_ocr, "recognize", fake_recognize)
     monkeypatch.setattr(
         "attachments.deps.check_dep",
         lambda name: type("S", (), {"available": True, "missing": []})(),
     )
     doc = pymupdf.open()
-    doc.new_page(width=960, height=540)  # blank: no text layer
+    page = doc.new_page(width=960, height=540)  # no text layer, one drawing
+    page.draw_rect(pymupdf.Rect(100, 100, 300, 200))
     data = doc.tobytes()
 
     result = processors[".pdf"](
@@ -695,9 +690,8 @@ def test_ocr_reads_full_size_png_even_when_delivered_images_are_small(monkeypatc
     )
     assert result["text"] == "RECOGNIZED"
     assert result["images"][0]["mimetype"] == "image/jpeg"
-    assert max(_dims(result["images"][0]["bytes"])) == 500
-    assert seen[0][:8] == b"\x89PNG\r\n\x1a\n"
-    assert _dims(seen[0]) == (2667, 1500)
+    assert _dims(result["images"][0]["bytes"]) == (500, 282)  # same size as without OCR
+    assert seen == [(2667, 1500)]  # 200 dpi
 
 
 @pytest.mark.skipif(not check_dep("pdf-fallback").available, reason="pdfminer needed")

@@ -7,8 +7,9 @@ caches. It:
 1. Pre-imports every processor module so the import cost (pymupdf, pandas,
    lxml, PIL, ...) is paid once in the gunicorn master and shared with
    workers via fork (copy-on-write).
-2. Runs a tiny OCR inference so rapidocr downloads/loads its ONNX models
-   and the onnxruntime session is resident in RAM before the first request.
+2. Runs a tiny OCR inference so rapidocr loads its ONNX models (shipped in
+   its wheel) and the onnxruntime sessions are in RAM before the first
+   request. Workers forked afterwards use them (checked: no hang).
 3. Converts a tiny document with LibreOffice both ways (docx -> doc, then
    reads the .doc back), so a broken LibreOffice install is caught, and its
    files are in the page cache before the first .doc/.ppt request.

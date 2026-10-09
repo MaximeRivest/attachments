@@ -48,7 +48,7 @@ DEPENDENCY_MAP: dict[str, tuple[tuple[str, ...], str]] = {
     "svg": (("cairosvg",), "pip install attachments[svg]"),
     "xls": (("xlrd",), "pip install attachments[xls]"),
     "csv-pandas": (("pandas",), "pip install attachments[csv-pandas]"),
-    "ocr": (("rapidocr_onnxruntime",), "pip install attachments[ocr]"),
+    "ocr": (("rapidocr", "onnxruntime"), "pip install attachments[ocr]"),
     "audio": (("faster_whisper",), "pip install attachments[audio]"),
     "mcp": (("mcp",), "pip install attachments[mcp]"),
     # Old Office and OpenDocument files (.doc, .ppt, .odt, .odp, .ods) are

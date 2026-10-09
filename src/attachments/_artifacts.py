@@ -355,6 +355,11 @@ class Artifacts(list):
         hidden = len(error_lines) - _ERROR_MAX_COUNT
         if hidden > 0:
             lines.append(f"  … +{_plural(hidden, 'more error')} (see .errors)")
+        warning_lines = self._warning_lines()
+        lines.extend(f"  ! {line}" for line in warning_lines[:_ERROR_MAX_COUNT])
+        hidden_warnings = len(warning_lines) - _ERROR_MAX_COUNT
+        if hidden_warnings > 0:
+            lines.append(f"  … +{_plural(hidden_warnings, 'more warning')}")
         note_lines = _collapse_lines(
             [
                 (artifact["meta"].get("source", "?"), _clip_message(note))
@@ -367,6 +372,27 @@ class Artifacts(list):
         if hidden_notes > 0:
             lines.append(f"  … +{_plural(hidden_notes, 'more note')}")
         return "\n".join(lines)
+
+    def _warning_lines(self) -> list[str]:
+        """``meta.warnings`` of every artifact, collapsed like errors.
+
+        Warnings say that something asked for did not happen (a mistyped
+        option, OCR that stopped early): shown with ``!`` like errors.
+
+        Examples:
+            >>> from attachments.types import make_artifact
+            >>> meta = {"source": "a.pdf", "warnings": ["Unknown option 'pagez'"]}
+            >>> Artifacts([make_artifact(text="x", meta=meta)])
+            <Artifacts: 1 artifact | 1 chars | ~1 tokens>
+              ! a.pdf: Unknown option 'pagez'
+        """
+        return _collapse_lines(
+            [
+                (artifact["meta"].get("source", "?"), _clip_message(warning))
+                for artifact in self
+                for warning in artifact.get("meta", {}).get("warnings") or []
+            ]
+        )
 
     def __str__(self) -> str:
         """The full assembled prompt text — exactly ``render_text(self)``."""
@@ -751,6 +777,7 @@ class Artifacts(list):
         hidden = len(error_lines) - _ERROR_MAX_COUNT
         if hidden > 0:
             parts.append(f"> … +{_plural(hidden, 'more error')} — see `.errors`")
+        parts.extend(f"> ⚠️ {line}" for line in self._warning_lines()[:_ERROR_MAX_COUNT])
         text = self.text
         if text:
             preview = text[:_PREVIEW_CHARS]

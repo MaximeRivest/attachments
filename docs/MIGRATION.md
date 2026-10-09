@@ -99,10 +99,11 @@ Your code may run unchanged and still get different results. In order of
 how likely you are to notice:
 
 1. **PDFs: no page pictures unless you ask.** 0.25 always added page images
-   (tiled 2×2). 1.0 draws pages only for PDFs with no text at all (scans).
+   (tiled 2×2). 1.0 draws only the pages that have no text layer (scans).
    Charts and diagrams are invisible to the model until you add
    `[images: true]`. No tiling: one image per page, longest side 2000 px by
-   default (`max_dim`, `image_format: jpeg`, `quality` to make them smaller).
+   default, JPEG for scanned pages and PNG for the rest (`max_dim`,
+   `image_format`, `quality` to change them).
 2. **Word, PowerPoint and Excel: pictures only when you ask.** 0.25 drew a
    picture of every page or slide by default (with LibreOffice, when
    installed). 1.0 does it with `[images: true]` — one picture per page,
@@ -182,7 +183,7 @@ the full reference is [dsl-options.md](dsl-options.md).
 | `rotate: 90` | same (clockwise), applied to the upright photo |
 | `crop`, `watermark` | gone |
 | `ocr: true/auto` | same (RapidOCR); `ocr_engine: lighton` for a remote engine |
-| `lang: fra` (Tesseract) | gone: RapidOCR's default models are made for English and Chinese; for other languages try `ocr_engine: lighton` |
+| `lang: fra` (Tesseract) | gone: no language to choose. RapidOCR's models read English, French (accents included) and other Latin-script languages, and Chinese; for other scripts try `ocr_engine: lighton` |
 | `files: false` | same: the overview without reading files |
 | `files: true` | the default now |
 | `ignore: standard/auto/gitignore` | the default rules |
@@ -262,7 +263,7 @@ the full reference is [dsl-options.md](dsl-options.md).
 | `format: xml` / `code` / `plain` | one text per format |
 | DSPy, Agno and clipboard-image adapters | `a.text` and `a.images` plug into any framework; text to the clipboard: `att file --copy` |
 | Highlighting CSS matches in web screenshots | `select:` for the text; `screenshot: true` for the page |
-| Tesseract languages (`lang:`) | `ocr_engine: lighton` for languages beyond English and Chinese |
+| Tesseract languages (`lang:`) | not needed for Latin-script languages and Chinese; `ocr_engine: lighton` for other scripts |
 
 Something you relied on is missing? Open an issue — in 1.0 most formats and
 sources are one function.

@@ -133,9 +133,9 @@
       },
       {
         "aliases": [],
-        "default": "png",
+        "default": "auto",
         "example": "image_format: jpeg",
-        "help": "png (sharpest text) or jpeg (smaller)",
+        "help": "auto (jpeg for a page that is mostly photos, png otherwise), png (sharpest text) or jpeg (smaller)",
         "name": "image_format",
         "param": null,
         "type": "str"
@@ -191,9 +191,9 @@
       },
       {
         "aliases": [],
-        "default": "png",
+        "default": "auto",
         "example": "image_format: jpeg",
-        "help": "png (sharpest text) or jpeg (smaller)",
+        "help": "auto (jpeg for a page that is mostly photos, png otherwise), png (sharpest text) or jpeg (smaller)",
         "name": "image_format",
         "param": null,
         "type": "str"
@@ -811,9 +811,9 @@
       },
       {
         "aliases": [],
-        "default": "png",
+        "default": "auto",
         "example": "image_format: jpeg",
-        "help": "png (sharpest text) or jpeg (smaller)",
+        "help": "auto (jpeg for a slide that is mostly photos, png otherwise), png (sharpest text) or jpeg (smaller)",
         "name": "image_format",
         "param": null,
         "type": "str"
@@ -880,9 +880,9 @@
       },
       {
         "aliases": [],
-        "default": "png",
+        "default": "auto",
         "example": "image_format: jpeg",
-        "help": "png (sharpest text) or jpeg (smaller)",
+        "help": "auto (jpeg for a sheet that is mostly photos, png otherwise), png (sharpest text) or jpeg (smaller)",
         "name": "image_format",
         "param": null,
         "type": "str"
@@ -938,9 +938,9 @@
       },
       {
         "aliases": [],
-        "default": "png",
+        "default": "auto",
         "example": "image_format: jpeg",
-        "help": "png (sharpest text) or jpeg (smaller)",
+        "help": "auto (jpeg for a page that is mostly photos, png otherwise), png (sharpest text) or jpeg (smaller)",
         "name": "image_format",
         "param": null,
         "type": "str"
@@ -1024,7 +1024,7 @@
         ],
         "default": "auto",
         "example": "images: true",
-        "help": "Render pages to images: true/false, or auto (only when no text).",
+        "help": "Pictures of pages: true/false, or auto (the pages with no text layer, such as scans).",
         "name": "images",
         "param": "render_images",
         "type": "bool_or_auto"
@@ -1049,9 +1049,9 @@
       },
       {
         "aliases": [],
-        "default": "png",
+        "default": "auto",
         "example": "image_format: jpeg",
-        "help": "png (lossless, best for text) or jpeg (far smaller for scans).",
+        "help": "auto (jpeg for scanned and photo pages, png for the rest), png (lossless, sharpest text) or jpeg (far smaller for scans).",
         "name": "image_format",
         "param": null,
         "type": "str"
@@ -1069,7 +1069,7 @@
         "aliases": [],
         "default": "auto",
         "example": "ocr: true",
-        "help": "OCR scanned pages with RapidOCR when there is no text layer: true/false, or auto (only when rapidocr is installed).",
+        "help": "Read pages with no text layer (scans) with RapidOCR: true/false, or auto (when rapidocr is installed; first 50 such pages).",
         "name": "ocr",
         "param": null,
         "type": "bool_or_auto"
@@ -1202,9 +1202,9 @@
       },
       {
         "aliases": [],
-        "default": "png",
+        "default": "auto",
         "example": "image_format: jpeg",
-        "help": "png (sharpest text) or jpeg (smaller)",
+        "help": "auto (jpeg for a slide that is mostly photos, png otherwise), png (sharpest text) or jpeg (smaller)",
         "name": "image_format",
         "param": null,
         "type": "str"
@@ -1272,9 +1272,9 @@
       },
       {
         "aliases": [],
-        "default": "png",
+        "default": "auto",
         "example": "image_format: jpeg",
-        "help": "png (sharpest text) or jpeg (smaller)",
+        "help": "auto (jpeg for a slide that is mostly photos, png otherwise), png (sharpest text) or jpeg (smaller)",
         "name": "image_format",
         "param": null,
         "type": "str"
@@ -1595,9 +1595,9 @@
       },
       {
         "aliases": [],
-        "default": "png",
+        "default": "auto",
         "example": "image_format: jpeg",
-        "help": "png (sharpest text) or jpeg (smaller)",
+        "help": "auto (jpeg for a sheet that is mostly photos, png otherwise), png (sharpest text) or jpeg (smaller)",
         "name": "image_format",
         "param": null,
         "type": "str"
@@ -1664,9 +1664,9 @@
       },
       {
         "aliases": [],
-        "default": "png",
+        "default": "auto",
         "example": "image_format: jpeg",
-        "help": "png (sharpest text) or jpeg (smaller)",
+        "help": "auto (jpeg for a sheet that is mostly photos, png otherwise), png (sharpest text) or jpeg (smaller)",
         "name": "image_format",
         "param": null,
         "type": "str"

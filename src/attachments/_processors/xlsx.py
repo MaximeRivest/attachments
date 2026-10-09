@@ -280,7 +280,7 @@ def _with_sheet_pictures(
     settings = {
         "dpi": options.get("dpi", DEFAULT_DPI),
         "max_dim": options.get("max_dim", DEFAULT_MAX_DIM),
-        "image_format": options.get("image_format", "png"),
+        "image_format": options.get("image_format", "auto"),
         "quality": options.get("quality"),
     }
     invalid = check_render_options(source=source, kind="table", **settings)
