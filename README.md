@@ -9,33 +9,35 @@ format support as you need it, or let a service/server do the processing.
 > 🧭 **This is attachments 1.0** — a complete rewrite that succeeds the 0.25.x
 > series of the published [`attachments`](https://pypi.org/project/attachments/)
 > package. Start with the executed demo notebook
-> [examples/demo.ipynb](examples/demo.ipynb) and the launch post
-> [ANNOUNCEMENT.md](ANNOUNCEMENT.md). Migrating from 0.25.x?
-> [docs/MIGRATION.md](docs/MIGRATION.md) is the side-by-side guide. Read
-> [VISION.md](VISION.md) for where the project is going,
-> [CHANGELOG.md](CHANGELOG.md) for what changed, and
-> [DEVELOPMENT.md](DEVELOPMENT.md) to add processors or sources.
+> [examples/demo.ipynb](https://github.com/maximerivest/attachments/blob/main/examples/demo.ipynb) and the launch post
+> [ANNOUNCEMENT.md](https://github.com/maximerivest/attachments/blob/main/ANNOUNCEMENT.md). Migrating from 0.25.x?
+> [docs/MIGRATION.md](https://github.com/maximerivest/attachments/blob/main/docs/MIGRATION.md) is the side-by-side guide. Read
+> [VISION.md](https://github.com/maximerivest/attachments/blob/main/VISION.md) for where the project is going,
+> [CHANGELOG.md](https://github.com/maximerivest/attachments/blob/main/CHANGELOG.md) for what changed, and
+> [DEVELOPMENT.md](https://github.com/maximerivest/attachments/blob/main/DEVELOPMENT.md) to add processors or sources.
 
 ## Quick Start
 
 ```bash
-# Install core (text files work out of the box)
-pip install attachments
+# Install core (text files work out of the box).
+# 1.0 is in beta: until 1.0.0 is out, a plain `pip install attachments`
+# installs the old 0.25. The ">=1.0.0b1" below gets 1.0.
+pip install "attachments>=1.0.0b1"
 
 # Add format support as needed
-pip install attachments[pdf]         # PDF support
-pip install attachments[xlsx]        # Excel support
-pip install attachments[docx]        # Word support
-pip install attachments[pptx]        # PowerPoint support
-pip install attachments[html]        # HTML and web pages
-pip install attachments[browser]     # web page screenshots (then: playwright install chromium)
+pip install "attachments[pdf]>=1.0.0b1"        # PDF support
+pip install "attachments[xlsx]>=1.0.0b1"       # Excel support
+pip install "attachments[docx]>=1.0.0b1"       # Word support
+pip install "attachments[pptx]>=1.0.0b1"       # PowerPoint support
+pip install "attachments[html]>=1.0.0b1"       # HTML and web pages
+pip install "attachments[browser]>=1.0.0b1"    # web page screenshots (then: playwright install chromium)
 # .doc/.ppt/.odt/.odp/.ods: install LibreOffice (a program, not a pip package)
-pip install attachments[image]       # png/jpg/gif/webp/bmp/tiff support
-pip install attachments[ocr]         # OCR for scanned PDFs/images (large: pulls onnxruntime)
-pip install attachments[audio]       # mp3/wav/m4a/flac/ogg/opus transcription (large: pulls faster-whisper/ctranslate2)
-pip install attachments[service]     # API fallback mode
-pip install attachments[clipboard]   # `att --copy` clipboard support
-pip install attachments[all-local]   # Everything currently shipped (except ocr/audio — too big)
+pip install "attachments[image]>=1.0.0b1"      # png/jpg/gif/webp/bmp/tiff support
+pip install "attachments[ocr]>=1.0.0b1"        # OCR for scanned PDFs/images (large: pulls onnxruntime)
+pip install "attachments[audio]>=1.0.0b1"      # mp3/wav/m4a/flac/ogg/opus transcription (large: pulls faster-whisper/ctranslate2)
+pip install "attachments[service]>=1.0.0b1"    # API fallback mode
+pip install "attachments[clipboard]>=1.0.0b1"  # `att --copy` clipboard support
+pip install "attachments[all-local]>=1.0.0b1"  # Everything currently shipped (except ocr/audio — too big)
 ```
 
 ```python
@@ -138,7 +140,7 @@ when the task is "which animal is this?". `sources=False` works everywhere
 **Saving results.** Images hold raw bytes, which JSON cannot carry, so
 `json.dumps(a)` fails as soon as there is an image. `a.to_wire()` returns the
 wire form the server uses (images as base64 `bytes_b64`, valid against
-[spec/artifact.schema.json](spec/artifact.schema.json)), and never modifies
+[spec/artifact.schema.json](https://github.com/maximerivest/attachments/blob/main/spec/artifact.schema.json)), and never modifies
 `a`:
 
 ```python
@@ -265,8 +267,8 @@ A file type with no processor is not an error (an empty artifact with a
 The error codes (`missing-dependency`, `password-required`, `parse-error`,
 `unpack-error`, `service-error`, `invalid-option`, `processing-error`) are
 constants in `attachments.types`. The full binding contract — shape, meta
-envelope, wire format — is one page: [spec/IR-CONTRACT.md](spec/IR-CONTRACT.md)
-(JSON Schema in [spec/artifact.schema.json](spec/artifact.schema.json)),
+envelope, wire format — is one page: [spec/IR-CONTRACT.md](https://github.com/maximerivest/attachments/blob/main/spec/IR-CONTRACT.md)
+(JSON Schema in [spec/artifact.schema.json](https://github.com/maximerivest/attachments/blob/main/spec/artifact.schema.json)),
 enforced by a conformance suite that validates every processor and server
 response in CI.
 
@@ -346,7 +348,7 @@ author should not pick what your server fetches).
 
 **Values:** numbers, booleans (`true`/`false`), ranges (`1-4`), bare or quoted
 strings. The whole grammar (with shared parser test vectors every
-implementation must pass) lives in [spec/dsl-grammar.md](spec/dsl-grammar.md).
+implementation must pass) lives in [spec/dsl-grammar.md](https://github.com/maximerivest/attachments/blob/main/spec/dsl-grammar.md).
 
 **Keys belong to processors:** each processor declares its option schema
 (with aliases like `page` → `pages`, `pw` → `password`, `branch` → `ref`),
@@ -354,7 +356,7 @@ and everything above resolves through those schemas. Discover them at
 runtime — `att.options(".pdf")` lists one processor's options,
 `att.options()` exports everything (also: `att --options` on the CLI,
 `GET /options` on the server, and the generated cheatsheet in
-[docs/dsl-options.md](docs/dsl-options.md)):
+[docs/dsl-options.md](https://github.com/maximerivest/attachments/blob/main/docs/dsl-options.md)):
 
 ```python
 >>> [o["name"] for o in att.options(".pdf")]
@@ -489,12 +491,12 @@ Run your own server with all deps, let others connect with zero deps:
 
 ```bash
 # On server (one machine, all deps):
-pip install attachments[server]
+pip install "attachments[server]>=1.0.0b1"
 export ATTACHMENTS_SERVER_KEY="team-secret"
 attachments-server --host 0.0.0.0 --port 8000
 
 # On clients (zero deps needed):
-pip install attachments[service]
+pip install "attachments[service]>=1.0.0b1"
 ```
 
 ```python
@@ -505,7 +507,7 @@ att("document.pdf")  # Processed on server!
 ```
 
 Endpoints: `POST /process`, `POST /unpack`, `GET /health`, `GET /formats`,
-`GET /options`. See [examples/self_hosted_server.md](examples/self_hosted_server.md)
+`GET /options`. See [examples/self_hosted_server.md](https://github.com/maximerivest/attachments/blob/main/examples/self_hosted_server.md)
 for Docker, systemd, CI/CD, and the API reference.
 
 ## CLI
@@ -517,7 +519,7 @@ att report.pdf --pages 1-4      # Any --option value is a DSL option
 att src --max-files 50 --glob '*.py'  # Flags combine (and with [..] in the path)
 att . --json                    # Whole directory as JSON artifacts
 att README.md --copy --prompt "Summarize this"   # To clipboard, prompt first
-                                # (--copy needs: pip install attachments[clipboard])
+                                # (--copy needs: pip install "attachments[clipboard]>=1.0.0b1")
 att --options                   # Every declared DSL option
 att --options .xlsx             # One processor's options
 ```
@@ -541,12 +543,12 @@ in CI.
 att --skill --install                      # every agent found: Claude Code, Pi, Codex
 att --skill                                # where it is; who has it, up to date or not
 att --skill --install .claude/skills       # one project only
-uvx --from "attachments @ git+https://github.com/maximerivest/attachments" att --skill --install
+uvx --from "attachments>=1.0.0b1" att --skill --install   # without installing it first
 ```
 
 Re-run `att --skill --install` after upgrading to update the copies; a
 skills folder that is a link (a checkout) is left alone. Whether it helps,
-measured with fresh agents: [evals/skill/README.md](evals/skill/README.md).
+measured with fresh agents: [evals/skill/README.md](https://github.com/maximerivest/attachments/blob/main/evals/skill/README.md).
 
 ## Agents (MCP)
 
@@ -558,7 +560,7 @@ exceptions) and an `att_options` tool to discover per-format options.
 Claude Code:
 
 ```bash
-claude mcp add attachments -- uvx --from "attachments[mcp]" attachments-mcp
+claude mcp add attachments -- uvx --from "attachments[mcp]>=1.0.0b1" attachments-mcp
 ```
 
 Claude Desktop (`claude_desktop_config.json`):
@@ -568,7 +570,7 @@ Claude Desktop (`claude_desktop_config.json`):
   "mcpServers": {
     "attachments": {
       "command": "uvx",
-      "args": ["--from", "attachments[mcp]", "attachments-mcp"]
+      "args": ["--from", "attachments[mcp]>=1.0.0b1", "attachments-mcp"]
     }
   }
 }
@@ -597,13 +599,13 @@ service client, self-hosted server, and CLI.
 The last mile ships too: `render_text` / `to_claude_messages` /
 `to_openai_messages` / `chunk` turn artifact lists straight into prompts,
 API messages, or RAG chunks. The IR contract and DSL grammar are frozen in
-[spec/](spec/) and enforced by a conformance suite; the generated option
-cheatsheet lives in [docs/dsl-options.md](docs/dsl-options.md).
+[spec/](https://github.com/maximerivest/attachments/tree/main/spec/) and enforced by a conformance suite; the generated option
+cheatsheet lives in [docs/dsl-options.md](https://github.com/maximerivest/attachments/blob/main/docs/dsl-options.md).
 
 Everything else (EPS, video, `s3://`,
 `gdrive://`, `notion://`, …) is the
 long tail we want help with — each new processor is one pure function
 `(bytes, options) -> artifact` plus a declared option schema. Start with
-[VISION.md](VISION.md), then [DEVELOPMENT.md](DEVELOPMENT.md) for the
-step-by-step checklist and [CONTRIBUTING.md](CONTRIBUTING.md) for the
+[VISION.md](https://github.com/maximerivest/attachments/blob/main/VISION.md), then [DEVELOPMENT.md](https://github.com/maximerivest/attachments/blob/main/DEVELOPMENT.md) for the
+step-by-step checklist and [CONTRIBUTING.md](https://github.com/maximerivest/attachments/blob/main/CONTRIBUTING.md) for the
 workflow.

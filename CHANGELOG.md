@@ -5,9 +5,21 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - 1.0.0a2
+## [Unreleased]
 
-Six additions from the FunctAI review
+## [1.0.0b1] - 2026-10-09
+
+The first 1.0 version on PyPI, as a beta. 1.0 is a complete rewrite of
+attachments: the [1.0.0a1 notes](CHANGELOG.md#100a1---2026-06-09) describe it, and
+[docs/MIGRATION.md](docs/MIGRATION.md) is the upgrade guide from 0.25. A
+plain `pip install attachments` still installs 0.25 until 1.0.0 is out;
+to get this version:
+
+```bash
+pip install "attachments>=1.0.0b1"
+```
+
+Changes since 1.0.0a1 (June; neither alpha was published) follow. Six additions from the FunctAI review
 ([docs/review-2026-10-06-functai.md](docs/review-2026-10-06-functai.md)),
 useful to every consumer, plus one severe bug fix; web pages rebuilt
 (Markdown output, main-content extraction, screenshots); and folders made
@@ -248,7 +260,10 @@ types 0.25 had back.
   folder are no longer followed. Named pipes no longer hang a folder walk,
   and an unreadable subfolder no longer fails the whole folder.
 
-## [1.0.0] - 2026-06-09
+## [1.0.0a1] - 2026-06-09
+
+Not published to PyPI.
+
 
 A complete rewrite of `attachments`, succeeding the 0.25.x series. The
 project's center of gravity moved from a composition grammar to a small,
@@ -442,4 +457,4 @@ DSL options or their kwarg twins (`att("doc.pdf[pages: 1-4]")`). Custom
 loaders/presenters become processors or unpack handlers (see
 [DEVELOPMENT.md](DEVELOPMENT.md)).
 
-[1.0.0]: https://pypi.org/project/attachments/
+[1.0.0b1]: https://pypi.org/project/attachments/1.0.0b1/

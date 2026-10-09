@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "attachments"
-version = "1.0.0a2"  # pre-release: pip install attachments will NOT pick this up; see VISION.md
+version = "1.0.0b1"  # pre-release: plain `pip install attachments` still gets 0.25; see LAUNCH.md
 description = "Turn anything into LLM-ready artifacts. Universal file and source processing."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -23,7 +23,7 @@ keywords = [
     "prompt",
 ]
 classifiers = [
-    "Development Status :: 5 - Production/Stable",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",

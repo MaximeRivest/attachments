@@ -20,13 +20,14 @@ python -c "import attachments as a; print(a.__version__, hasattr(a, 'att'))"
   `uv add attachments` install 0.25**, the old API (1.0 is a pre-release):
 
   ```bash
-  uv add "attachments[pdf,image] @ git+https://github.com/maximerivest/attachments"
-  pip install "attachments[pdf,image] @ git+https://github.com/maximerivest/attachments"
-  pip install "attachments[pdf,image]>=1.0.0a2"   # once a 1.0 pre-release is on PyPI
+  uv add "attachments[pdf,image]>=1.0.0b1"
+  pip install "attachments[pdf,image]>=1.0.0b1"
   ```
 
+  The `>=1.0.0b1` is what selects 1.0; `--pre` is not needed (and with pip
+  it would also pull pre-releases of every other package).
+
   A local checkout: `uv add --editable /path/to/attachments`.
-- `.parts`, `.to_wire` and `.raise_for_errors` need 1.0.0a2 or later.
 - Never write 0.25 code, which models remember: `Attachments("f.pdf")`,
   `attach(...) | load.x | present.y`, `ctx.images` as base64 strings,
   `[format: ...]`, `adapt.claude(...)`.

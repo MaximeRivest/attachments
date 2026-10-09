@@ -1,135 +1,94 @@
-# Launch checklist — attachments 1.0.0
+# Launch checklist — attachments 1.0
 
-Working tree: this repo (`attachmentsv3`, remote
-`github.com/MaximeRivest/attachmentsv3`). It replaces the content of the
-published repo `github.com/MaximeRivest/attachments` (currently 0.25.x).
-**Nothing below publishes anything until you run it.**
+This repo (`github.com/maximerivest/attachments`, branch `main`) is 1.0.
+The 0.25 code lives on the `legacy-0.25` branch and its `v0.25.x` tags.
 
-## 0. Final gate (5 min)
+## Where we are
 
-```bash
-uv run pytest -q                      # must be green (927 tests as of this checklist)
-uvx ruff check src tests scripts
-git status                            # commit everything before tagging
-```
+| | |
+|---|---|
+| PyPI | `1.0.0b1` (beta) is the 1.0 pre-release; plain `pip install attachments` still gets 0.25.1 |
+| Hosted service | `api.attachments.dev` live, redeployed 2026-10-09 (see `deploy/DEPLOYED.md`, not in git) |
+| Domain | `attachments.dev` is owned and serves the shipped default `service_url` |
 
-## 1. Record the demo GIF
+## How to publish any version
 
-```bash
-# Install vhs: brew install vhs   (or: go install github.com/charmbracelet/vhs@latest;
-# Linux release binaries need ttyd + ffmpeg on PATH)
-vhs scripts/demo.tape                 # writes demo.gif (~75s) in the repo root
-```
+Publishing is done by GitHub, never from a laptop:
+`.github/workflows/publish-to-pypi.yml` runs on every pushed `v*` tag. It
+runs the full test suite on the tagged commit, builds once, installs the
+built files into clean environments to check them, uploads them to PyPI
+through trusted publishing (no token stored anywhere; files are signed),
+then creates the GitHub release from the changelog. "Run workflow" on the
+Actions page does everything except the upload: a dry run.
 
-Watch `demo.gif` once. If pacing is off, tune `DEMO_PAUSE` inside
-`scripts/demo.py` or the `Sleep` in `scripts/demo.tape` and re-record.
-Optionally embed it at the top of README.
+1. Set the version in **both** `pyproject.toml` and
+   `src/attachments/__init__.py` (`tests/test_version.py` fails if they
+   differ).
+2. Pre-release (`aN`, `bN`, `rcN`): Development Status `4 - Beta`.
+   Final: `5 - Production/Stable`. The same test enforces this.
+3. Move the `## [Unreleased]` notes under `## [X.Y.Z] - YYYY-MM-DD` in
+   CHANGELOG.md. The release fails without that section; it becomes the
+   GitHub release text.
+4. Commit, push `main`, wait for CI to pass.
+5. `git tag vX.Y.Z && git push origin vX.Y.Z`. Watch the run on GitHub.
+6. Check from a clean machine:
 
-## 2. Repo migration (attachmentsv3 → attachments)
+   ```bash
+   cd "$(mktemp -d)" && uv venv -q && . .venv/bin/activate
+   uv pip install "attachments[pdf]==X.Y.Z"
+   python -c "import attachments; print(attachments.__version__)"
+   att --help | head -3
+   ```
 
-Goal: this history becomes the content of `MaximeRivest/attachments`,
-with the 0.25.x history preserved.
+A version on PyPI can never be replaced, only yanked. If a release is
+broken, fix it and publish the next number.
 
-**➤ DECISION 1 — preserve v1 as a branch (recommended) or rely on tags only.**
+PyPI trusts the workflow by its file name. Renaming
+`publish-to-pypi.yml` breaks publishing until the trusted publisher is
+updated at pypi.org → attachments → Publishing.
 
-Recommended flow (preserves v1 on a `v1-maintenance` branch, replaces
-`main`/`master` with this tree's history):
+## Before 1.0.0
 
-```bash
-# In the OLD repo clone (~/Projects/attachments):
-cd ~/Projects/attachments
-git switch master                # or main — whatever the default branch is
-git tag v0.25.3-final            # belt and suspenders
-git branch v1-maintenance
-git push origin v1-maintenance v0.25.3-final
+- [ ] Scanned PDFs fit Claude's 32 MB request limit by default (JPEG for
+      pages with no text) and `.claude()` / `.openai()` warn, with the fix,
+      when a request is over a provider's limit.
+- [ ] Automatic OCR: pages in parallel, progress shown, time cap; fix the
+      missing spaces seen on the server ("Scanned page1line2lorem…").
+- [ ] Mistyped options show in the result summary, and the hint suggests
+      the real option name (`pages`, not the alias `page`).
+- [ ] Photos: strip GPS and other camera data unless asked.
+- [ ] Refresh the demo notebook, ANNOUNCEMENT.md and the demo GIF
+      (`vhs scripts/demo.tape`) with folders, web pages, slide pictures,
+      `from_prompt` and page lists.
+- [ ] CI: recheck the LibreOffice install on GitHub's Ubuntu 26 runners
+      (switch on 2026-10-19); weekly run against the newest libraries.
 
-# In THIS repo:
-cd ~/Projects/attachmentsv3
-git remote add public https://github.com/MaximeRivest/attachments.git
-git push public master --force   # replaces the default branch with 1.0 history
-git push public --tags
-```
+## Releasing 1.0.0
 
-Notes:
-- `--force` rewrites the default branch of the public repo. The old history
-  is still reachable via `v1-maintenance` and the tag. Open PRs against the
-  old tree will go stale — close them with a pointer to MIGRATION.md.
-- **➤ DECISION 2:** alternatively, merge histories
-  (`git merge --allow-unrelated-histories -s ours v1`) to keep one linear
-  repo — messier log, no force-push. Force-replace is cleaner; the branch
-  preserves everything that matters.
-- Update the repo description + topics on GitHub; point the default branch
-  protection rules at the new tree.
-- Archive or add a README pointer to `attachmentsv3` afterwards so people
-  land on the canonical repo.
+On top of "How to publish":
 
-## 3. Publish to PyPI
+- [ ] Development Status `5 - Production/Stable`.
+- [ ] Remove `>=1.0.0b1` from the install commands in README.md,
+      `src/attachments/skill/SKILL.md` and docs/MIGRATION.md, and the
+      sentences saying plain `pip install attachments` gets 0.25.
+- [ ] Pin an issue: "Migrating from 0.25? Read docs/MIGRATION.md".
 
-**➤ DECISION 3 — pre-release first?** VISION.md suggested `1.0.0aN`; pip
-ignores pre-releases by default so it's zero-risk. If you want one:
-bump version to `1.0.0a1`, build, publish, smoke, then do 1.0.0.
+## Announce
 
-```bash
-cd ~/Projects/attachmentsv3
-rm -rf dist && uv build              # fresh sdist + wheel (dist/ has stale ones)
-uv publish                           # prompts for PyPI token (or set UV_PUBLISH_TOKEN)
-# twine equivalent: uvx twine upload dist/*
-git tag v1.0.0 && git push public v1.0.0
-```
+Source text: [ANNOUNCEMENT.md](ANNOUNCEMENT.md).
 
-## 4. Post-publish smoke (fresh venv, ~3 min)
-
-```bash
-cd "$(mktemp -d)"
-uv venv && source .venv/bin/activate
-pip install attachments==1.0.0
-python -c "from attachments import att; print(att('https://raw.githubusercontent.com/MaximeRivest/attachments/master/README.md'))" | head
-pip install "attachments[pdf]"
-python -c "from attachments import check_deps; print(check_deps())"
-att --options | head
-```
-
-Also verify the PyPI page renders README correctly (links are relative —
-GitHub URLs resolve once step 2 is done).
-
-## 5. Announce
-
-Source text: [ANNOUNCEMENT.md](ANNOUNCEMENT.md) (HN/Reddit/blog ready).
-
-- [ ] GitHub release for `v1.0.0` (paste ANNOUNCEMENT.md, attach demo.gif)
+- [ ] GitHub release for `v1.0.0` (the workflow creates it; add the GIF)
 - [ ] Hacker News — Show HN: "attachments 1.0 – turn anything into
       LLM-ready text+images in one function" (link to repo)
 - [ ] r/Python, r/LocalLLaMA, r/LangChain
 - [ ] X/Twitter + LinkedIn thread (lead with the GIF)
 - [ ] Python Discord #show-and-tell, PyCoder's Weekly submission
-- [ ] Pin an issue: "Migrating from 0.25.x? Read docs/MIGRATION.md"
 
-## 6. Day-2
+## Day 2
 
-- Watch PyPI install errors / GitHub issues for the first 48h.
-- 0.25.x stays maintenance-only on the `v1-maintenance` branch; backport
-  nothing, fix only breakage.
-
-### Service tier: deploying api.attachments.dev
-
-The production EC2 deploy kit (Dockerfile, compose, nginx, bootstrap,
-runbook with sizing/costs/smoke tests) lives in
-[deploy/RUNBOOK.md](deploy/RUNBOOK.md). Deploy only AFTER §7 below is
-resolved (the domain must be owned before the default URL is live).
-
-## 7. BLOCKER before `uv publish` — the service_url default
-
-`attachments.config` defaults `service_url` to `https://api.attachments.dev/v1`.
-**Decision required (Maxime):**
-
-- **If you buy `attachments.dev`** (premium-priced .dev — compare Cloudflare
-  Registrar/Porkbun against GoDaddy before paying): keep the default, and
-  park the domain with an HTTPS placeholder immediately so the name can never
-  be squatted while pointing at our shipped default.
-- **If you don't buy it**: change the default to `None` before publishing and
-  make service mode require an explicit `configure(service_url=...)`. Shipping
-  a default URL on an unowned domain means whoever registers it later receives
-  users' files and API keys.
-
-Either path is a 10-minute change + test update; do NOT publish without
-resolving this line.
+- Watch PyPI install errors and GitHub issues for the first 48 hours.
+- 0.25 is maintenance-only on `legacy-0.25`: fix breakage, add nothing.
+- The hosted service: [deploy/RUNBOOK.md](deploy/RUNBOOK.md); the outside
+  monitor (`.github/workflows/monitor.yml`) emails on downtime or a
+  certificate under 21 days. GitHub pauses scheduled workflows after 60
+  days without repo activity.

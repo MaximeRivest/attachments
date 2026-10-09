@@ -255,9 +255,9 @@ routing, and the server plus the render/adapt/chunk last mile ship. The 0.x
 grammar API is a clean break — see [CHANGELOG.md](CHANGELOG.md) for the
 migration pointer.
 
-- **Next:** `1.0.0aN` pre-releases to PyPI (stable users on
+- **Next:** `1.0.0b1` is the first pre-release on PyPI (stable users on
   `pip install attachments` are never affected — pip ignores pre-releases by
-  default), then `1.0` proper.
+  default), then `1.0` proper; what is left is in [LAUNCH.md](LAUNCH.md).
 - **v1** (the original `attachments` repo, published as 0.25.x on PyPI) is in
   **maintenance mode**: bug fixes only, no new features. It remains the
   richest corpus of converters; the long tail (OCR, audio, `s3://`,
