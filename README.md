@@ -560,7 +560,7 @@ exceptions) and an `att_options` tool to discover per-format options.
 Claude Code:
 
 ```bash
-claude mcp add attachments -- uvx --from "attachments[mcp]>=1.0.0b1" attachments-mcp
+claude mcp add attachments -- uvx --from "attachments[mcp]>=1.0.0b2" attachments-mcp
 ```
 
 Claude Desktop (`claude_desktop_config.json`):
@@ -570,7 +570,7 @@ Claude Desktop (`claude_desktop_config.json`):
   "mcpServers": {
     "attachments": {
       "command": "uvx",
-      "args": ["--from", "attachments[mcp]>=1.0.0b1", "attachments-mcp"]
+      "args": ["--from", "attachments[mcp]>=1.0.0b2", "attachments-mcp"]
     }
   }
 }

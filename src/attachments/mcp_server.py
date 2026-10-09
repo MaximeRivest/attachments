@@ -237,18 +237,33 @@ def _normalize_options_key(key: str | None) -> str | None:
 
 
 def create_server() -> Any:
-    """Build the FastMCP server with the two attachments tools.
+    """Build the MCP server with the two attachments tools.
+
+    Works with the ``mcp`` SDK 1.x (``FastMCP``) and 2.x, where the same
+    class was renamed ``MCPServer``; everything used here is unchanged.
 
     Raises:
         ImportError: With the teaching install message when the ``mcp``
             SDK is not installed.
     """
     try:
-        from mcp.server.fastmcp import FastMCP
-    except ImportError as exc:
-        raise ImportError(_MISSING_MCP_MESSAGE) from exc
+        from mcp.server.mcpserver import MCPServer as Server  # mcp 2.x
+    except ImportError:
+        try:
+            from mcp.server.fastmcp import FastMCP as Server  # mcp 1.x
+        except ImportError as exc:
+            try:
+                from importlib.metadata import version
 
-    server = FastMCP(
+                installed = version("mcp")
+            except Exception:  # not installed at all
+                raise ImportError(_MISSING_MCP_MESSAGE) from exc
+            raise ImportError(
+                f"attachments-mcp does not support the installed mcp {installed} "
+                f"({exc}). Install a supported one with: pip install 'mcp>=1.17'"
+            ) from exc
+
+    server = Server(
         "attachments",
         instructions=(
             "Universal file/URL ingestion for prompts. Use the att tool to "

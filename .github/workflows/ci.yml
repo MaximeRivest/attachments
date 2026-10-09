@@ -43,3 +43,6 @@ jobs:
       - name: Test
         run: uv run pytest -q
 
+      - name: MCP server on the older SDK (mcp 1.x; the lock has 2.x)
+        run: uv run --with "mcp>=1.17,<2" pytest -q -o addopts="" tests/test_mcp_server.py
+

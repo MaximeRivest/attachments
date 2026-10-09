@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "attachments"
-version = "1.0.0b1"  # pre-release: plain `pip install attachments` still gets 0.25; see LAUNCH.md
+version = "1.0.0b2"  # pre-release: plain `pip install attachments` still gets 0.25; see LAUNCH.md
 description = "Turn anything into LLM-ready artifacts. Universal file and source processing."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -84,7 +84,7 @@ audio = [
     "faster-whisper>=1.0",
 ]
 mcp = [
-    "mcp>=1.2",
+    "mcp>=1.17",  # 1.17: oldest the tests pass on; 2.x supported too
 ]
 # Web page screenshots (html `screenshot: true`). Also run
 # `playwright install chromium` once, or set ATTACHMENTS_CHROMIUM to a
@@ -152,7 +152,7 @@ dev = [
     "xlrd>=2.0",
     "rapidocr-onnxruntime>=1.3",
     "faster-whisper>=1.0",
-    "mcp>=1.2",
+    "mcp>=1.17",  # 1.17: oldest the tests pass on; 2.x supported too
     # Web page screenshots (CI also runs `playwright install chromium`)
     "playwright>=1.40",
     # CLI clipboard support (`att --copy`)

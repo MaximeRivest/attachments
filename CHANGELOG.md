@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0b2] - 2026-10-09
+
+### Fixed
+
+- **`attachments-mcp` failed to start on a fresh install.** The `mcp` SDK
+  2.x renamed its server class (`FastMCP` is now `MCPServer`), and a new
+  install gets 2.x; 1.0.0b1 only knew the old name and reported the SDK as
+  missing. Both 1.x and 2.x now work, and CI tests both.
+- The `mcp` extra asked for `mcp>=1.2`, but the server needs `mcp>=1.17`.
+- An installed but unsupported `mcp` is now reported as such, with the
+  version to install, instead of "requires the mcp extra".
+
+### Changed
+
+- Releases also start the MCP server from the built package, with the
+  newest dependencies, and call its tools over stdio before publishing.
+
 ## [1.0.0b1] - 2026-10-09
 
 The first 1.0 version on PyPI, as a beta. 1.0 is a complete rewrite of
@@ -457,4 +474,5 @@ DSL options or their kwarg twins (`att("doc.pdf[pages: 1-4]")`). Custom
 loaders/presenters become processors or unpack handlers (see
 [DEVELOPMENT.md](DEVELOPMENT.md)).
 
+[1.0.0b2]: https://pypi.org/project/attachments/1.0.0b2/
 [1.0.0b1]: https://pypi.org/project/attachments/1.0.0b1/

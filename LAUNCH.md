@@ -7,7 +7,7 @@ The 0.25 code lives on the `legacy-0.25` branch and its `v0.25.x` tags.
 
 | | |
 |---|---|
-| PyPI | `1.0.0b1` (beta) is the 1.0 pre-release; plain `pip install attachments` still gets 0.25.1 |
+| PyPI | `1.0.0b2` (beta) is the 1.0 pre-release; plain `pip install attachments` still gets 0.25.1 |
 | Hosted service | `api.attachments.dev` live, redeployed 2026-10-09 (see `deploy/DEPLOYED.md`, not in git) |
 | Domain | `attachments.dev` is owned and serves the shipped default `service_url` |
 

@@ -2,11 +2,17 @@
 
 Uses the mcp SDK's in-memory client-server session — no subprocesses,
 no network. `mcp` is a dev dependency, so everything here runs in CI.
+
+Results are checked as the JSON an agent receives (camelCase protocol
+fields), not as SDK objects: the SDK's Python names changed between mcp
+1.x and 2.x (``isError`` became ``is_error``), the protocol did not. CI
+runs this file against both major versions.
 """
 
 from __future__ import annotations
 
 import importlib
+import importlib.metadata
 import io
 import sys
 
@@ -23,22 +29,46 @@ from attachments.mcp_server import (
 )
 
 
-def _call(tool: str, arguments: dict):
+def _connect(server):
+    """An in-memory client session, for mcp 2.x or 1.x."""
+    try:
+        from mcp import Client  # mcp 2.x
+
+        return Client(server)
+    except ImportError:
+        from mcp.shared.memory import create_connected_server_and_client_session
+
+        return create_connected_server_and_client_session(server)
+
+
+def _wire(result) -> dict:
+    """An SDK result object as the protocol JSON the agent receives."""
+    return result.model_dump(mode="json", by_alias=True, exclude_none=True)
+
+
+def _call(tool: str, arguments: dict) -> dict:
     """Call one tool against a fresh in-memory server, return the result."""
-    from mcp.shared.memory import (
-        create_connected_server_and_client_session as connect,
-    )
 
     async def go():
-        async with connect(create_server()) as client:
+        async with _connect(create_server()) as client:
             return await client.call_tool(tool, arguments)
 
-    return anyio.run(go)
+    return _wire(anyio.run(go))
 
 
-def _texts(result) -> str:
+def _tools() -> dict[str, dict]:
+    """The listed tools by name, as protocol JSON."""
+
+    async def go():
+        async with _connect(create_server()) as client:
+            return await client.list_tools()
+
+    return {t["name"]: t for t in _wire(anyio.run(go))["tools"]}
+
+
+def _texts(result: dict) -> str:
     """All text content of a tool result, joined."""
-    return "\n".join(c.text for c in result.content if c.type == "text")
+    return "\n".join(c["text"] for c in result["content"] if c["type"] == "text")
 
 
 def _png_bytes(width: int = 4, height: int = 4, *, noise: bool = False) -> bytes:
@@ -75,42 +105,26 @@ def _two_page_pdf(path) -> None:
 
 class TestToolListing:
     def test_exactly_two_tools(self):
-        from mcp.shared.memory import (
-            create_connected_server_and_client_session as connect,
-        )
-
-        async def go():
-            async with connect(create_server()) as client:
-                return await client.list_tools()
-
-        tools = {t.name: t for t in anyio.run(go).tools}
+        tools = _tools()
         assert sorted(tools) == ["att", "att_options"]
 
-        att_schema = tools["att"].inputSchema
+        att_schema = tools["att"]["inputSchema"]
         assert att_schema["required"] == ["source"]
         assert att_schema["properties"]["source"]["type"] == "string"
         assert "options" in att_schema["properties"]
         assert "options" not in att_schema.get("required", [])
 
-        opts_schema = tools["att_options"].inputSchema
+        opts_schema = tools["att_options"]["inputSchema"]
         assert "extension" in opts_schema["properties"]
         assert opts_schema.get("required", []) == []
 
     def test_descriptions_teach(self):
-        from mcp.shared.memory import (
-            create_connected_server_and_client_session as connect,
-        )
-
-        async def go():
-            async with connect(create_server()) as client:
-                return await client.list_tools()
-
-        tools = {t.name: t for t in anyio.run(go).tools}
-        att_desc = tools["att"].description
+        tools = _tools()
+        att_desc = tools["att"]["description"]
         assert "github://" in att_desc
         assert "pages" in att_desc and "ocr" in att_desc
         assert "never raise" in att_desc
-        assert "per-format options" in tools["att_options"].description
+        assert "per-format options" in tools["att_options"]["description"]
 
 
 # ---------------------------------------------------------------------------
@@ -123,20 +137,20 @@ class TestAttTool:
         path = tmp_path / "notes.md"
         path.write_text("The quick brown fox.")
         result = _call("att", {"source": str(path)})
-        assert not result.isError
+        assert not result.get("isError", False)
         assert "The quick brown fox." in _texts(result)
-        assert result.content[0].type == "text"
+        assert result["content"][0]["type"] == "text"
 
     def test_image_source_returns_image_content(self, tmp_path):
         path = tmp_path / "pic.png"
         path.write_bytes(_png_bytes())
         result = _call("att", {"source": str(path)})
-        images = [c for c in result.content if c.type == "image"]
+        images = [c for c in result["content"] if c["type"] == "image"]
         assert len(images) == 1
-        assert images[0].mimeType == "image/png"
-        assert images[0].data  # base64 payload present
+        assert images[0]["mimeType"] == "image/png"
+        assert images[0]["data"]  # base64 payload present
         # Text block comes FIRST.
-        assert result.content[0].type == "text"
+        assert result["content"][0]["type"] == "text"
 
     def test_oversized_image_skipped_with_note(self, tmp_path, monkeypatch):
         monkeypatch.setattr(mcp_server, "MAX_IMAGE_BYTES", 64)
@@ -145,7 +159,7 @@ class TestAttTool:
         assert len(png) > 64
         path.write_bytes(png)
         result = _call("att", {"source": str(path)})
-        assert not any(c.type == "image" for c in result.content)
+        assert not any(c["type"] == "image" for c in result["content"])
         text = _texts(result)
         assert "image skipped" in text
         assert "cap" in text
@@ -171,7 +185,7 @@ class TestAttTool:
 
     def test_nonexistent_file_is_teaching_text_not_exception(self, tmp_path):
         result = _call("att", {"source": str(tmp_path / "ghost.pdf")})
-        assert not result.isError  # errors come back as readable text
+        assert not result.get("isError", False)  # errors come back as readable text
         text = _texts(result)
         assert "unpack-error" in text
         assert "--- notes ---" in text
@@ -248,11 +262,26 @@ class TestMissingMcp:
             monkeypatch.delitem(sys.modules, name)
         monkeypatch.setitem(sys.modules, "mcp", None)
         monkeypatch.delitem(sys.modules, "attachments.mcp_server")
+
+        def not_installed(name):
+            raise importlib.metadata.PackageNotFoundError(name)
+
+        monkeypatch.setattr(importlib.metadata, "version", not_installed)
         module = importlib.import_module("attachments.mcp_server")
         assert module.main([]) == 1
         err = capsys.readouterr().err
         assert "attachments-mcp requires the mcp extra" in err
         assert "pip install attachments[mcp]" in err
+
+    def test_unsupported_mcp_is_named_not_called_missing(self, monkeypatch, capsys):
+        """An installed SDK without either server class: say so, not 'missing'."""
+        for name in ("mcp.server.mcpserver", "mcp.server.fastmcp"):
+            monkeypatch.setitem(sys.modules, name, None)  # neither import works
+        assert main([]) == 1
+        err = capsys.readouterr().err
+        assert "does not support the installed mcp" in err
+        assert "mcp>=1.17" in err
+        assert "requires the mcp extra" not in err
 
 
 # ---------------------------------------------------------------------------

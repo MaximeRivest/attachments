@@ -117,6 +117,12 @@ jobs:
           print("pdf ok:", repr(a))
           EOF
 
+      - name: Smoke test the MCP server (mcp extra, newest SDK)
+        run: |
+          uv venv --python 3.13 /tmp/mcp
+          uv pip install --python /tmp/mcp "$(ls dist/*.whl)[mcp]"
+          python3 scripts/check_mcp_stdio.py /tmp/mcp/bin/attachments-mcp
+
       - name: Smoke test the source archive
         run: |
           uv venv --python 3.12 /tmp/sdist
