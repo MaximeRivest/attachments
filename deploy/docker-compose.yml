@@ -21,9 +21,10 @@ services:
       - ATTACHMENTS_SERVER_KEY=${ATTACHMENTS_SERVER_KEY:-}
       # 25 MB free-tier cap — keep aligned with client_max_body_size in nginx.conf.
       - ATTACHMENTS_MAX_UPLOAD=${ATTACHMENTS_MAX_UPLOAD:-26214400}
-      # OCR pages per document, even with ocr: true. 2 cores read ~2 s a page
-      # (4 s with two requests at once): 25 pages stay under gunicorn's 120 s.
-      - ATTACHMENTS_OCR_MAX_PAGES=${ATTACHMENTS_OCR_MAX_PAGES:-25}
+      # OCR pages per document, even with ocr: true. m6i.large (2 vCPU = one
+      # core, hyperthreaded) reads ~4.5 s a page (measured): 10 pages finish
+      # within the client's default 60 s service timeout.
+      - ATTACHMENTS_OCR_MAX_PAGES=${ATTACHMENTS_OCR_MAX_PAGES:-10}
       # SSRF guard stays ON: do not set ATTACHMENTS_ALLOW_PRIVATE_URLS in prod.
       # --- GPU phase 2: uncomment with the vllm service below ---
       # - ATTACHMENTS_LIGHTON_URL=http://<gpu-instance-private-ip>:8100/v1

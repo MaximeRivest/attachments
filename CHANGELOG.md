@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0b5] - 2026-10-09
+
+### Changed
+
+- **Service requests wait 130 s by default** (`timeout`, was 60 s): past
+  the hosted server's own 120 s limit, so a long OCR request ends with the
+  server's answer instead of a client timeout. A 20-page scan sent to the
+  service took 55 s.
+
+### Fixed
+
+- When `ocr_max_pages` stopped OCR (a server's limit), the warning
+  suggested `[ocr: true]`, which that limit also bounds, and said "this
+  machine", which a service user reads as their own. It now names
+  `ocr_max_pages` and suggests `[pages: N-]`.
+
 ## [1.0.0b4] - 2026-10-09
 
 ### Added
@@ -19,9 +35,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Hosted service settings (`deploy/`): OCR stops at 25 pages a document
-  (2 cores read ~2 s a page; gunicorn ends requests at 120 s), container
-  memory 5 GB (each worker peaks ~1.2 GB reading a scan).
+- Hosted service settings (`deploy/`): OCR stops at 10 pages a document
+  (its 2 vCPU, one core, read ~4.5 s a page; the client waits 60 s by
+  default), container memory 5 GB (each worker peaks ~1.2 GB reading a
+  scan).
 
 ## [1.0.0b3] - 2026-10-09
 
@@ -543,6 +560,7 @@ DSL options or their kwarg twins (`att("doc.pdf[pages: 1-4]")`). Custom
 loaders/presenters become processors or unpack handlers (see
 [DEVELOPMENT.md](DEVELOPMENT.md)).
 
+[1.0.0b5]: https://pypi.org/project/attachments/1.0.0b5/
 [1.0.0b4]: https://pypi.org/project/attachments/1.0.0b4/
 [1.0.0b3]: https://pypi.org/project/attachments/1.0.0b3/
 [1.0.0b2]: https://pypi.org/project/attachments/1.0.0b2/

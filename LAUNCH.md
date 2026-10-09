@@ -7,7 +7,7 @@ The 0.25 code lives on the `legacy-0.25` branch and its `v0.25.x` tags.
 
 | | |
 |---|---|
-| PyPI | `1.0.0b4` (beta) is the 1.0 pre-release; plain `pip install attachments` still gets 0.25.1 |
+| PyPI | `1.0.0b5` (beta) is the 1.0 pre-release; plain `pip install attachments` still gets 0.25.1 |
 | Hosted service | `api.attachments.dev` live, redeployed 2026-10-09 (see `deploy/DEPLOYED.md`, not in git) |
 | Domain | `attachments.dev` is owned and serves the shipped default `service_url` |
 
@@ -55,7 +55,8 @@ updated at pypi.org → attachments → Publishing.
 - [x] Automatic OCR: pages in parallel, progress shown, a page cap (not a
       time cap: same file, same text); new engine, spaces and accents
       kept. (1.0.0b3)
-- [ ] Redeploy the hosted service with 1.0.0b3 (new OCR engine).
+- [x] Redeploy the hosted service with the new OCR engine (1.0.0b5;
+      10 OCR pages a document there, ~4.5 s a page).
 - [ ] Token estimate: Claude now counts 28 px tiles, and Claude 4.7+ reads
       pictures up to 2576 px (up to ~4,800 tokens a page); the estimate
       still uses the older rule (~1,600 at most).

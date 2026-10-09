@@ -95,7 +95,7 @@ def process_via_service(
         )
 
     service_url = get_config("service_url")
-    timeout = get_config("timeout", 60)
+    timeout = get_config("timeout", 130)
 
     # Prepare request. Options travel RAW (the server resolves them against
     # its processor schemas). Every value is JSON-encoded so its parsed type
@@ -188,7 +188,7 @@ def unpack_via_service(
         )
 
     service_url = get_config("service_url")
-    timeout = get_config("timeout", 60)
+    timeout = get_config("timeout", 130)
 
     try:
         response = httpx.post(
@@ -266,7 +266,7 @@ def unpack_bytes_via_service(
         )
 
     service_url = get_config("service_url")
-    timeout = get_config("timeout", 60)
+    timeout = get_config("timeout", 130)
 
     log.debug(
         "POST %s/unpack  filename=%s  size=%d",

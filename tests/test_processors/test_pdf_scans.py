@@ -183,7 +183,7 @@ class TestOcrPageSettings:
         result = process_pdf(_pdf("scan", "scan", "scan"), ocr=True)
         assert len(fake_ocr) == 2
         (warning,) = result["meta"]["warnings"]
-        assert "this machine reads at most that many" in warning
+        assert "the most OCR reads where this ran: ocr_max_pages" in warning
         assert "[pages: 3-] reads the rest" in warning
         assert "[ocr: true]" not in warning
 
@@ -191,7 +191,10 @@ class TestOcrPageSettings:
         monkeypatch.setenv("ATTACHMENTS_OCR_MAX_PAGES", "1")
         result = process_pdf(_pdf("scan", "scan"))
         assert len(fake_ocr) == 1
-        assert "first 1 of 2" in result["meta"]["warnings"][0]
+        (warning,) = result["meta"]["warnings"]
+        assert "first 1 of 2" in warning and "ocr_max_pages" in warning
+        assert "[ocr: true]" not in warning  # it would not help here
+        assert "[pages: 2-] reads the rest" in warning
 
 
 class TestTurnedPages:

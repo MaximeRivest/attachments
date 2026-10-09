@@ -62,12 +62,10 @@ def _ocr_limit(forced: bool) -> tuple[int | None, str]:
 
     hard = get_config("ocr_max_pages")
     auto = int(get_config("ocr_auto_pages") or AUTO_OCR_MAX_PAGES)
+    if hard and (forced or int(hard) < auto):
+        return int(hard), "the most OCR reads where this ran: ocr_max_pages"
     if forced:
-        return (
-            (int(hard), "this machine reads at most that many") if hard else (None, "")
-        )
-    if hard and int(hard) < auto:
-        return int(hard), "this machine reads at most that many"
+        return None, ""
     return auto, "automatic OCR stops there"
 
 
@@ -984,9 +982,9 @@ def process_pdf(
                     first = skipped[0] + 1
                     most, why = _ocr_limit(ocr_forced)
                     how = (
-                        f"[pages: {first}-] reads the rest"
-                        if ocr_forced
-                        else f"[ocr: true] reads them all, [pages: {first}-] the rest"
+                        f"[ocr: true] reads them all, [pages: {first}-] the rest"
+                        if why.startswith("automatic")
+                        else f"[pages: {first}-] reads the rest"
                     )
                     warnings.append(
                         f"ocr: read the first {most} of {len(to_look_at)} pages "

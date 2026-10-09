@@ -29,7 +29,7 @@ _DEFAULTS: dict = {
     "api_key": None,
     "prefer": "local",
     "service_url": "https://api.attachments.dev/v1",
-    "timeout": 60,
+    "timeout": 130,
     "ocr_workers": None,
     "ocr_auto_pages": None,
     "ocr_max_pages": None,
@@ -40,7 +40,9 @@ _config: dict = {
     "api_key": None,
     "prefer": "local",  # local | service | local-only | service-only
     "service_url": "https://api.attachments.dev/v1",
-    "timeout": 60,  # seconds for service requests
+    # seconds to wait for a service answer: past the hosted server's own
+    # 120 s limit, so a long OCR request ends with the server's answer
+    "timeout": 130,
     "ocr_workers": None,  # pages read at once by OCR; None = by cores
     "ocr_auto_pages": None,  # pages `ocr: auto` reads; None = 50
     "ocr_max_pages": None,  # most pages any OCR reads (servers); None = all
@@ -141,7 +143,8 @@ def configure(**kwargs) -> None:
             - "local-only": Only use local processing, fail if deps missing
             - "service-only": Only use service, fail if no API key
         service_url: Base URL for attachments service API.
-        timeout: Timeout in seconds for service requests.
+        timeout: Seconds to wait for a service answer (default 130: past
+            the hosted server's own 120 s limit).
         ocr_workers: Pages OCR reads at once (default ``None``: from the
             processor cores, at most 3; each page being read holds about
             0.6 GB).
@@ -351,14 +354,14 @@ def reset_config() -> None:
         >>> get_config("prefer")
         'local'
         >>> get_config("timeout")
-        60
+        130
     """
     global _config
     _config = {
         "api_key": None,
         "prefer": "local",
         "service_url": "https://api.attachments.dev/v1",
-        "timeout": 60,
+        "timeout": 130,
         "ocr_workers": None,
         "ocr_auto_pages": None,
         "ocr_max_pages": None,

@@ -98,7 +98,7 @@ class TestGetConfig:
         assert get_config("prefer") == "local"
 
     def test_default_timeout(self):
-        assert get_config("timeout") == 60
+        assert get_config("timeout") == 130
 
     def test_custom_default(self):
         assert get_config("nonexistent", default="fallback") == "fallback"
@@ -221,7 +221,7 @@ class TestResetConfig:
     def test_resets_timeout(self):
         configure(timeout=999)
         reset_config()
-        assert get_config("timeout") == 60
+        assert get_config("timeout") == 130
 
     def test_resets_service_url(self):
         configure(service_url="https://custom.com")
