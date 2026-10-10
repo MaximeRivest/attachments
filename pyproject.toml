@@ -190,6 +190,8 @@ select = ["E", "F", "I", "B", "UP"]
 [tool.ruff.lint.per-file-ignores]
 # Graders and expert solutions are Python source held in strings.
 "evals/skill/run.py" = ["E501"]
+# Agent benchmark: graders and solutions are Python source held in strings.
+"evals/bench/*.py" = ["E501", "UP031"]
 
 [tool.ruff.format]
 docstring-code-format = true

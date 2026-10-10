@@ -365,7 +365,9 @@ try:
     def intact(loaded):
         if not isinstance(loaded, attachments.Artifacts) or loaded.errors:
             return False
-        got = {Path(a["meta"]["source"]).name: a for a in loaded}
+        # A folder starts with its overview (meta.kind "directory"): not a file.
+        got = {Path(a["meta"]["source"]).name: a for a in loaded
+               if a["meta"].get("kind") != "directory"}
         if set(got) != set(EXPECTED) or not got["diagram.png"]["images"]:
             return False
         for name, phrase in EXPECTED.items():
