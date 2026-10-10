@@ -37,6 +37,7 @@ deploy/.env
 
 # skill evaluation results (large: agent sessions)
 evals/skill/runs/
+evals/bench/runs/
 
 # Personal agent settings
 .claude/settings.local.json
