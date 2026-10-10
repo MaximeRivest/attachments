@@ -101,3 +101,23 @@ def test_file_pymupdf_cannot_open_goes_to_pypdf(monkeypatch):
     extra = result["meta"]["extra"]
     assert extra["text_backend"] == "pypdf" and extra["pymupdf_error"] == "cannot open"
     assert "Desk lamp" in result["text"]
+
+
+def test_nothing_printed_to_stdout(tmp_path):
+    """PyMuPDF 1.27+ prints a pymupdf_layout advert from its table finder;
+    on stdout it breaks `att --json > file`. Run in a fresh process: the
+    advert shows once per process."""
+    import subprocess
+
+    path = tmp_path / "t.pdf"
+    path.write_bytes(_pdf_with_table())
+    code = (
+        "from attachments._processors.pdf import process_pdf; "
+        f"process_pdf(open({str(path)!r}, 'rb').read(), filename='t.pdf')"
+    )
+    env = {"PYMUPDF_SUGGEST_LAYOUT_ANALYZER": "1", "PATH": ""}
+    out = subprocess.run(
+        [sys.executable, "-c", code], capture_output=True, text=True, env=env
+    )
+    assert out.returncode == 0, out.stderr
+    assert out.stdout == ""

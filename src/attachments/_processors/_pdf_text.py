@@ -63,9 +63,23 @@ def table_markdown(rows: list[list[Any]]) -> str:
     return "\n".join(lines)
 
 
+def _quiet_layout_advert(fitz: Any) -> None:
+    """Stop PyMuPDF (1.27+) printing its pymupdf_layout advert to stdout.
+
+    Its table finder prints "Consider using the pymupdf_layout package..."
+    once per process, on standard output: that corrupts ``att --json`` and
+    anything else written there. ``no_recommend_layout`` is its own off
+    switch (absent in older versions, which print nothing).
+    """
+    quiet = getattr(fitz, "no_recommend_layout", None)
+    if callable(quiet):
+        quiet()
+
+
 def _tables(page: Any, fitz: Any) -> list[tuple[Any, str]]:
     """``[(box, markdown)]`` for the tables PyMuPDF finds on *page*."""
     found = []
+    _quiet_layout_advert(fitz)
     try:
         for table in page.find_tables().tables:
             markdown = table_markdown(table.extract())
