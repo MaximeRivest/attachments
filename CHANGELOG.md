@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0b8] - 2026-10-10
+
+### Changed
+
+- **PDF text is read with PyMuPDF** (already in the `pdf` extra), in the
+  order the PDF stores it, with ligatures expanded ("ﬂuid" is "fluid");
+  pypdf when PyMuPDF is missing or cannot open a file
+  (`meta.extra.text_backend` says which). On olmOCR-bench: multi-column
+  pages 50.0 -> 58.1, small print 68.8 -> 73.8; words run together on
+  0.5% of text pages instead of 1.3%.
+- **Tables in PDFs become Markdown tables** where they stand (tables with
+  ruling lines, found by PyMuPDF), their text not repeated; merged cells
+  repeat their value. olmOCR-bench tables: 0.2 -> 31.2; overall 34.4 ->
+  39.7 ([evals/compare](evals/compare/README.md)). `meta.extra.tables`
+  counts them; `[tables: false]` turns it off.
+- Text pages take about 70 ms instead of 36 (median), the table finder's
+  cost; with `[tables: false]`, 5 ms.
+
 ## [1.0.0b7] - 2026-10-09
 
 Fixes found by comparing attachments with markitdown and docling on their
@@ -616,6 +634,7 @@ DSL options or their kwarg twins (`att("doc.pdf[pages: 1-4]")`). Custom
 loaders/presenters become processors or unpack handlers (see
 [DEVELOPMENT.md](DEVELOPMENT.md)).
 
+[1.0.0b8]: https://pypi.org/project/attachments/1.0.0b8/
 [1.0.0b7]: https://pypi.org/project/attachments/1.0.0b7/
 [1.0.0b6]: https://pypi.org/project/attachments/1.0.0b6/
 [1.0.0b5]: https://pypi.org/project/attachments/1.0.0b5/

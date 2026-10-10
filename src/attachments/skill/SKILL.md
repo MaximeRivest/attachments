@@ -69,6 +69,7 @@ Options belong to the file type: `print(att.options(".pdf"))` (or
 | file | option | effect |
 |---|---|---|
 | pdf, pptx | `pages: 2-4`, `pages: 1,3,-1`, `max_pages: 10` | pages or slides (`-1` = last); cap on pages read (pdf) |
+| pdf | `tables: false` | tables with ruling lines come as Markdown tables by default; off is faster (5 ms a page instead of ~70) |
 | pdf | `images: true` | page pictures. The default (`auto`) draws pages only for PDFs with no text at all, so **charts, tables drawn as graphics and layout are invisible unless you ask** |
 | pdf | `max_dim: 1568`, `image_format: jpeg`, `quality: 80`, `dpi: 200` | page picture size and format (default `auto`: JPEG for scanned pages, PNG for the rest; longest side 2000 px) |
 | pdf, images | `ocr: true` | read the text of scans (needs the `ocr` extra). A PDF does it by itself, page by page, for pages with no text layer (the first 50; `ocr: true` for all) |
