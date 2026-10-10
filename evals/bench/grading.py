@@ -84,6 +84,38 @@ def text_of(obj) -> str:
     return ""
 
 
+def pdf_text_in(obj) -> str:
+    """The text of every PDF carried as base64 anywhere in a JSON value
+    (a document block: the provider reads the PDF itself)."""
+    found = []
+    if isinstance(obj, dict):
+        for value in obj.values():
+            found.append(pdf_text_in(value))
+    elif isinstance(obj, list):
+        for value in obj:
+            found.append(pdf_text_in(value))
+    elif isinstance(obj, str) and len(obj) > 200:
+        try:
+            raw = base64.b64decode(obj.split(",", 1)[-1], validate=True)
+        except (binascii.Error, ValueError):
+            return ""
+        if raw.startswith(b"%PDF"):
+            import pymupdf
+
+            with pymupdf.open(stream=raw, filetype="pdf") as doc:
+                return "\n".join(page.get_text() for page in doc)
+    return "\n".join(t for t in found if t)
+
+
+def first_existing(*paths: str) -> str:
+    """The first of *paths* that exists (an agent may put its files in the
+    project folder it was given), else the first."""
+    for path in paths:
+        if Path(path).exists():
+            return path
+    return paths[0]
+
+
 def chart_page(img) -> int:
     """The page of the charts deck a picture shows, by its bar colour."""
     img = img.convert("RGB")
@@ -118,7 +150,11 @@ def provider_bodies(request) -> dict:
 
 
 def ocr_text(img) -> str:
-    from attachments._processors._ocr import recognize
+    try:
+        from attachments._processors._ocr import recognize
+    except ImportError:  # a workspace without attachments: the grader's own copy
+        sys.path.append(str(Path(__file__).resolve().parents[2] / "src"))
+        from attachments._processors._ocr import recognize
 
     return recognize(img.convert("RGB")).text
 

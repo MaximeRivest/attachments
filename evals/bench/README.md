@@ -112,6 +112,60 @@ holds (`max_chars` can only lower it; `ATTACHMENTS_MCP_MAX_CHARS` sets it):
 rerun 6/6 for both models, Luna reading pages 1-11, 12-22, 23-34 with
 nothing cut.
 
+## With and without attachments (2026-10-10)
+
+`--arm none` gives the same agents the 17 tasks that do not depend on
+attachments itself (not `install`, `mcp_folder`, `cli_json`), worded the
+same but "do not use the attachments library". The workspace has lm15
+and every library attachments itself uses (PyMuPDF, pypdf, python-docx,
+openpyxl, pandas, Pillow, RapidOCR, BeautifulSoup), and the agent may
+install more; it gets lm15's skill only. `mcp_pdf` becomes "with a
+shell", `folder` asks for plain dicts instead of the library's object.
+Graders check outcomes only; every failure below was read by hand (four
+grader bugs found this way were fixed and every run regraded: a whole PDF
+sent as a Claude document block counts as sending its pages, files may
+sit in the project folder, the scorer's OCR may read a label's box as "1",
+the regrade serves the test site again).
+
+```bash
+uv run python evals/bench/run.py --arm none --reps 3
+uv run python evals/bench/run.py --compare runs/<with> runs/<with-rerun> runs/<none>
+```
+
+| | Luna with | Luna without | Sol with | Sol without |
+|---|---|---|---|---|
+| tasks solved | 51/51 | 50/51 | 51/51 | 51/51 |
+| median time a task | 26 s | 30 s | 42 s | 42 s |
+| tool calls a task | 7.5 | 7.6 | 6.8 | 6.0 |
+| lines of code written (median) | **19** | 30 | **26** | 38 |
+| agent tokens a task (median) | 42k | **28k** | 47k | **26k** |
+
+What this says, honestly:
+
+- **On these tasks, capable agents do not need attachments to succeed.**
+  With the right libraries installed and named, GPT-6 Luna and 6.1 Sol
+  wrote working glue code themselves: 101 of 102 runs passed. The one
+  miss: a 58 MB request for a 40-page scan (Claude takes 32 MB). Sol
+  twice sent that scan as a native Claude PDF document, which works and
+  needs no library at all.
+- **attachments makes the code shorter**: 35% fewer lines for Luna, 32%
+  for Sol, for the same results. Less code to read and keep.
+- **It costs tokens**: ~16-20k more a task, almost all the skill (12.5 KB)
+  read once and carried in every later turn; mostly cached input, cheap
+  but not free. Time is the same.
+- **Some traps exist only with attachments.** `sheet` (200 rows by
+  default) cannot be failed with openpyxl, which reads every row.
+- **What this benchmark does not test is where the library's work is**:
+  messy real files (tables in PDFs, Word tracked changes and text boxes,
+  sideways scans, encrypted PDFs, dozens of formats in one folder). The
+  files here are small and generated; an agent writes 30 lines for each
+  and they work. The fair next test is the agents' own code run against
+  held-out real files (evals/compare's olmOCR-bench and test documents),
+  scored on what it extracts.
+- The no-attachments arm was generous: libraries pre-installed and
+  pointed to. A real project without attachments must also choose and
+  install PyMuPDF, RapidOCR and the rest.
+
 Building this benchmark also found a bug, fixed in 2344936: PyMuPDF 1.28
 (what a fresh install gets) printed an advert on standard output from its
 table finder, which broke `att --json > file`.

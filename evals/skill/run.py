@@ -401,7 +401,20 @@ for b in images:
     img = Image.open(io.BytesIO(data)); img.load()
     ok = len(data) <= 5 * 2**20 and (len(images) <= 20 or max(img.size) <= 2000)
     c["pictures_within_limits"] &= ok and len(images) <= 100
-c["every_page_sent"] = len(images) == 40
+# Claude also reads a whole PDF sent as a document block (up to 100 pages):
+# that sends every page too.
+docs = [b for msg in body.get("messages", []) if isinstance(msg.get("content"), list)
+        for b in msg["content"] if isinstance(b, dict) and b.get("type") == "document"]
+pdf_pages = 0
+for b in docs:
+    try:
+        import pymupdf
+        with pymupdf.open(stream=base64.b64decode(b["source"]["data"]), filetype="pdf") as d:
+            pdf_pages += d.page_count
+    except Exception:
+        pass
+c["every_page_sent"] = len(images) == 40 or (pdf_pages == 40 and not images)
+c["info_pdf_pages_sent"] = pdf_pages
 c["info_request_MB"] = round(len(raw.encode()) / 2**20, 1)
 print(json.dumps(c))
 """,

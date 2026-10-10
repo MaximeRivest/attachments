@@ -482,10 +482,11 @@ def blocks(b):
         out += [{"type": "text", "text": content}] if isinstance(content, str) else content
     return out
 b1, b2 = blocks(body), blocks(body2)
-dump = json.dumps(b1)
+dump = json.dumps(b1) + pdf_text_in(b1)  # text, or the PDF itself
 c["whole_handbook_sent"] = all(f"DOC-P{n}" in dump for n in (1, 2, 3))
 c["question_sent"] = "QX1" in dump
-doc_end = max((i for i, b in enumerate(b1) if "DOC-P3" in json.dumps(b)), default=-1)
+doc_end = max((i for i, b in enumerate(b1)
+               if "DOC-P3" in json.dumps(b) + pdf_text_in(b)), default=-1)
 q_at = min((i for i, b in enumerate(b1) if "QX1" in json.dumps(b)), default=-1)
 marks = [i for i, b in enumerate(b1) if isinstance(b, dict) and b.get("cache_control")]
 c["cache_mark_after_handbook_before_question"] = any(doc_end <= i < q_at for i in marks)
@@ -526,7 +527,11 @@ for img in imgs:
     text = ocr_text(img)
     found.append(sorted(set(int(n) for n in re.findall(r"\b([1-8])\b", text))))
 c["info_numbers_read"] = found
-c["each_picture_shows_its_slide"] = found == [[2], [5], [7]]
+# Its own number, and not the other two (a box drawn around a label can
+# read as a stray "1": that is not a wrong label).
+c["each_picture_shows_its_slide"] = len(found) == 3 and all(
+    n in got and not (set(got) & ({2, 5, 7} - {n})) for n, got in zip((2, 5, 7), found)
+)
 emit(c)
 """
 
@@ -641,9 +646,11 @@ emit(c)
 
 G_REPO = r"""
 from pathlib import Path
-c = {"uses_lm15": uses("ask.py", "lm15"), "retries_right": False}
+# The files may be next to repo/ or inside it: the prompt does not say.
+c = {"uses_lm15": uses(first_existing("ask.py", "repo/ask.py"), "lm15"), "retries_right": False}
 try:
-    c["retries_right"] = number(json.loads(Path("answer.json").read_text()).get("retries")) == 7
+    answer = first_existing("answer.json", "repo/answer.json")
+    c["retries_right"] = number(json.loads(Path(answer).read_text()).get("retries")) == 7
 except Exception as exc:
     c["error"] = repr(exc)[:300]
 emit(c)
@@ -1241,3 +1248,205 @@ TASKS["cli_web"] = Task(
 )
 
 assert len(TASKS) == 20, len(TASKS)
+
+
+# =============================================================================
+# The same tasks without attachments (run.py --arm none)
+# =============================================================================
+#
+# The workspace has lm15 and the libraries attachments itself uses (PyMuPDF,
+# pypdf, python-docx, openpyxl, pandas, Pillow, RapidOCR, BeautifulSoup), so
+# the only difference is the attachments library. Tasks that are about
+# attachments itself (install, mcp_folder, cli_json) have no counterpart.
+
+#: What the no-attachments workspace has installed (same versions uv picks
+#: for attachments' own extras).
+NONE_PACKAGES = (
+    "lm15>=1.2",
+    "pymupdf>=1.24",
+    "pypdf>=6.17",
+    "python-docx>=1.0",
+    "openpyxl>=3.1,<4.0",
+    "pandas>=2.0,<3.0",
+    "xlrd>=2.0",
+    "pillow>=10.1",
+    "beautifulsoup4>=4.12",
+    "lxml>=5.0",
+    "rapidocr>=3.10,<4",
+    "onnxruntime>=1.18",
+)
+
+LIBS_NONE = (
+    "Use Python from .venv (run it as .venv/bin/python): it has lm15 and "
+    "common libraries for reading PDFs, Office files, images, OCR and web "
+    "pages (`uv pip list --python .venv/bin/python` lists them); add others "
+    "with `uv pip install --python .venv/bin/python <package>` if you need to. "
+    "Do not use the attachments library."
+)
+
+_SWAPS = (
+    (LIBS, LIBS_NONE),
+    (
+        "Use the Python library attachments, already installed in .venv (run Python "
+        "as .venv/bin/python).",
+        LIBS_NONE,
+    ),
+    ("Use the Python library attachments, already installed in .venv.", LIBS_NONE),
+    (MCP + " ", ""),
+)
+
+NONE_PROMPTS: dict[str, str] = {}
+for _name, _task in TASKS.items():
+    if _name in ("install", "mcp_folder", "cli_json", "folder", "cli_web"):
+        continue
+    _p = _task.prompt
+    for _old, _new in _SWAPS:
+        _p = _p.replace(_old, _new)
+    if _name == "mcp_pdf":
+        _p += " " + LIBS_NONE
+    NONE_PROMPTS[_name] = _p
+
+NONE_PROMPTS["folder"] = _d(f"""
+    docs/ holds a project's documents (PDF, Word, Excel, text, a picture).
+    Write prepare.py. Running `.venv/bin/python prepare.py` must read every
+    file in docs/ and save the result to docs.json, pictures included, so a
+    later program can get it back without reading the documents again: give
+    prepare.py a function `load()` that returns it as a list with one dict per
+    file: {{"name": <file name>, "text": <its text>, "images": [<the bytes of
+    each picture>]}}. If any document cannot be read, prepare.py must exit
+    with a non-zero status, print an error naming every unreadable file, and
+    write nothing. {LIBS_NONE}""")
+
+NONE_PROMPTS["cli_web"] = _d(f"""
+    Write make_prompt.sh: it saves the article at {{site}}/shop/ as Markdown to
+    article.md — the article's text and its table, without the site's menus,
+    banners and footer. Run it. {LIBS_NONE}""")
+
+for _name, _p in NONE_PROMPTS.items():
+    assert "attachments" not in _p.replace("Do not use the attachments library.", ""), (
+        _name
+    )
+
+G_FOLDER_NONE = r"""
+import importlib.util, io, json, os, shutil, subprocess, sys
+from pathlib import Path
+from PIL import Image
+py = sys.executable
+work = Path.cwd()
+c = {"stops_naming_all": False, "writes_nothing_on_failure": False,
+     "saves_and_loads": False, "load_needs_no_documents": False}
+def run(folder):
+    p = subprocess.run([py, "prepare.py"], cwd=folder, capture_output=True, text=True, timeout=300)
+    return p.returncode, p.stdout + p.stderr
+grading = work.parent / "grading"
+shutil.rmtree(grading, ignore_errors=True)
+for name in ("broken", "clean"):
+    shutil.copytree(work, grading / name, ignore=shutil.ignore_patterns(".venv", "docs.json", "__pycache__"))
+code, out = run(grading / "broken")
+c["stops_naming_all"] = code != 0 and "broken.pdf" in out and "damaged.docx" in out
+c["writes_nothing_on_failure"] = code != 0 and not (grading / "broken" / "docs.json").exists()
+for bad in ("broken.pdf", "damaged.docx"):
+    (grading / "clean" / "docs" / bad).unlink()
+code, out = run(grading / "clean")
+EXPECTED = {"brief.pdf": "Project brief", "notes.txt": "Kickoff", "budget.xlsx": "servers",
+            "memo.docx": "two more testers", "diagram.png": None}
+os.chdir(grading / "clean")
+try:
+    json.loads(Path("docs.json").read_text())
+    m = load("prepare.py")
+    def intact(loaded):
+        got = {Path(d["name"]).name: d for d in loaded}
+        if set(got) != set(EXPECTED) or not got["diagram.png"]["images"]:
+            return False
+        for name, phrase in EXPECTED.items():
+            if phrase and phrase not in got[name]["text"]:
+                return False
+        for d in loaded:
+            for b in d["images"]:
+                Image.open(io.BytesIO(b)).load()
+        return True
+    c["saves_and_loads"] = code == 0 and intact(m.load())
+    shutil.move("docs", "docs-away")
+    c["load_needs_no_documents"] = c["saves_and_loads"] and intact(m.load())
+except Exception as exc:
+    c["error"] = repr(exc)[:300]
+emit(c)
+"""
+
+G_CLI_WEB_NONE = G_CLI_WEB.replace(
+    'c = {"no_python_written": not list(Path(".").glob("*.py")), "script_works": False,',
+    'c = {"script_works": False,',
+)
+assert G_CLI_WEB_NONE != G_CLI_WEB
+
+#: Graders that differ without attachments (the others are outcome-only).
+NONE_GRADERS = {"folder": G_FOLDER_NONE, "cli_web": G_CLI_WEB_NONE}
+
+#: Expert solutions for the graders written for this arm (the others were
+#: checked with the attachments arm and grade outcomes only).
+NONE_EXPERTS = {
+    "folder": {
+        "prepare.py": """
+        import base64, json, sys
+        from pathlib import Path
+
+        def read(path):
+            if path.suffix == ".pdf":
+                import pymupdf
+                with pymupdf.open(path) as doc:
+                    return "\\n".join(p.get_text() for p in doc), []
+            if path.suffix == ".docx":
+                import docx
+                return "\\n".join(p.text for p in docx.Document(path).paragraphs), []
+            if path.suffix == ".xlsx":
+                import openpyxl
+                book = openpyxl.load_workbook(path, read_only=True)
+                return "\\n".join(",".join(str(v) for v in row) for s in book for row in s.iter_rows(values_only=True)), []
+            if path.suffix == ".png":
+                return "", [path.read_bytes()]
+            return path.read_text(), []
+
+        def load():
+            data = json.loads(Path("docs.json").read_text())
+            return [{**d, "images": [base64.b64decode(b) for b in d["images"]]} for d in data]
+
+        if __name__ == "__main__":
+            out, bad = [], []
+            for path in sorted(Path("docs").iterdir()):
+                try:
+                    text, images = read(path)
+                    out.append({"name": path.name, "text": text, "images": images})
+                except Exception as e:
+                    bad.append(f"{path.name}: {e}")
+            if bad:
+                sys.exit("cannot read:\\n" + "\\n".join(bad))
+            Path("docs.json").write_text(json.dumps(
+                [{**d, "images": [base64.b64encode(b).decode() for b in d["images"]]} for d in out]))
+    """
+    },
+    "cli_web": {
+        "make_prompt.sh": """
+        #!/usr/bin/env bash
+        set -euo pipefail
+        .venv/bin/python - "{site}/shop/" > article.md <<'PY'
+        import sys, urllib.request
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(urllib.request.urlopen(sys.argv[1]).read(), "lxml")
+        art = soup.find("article")
+        out = []
+        for el in art.find_all(["h1", "p", "table"], recursive=True):
+            if el.name == "h1":
+                out.append("# " + el.get_text(strip=True))
+            elif el.name == "p":
+                out.append(" ".join(el.get_text().split()))
+            else:
+                rows = [[c.get_text(strip=True) for c in r.find_all(["th", "td"])] for r in el.find_all("tr")]
+                out.append("| " + " | ".join(rows[0]) + " |")
+                out.append("|" + " --- |" * len(rows[0]))
+                out += ["| " + " | ".join(r) + " |" for r in rows[1:]]
+        print("\\n\\n".join(out))
+        PY
+    """,
+        "__run__sh__": ["make_prompt.sh"],
+    },
+}

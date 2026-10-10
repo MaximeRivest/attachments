@@ -76,12 +76,13 @@ class _Quiet(http.server.SimpleHTTPRequestHandler):
         pass
 
 
-def start_site() -> str:
+def start_site(port: int = 0) -> str:
+    """Serve the test site on *port* (0: any free one); return its address."""
     root = CACHE / "site"
     shutil.rmtree(root, ignore_errors=True)
     T.build_site(root)
     handler = functools.partial(_Quiet, directory=str(root))
-    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", port), handler)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     return f"http://127.0.0.1:{server.server_address[1]}"
 
@@ -100,11 +101,17 @@ def build_wheel() -> Path:
     return next(out.glob("*.whl"))
 
 
-def build_venv(work: Path, wheel: Path) -> None:
+def build_venv(work: Path, wheel: Path, arm: str = "with") -> None:
+    """The workspace's .venv: attachments 1.0, or (``none``) what it uses."""
     subprocess.run(
         ["uv", "venv", "-q", "--python", "3.12", str(work / ".venv")],
         check=True,
         env=_env(),
+    )
+    packages = (
+        [f"attachments[{EXTRAS}] @ {wheel.as_uri()}"]
+        if arm == "with"
+        else list(T.NONE_PACKAGES)
     )
     subprocess.run(
         [
@@ -114,20 +121,20 @@ def build_venv(work: Path, wheel: Path) -> None:
             "-q",
             "--python",
             str(work / ".venv" / "bin" / "python"),
-            f"attachments[{EXTRAS}] @ {wheel.as_uri()}",
+            *packages,
         ],
         check=True,
         env=_env(),
     )
 
 
-def workspace(name: str, work: Path, wheel: Path) -> None:
+def workspace(name: str, work: Path, wheel: Path, arm: str = "with") -> None:
     task = T.TASKS[name]
     work.mkdir(parents=True, exist_ok=True)
     task.build(work)
-    if task.venv:
-        build_venv(work, wheel)
-    if task.mcp:
+    if task.venv or arm == "none":
+        build_venv(work, wheel, arm)
+    if task.mcp and arm == "with":
         (work / ".pi").mkdir()
         (work / ".pi" / "mcp.json").write_text(
             json.dumps(
@@ -144,8 +151,9 @@ def workspace(name: str, work: Path, wheel: Path) -> None:
         )
 
 
-def prompt(name: str, site: str) -> str:
-    return T.TASKS[name].prompt.replace("{site}", site)
+def prompt(name: str, site: str, arm: str = "with") -> str:
+    text = T.TASKS[name].prompt if arm == "with" else T.NONE_PROMPTS[name]
+    return text.replace("{site}", site)
 
 
 # =============================================================================
@@ -153,11 +161,12 @@ def prompt(name: str, site: str) -> str:
 # =============================================================================
 
 
-def grade(name: str, work: Path) -> dict:
+def grade(name: str, work: Path, arm: str = "with") -> dict:
     task = T.TASKS[name]
-    if task.grader is None:
+    grader = T.NONE_GRADERS.get(name, task.grader) if arm == "none" else task.grader
+    if grader is None:
         return T.skill_eval.grade(name, work)
-    cmd = [str(work / ".venv" / "bin" / "python"), "-c", T.PRELUDE + task.grader]
+    cmd = [str(work / ".venv" / "bin" / "python"), "-c", T.PRELUDE + grader]
     p = None
     try:
         p = subprocess.run(
@@ -204,22 +213,31 @@ def apply_solution(name: str, work: Path, files: dict, wheel: Path, site: str) -
         )
 
 
-def check(names: list[str], wheel: Path, site: str) -> int:
-    """Expert solutions must score 1.0 and naive ones less: the graders work."""
-    root = CACHE / "check"
+def check(names: list[str], wheel: Path, site: str, arm: str = "with") -> int:
+    """Expert solutions must score 1.0 and naive ones less: the graders work.
+
+    Without attachments only the graders written for that arm are checked
+    (the others are the outcome-only graders checked with attachments).
+    """
+    root = CACHE / ("check" if arm == "with" else "check-none")
     shutil.rmtree(root, ignore_errors=True)
 
     def one(job):
         label, name = job
         task = T.TASKS[name]
         work = root / label / name / "work"
-        workspace(name, work, wheel)
-        apply_solution(
-            name, work, task.expert if label == "expert" else task.naive, wheel, site
-        )
-        return label, name, grade(name, work)
+        workspace(name, work, wheel, arm)
+        if arm == "none":
+            files = T.NONE_EXPERTS[name]
+        else:
+            files = task.expert if label == "expert" else task.naive
+        apply_solution(name, work, files, wheel, site)
+        return label, name, grade(name, work, arm)
 
-    jobs = [(label, n) for n in names for label in ("expert", "naive")]
+    if arm == "none":
+        jobs = [("expert", n) for n in names if n in T.NONE_EXPERTS]
+    else:
+        jobs = [(label, n) for n in names for label in ("expert", "naive")]
     failed = False
     with futures.ThreadPoolExecutor(8) as pool:
         for label, name, g in pool.map(one, jobs):
@@ -241,7 +259,13 @@ def check(names: list[str], wheel: Path, site: str) -> int:
 # =============================================================================
 
 
-def session_metrics(session_dir: Path, work: Path) -> dict:
+#: Signs that an agent of the no-attachments arm used attachments anyway.
+USES_ATTACHMENTS = re.compile(
+    r"(?:from|import)\s+attachments\b|install[^\n\"]*\battachments\b|\.venv/bin/att\b"
+)
+
+
+def session_metrics(session_dir: Path, work: Path, arm: str = "with") -> dict:
     m = dict(
         cost=0.0,
         turns=0,
@@ -252,6 +276,8 @@ def session_metrics(session_dir: Path, work: Path) -> dict:
         contaminated=False,
         final="",
         error=None,
+        tokens=0,
+        output_tokens=0,
     )
     for f in sorted(session_dir.glob("*.jsonl")):
         for line in f.read_text().splitlines():
@@ -264,9 +290,10 @@ def session_metrics(session_dir: Path, work: Path) -> dict:
             msg = o["message"]
             if msg.get("role") == "assistant":
                 m["turns"] += 1
-                m["cost"] += ((msg.get("usage") or {}).get("cost") or {}).get(
-                    "total", 0
-                ) or 0
+                usage = msg.get("usage") or {}
+                m["cost"] += (usage.get("cost") or {}).get("total", 0) or 0
+                m["tokens"] += usage.get("totalTokens") or 0
+                m["output_tokens"] += usage.get("output") or 0
                 m["error"] = msg.get("errorMessage") or m["error"]
                 for c in msg.get("content") or []:
                     if c.get("type") == "toolCall":
@@ -280,7 +307,9 @@ def session_metrics(session_dir: Path, work: Path) -> dict:
                                 m["read_skills"].append(skill)
                         if c.get("name", "").startswith("mcp__attachments__att"):
                             m["used_mcp"] = True
-                        if forbidden(args, work):
+                        if forbidden(args, work) or (
+                            arm == "none" and USES_ATTACHMENTS.search(args)
+                        ):
                             m["contaminated"] = True
                     elif c.get("type") == "text":
                         m["final"] = c.get("text", "")
@@ -308,10 +337,11 @@ def one(
     wheel: Path,
     site: str,
 ) -> dict:
+    arm = args.arm
     slug = model.split("/", 1)[1]
     base = run_root / name / f"{slug}-{rep}"
     work = base / "work"
-    workspace(name, work, wheel)
+    workspace(name, work, wheel, arm)
     provider, model_id = model.split("/", 1)
     task = T.TASKS[name]
     cmd = [
@@ -335,13 +365,13 @@ def one(
         "--append-system-prompt",
         RULES,
         "--skill",
-        str(run_root / "skills" / "attachments"),
-        "--skill",
         str(run_root / "skills" / "lm15"),
     ]
-    if task.mcp:
+    if arm == "with":
+        cmd += ["--skill", str(run_root / "skills" / "attachments")]
+    if task.mcp and arm == "with":
         cmd += ["-e", "builtin:mcp", "--approve", "--tools", MCP_TOOLS]
-    cmd.append(prompt(name, site))
+    cmd.append(prompt(name, site, arm))
     started = time.time()
     try:
         p = subprocess.run(
@@ -356,14 +386,16 @@ def one(
     except subprocess.TimeoutExpired:
         status = "timeout"
     seconds = round(time.time() - started)
-    metrics = session_metrics(base / "session", work)
-    graded = grade(name, work)
-    if task.mcp:
+    metrics = session_metrics(base / "session", work, arm)
+    metrics["code_lines"] = code_lines(work)
+    graded = grade(name, work, arm)
+    if task.mcp and arm == "with":
         graded["checks"]["used_attachments_mcp"] = metrics["used_mcp"]
         graded["success"] = graded["success"] and metrics["used_mcp"]
     result = {
         "task": name,
         "model": model,
+        "arm": arm,
         "rep": rep,
         "status": status,
         "seconds": seconds,
@@ -391,6 +423,112 @@ def one(
 # =============================================================================
 # Report
 # =============================================================================
+
+
+def code_lines(work: Path) -> int:
+    """Non-blank lines of code the agent left in its folder (.py and .sh)."""
+    total = 0
+    for path in [*work.glob("*.py"), *work.glob("*.sh")]:
+        try:
+            total += sum(1 for line in path.read_text().splitlines() if line.strip())
+        except (OSError, UnicodeDecodeError):
+            pass
+    return total
+
+
+def _arm_of(results: Path) -> str:
+    try:
+        return json.loads((results / "setup.json").read_text()).get("arm", "with")
+    except (OSError, json.JSONDecodeError):
+        return "with"
+
+
+def compare(runs: list[Path]) -> str:
+    """One table: the comparable tasks, with and without attachments.
+
+    Runs are read in the order given; a later run replaces an earlier one
+    for the (arm, task, model) cells it covers (a task re-run after a fix).
+    """
+    cells: dict[tuple[str, str, str], list[dict]] = {}
+    for results in runs:
+        arm = _arm_of(results)
+        fresh: dict[tuple[str, str, str], list[dict]] = {}
+        for path in sorted(results.glob("*/*/result.json")):
+            r = json.loads(path.read_text())
+            if r["agent"].get("contaminated"):
+                continue
+            fresh.setdefault((arm, r["task"], r["model"]), []).append(r)
+        cells.update(fresh)
+    models = sorted({k[2] for k in cells})
+    short = {m: m.split("/", 1)[1] for m in models}
+    tasks = [t for t in T.NONE_PROMPTS if any(k[1] == t for k in cells)]
+    columns = [(m, arm) for m in models for arm in ("with", "none")]
+    head = " | ".join(
+        f"{short[m]} {'with' if a == 'with' else 'without'}" for m, a in columns
+    )
+    lines = [f"| task | {head} |", "|---|" + "---|" * len(columns)]
+    every: dict[tuple[str, str], list[dict]] = {c: [] for c in columns}
+    for task in tasks:
+        row = []
+        for m, a in columns:
+            rs = cells.get((a, task, m), [])
+            every[(m, a)] += rs
+            if not rs:
+                row.append("—")
+                continue
+            wins = sum(r["grade"]["success"] for r in rs)
+            secs = sorted(r["seconds"] for r in rs)[len(rs) // 2]
+            mark = f"**{wins}/{len(rs)}**" if wins < len(rs) else f"{wins}/{len(rs)}"
+            row.append(f"{mark} ({secs}s)")
+        lines.append(f"| {task} | " + " | ".join(row) + " |")
+
+    def stat(rs, f):
+        return f(rs) if rs else "—"
+
+    def median(values):
+        values = sorted(values)
+        return values[len(values) // 2]
+
+    summary = [
+        (
+            "tasks solved",
+            lambda rs: f"{sum(r['grade']['success'] for r in rs)}/{len(rs)}",
+        ),
+        ("median time a task", lambda rs: f"{median(r['seconds'] for r in rs)} s"),
+        (
+            "tool calls a task",
+            lambda rs: f"{sum(r['agent']['tool_calls'] for r in rs) / len(rs):.1f}",
+        ),
+        (
+            "failed tool calls a task",
+            lambda rs: f"{sum(r['agent']['tool_errors'] for r in rs) / len(rs):.1f}",
+        ),
+        (
+            "lines of code written (median)",
+            lambda rs: f"{median(r['agent'].get('code_lines', 0) for r in rs)}",
+        ),
+        (
+            "agent tokens a task (median)",
+            lambda rs: f"{median(r['agent'].get('tokens', 0) for r in rs):,}",
+        ),
+    ]
+    lines += ["", f"| | {head} |", "|---|" + "---|" * len(columns)]
+    for label, f in summary:
+        lines.append(
+            f"| {label} | " + " | ".join(stat(every[c], f) for c in columns) + " |"
+        )
+    misses = []
+    for (a, task, m), rs in sorted(cells.items()):
+        for r in rs:
+            if task in tasks and not r["grade"]["success"]:
+                failed = [k for k, v in r["grade"]["checks"].items() if v is False]
+                why = ", ".join(failed) or (r["grade"].get("error") or "")[:80]
+                misses.append(
+                    f"- {task}, {short[m]} {'with' if a == 'with' else 'without'} #{r['rep']}: {why}"
+                )
+    if misses:
+        lines += ["", "Failures:", *misses]
+    return "\n".join(lines) + "\n"
 
 
 def report(results: Path) -> str:
@@ -463,7 +601,20 @@ def main() -> int:
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    ap.add_argument("--tasks", nargs="+", default=list(T.TASKS), choices=list(T.TASKS))
+    ap.add_argument("--tasks", nargs="+", default=None, choices=list(T.TASKS))
+    ap.add_argument(
+        "--arm",
+        choices=("with", "none"),
+        default="with",
+        help="with attachments (default), or without it (17 comparable tasks)",
+    )
+    ap.add_argument(
+        "--compare",
+        nargs="+",
+        type=Path,
+        metavar="RUN",
+        help="runs with and without attachments: one table side by side",
+    )
     ap.add_argument("--models", nargs="+", default=list(MODELS))
     ap.add_argument("--reps", type=int, default=3)
     ap.add_argument("--parallel", type=int, default=6)
@@ -474,26 +625,60 @@ def main() -> int:
     )
     ap.add_argument("--report", type=Path, help="print the table of an earlier run")
     ap.add_argument(
+        "--regrade", type=Path, help="grade an earlier run's workspaces again"
+    )
+    ap.add_argument(
         "--rescan",
         type=Path,
         help="recompute agent metrics of an earlier run from its sessions",
     )
     args = ap.parse_args()
+    if args.tasks is None:
+        args.tasks = list(T.TASKS) if args.arm == "with" else list(T.NONE_PROMPTS)
+    elif args.arm == "none":
+        args.tasks = [t for t in args.tasks if t in T.NONE_PROMPTS]
+    if args.compare:
+        print(compare([p.resolve() for p in args.compare]))
+        return 0
     if args.report:
         print(report(args.report.resolve()))
+        return 0
+    if args.regrade:
+        # Graders of site tasks re-run the agent's script, which fetches the
+        # site at the address of its run: serve it there again.
+        found = set()
+        for script in args.regrade.resolve().glob("*/*/result.json"):
+            work = Path(json.loads(script.read_text())["work"])
+            for f in [*work.glob("*.sh"), *work.glob("*.py")]:
+                found |= set(re.findall(r"127\.0\.0\.1:(\d+)", f.read_text()))
+        for port in found:
+            start_site(int(port))
+        for path in sorted(args.regrade.resolve().glob("*/*/result.json")):
+            r = json.loads(path.read_text())
+            r["grade"] = grade(r["task"], Path(r["work"]), r.get("arm", "with"))
+            if T.TASKS[r["task"]].mcp and r.get("arm", "with") == "with":
+                used = r["agent"].get("used_mcp", False)
+                r["grade"]["checks"]["used_attachments_mcp"] = used
+                r["grade"]["success"] = r["grade"]["success"] and used
+            path.write_text(json.dumps(r, indent=1))
+        print(report(args.regrade.resolve()))
         return 0
     if args.rescan:
         for path in sorted(args.rescan.resolve().glob("*/*/result.json")):
             r = json.loads(path.read_text())
-            r["agent"] = session_metrics(path.parent, Path(r["work"]))
+            r["agent"] = session_metrics(
+                path.parent, Path(r["work"]), r.get("arm", "with")
+            )
+            r["agent"]["code_lines"] = code_lines(Path(r["work"]))
             path.write_text(json.dumps(r, indent=1))
         print(report(args.rescan.resolve()))
         return 0
     wheel = build_wheel()
     site = start_site()
+    args.site = site
     if args.check:
-        return check(args.tasks, wheel, site)
-    stamp = time.strftime("%Y%m%d-%H%M%S")
+        return check(args.tasks, wheel, site, args.arm)
+    stamp = time.strftime("%Y%m%d-%H%M%S") + ("-none" if args.arm == "none" else "")
     run_root, results = CACHE / stamp, HERE / "runs" / stamp
     shutil.copytree(
         SKILL,
@@ -507,6 +692,7 @@ def main() -> int:
         json.dumps(
             {
                 "models": args.models,
+                "arm": args.arm,
                 "thinking": args.thinking,
                 "reps": args.reps,
                 "task_model": T.TASK_MODEL,
@@ -516,6 +702,7 @@ def main() -> int:
                     text=True,
                 ).stdout.strip(),
                 "lm15_skill": str(LM15_SKILL),
+                "site": args.site,
             },
             indent=1,
         )
