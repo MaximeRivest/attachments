@@ -91,6 +91,27 @@ What the failures say:
 - The lm15 tasks (7-16) all passed: `a.lm15()` and the attachments skill
   were enough, with lm15's own skill read in half the runs.
 
+## After the fixes (2026-10-10, commits a39cdec and b637f8c)
+
+The three library problems above were fixed: the MCP tool marks pages and
+returns long results in parts with a note on how to go on; pictures that
+cannot be drawn are a warning, never at the cost of the text; files that
+start like a private key are skipped whatever their name. Same 20 tasks,
+same models, 3 runs each:
+
+| | gpt-6-luna | gpt-6.1-sol |
+|---|---|---|
+| total | **60/60** (was 54/60) | **60/60** |
+| folder | 3/3 (was 1/3) | 3/3 |
+| mcp_pdf | 3/3 (was 0/3) | 3/3 |
+| providers | 3/3 (the earlier miss was a model slip) | 3/3 |
+
+On `mcp_pdf`, Luna first asked for `max_chars: 30000`; Pi still cut the
+middle out and it found page 27 by luck. Since b637f8c the server's limit
+holds (`max_chars` can only lower it; `ATTACHMENTS_MCP_MAX_CHARS` sets it):
+rerun 6/6 for both models, Luna reading pages 1-11, 12-22, 23-34 with
+nothing cut.
+
 Building this benchmark also found a bug, fixed in 2344936: PyMuPDF 1.28
 (what a fresh install gets) printed an advert on standard output from its
 table finder, which broke `att --json > file`.
