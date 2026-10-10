@@ -635,10 +635,12 @@ exceptions) and an `att_options` tool to discover per-format options.
 
 Each page, slide or sheet starts with a `[page 3]` / `[slide 3]` /
 `[sheet Sales]` line, so an agent knows where it is. A long result comes
-in parts of at most 16,000 characters (`max_chars`; agents' clients cut
-longer results in the middle without saying so), each ending with what
-was shown and how to go on: `start=` for the next part, or the `pages`
-option to jump straight to a page.
+in parts of at most 16,000 characters (agents' clients cut longer results
+in the middle without saying so), each ending with what was shown and how
+to go on: `start=` for the next part, or the `pages` option to jump
+straight to a page. The agent can lower the limit (`max_chars`), not raise
+it; for a client that takes more, set `ATTACHMENTS_MCP_MAX_CHARS` in the
+server's environment (`0` = no limit).
 
 Claude Code:
 

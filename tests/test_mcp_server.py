@@ -372,9 +372,25 @@ class TestLongDocuments:
         )
         assert text.startswith("## long.pdf\n[page 27]\nThe approved budget")
 
-    def test_max_chars_zero_is_everything(self, tmp_path):
+    def test_agent_cannot_raise_the_limit(self, tmp_path):
+        """In the benchmark, agents asked for 30,000 and their client cut the
+        middle out: the server's limit holds; a note says why."""
         _long_pdf(tmp_path / "long.pdf")
         text = _texts(
-            _call("att", {"source": str(tmp_path / "long.pdf"), "max_chars": 0})
+            _call("att", {"source": str(tmp_path / "long.pdf"), "max_chars": 30000})
         )
+        assert len(text) < 20_000
+        assert "max_chars is at most 16000 here" in text
+
+    def test_agent_can_lower_it(self, tmp_path):
+        _long_pdf(tmp_path / "long.pdf")
+        text = _texts(
+            _call("att", {"source": str(tmp_path / "long.pdf"), "max_chars": 3000})
+        )
+        assert len(text.split("--- more ---")[0]) <= 3100
+
+    def test_server_owner_can_raise_it(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("ATTACHMENTS_MCP_MAX_CHARS", "0")
+        _long_pdf(tmp_path / "long.pdf")
+        text = _texts(_call("att", {"source": str(tmp_path / "long.pdf")}))
         assert "--- more ---" not in text and "[page 40]" in text

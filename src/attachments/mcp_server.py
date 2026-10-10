@@ -58,6 +58,55 @@ MAX_IMAGE_BYTES = 1_500_000
 #: document comes back in parts, each ending with how to get the next.
 MAX_CHARS = 16_000
 
+#: Environment variable that changes :data:`MAX_CHARS` for this server
+#: (``0`` = no limit), for clients known to take longer results. The tool's
+#: own ``max_chars`` can only lower it: an agent cannot know where its
+#: client cuts (in the benchmark, agents raised it and lost pages).
+MAX_CHARS_ENV = "ATTACHMENTS_MCP_MAX_CHARS"
+
+
+def server_max_chars() -> int:
+    """The most characters one ``att`` call returns here (``0`` = no limit).
+
+    Examples:
+        >>> import os
+        >>> os.environ.pop(MAX_CHARS_ENV, None) and None
+        >>> server_max_chars()
+        16000
+    """
+    import os
+
+    raw = os.environ.get(MAX_CHARS_ENV, "").strip()
+    try:
+        value = int(raw) if raw else MAX_CHARS
+    except ValueError:
+        return MAX_CHARS
+    return max(0, value)
+
+
+def effective_max_chars(asked: int | None) -> tuple[int, bool]:
+    """``(limit, capped)``: the agent's *asked* limit, never above the server's.
+
+    Examples:
+        >>> effective_max_chars(None)
+        (16000, False)
+        >>> (
+        ...     effective_max_chars(4000),
+        ...     effective_max_chars(30000),
+        ...     effective_max_chars(0),
+        ... )
+        ((4000, False), (16000, True), (16000, True))
+    """
+    ceiling = server_max_chars()
+    if asked is None or (ceiling and asked == ceiling):
+        return ceiling, False
+    if ceiling == 0:
+        return max(0, asked), False
+    if asked <= 0 or asked > ceiling:
+        return ceiling, True
+    return asked, False
+
+
 #: The teaching message shown when the mcp SDK is missing.
 _MISSING_MCP_MESSAGE = (
     f"attachments-mcp requires the mcp extra. Install with: {DEPENDENCY_MAP['mcp'][1]}"
@@ -91,6 +140,8 @@ Environment:
     ATTACHMENTS_API_KEY        Hosted-tier API key (enables service fallback)
     ATTACHMENTS_SERVICE_URL    Service endpoint for hosted-tier proxying
                                (OCR/audio without local optional deps)
+    ATTACHMENTS_MCP_MAX_CHARS  Most characters per att result (default 16000,
+                               0 = no limit), for clients that take more
 
 Security: the server reads local files and fetches URLs with the user's
 permissions — only attach it to agents you trust.
@@ -123,12 +174,13 @@ Call att_options to discover every option per format.
 Returns extracted text (one "## <source>" block per file, a "[page N]",
 "[slide N]" or "[sheet Name]" line where each starts) followed by the
 pictures of those pages when present. Long results come in parts of at
-most `max_chars` characters (default 16000; 0 = everything at once): a
-"--- more ---" note then says what was shown and how to get the rest
-(`start`, or the "pages" option to jump to a page). For a long document,
-ask for a page range first. Errors never raise: they come back as
-readable text under "--- notes ---" (e.g. unpack-error, parse-error,
-missing-dependency with its pip install remedy)."""
+most 16000 characters (`max_chars` can lower it, not raise it: longer
+results get cut by agent clients): a "--- more ---" note then says what
+was shown and how to get the rest (`start`, or the "pages" option to jump
+to a page). For a long document, ask for a page range first. Errors
+never raise: they come back as readable text under "--- notes ---"
+(e.g. unpack-error, parse-error, missing-dependency with its pip install
+remedy)."""
 
 _ATT_OPTIONS_DESCRIPTION = """\
 Discover per-format options for the att tool.
@@ -302,7 +354,7 @@ def _content_from_artifacts(
 
     full, pages, placed = _render_marked(artifacts)
     notes = _artifact_notes(artifacts)
-    budget = MAX_CHARS if max_chars is None else max_chars
+    budget, capped = effective_max_chars(max_chars)
     start = max(0, min(int(start or 0), len(full)))
     end = len(full)
     if budget and end - start > budget:
@@ -325,6 +377,11 @@ def _content_from_artifacts(
             line += (
                 f" The rest: call att again with the same source and options "
                 f"and start={end}."
+            )
+        if capped:
+            line += (
+                f" (max_chars is at most {budget} here: agent clients cut longer "
+                "results in the middle without saying so)"
             )
         more.append(line)
         by_source: dict[str, list[tuple]] = {}
@@ -464,7 +521,7 @@ def create_server() -> Any:
         source: str,
         options: dict | None = None,
         start: int = 0,
-        max_chars: int = MAX_CHARS,
+        max_chars: int | None = None,
     ) -> list[Any]:
         from . import att
 

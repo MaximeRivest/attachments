@@ -30,8 +30,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **The MCP tool marks pages and returns long results in parts.** A
   `[page N]` (`[slide N]`, `[sheet Name]`) line starts each page; at most
-  16,000 characters come back per call (`max_chars`, `0` = all), cut where
-  a page starts, with a `--- more ---` note: what was shown, `start=` for
+  16,000 characters come back per call (the agent may lower it with
+  `max_chars`, not raise it; `ATTACHMENTS_MCP_MAX_CHARS` sets it for the
+  server, `0` = no limit), cut where a page starts, with a `--- more ---` note: what was shown, `start=` for
   the rest, the `pages` option to jump. Clients cut longer results in the
   middle without a word (Pi past 20 KB): on a 40-page PDF, page 27 never
   reached the agent (evals/bench, `mcp_pdf`: GPT-6 Luna 0/3).
