@@ -62,10 +62,10 @@ html = [
     "lxml>=5.0",
 ]
 image = [
-    "pillow>=10.0",
+    "pillow>=10.1",  # 10.1: sized default font (watermark labels)
 ]
 heic = [
-    "pillow>=10.0",
+    "pillow>=10.1",
     "pillow-heif>=0.16",
 ]
 svg = [
@@ -88,6 +88,10 @@ audio = [
 ]
 mcp = [
     "mcp>=1.17",  # 1.17: oldest the tests pass on; 2.x supported too
+]
+# `a.lm15()`: ready lm15 messages (lm15 is standard-library only).
+lm15 = [
+    "lm15>=1.2",
 ]
 # Web page screenshots (html `screenshot: true`). Also run
 # `playwright install chromium` once, or set ATTACHMENTS_CHROMIUM to a
@@ -149,7 +153,7 @@ dev = [
     "python-pptx>=0.6.23",
     "beautifulsoup4>=4.12",
     "lxml>=5.0",
-    "pillow>=10.0",
+    "pillow>=10.1",
     "pillow-heif>=0.16",
     "cairosvg>=2.7",
     "xlrd>=2.0",
@@ -157,6 +161,7 @@ dev = [
     "onnxruntime>=1.18",
     "faster-whisper>=1.0",
     "mcp>=1.17",  # 1.17: oldest the tests pass on; 2.x supported too
+    "lm15>=1.2",
     # Web page screenshots (CI also runs `playwright install chromium`)
     "playwright>=1.40",
     # CLI clipboard support (`att --copy`)

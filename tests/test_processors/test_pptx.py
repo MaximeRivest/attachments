@@ -231,6 +231,7 @@ class TestPptxProcessor:
             "max_dim",
             "image_format",
             "quality",
+            "watermark",
         ]
         images = next(o for o in schema if o.name == "images")
         assert images.type == "bool_or_auto"

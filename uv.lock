@@ -104,6 +104,9 @@ html = [
 image = [
     { name = "pillow" },
 ]
+lm15 = [
+    { name = "lm15" },
+]
 mcp = [
     { name = "mcp" },
 ]
@@ -170,6 +173,7 @@ dev = [
     { name = "httpx" },
     { name = "ipykernel" },
     { name = "jsonschema" },
+    { name = "lm15" },
     { name = "lxml" },
     { name = "mcp" },
     { name = "onnxruntime" },
@@ -200,6 +204,7 @@ requires-dist = [
     { name = "cairosvg", marker = "extra == 'svg'", specifier = ">=2.7" },
     { name = "faster-whisper", marker = "extra == 'audio'", specifier = ">=1.0" },
     { name = "httpx", marker = "extra == 'service'", specifier = ">=0.27" },
+    { name = "lm15", marker = "extra == 'lm15'", specifier = ">=1.2" },
     { name = "lxml", marker = "extra == 'html'", specifier = ">=5.0" },
     { name = "mcp", marker = "extra == 'mcp'", specifier = ">=1.17" },
     { name = "onnxruntime", marker = "extra == 'ocr'", specifier = ">=1.18" },
@@ -208,8 +213,8 @@ requires-dist = [
     { name = "pandas", marker = "extra == 'csv-pandas'", specifier = ">=2.0,<3.0" },
     { name = "pandas", marker = "extra == 'xlsx-pandas'", specifier = ">=2.0,<3.0" },
     { name = "pdfminer-six", marker = "extra == 'pdf-fallback'", specifier = ">=20221105" },
-    { name = "pillow", marker = "extra == 'heic'", specifier = ">=10.0" },
-    { name = "pillow", marker = "extra == 'image'", specifier = ">=10.0" },
+    { name = "pillow", marker = "extra == 'heic'", specifier = ">=10.1" },
+    { name = "pillow", marker = "extra == 'image'", specifier = ">=10.1" },
     { name = "pillow-heif", marker = "extra == 'heic'", specifier = ">=0.16" },
     { name = "playwright", marker = "extra == 'browser'", specifier = ">=1.40" },
     { name = "pymupdf", marker = "extra == 'pdf'", specifier = ">=1.24" },
@@ -220,7 +225,7 @@ requires-dist = [
     { name = "rapidocr", marker = "extra == 'ocr'", specifier = ">=3.10,<4" },
     { name = "xlrd", marker = "extra == 'xls'", specifier = ">=2.0" },
 ]
-provides-extras = ["pdf", "pdf-fallback", "xlsx", "xlsx-pandas", "docx", "pptx", "html", "image", "heic", "svg", "xls", "csv-pandas", "ocr", "audio", "mcp", "browser", "service", "clipboard", "office", "all-local", "server"]
+provides-extras = ["pdf", "pdf-fallback", "xlsx", "xlsx-pandas", "docx", "pptx", "html", "image", "heic", "svg", "xls", "csv-pandas", "ocr", "audio", "mcp", "lm15", "browser", "service", "clipboard", "office", "all-local", "server"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -231,12 +236,13 @@ dev = [
     { name = "httpx", specifier = ">=0.27" },
     { name = "ipykernel", specifier = ">=6.30.1" },
     { name = "jsonschema", specifier = ">=4.21" },
+    { name = "lm15", specifier = ">=1.2" },
     { name = "lxml", specifier = ">=5.0" },
     { name = "mcp", specifier = ">=1.17" },
     { name = "onnxruntime", specifier = ">=1.18" },
     { name = "openpyxl", specifier = ">=3.1,<4.0" },
     { name = "pandas", specifier = ">=2.0,<3.0" },
-    { name = "pillow", specifier = ">=10.0" },
+    { name = "pillow", specifier = ">=10.1" },
     { name = "pillow-heif", specifier = ">=0.16" },
     { name = "playwright", specifier = ">=1.40" },
     { name = "pre-commit" },
@@ -1183,6 +1189,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/99/1b/72906d554acfeb588332eaaa6f61577705e9ec752ddb486f302dafa292d9/jupyter_core-5.8.1.tar.gz", hash = "sha256:0a5f9706f70e64786b75acba995988915ebd4601c8a52e534a40b51c95f59941", size = 88923, upload-time = "2025-05-27T07:38:16.655Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/2f/57/6bffd4b20b88da3800c5d691e0337761576ee688eb01299eae865689d2df/jupyter_core-5.8.1-py3-none-any.whl", hash = "sha256:c28d268fc90fb53f1338ded2eb410704c5449a358406e8a948b75706e24863d0", size = 28880, upload-time = "2025-05-27T07:38:15.137Z" },
+]
+
+[[package]]
+name = "lm15"
+version = "1.2.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/65/f8/504e5652a9bd0cdf5b78a1ef4f99eed90b41b9495c551ddfeaaa8b769693/lm15-1.2.1.tar.gz", hash = "sha256:f0e034f08fc6efaf2cc940f742b2aeed9b9c1ed6e0649fc0c9c1d5ef9fd6f4db", size = 698865, upload-time = "2026-10-06T18:33:59.162Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e2/63/898be3a97d3e753ece54ea6b2a6a65fbd25b55350c707b8671574a3dc8f8/lm15-1.2.1-py3-none-any.whl", hash = "sha256:adec085c7632505f882a72167d9dc6eab7dbd7750fd20b96bf7d3199259676d0", size = 491995, upload-time = "2026-10-06T18:33:57.697Z" },
 ]
 
 [[package]]

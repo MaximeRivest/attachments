@@ -396,12 +396,16 @@ def resolve_options(
         else:
             kwargs[option.param or option.name] = coerced
 
-    if warnings:
-        from ._warn import caller_stacklevel
-
-        for warning in warnings:
-            _warnings.warn(warning, OptionWarning, stacklevel=caller_stacklevel())
+    for warning in warnings:
+        warn_option(warning)
     return kwargs, warnings
+
+
+def warn_option(message: str) -> None:
+    """Emit *message* as an :class:`OptionWarning` pointing at the user's line."""
+    from ._warn import caller_stacklevel
+
+    _warnings.warn(message, OptionWarning, stacklevel=caller_stacklevel())
 
 
 # ---------------------------------------------------------------------------
@@ -420,6 +424,42 @@ def _option_as_dict(option: Option) -> dict[str, Any]:
         "help": option.help,
         "example": option.example,
     }
+
+
+def _processor_entries(key: str) -> list[dict[str, Any]]:
+    """Exported options of *key*, with its named processors when it has any.
+
+    A key with named processors (``@processor(".pdf", name="invoice")``)
+    also lists ``processor`` (which one reads the file) and each named
+    processor's own options, their help prefixed with its name.
+    """
+    entries = [_option_as_dict(o) for o in get_options(key)]
+    from ._processors import STANDARD, get_named
+
+    named = get_named(key)
+    if not named:
+        return entries
+    described = ", ".join(
+        f"{name} (chooses itself)" if entry.detect else name
+        for name, entry in named.items()
+    )
+    entries.append(
+        _option_as_dict(
+            Option(
+                "processor",
+                "str",
+                default=STANDARD,
+                help=f"Which processor reads the file: {STANDARD}, {described}",
+                example=f"processor: {next(iter(named))}",
+            )
+        )
+    )
+    for name, entry in named.items():
+        for option in entry.options:
+            exported = _option_as_dict(option)
+            exported["help"] = f"[processor: {name}] {option.help}".strip()
+            entries.append(exported)
+    return entries
 
 
 def dsl_schema() -> dict[str, Any]:
@@ -441,8 +481,8 @@ def dsl_schema() -> dict[str, Any]:
     return {
         "version": 1,
         "processors": {
-            key: [_option_as_dict(o) for o in schema]
-            for key, schema in sorted(option_schemas.items())
+            key: _processor_entries(key)
+            for key in sorted(set(option_schemas) | _named_keys())
         },
         "sources": {
             key: [_option_as_dict(o) for o in schema]
@@ -585,7 +625,7 @@ def options(key: str | None = None) -> dict[str, Any] | list[dict[str, Any]]:
     Examples:
         >>> [o["name"] for o in options(".pdf")]
         ['pages', 'password', 'images', 'dpi', 'max_dim', 'image_format', \
-'quality', 'ocr', 'ocr_engine', 'tables', 'max_pages']
+'quality', 'ocr', 'ocr_engine', 'tables', 'max_pages', 'watermark']
         >>> options(".unknown-ext")
         (no options declared)
         >>> options()["version"]
@@ -603,4 +643,13 @@ def options(key: str | None = None) -> dict[str, Any] | list[dict[str, Any]]:
     """
     if key is None:
         return _OptionCatalog(dsl_schema())
-    return _OptionList(_option_as_dict(o) for o in get_options(key))
+    if "://" in _normalize_key(key):
+        return _OptionList(_option_as_dict(o) for o in get_options(key))
+    return _OptionList(_processor_entries(key))
+
+
+def _named_keys() -> set[str]:
+    """Extensions that have named processors."""
+    from ._processors import named_processors
+
+    return {key for key, table in named_processors.items() if table}

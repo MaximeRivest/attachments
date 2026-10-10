@@ -65,7 +65,7 @@ class TestRegistration:
     def test_option_schema(self):
         for ext in (".svg", ".svgz"):
             names = [o.name for o in get_options(ext)]
-            assert names == ["images"]
+            assert names == ["images", "watermark"]
 
 
 class TestTextExtraction:

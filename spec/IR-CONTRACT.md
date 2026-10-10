@@ -113,6 +113,16 @@ A processor is a pure function `(data: bytes, *, filename=None, **options) -> Ar
 - A file downloaded over HTTP(S) has `meta.source` = its URL (final, after
   redirects). If its processor declares a `url` option and the caller set
   none, core passes that URL as `url` (locally and to the service).
+- Named processors (`@processor(ext, name=..., detect=...)`) are chosen by
+  the `processor` option, else by their `detect`, else the standard one
+  runs. A named processor runs locally only; its result carries
+  `meta.extra.processor` (its name). The `processor` option is never sent
+  to the service.
+- `watermark` (declared by the processors that make pictures) never
+  reaches a processor or the service: core labels the result's images
+  after local or service processing, keeping each image's size, `page` and
+  JPEG/PNG kind (other formats become PNG), and records the label template
+  in `meta.extra.watermark`. Failed artifacts are left alone.
 
 ## Wire format (service.py / server.py)
 

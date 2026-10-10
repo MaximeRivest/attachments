@@ -15,6 +15,7 @@ from .._pages import (
     page_picker,
     parse_pages,
 )
+from .._watermark import WATERMARK
 from ..types import (
     ERROR_INVALID_OPTION,
     ERROR_MISSING_DEPENDENCY,
@@ -1228,5 +1229,6 @@ register_options(
             help="Hard cap on the number of pages parsed/rendered.",
             example="max_pages: 10",
         ),
+        WATERMARK,
     ),
 )

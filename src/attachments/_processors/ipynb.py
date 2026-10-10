@@ -24,6 +24,7 @@ import logging
 from typing import Any
 
 from .._options import Option, register_options
+from .._watermark import WATERMARK
 from ..types import ERROR_PARSE, error_artifact, make_artifact
 from . import register_processor
 
@@ -241,6 +242,7 @@ OPTIONS: tuple[Option, ...] = (
         ),
         example="outputs: true",
     ),
+    WATERMARK,
 )
 
 

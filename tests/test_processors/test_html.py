@@ -308,6 +308,7 @@ class TestHtmlSelect:
                 "screenshot",
                 "select",
                 "url",
+                "watermark",
             ]
 
 

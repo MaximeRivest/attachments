@@ -63,6 +63,15 @@
         "name": "ocr_engine",
         "param": null,
         "type": "str"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "watermark: page",
+        "help": "Label each picture in a strip above it: page (its page, slide or sheet), name (file name and page), or your own text ({name} and {page} are filled in). Off by default.",
+        "name": "watermark",
+        "param": null,
+        "type": "str"
       }
     ],
     ".cfg": [],
@@ -157,6 +166,15 @@
         "name": "quality",
         "param": null,
         "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "watermark: page",
+        "help": "Label each picture in a strip above it: page (its page, slide or sheet), name (file name and page), or your own text ({name} and {page} are filled in). Off by default.",
+        "name": "watermark",
+        "param": null,
+        "type": "str"
       }
     ],
     ".docx": [
@@ -215,6 +233,15 @@
         "name": "quality",
         "param": null,
         "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "watermark: page",
+        "help": "Label each picture in a strip above it: page (its page, slide or sheet), name (file name and page), or your own text ({name} and {page} are filled in). Off by default.",
+        "name": "watermark",
+        "param": null,
+        "type": "str"
       }
     ],
     ".flac": [
@@ -300,6 +327,15 @@
         "name": "ocr_engine",
         "param": null,
         "type": "str"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "watermark: page",
+        "help": "Label each picture in a strip above it: page (its page, slide or sheet), name (file name and page), or your own text ({name} and {page} are filled in). Off by default.",
+        "name": "watermark",
+        "param": null,
+        "type": "str"
       }
     ],
     ".heic": [
@@ -365,6 +401,15 @@
         "name": "ocr_engine",
         "param": null,
         "type": "str"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "watermark: page",
+        "help": "Label each picture in a strip above it: page (its page, slide or sheet), name (file name and page), or your own text ({name} and {page} are filled in). Off by default.",
+        "name": "watermark",
+        "param": null,
+        "type": "str"
       }
     ],
     ".heif": [
@@ -428,6 +473,15 @@
         "example": "ocr_engine: lighton",
         "help": "OCR engine: rapidocr (local, default) or lighton (remote LightOnOCR vLLM endpoint via ATTACHMENTS_LIGHTON_URL)",
         "name": "ocr_engine",
+        "param": null,
+        "type": "str"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "watermark: page",
+        "help": "Label each picture in a strip above it: page (its page, slide or sheet), name (file name and page), or your own text ({name} and {page} are filled in). Off by default.",
+        "name": "watermark",
         "param": null,
         "type": "str"
       }
@@ -526,6 +580,15 @@
         "name": "quality",
         "param": null,
         "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "watermark: page",
+        "help": "Label each picture in a strip above it: page (its page, slide or sheet), name (file name and page), or your own text ({name} and {page} are filled in). Off by default.",
+        "name": "watermark",
+        "param": null,
+        "type": "str"
       }
     ],
     ".html": [
@@ -622,6 +685,15 @@
         "name": "quality",
         "param": null,
         "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "watermark: page",
+        "help": "Label each picture in a strip above it: page (its page, slide or sheet), name (file name and page), or your own text ({name} and {page} are filled in). Off by default.",
+        "name": "watermark",
+        "param": null,
+        "type": "str"
       }
     ],
     ".ini": [],
@@ -634,6 +706,15 @@
         "name": "outputs",
         "param": null,
         "type": "bool"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "watermark: page",
+        "help": "Label each picture in a strip above it: page (its page, slide or sheet), name (file name and page), or your own text ({name} and {page} are filled in). Off by default.",
+        "name": "watermark",
+        "param": null,
+        "type": "str"
       }
     ],
     ".java": [],
@@ -700,6 +781,15 @@
         "name": "ocr_engine",
         "param": null,
         "type": "str"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "watermark: page",
+        "help": "Label each picture in a strip above it: page (its page, slide or sheet), name (file name and page), or your own text ({name} and {page} are filled in). Off by default.",
+        "name": "watermark",
+        "param": null,
+        "type": "str"
       }
     ],
     ".jpg": [
@@ -763,6 +853,15 @@
         "example": "ocr_engine: lighton",
         "help": "OCR engine: rapidocr (local, default) or lighton (remote LightOnOCR vLLM endpoint via ATTACHMENTS_LIGHTON_URL)",
         "name": "ocr_engine",
+        "param": null,
+        "type": "str"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "watermark: page",
+        "help": "Label each picture in a strip above it: page (its page, slide or sheet), name (file name and page), or your own text ({name} and {page} are filled in). Off by default.",
+        "name": "watermark",
         "param": null,
         "type": "str"
       }
@@ -880,6 +979,15 @@
         "name": "quality",
         "param": null,
         "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "watermark: page",
+        "help": "Label each picture in a strip above it: page (its page, slide or sheet), name (file name and page), or your own text ({name} and {page} are filled in). Off by default.",
+        "name": "watermark",
+        "param": null,
+        "type": "str"
       }
     ],
     ".ods": [
@@ -949,6 +1057,15 @@
         "name": "quality",
         "param": null,
         "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "watermark: page",
+        "help": "Label each picture in a strip above it: page (its page, slide or sheet), name (file name and page), or your own text ({name} and {page} are filled in). Off by default.",
+        "name": "watermark",
+        "param": null,
+        "type": "str"
       }
     ],
     ".odt": [
@@ -1007,6 +1124,15 @@
         "name": "quality",
         "param": null,
         "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "watermark: page",
+        "help": "Label each picture in a strip above it: page (its page, slide or sheet), name (file name and page), or your own text ({name} and {page} are filled in). Off by default.",
+        "name": "watermark",
+        "param": null,
+        "type": "str"
       }
     ],
     ".ogg": [
@@ -1154,6 +1280,15 @@
         "name": "max_pages",
         "param": null,
         "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "watermark: page",
+        "help": "Label each picture in a strip above it: page (its page, slide or sheet), name (file name and page), or your own text ({name} and {page} are filled in). Off by default.",
+        "name": "watermark",
+        "param": null,
+        "type": "str"
       }
     ],
     ".png": [
@@ -1217,6 +1352,15 @@
         "example": "ocr_engine: lighton",
         "help": "OCR engine: rapidocr (local, default) or lighton (remote LightOnOCR vLLM endpoint via ATTACHMENTS_LIGHTON_URL)",
         "name": "ocr_engine",
+        "param": null,
+        "type": "str"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "watermark: page",
+        "help": "Label each picture in a strip above it: page (its page, slide or sheet), name (file name and page), or your own text ({name} and {page} are filled in). Off by default.",
+        "name": "watermark",
         "param": null,
         "type": "str"
       }
@@ -1289,6 +1433,15 @@
         "name": "quality",
         "param": null,
         "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "watermark: page",
+        "help": "Label each picture in a strip above it: page (its page, slide or sheet), name (file name and page), or your own text ({name} and {page} are filled in). Off by default.",
+        "name": "watermark",
+        "param": null,
+        "type": "str"
       }
     ],
     ".pptx": [
@@ -1359,6 +1512,15 @@
         "name": "quality",
         "param": null,
         "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "watermark: page",
+        "help": "Label each picture in a strip above it: page (its page, slide or sheet), name (file name and page), or your own text ({name} and {page} are filled in). Off by default.",
+        "name": "watermark",
+        "param": null,
+        "type": "str"
       }
     ],
     ".py": [],
@@ -1374,6 +1536,15 @@
         "name": "images",
         "param": "render_images",
         "type": "bool_or_auto"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "watermark: page",
+        "help": "Label each picture in a strip above it: page (its page, slide or sheet), name (file name and page), or your own text ({name} and {page} are filled in). Off by default.",
+        "name": "watermark",
+        "param": null,
+        "type": "str"
       }
     ],
     ".svgz": [
@@ -1387,6 +1558,15 @@
         "name": "images",
         "param": "render_images",
         "type": "bool_or_auto"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "watermark: page",
+        "help": "Label each picture in a strip above it: page (its page, slide or sheet), name (file name and page), or your own text ({name} and {page} are filled in). Off by default.",
+        "name": "watermark",
+        "param": null,
+        "type": "str"
       }
     ],
     ".tex": [],
@@ -1453,6 +1633,15 @@
         "name": "ocr_engine",
         "param": null,
         "type": "str"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "watermark: page",
+        "help": "Label each picture in a strip above it: page (its page, slide or sheet), name (file name and page), or your own text ({name} and {page} are filled in). Off by default.",
+        "name": "watermark",
+        "param": null,
+        "type": "str"
       }
     ],
     ".tiff": [
@@ -1516,6 +1705,15 @@
         "example": "ocr_engine: lighton",
         "help": "OCR engine: rapidocr (local, default) or lighton (remote LightOnOCR vLLM endpoint via ATTACHMENTS_LIGHTON_URL)",
         "name": "ocr_engine",
+        "param": null,
+        "type": "str"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "watermark: page",
+        "help": "Label each picture in a strip above it: page (its page, slide or sheet), name (file name and page), or your own text ({name} and {page} are filled in). Off by default.",
+        "name": "watermark",
         "param": null,
         "type": "str"
       }
@@ -1640,6 +1838,15 @@
         "name": "ocr_engine",
         "param": null,
         "type": "str"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "watermark: page",
+        "help": "Label each picture in a strip above it: page (its page, slide or sheet), name (file name and page), or your own text ({name} and {page} are filled in). Off by default.",
+        "name": "watermark",
+        "param": null,
+        "type": "str"
       }
     ],
     ".xls": [
@@ -1709,6 +1916,15 @@
         "name": "quality",
         "param": null,
         "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "watermark: page",
+        "help": "Label each picture in a strip above it: page (its page, slide or sheet), name (file name and page), or your own text ({name} and {page} are filled in). Off by default.",
+        "name": "watermark",
+        "param": null,
+        "type": "str"
       }
     ],
     ".xlsx": [
@@ -1778,6 +1994,15 @@
         "name": "quality",
         "param": null,
         "type": "int"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "example": "watermark: page",
+        "help": "Label each picture in a strip above it: page (its page, slide or sheet), name (file name and page), or your own text ({name} and {page} are filled in). Off by default.",
+        "name": "watermark",
+        "param": null,
+        "type": "str"
       }
     ],
     ".xml": [],

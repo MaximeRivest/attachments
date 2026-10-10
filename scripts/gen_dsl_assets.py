@@ -115,6 +115,16 @@ def render_options_markdown(schema: dict[str, Any]) -> str:
     ]
     for keys, options in _group_keys_by_schema(schema["processors"]):
         parts.append(_render_group(keys, options))
+    parts += [
+        "### Every file",
+        "",
+        "`processor: NAME` chooses which processor reads a file when named",
+        "processors are registered for its extension",
+        '(`@processor(".pdf", name="invoice")`, see DEVELOPMENT.md);',
+        '`processor: default` is the standard one. `att.options(".pdf")` lists',
+        "the named processors of an extension and their own options.",
+        "",
+    ]
     parts.append("## Sources")
     parts.append("")
     for keys, options in _group_keys_by_schema(schema["sources"]):
@@ -281,6 +291,7 @@ def render_init_stub(schema: dict[str, Any]) -> str:
         "        api_key: str | None = ...,",
         '        prefer: Literal["local", "service", "local-only", "service-only"]'
         " | None = ...,",
+        "        processor: str = ...,",
     ]
     lines += [
         f"        {name}: {type_expr} = ...,"

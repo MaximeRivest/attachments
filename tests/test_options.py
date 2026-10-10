@@ -270,6 +270,7 @@ class TestSchemaExport:
             "ocr_engine",
             "tables",
             "max_pages",
+            "watermark",
         ]
         entry = next(o for o in pdf if o["name"] == "pages")
         assert set(entry) == {
@@ -310,6 +311,7 @@ class TestSchemaExport:
             "max_dim",
             "image_format",
             "quality",
+            "watermark",
         ]
         assert options(".unknown-ext") == []
 

@@ -114,6 +114,7 @@ a = att("report.pdf[pages: 1-2, images: true]")
 a.parts()                               # neutral parts, page by page: [text, image, text, image]
 a.claude("Summarize in one sentence.")  # Claude messages: [text, image, text, image, text]
 a.openai("Summarize in one sentence.")  # OpenAI messages (data-URL image parts)
+a.lm15("Summarize in one sentence.")    # one lm15 Message, for any provider lm15 speaks
 a.chunk(max_chars=4000)                 # segment-aware RAG chunks
 a.images                                # flattened ImageItem dicts
 a.errors                                # [{"source", "code", "message"}, ...]
@@ -433,6 +434,45 @@ chunk(att("report.pdf"), max_chars=100)
 A request a provider would reject (over Claude's 32 MB, too many pictures,
 pictures too large, a format it does not take) gives a
 `RequestLimitWarning` when it is built, naming the problem and the fix.
+
+### lm15
+
+With [lm15](https://lm15.dev) (`pip install "attachments[lm15]"`), `a.lm15()`
+is one ready `lm15.Message`: typed text and image parts, in the same order
+(each page's text, then its pictures), with the same `sources=` and
+`interleave=` options. One message, every provider lm15 speaks:
+
+```python
+from lm15 import CacheConfig, Config, Message, Request
+
+a = att("report.pdf[pages: 1-4, images: true]")
+Request(model="claude-sonnet-4-5", messages=(a.lm15("Summarize."),))
+
+# The document in a message of its own, first: a prefix providers can cache,
+# then as many questions as you like.
+Request(
+    model="claude-sonnet-4-5",
+    messages=(a.lm15(), Message.user("What changed in Q3?")),
+    config=Config(cache=CacheConfig(prefix_until_index=0)),
+)
+```
+
+`a.lm15().parts` are the parts, to build your own message.
+
+### Labels on pictures
+
+`[watermark: page]` writes "page 3" (or "slide 3", "sheet Sales") in a white
+strip above each picture, so a model looking at many pictures knows which is
+which; `[watermark: name]` adds the file name, and any other text is drawn
+as written (`{name}` and `{page}` are filled in). The strip goes above the
+picture, never over it, and the picture keeps its size (its content shrinks
+a few percent to make room), so `max_dim` stays true. Off by default; it
+works on every format that makes pictures, read here or by the service.
+
+```python
+att("deck.pptx[images: true, watermark: page]")
+att("photo.jpg[watermark: Exhibit A — {name}]")
+```
 
 ### Scanned documents
 

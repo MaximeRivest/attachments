@@ -16,7 +16,7 @@ Quick Start::
 ``att()`` returns :class:`Artifacts` — a ``list`` subclass of plain
 artifact dicts with shortcuts: ``.text``, ``.images``, ``.errors``,
 ``.raise_for_errors()``, ``.parts()``, ``.claude(prompt=None)``,
-``.openai(prompt=None)``, ``.chunk()``, ``.estimate_tokens()``,
+``.openai(prompt=None)``, ``.lm15(prompt=None)``, ``.chunk()``, ``.estimate_tokens()``,
 ``.to_wire()`` / ``Artifacts.from_wire()``. Lost? ``att.help()`` prints a
 one-screen overview.
 
@@ -39,7 +39,7 @@ Every DSL option has a keyword-argument twin (kwargs win):
     >>> from attachments import att
     >>> [o["name"] for o in att.options(".pdf")]
     ['pages', 'password', 'images', 'dpi', 'max_dim', 'image_format', 'quality', \
-'ocr', 'ocr_engine', 'tables', 'max_pages']
+'ocr', 'ocr_engine', 'tables', 'max_pages', 'watermark']
 
 Check Available Features:
 
@@ -100,6 +100,7 @@ from .render import (
     render_text,
     to_claude_content,
     to_claude_messages,
+    to_lm15_message,
     to_openai_messages,
     to_parts,
 )
@@ -180,6 +181,7 @@ __all__ = [
     "to_claude_content",
     "to_claude_messages",
     "to_openai_messages",
+    "to_lm15_message",
     "chunk",
     "estimate_tokens",
     # Processor registry & decorators

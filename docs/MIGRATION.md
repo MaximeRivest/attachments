@@ -53,6 +53,7 @@ whose extra is missing comes back as an error artifact with the exact
 | `ctx.claude("prompt")` | `a.claude("prompt")` |
 | `ctx.openai_chat("prompt")` / `ctx.openai(...)` | `a.openai("prompt")` (Chat Completions) |
 | `ctx.openai_responses("prompt")` | map `a.parts()` — [example below](#openai-responses-api) |
+| — | `a.lm15("prompt")`: one ready `lm15.Message`, for any provider [lm15](https://lm15.dev) speaks (`attachments[lm15]`) |
 | `auto_attach(prompt, root_dir=...)` | `att.from_prompt(prompt, root=...)`, then `.claude(prompt)` — web addresses need `urls=True` |
 | `from attachments.dspy import Attachments` | not ported: pass `a.text` and `a.images` to your DSPy signature |
 | `ctx.agno(...)`, clipboard adapters | not ported (CLI: `att file --copy`) |
@@ -140,10 +141,13 @@ how likely you are to notice:
 7. **The text is just the content.** No "File Info", "Document Analysis",
    "Processing Summary" or "Object type" sections; each file is one
    `## <name>` block. Fewer tokens for the same content.
-8. **Pictures are not changed.** 0.25 stamped the file name onto images by
-   default (`watermark: auto`) — which also told the model the file name.
-   1.0 never draws on images. To keep names away from the model, use
-   `sources=False` on `to_text`, `parts`, `claude`, `openai` and `chunk`.
+8. **Pictures are not labelled unless you ask.** 0.25 stamped the file name
+   onto images by default (`watermark: auto`) — which also told the model
+   the file name. 1.0 draws on a picture only with `watermark:` (see the
+   options table), in a strip above it rather than over the content. To
+   keep names away from the model, use `sources=False` on `to_text`,
+   `parts`, `claude`, `openai`, `lm15` and `chunk` (and `watermark: page`,
+   not `name`).
    What a photo's file says about its owner (GPS location, dates, camera
    serial, in EXIF, XMP and IPTC) is removed, pixels untouched, also from
    photos inside Word, PowerPoint and web pages; `[metadata: true]` keeps a
@@ -186,7 +190,9 @@ the full reference is [dsl-options.md](dsl-options.md).
 | `tile: 2x2` | gone (one picture per page) |
 | `resize_images: 50%` / `800x600`, `resize` | `max_dim: 800` (longest side in pixels) |
 | `rotate: 90` | same (clockwise), applied to the upright photo |
-| `crop`, `watermark` | gone |
+| `watermark: auto` (default, file name on the picture) | off by default; `watermark: name` (file name and page), `watermark: page` ("page 3", "slide 3", "sheet Sales") or your own text with `{name}` / `{page}`; drawn in a strip above the picture, which keeps its size; every format that makes pictures |
+| `watermark: text\|position\|style` | `watermark: text` (always in the strip above; no position or style) |
+| `crop` | gone |
 | `ocr: true/auto` | same (RapidOCR); `ocr_engine: lighton` for a remote engine |
 | `lang: fra` (Tesseract) | gone: no language to choose. RapidOCR's models read English, French (accents included) and other Latin-script languages, and Chinese; for other scripts try `ocr_engine: lighton` |
 | `files: false` | same: the overview without reading files |
@@ -227,7 +233,7 @@ the full reference is [dsl-options.md](dsl-options.md).
 | URLs | yes | yes; the server's declared type wins over the name; the URL is the source name |
 | GitHub | — | **new**: `github://owner/repo[ref: main]` |
 | Lists, `Path`, `~`, `file://` | lists | all |
-| Specialised PDF/DOCX processors (academic, legal, financial, medical, report) | yes | gone — one processor per format |
+| Specialised PDF/DOCX processors (academic, legal, financial, medical, report) | yes | not built in; write your own as a named processor: `@processor(".pdf", name="invoice", detect=...)`, chosen by `[processor: invoice]` or by its `detect` ([DEVELOPMENT.md](../DEVELOPMENT.md#specialized-processors)) |
 
 ---
 
@@ -237,8 +243,12 @@ the full reference is [dsl-options.md](dsl-options.md).
   command for missing pieces, `raise_for_errors()` when you want an exception.
 - **Discoverable options**: `att.options()`, `att --options`, editor
   autocomplete for every option as a keyword, `att.help()`.
-- **Pictures next to their page**: `claude()`, `openai()` and `parts()` put
-  each page's pictures right after its text.
+- **Pictures next to their page**: `claude()`, `openai()`, `lm15()` and
+  `parts()` put each page's pictures right after its text.
+- **lm15**: `a.lm15()` is one ready `lm15.Message` (typed parts), for every
+  provider lm15 speaks.
+- **Specialized processors** next to the standard one of a format, each one
+  function that can start from the standard result (`base()`).
 - **Hide file names** from the model with `sources=False`.
 - **RAG chunks** that keep page, sheet and slide boundaries and numbers.
 - **Token estimates** that include pictures: `a.tokens`,
@@ -264,9 +274,9 @@ the full reference is [dsl-options.md](dsl-options.md).
 |---|---|
 | The pipeline grammar (`load \| modify \| present \| refine \| adapt`, `+`), the global pipeline registry | options on `att()`; your own formats and sources as one function each |
 | `split` strategies (sentences, paragraphs, tokens, ...) | `chunk(max_chars=...)` / `max_tokens=`, or split `a.text` yourself |
-| Tiling, cropping, watermarks, contact sheets, thumbnails | edit `a.images` with Pillow if you need them |
+| Tiling, cropping, contact sheets, thumbnails | edit `a.images` with Pillow if you need them (labels came back: `watermark:`) |
 | `format: xml` / `code` / `plain` | one text per format |
-| DSPy, Agno and clipboard-image adapters | `a.text` and `a.images` plug into any framework; text to the clipboard: `att file --copy` |
+| DSPy, Agno and clipboard-image adapters | `a.text` and `a.images` plug into any framework (`a.lm15()` for lm15); text to the clipboard: `att file --copy` |
 | Highlighting CSS matches in web screenshots | `select:` for the text; `screenshot: true` for the page |
 | Tesseract languages (`lang:`) | not needed for Latin-script languages and Chinese; `ocr_engine: lighton` for other scripts |
 

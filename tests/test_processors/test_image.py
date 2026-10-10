@@ -336,6 +336,7 @@ class TestRegistration:
             "metadata",
             "ocr",
             "ocr_engine",
+            "watermark",
         ]
 
 

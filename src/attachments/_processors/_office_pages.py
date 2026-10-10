@@ -31,6 +31,7 @@ from typing import Any
 
 from .._options import Option
 from .._pages import PagePicker
+from .._watermark import WATERMARK
 from ..deps import check_dep, find_libreoffice
 from ..types import (
     ERROR_INVALID_OPTION,
@@ -116,6 +117,7 @@ def render_options(*, unit: str, embedded: bool = True) -> tuple[Option, ...]:
             help="JPEG quality, 1-95 (used with image_format: jpeg)",
             example="quality: 75",
         ),
+        WATERMARK,
     )
     if not embedded:
         return options

@@ -20,6 +20,7 @@ only a warning (`meta["warnings"]`), never an error.
 | `metadata` | `bool` | — | `false` | `metadata: true` | Keep the photo's metadata (GPS location, dates, camera); removed by default, pixels untouched |
 | `ocr` | `bool_or_auto` | — | `false` | `ocr: true` | Recognize text in the image with RapidOCR: true/false, or auto (only when rapidocr is installed) |
 | `ocr_engine` | `str` | — | `"rapidocr"` | `ocr_engine: lighton` | OCR engine: rapidocr (local, default) or lighton (remote LightOnOCR vLLM endpoint via ATTACHMENTS_LIGHTON_URL) |
+| `watermark` | `str` | — | — | `watermark: page` | Label each picture in a strip above it: page (its page, slide or sheet), name (file name and page), or your own text ({name} and {page} are filled in). Off by default. |
 
 ### `.csv`, `.tsv`
 
@@ -39,6 +40,7 @@ only a warning (`meta["warnings"]`), never an error.
 | `max_dim` | `int` | — | `2000` | `max_dim: 1568` | Longest side of each page picture in pixels; 0 = no cap |
 | `image_format` | `str` | — | `"auto"` | `image_format: jpeg` | auto (jpeg for a page that is mostly photos, png otherwise), png (sharpest text) or jpeg (smaller) |
 | `quality` | `int` | — | `85` | `quality: 75` | JPEG quality, 1-95 (used with image_format: jpeg) |
+| `watermark` | `str` | — | — | `watermark: page` | Label each picture in a strip above it: page (its page, slide or sheet), name (file name and page), or your own text ({name} and {page} are filled in). Off by default. |
 
 ### `.flac`, `.m4a`, `.mp3`, `.ogg`, `.opus`, `.wav`
 
@@ -61,12 +63,14 @@ only a warning (`meta["warnings"]`), never an error.
 | `max_dim` | `int` | — | — | `max_dim: 1024` | Longest side of each screenshot in pixels (0 = no limit) |
 | `image_format` | `str` | — | `"png"` | `image_format: jpeg` | Screenshot format: png (sharpest text) or jpeg (smaller) |
 | `quality` | `int` | — | — | `quality: 75` | JPEG quality, 1-95 (used with image_format: jpeg) |
+| `watermark` | `str` | — | — | `watermark: page` | Label each picture in a strip above it: page (its page, slide or sheet), name (file name and page), or your own text ({name} and {page} are filled in). Off by default. |
 
 ### `.ipynb`
 
 | Option | Type | Aliases | Default | Example | Description |
 | --- | --- | --- | --- | --- | --- |
 | `outputs` | `bool` | — | `false` | `outputs: true` | Include per-cell execution outputs: text outputs as fenced blocks (truncated at ~2000 chars each) and image/png outputs as image items. |
+| `watermark` | `str` | — | — | `watermark: page` | Label each picture in a strip above it: page (its page, slide or sheet), name (file name and page), or your own text ({name} and {page} are filled in). Off by default. |
 
 ### `.odp`, `.ppt`, `.pptx`
 
@@ -79,6 +83,7 @@ only a warning (`meta["warnings"]`), never an error.
 | `max_dim` | `int` | — | `2000` | `max_dim: 1568` | Longest side of each slide picture in pixels; 0 = no cap |
 | `image_format` | `str` | — | `"auto"` | `image_format: jpeg` | auto (jpeg for a slide that is mostly photos, png otherwise), png (sharpest text) or jpeg (smaller) |
 | `quality` | `int` | — | `85` | `quality: 75` | JPEG quality, 1-95 (used with image_format: jpeg) |
+| `watermark` | `str` | — | — | `watermark: page` | Label each picture in a strip above it: page (its page, slide or sheet), name (file name and page), or your own text ({name} and {page} are filled in). Off by default. |
 
 ### `.ods`, `.xls`, `.xlsx`
 
@@ -91,6 +96,7 @@ only a warning (`meta["warnings"]`), never an error.
 | `max_dim` | `int` | — | `2000` | `max_dim: 1568` | Longest side of each sheet picture in pixels; 0 = no cap |
 | `image_format` | `str` | — | `"auto"` | `image_format: jpeg` | auto (jpeg for a sheet that is mostly photos, png otherwise), png (sharpest text) or jpeg (smaller) |
 | `quality` | `int` | — | `85` | `quality: 75` | JPEG quality, 1-95 (used with image_format: jpeg) |
+| `watermark` | `str` | — | — | `watermark: page` | Label each picture in a strip above it: page (its page, slide or sheet), name (file name and page), or your own text ({name} and {page} are filled in). Off by default. |
 
 ### `.pdf`
 
@@ -107,12 +113,14 @@ only a warning (`meta["warnings"]`), never an error.
 | `ocr_engine` | `str` | — | `"rapidocr"` | `ocr_engine: lighton` | OCR engine: rapidocr (local, default) or lighton (remote LightOnOCR vLLM endpoint via ATTACHMENTS_LIGHTON_URL). |
 | `tables` | `bool` | — | `true` | `tables: false` | Tables with ruling lines as Markdown tables, in place (text pages; needs PyMuPDF). |
 | `max_pages` | `int` | — | — | `max_pages: 10` | Hard cap on the number of pages parsed/rendered. |
+| `watermark` | `str` | — | — | `watermark: page` | Label each picture in a strip above it: page (its page, slide or sheet), name (file name and page), or your own text ({name} and {page} are filled in). Off by default. |
 
 ### `.svg`, `.svgz`
 
 | Option | Type | Aliases | Default | Example | Description |
 | --- | --- | --- | --- | --- | --- |
 | `images` | `bool_or_auto` | `render` | `false` | `images: true` | Rasterize the SVG to PNG with cairosvg (true/false/auto/always). |
+| `watermark` | `str` | — | — | `watermark: page` | Label each picture in a strip above it: page (its page, slide or sheet), name (file name and page), or your own text ({name} and {page} are filled in). Off by default. |
 
 ### `file://`
 

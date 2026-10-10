@@ -41,6 +41,7 @@ from .render import (
     estimate_tokens,
     render_text,
     to_claude_messages,
+    to_lm15_message,
     to_openai_messages,
     to_parts,
 )
@@ -622,6 +623,36 @@ class Artifacts(list):
             ['text']
         """
         return to_openai_messages(
+            self, prompt=prompt, sources=sources, interleave=interleave
+        )
+
+    def lm15(
+        self,
+        prompt: str | None = None,
+        *,
+        sources: bool = True,
+        interleave: bool = True,
+    ) -> Any:
+        """One ready ``lm15.Message`` (see ``render.to_lm15_message``).
+
+        Built from :meth:`parts`, with the same options. Needs ``lm15``
+        (``pip install attachments[lm15]``)::
+
+            from lm15 import Request
+
+            Request(model="claude-sonnet-4-5", messages=(a.lm15("Summarize."),))
+
+        Without *prompt* the document is a message of its own, to put
+        first and ask questions after it (a cacheable prefix);
+        ``a.lm15().parts`` are the parts, to build your own message.
+
+        Examples:
+            >>> from attachments.types import make_artifact
+            >>> a = Artifacts([make_artifact(text="hi", meta={"source": "a.txt"})])
+            >>> [p.text for p in a.lm15("Summarize.").parts]
+            ['## a.txt\\nhi', 'Summarize.']
+        """
+        return to_lm15_message(
             self, prompt=prompt, sources=sources, interleave=interleave
         )
 

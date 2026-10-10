@@ -1,7 +1,10 @@
 # ruff: noqa: I001
 from __future__ import annotations
 
+import inspect
+import re
 from collections.abc import Callable
+from dataclasses import dataclass
 
 from .._options import (
     Option,
@@ -19,6 +22,58 @@ processors: dict[str, Processor] = {}
 
 # Snapshot of default processors after initial registration (populated lazily)
 _default_processors: dict[str, Processor] | None = None
+
+
+#: Detection hook of a named processor: ``(data, filename) -> bool``.
+Detector = Callable[[bytes, str], bool]
+
+
+@dataclass(frozen=True)
+class NamedProcessor:
+    """A specialized processor: one of several for the same extension.
+
+    The standard processor of an extension (``processors[".pdf"]``) reads
+    every file; a named one reads the files it is chosen for — by name
+    (``[processor: invoice]``) or, when it has a ``detect`` function, by
+    looking at the file. See :func:`processor`.
+
+    Attributes:
+        name: What ``[processor: ...]`` and ``meta.extra.processor`` call it.
+        func: The processor (IR contract). When it declares a ``base``
+            parameter it receives the standard processing as ``base``.
+        detect: ``(data, filename) -> bool``; ``None`` = only by name.
+        options: Its own options, on top of the standard ones.
+    """
+
+    name: str
+    func: Processor
+    detect: Detector | None = None
+    options: tuple[Option, ...] = ()
+
+    @property
+    def wants_base(self) -> bool:
+        """Whether :attr:`func` takes the standard processing as ``base``."""
+        return _takes_base(self.func)
+
+
+def _takes_base(func: Callable) -> bool:
+    try:
+        parameter = inspect.signature(func).parameters.get("base")
+    except (TypeError, ValueError):
+        return False
+    return parameter is not None and parameter.kind in (
+        inspect.Parameter.KEYWORD_ONLY,
+        inspect.Parameter.POSITIONAL_OR_KEYWORD,
+    )
+
+
+#: Named processors: extension -> name -> entry, in registration order.
+named_processors: dict[str, dict[str, NamedProcessor]] = {}
+
+#: Name that always means the standard processor of an extension.
+STANDARD = "default"
+
+_NAME_RE = re.compile(r"[a-z][a-z0-9_-]*\Z")
 
 
 def _normalize_key(key: str) -> str:
@@ -110,13 +165,39 @@ def register_processor(
     return func
 
 
-def processor(*extensions: str, options: tuple[Option, ...] | None = None) -> Callable:
+def processor(
+    *extensions: str,
+    options: tuple[Option, ...] | None = None,
+    name: str | None = None,
+    detect: Detector | None = None,
+) -> Callable:
     """Decorator to register a processor for multiple extensions.
+
+    Without *name* it becomes THE processor of those extensions (replacing
+    the built-in one). With *name* it is a specialized processor that
+    lives next to the standard one:
+
+    - ``att("x.pdf[processor: invoice]")`` uses it for that file;
+    - with *detect*, it is also chosen for every file where
+      ``detect(data, filename)`` is true (the most recently registered
+      first; ``[processor: default]`` forces the standard one);
+    - its *options* are added to the standard ones of the extension;
+    - a ``base`` parameter, if it declares one, receives the standard
+      processing: ``base()`` returns the artifact the file would have had
+      without this processor (with service fallback, as usual), and
+      ``base(pages="1-2")`` the same with other options;
+    - ``meta.extra.processor`` of the result names it.
 
     Args:
         *extensions: One or more file extensions to register
         options: Optional declared option schema, registered for every
-            extension (the ergonomic twin of ``register_options``)
+            extension (the ergonomic twin of ``register_options``). For a
+            named processor: its own options only.
+        name: Registers a specialized processor under this name
+            (lowercase letters, digits, ``-`` and ``_``; not "default").
+        detect: For a named processor: ``(data, filename) -> bool``,
+            choosing it automatically. Keep it cheap (the first bytes,
+            the file name): it runs for every file of these extensions.
 
     Returns:
         Decorator function
@@ -133,14 +214,46 @@ def processor(*extensions: str, options: tuple[Option, ...] | None = None) -> Ca
         >>> # def word_processor(data, **opts): ...
     """
 
-    def decorator(fn: Processor) -> Processor:
+    if name is None:
+        if detect is not None:
+            raise ValueError("detect= needs a name= (it chooses a named processor)")
+
+        def decorator(fn: Processor) -> Processor:
+            for ext in extensions:
+                processors[_normalize_key(ext)] = fn
+                if options is not None:
+                    register_options(ext, options)
+            return fn
+
+        return decorator
+
+    if not isinstance(name, str) or not _NAME_RE.match(name) or name == STANDARD:
+        raise ValueError(
+            f"processor name must be lowercase letters, digits, '-' or '_' "
+            f"(and not {STANDARD!r}), got {name!r}"
+        )
+    if not extensions:
+        raise ValueError("a named processor needs at least one extension")
+
+    def named(fn: Processor) -> Processor:
+        entry = NamedProcessor(name, fn, detect, tuple(options or ()))
         for ext in extensions:
-            processors[_normalize_key(ext)] = fn
-            if options is not None:
-                register_options(ext, options)
+            table = named_processors.setdefault(_normalize_key(ext), {})
+            table.pop(name, None)  # re-registering moves it to the end
+            table[name] = entry
         return fn
 
-    return decorator
+    return named
+
+
+def get_named(key: str) -> dict[str, NamedProcessor]:
+    """The named processors of *key* (an extension), in registration order.
+
+    Examples:
+        >>> get_named(".pdf")
+        {}
+    """
+    return named_processors.get(_normalize_key(key), {})
 
 
 def _snapshot_defaults() -> None:
@@ -154,13 +267,15 @@ def reset_processors() -> None:
     """Reset the global processor registry to its default state.
 
     Useful for testing to ensure test isolation. Restores only the
-    built-in processors (text, pdf, xlsx) and removes any custom processors.
+    built-in processors (text, pdf, xlsx) and removes any custom processors,
+    named ones included.
     Also resets the declared option schemas (``attachments._options``).
     """
     global processors
     if _default_processors is not None:
         processors.clear()
         processors.update(_default_processors)
+    named_processors.clear()  # no built-in processor is a named one
     reset_options()
 
 
@@ -203,7 +318,10 @@ snapshot_option_defaults()
 
 
 __all__ = [
+    "NamedProcessor",
     "Processor",
+    "get_named",
+    "named_processors",
     "processors",
     "register_processor",
     "processor",

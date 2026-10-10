@@ -9,14 +9,21 @@ This module provides the main `att()` function that orchestrates:
 
 from __future__ import annotations
 
+import difflib
 import logging
 import os
 from collections.abc import Iterable, Mapping
 from typing import Any
 
 from ._artifacts import Artifacts
-from ._options import get_options, resolve_options, source_option_schemas
-from ._processors import processors
+from ._options import (
+    Option,
+    get_options,
+    resolve_options,
+    source_option_schemas,
+    warn_option,
+)
+from ._processors import STANDARD, NamedProcessor, get_named, processors
 from ._sources import (
     InvalidSourceOption,
     extra_unpack_handlers,
@@ -24,6 +31,7 @@ from ._sources import (
 )
 from ._sources.archives import RAW_ARCHIVE_SUFFIXES
 from ._sources.local import TREE_OPTIONS
+from ._watermark import WATERMARK, apply_watermark
 from .config import get_api_key, get_prefer, service_configured
 from .dsl import parse_dsl
 from .types import (
@@ -159,6 +167,94 @@ def _option_context(filename: str, proc_key: str) -> str:
     return "text" if proc_key == "__text__" else proc_key
 
 
+#: The option that picks a named processor (handled here, not by processors).
+PROCESSOR_KEY = "processor"
+
+#: Options that make pictures on request, in the order a hint names them.
+_PICTURE_OPTIONS = ("images", "screenshot", "outputs")
+
+#: Processor kwargs a ``pages`` option resolves to (``resolve_options``).
+_PAGE_PARAMS = ("page_start", "page_end", "page_selection")
+
+
+def _choose_named(
+    table: dict[str, NamedProcessor],
+    data: bytes,
+    filename: str,
+    requested: Any,
+    context: str,
+    warnings: list[str],
+) -> NamedProcessor | None:
+    """The named processor for this file, or ``None`` for the standard one.
+
+    ``[processor: NAME]`` chooses by name (``default``: the standard one).
+    Otherwise, or when NAME is unknown (a warning, as for any wrong
+    option), the most recently registered processor whose ``detect`` says
+    yes. A ``detect`` that raises counts as no (and is logged).
+    """
+    if requested is not None:
+        wanted = str(requested).strip().lower()
+        if wanted == STANDARD:
+            return None
+        if wanted in table:
+            return table[wanted]
+        names = [STANDARD, *table]
+        message = f"Unknown processor '{requested}' for {context}"
+        close = difflib.get_close_matches(wanted, names, n=1)
+        if close:
+            message += f" — did you mean '{close[0]}'?"
+        message += f" (available: {', '.join(names)})"
+        warnings.append(message)
+        warn_option(message)
+    for entry in reversed(table.values()):
+        if entry.detect is None:
+            continue
+        try:
+            if entry.detect(data, filename):
+                return entry
+        except Exception as e:
+            log.warning(
+                "detect of processor %r failed on %s: %s", entry.name, filename, e
+            )
+    return None
+
+
+def _option_names(options: Iterable[Option]) -> set[str]:
+    """Every spelling that reaches *options*: names, aliases, params."""
+    names: set[str] = set()
+    for option in options:
+        names.update((option.name, *option.aliases))
+        if option.param:
+            names.add(option.param)
+    return names
+
+
+def _option_params(options: Iterable[Option]) -> set[str]:
+    """The processor kwargs *options* resolve to."""
+    params: set[str] = set()
+    for option in options:
+        if option.type == "pages":
+            params.update(_PAGE_PARAMS)
+        else:
+            params.add(option.param or option.name)
+    return params
+
+
+def _pictures_hint(schema: Iterable[Option]) -> str | None:
+    """How to ask this format for pictures (``"images: true"``), if it can.
+
+    Examples:
+        >>> from attachments._options import get_options
+        >>> _pictures_hint(get_options(".pdf")), _pictures_hint(get_options(".png"))
+        ('images: true', None)
+    """
+    for name in _PICTURE_OPTIONS:
+        for option in schema:
+            if option.name == name:
+                return option.example or f"{name}: true"
+    return None
+
+
 def _process_single(
     filename: str,
     data: bytes,
@@ -175,6 +271,14 @@ def _process_single(
     attached to the resulting artifact's ``meta.warnings``. Service calls
     receive the RAW options — the service resolves them server-side.
 
+    Two options are core's, not the processor's:
+
+    - ``processor`` picks a named processor (``_choose_named``); without
+      it, a named processor whose ``detect`` matches is used.
+    - ``watermark`` (declared by the formats that make pictures) is taken
+      out before the processor runs and applied to its result here, after
+      local or service processing alike — never sent to the service.
+
     Options travel as a plain dict (never ``**kwargs``) so that option keys
     like ``filename`` or ``prefer`` can never collide with this function's
     own parameters — unknown keys must become ``meta.warnings``, not
@@ -187,36 +291,176 @@ def _process_single(
         api_key: Optional API key for service mode
         prefer: Processing preference (local/service/local-only/service-only)
         url: Address the bytes were downloaded from, if any. When the
-            matched processor declares a ``url`` option (html does) and the
-            caller did not set one, it receives this address — so a web
-            page resolves its relative links and loads in a browser from
-            where it really lives. Sent to the service the same way.
+            matched processor declares a ``url`` option and the caller did
+            not set one, it receives this address — so a web page resolves
+            its relative links and loads in a browser from where it really
+            lives. Sent to the service the same way.
 
     Returns:
         Artifact dict
     """
-    options = options or {}
+    options = dict(options or {})
     key = get_api_key(api_key)
     svc = service_configured(api_key)
     mode = get_prefer(prefer)
 
     proc, proc_key = _route_processor(filename, data)
-    log.debug("routing %s  mode=%s  processor=%s", filename, mode, proc)
+    context = _option_context(filename, proc_key)
+    ext = os.path.splitext(filename)[1].lower()
+    table = (get_named(ext) if ext else {}) or get_named(proc_key)
+    requested = options.pop(PROCESSOR_KEY, None)
+    choice_warnings: list[str] = []
+    named = None
+    if table:
+        named = _choose_named(
+            table, data, filename, requested, context, choice_warnings
+        )
+    elif requested is not None and str(requested).strip().lower() != STANDARD:
+        if proc is not None:
+            message = (
+                f"Unknown processor '{requested}' for {context} — "
+                f"only the standard one ({STANDARD}) reads it"
+            )
+            choice_warnings.append(message)
+            warn_option(message)
+    log.debug(
+        "routing %s  mode=%s  processor=%s  named=%s",
+        filename,
+        mode,
+        proc,
+        named.name if named else None,
+    )
 
-    # Resolve raw options against the matched processor's declared schema.
+    # Resolve raw options against the declared schema: the standard
+    # processor's, plus a named processor's own options (which win).
+    standard_schema = get_options(proc_key) if proc is not None else ()
+    schema = standard_schema
+    if named is not None:
+        own = {o.name for o in named.options}
+        standard_schema = tuple(o for o in standard_schema if o.name not in own)
+        schema = (*standard_schema, *named.options)
     # Files with no processor get no option warnings.
     resolved: dict[str, Any] = {}
     warnings: list[str] = []
-    if proc is not None:
-        schema = get_options(proc_key)
-        resolved, warnings = resolve_options(
-            schema,
-            options,
-            context=_option_context(filename, proc_key),
-        )
+    if proc is not None or named is not None:
+        resolved, warnings = resolve_options(schema, options, context=context)
         if url and "url" not in resolved and any(o.name == "url" for o in schema):
             resolved["url"] = url
             options = {**options, "url": url}  # the service gets it too
+
+    watermark = None
+    if WATERMARK in schema:
+        watermark = resolved.pop(WATERMARK.name, None)
+        options = {k: v for k, v in options.items() if k != WATERMARK.name}
+
+    if named is not None:
+        result = _run_named(
+            named,
+            filename,
+            data,
+            resolved=resolved,
+            warnings=warnings,
+            standard_schema=standard_schema,
+            raw=options,
+            standard=lambda d, kwargs, warns, raw: _run_standard(
+                filename, d, proc, kwargs, warns, raw, key, svc, mode
+            ),
+        )
+    else:
+        result = _run_standard(
+            filename, data, proc, resolved, warnings, options, key, svc, mode
+        )
+
+    if choice_warnings:
+        meta = result.setdefault("meta", {})
+        meta["warnings"] = [*choice_warnings, *(meta.get("warnings") or [])]
+    if watermark is not None:
+        apply_watermark(
+            result, watermark, source=url or filename, hint=_pictures_hint(schema)
+        )
+    return result
+
+
+def _run_named(
+    named: NamedProcessor,
+    filename: str,
+    data: bytes,
+    *,
+    resolved: dict[str, Any],
+    warnings: list[str],
+    standard_schema: tuple[Option, ...],
+    raw: dict[str, Any],
+    standard: Any,
+) -> dict:
+    """Run a named processor, giving it the standard processing as ``base``.
+
+    ``base()`` runs the standard processor with the options of this call
+    that belong to it (local first, service fallback as usual);
+    ``base(data, **options)`` with other bytes and/or more options, in
+    ``att()``'s vocabulary (``pages="1-2"``, ``images=True``). Its result
+    is never sent through the service: the service does not know this
+    processor.
+    """
+    standard_names = _option_names(standard_schema)
+    standard_params = _option_params(standard_schema)
+    standard_raw = {k: v for k, v in raw.items() if k in standard_names}
+    standard_kwargs = {k: v for k, v in resolved.items() if k in standard_params}
+
+    def base(other: bytes | None = None, /, **more: Any) -> dict:
+        kwargs = dict(standard_kwargs)
+        more_warnings: list[str] = []
+        if more:
+            more_kwargs, more_warnings = resolve_options(
+                standard_schema, more, context=f"base of processor '{named.name}'"
+            )
+            if any(k in more_kwargs for k in _PAGE_PARAMS):
+                for k in _PAGE_PARAMS:
+                    kwargs.pop(k, None)
+            kwargs.update(more_kwargs)
+        return standard(
+            data if other is None else other,
+            kwargs,
+            more_warnings,
+            {**standard_raw, **more},
+        )
+
+    kwargs = dict(resolved)
+    if named.wants_base:
+        kwargs["base"] = base
+    try:
+        result = named.func(data, filename=filename, **kwargs)
+    except Exception as e:
+        log.error("processor %r failed on %s: %s", named.name, filename, e)
+        result = _artifact_from_exception(filename, e, f"processor '{named.name}'")
+    if not isinstance(result, dict):
+        result = error_artifact(
+            filename,
+            ERROR_PROCESSING,
+            f"processor '{named.name}' returned {type(result).__name__}, "
+            "not an artifact (use attachments.make_artifact)",
+        )
+    _attach_warnings(result, warnings)
+    meta = result.setdefault("meta", {})
+    meta.setdefault("extra", {})["processor"] = named.name
+    return result
+
+
+def _run_standard(
+    filename: str,
+    data: bytes,
+    proc: Processor | None,
+    resolved: dict[str, Any],
+    warnings: list[str],
+    options: dict[str, Any],
+    key: str | None,
+    svc: bool,
+    mode: str,
+) -> dict:
+    """The standard processor with local/service fallback (per *mode*).
+
+    *resolved* and *warnings* are for the local processor; *options* (raw)
+    for the service.
+    """
 
     def _run_local() -> dict:
         result = proc(data, filename=filename, **resolved)

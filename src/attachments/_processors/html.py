@@ -26,6 +26,7 @@ from typing import Any
 from urllib.parse import urljoin
 
 from .._options import Option, register_options
+from .._watermark import WATERMARK
 from ..deps import check_dep
 from ..types import (
     ERROR_INVALID_OPTION,
@@ -434,6 +435,7 @@ _HTML_OPTIONS = (
         help="JPEG quality, 1-95 (used with image_format: jpeg)",
         example="quality: 75",
     ),
+    WATERMARK,
 )
 register_processor(".html", html_processor)
 register_processor(".htm", html_processor)

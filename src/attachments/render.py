@@ -14,6 +14,8 @@ hand to an LLM right away:
   SDK import).
 * :func:`to_openai_messages` — OpenAI Chat Completions messages with
   ``image_url`` data-URL parts (plain dicts, no ``openai`` SDK import).
+* :func:`to_lm15_message` — one ready ``lm15.Message`` (needs ``lm15``,
+  imported only by this function: ``pip install attachments[lm15]``).
 * :func:`chunk` — deterministic, segment-aware chunking for RAG pipelines.
 * :func:`estimate_tokens` — a rough token count, text and images.
 
@@ -52,6 +54,7 @@ __all__ = [
     "to_claude_content",
     "to_claude_messages",
     "to_openai_messages",
+    "to_lm15_message",
     "chunk",
     "estimate_tokens",
     "image_tokens",
@@ -130,6 +133,28 @@ def _shown(artifacts: list[dict], sources: bool) -> list[dict]:
     if sources:
         return list(artifacts)
     return [a for a in artifacts if (a.get("meta") or {}).get("kind") != "directory"]
+
+
+def _warn_named_labels(artifacts: list[dict]) -> None:
+    """Warn when ``sources=False`` cannot hide a name drawn on a picture."""
+    from ._watermark import shows_name
+
+    named = [
+        _source(a)
+        for a in artifacts
+        if a.get("images") and shows_name(a.get("meta") or {})
+    ]
+    if named:
+        import warnings
+
+        from ._warn import caller_stacklevel
+
+        warnings.warn(
+            f"sources=False, but the pictures of {', '.join(named)} carry their "
+            "file name (watermark: name); use watermark: page to keep names out",
+            UserWarning,
+            stacklevel=caller_stacklevel(),
+        )
 
 
 def render_text(artifacts: list[dict], *, sources: bool = True) -> str:
@@ -367,6 +392,8 @@ def to_parts(
             parts.append(part)
 
     artifacts = _shown(artifacts, sources)
+    if not sources:
+        _warn_named_labels(artifacts)
     if interleave:
         for artifact in artifacts:
             pieces = _artifact_pieces(artifact, interleave=True)
@@ -555,6 +582,75 @@ def to_openai_messages(
             url = f"data:{part['media_type']};base64,{part['data']}"
             content.append({"type": "image_url", "image_url": {"url": url}})
     return [{"role": "user", "content": content}]
+
+
+# ---------------------------------------------------------------------------
+# lm15 (typed messages; lm15 is imported here only)
+# ---------------------------------------------------------------------------
+
+#: Remedy shown when lm15 is not installed.
+LM15_INSTALL = "pip install attachments[lm15]"
+
+
+def to_lm15_message(
+    artifacts: list[dict],
+    *,
+    prompt: str | None = None,
+    sources: bool = True,
+    interleave: bool = True,
+) -> Any:
+    """Convert artifacts to one ``lm15.Message`` from the user.
+
+    :func:`to_parts` as lm15 parts: ``TextPart`` and ``ImagePart`` (inline
+    base64), in the same order (each page's text, then its pictures), with
+    *prompt* as the last text part when given. The message goes straight
+    into a ``Request``, for any provider lm15 speaks::
+
+        from lm15 import Request
+
+        a = att("report.pdf[images: true]")
+        Request(model="claude-sonnet-4-5", messages=(a.lm15("Summarize."),))
+
+    Leave *prompt* out to keep the document in a message of its own: the
+    same message, first in every request, is a prefix providers can cache
+    (``CacheConfig(prefix_until_index=0)``), and the questions follow as
+    other messages.
+
+    Raises:
+        ImportError: lm15 is not installed (the message says how to).
+        ValueError: nothing to send — no text, no pictures, no prompt.
+
+    Examples:
+        >>> from attachments.types import make_artifact
+        >>> img = {"name": "p.png", "mimetype": "image/png", "bytes": b"\\x89PNG"}
+        >>> art = make_artifact(text="hi", images=[img], meta={"source": "a.pdf"})
+        >>> msg = to_lm15_message([art], prompt="Go")
+        >>> msg.role, [p.type for p in msg.parts]
+        ('user', ['text', 'image', 'text'])
+        >>> msg.parts[1].media_type, msg.parts[1].bytes
+        ('image/png', b'\\x89PNG')
+        >>> to_lm15_message([art], sources=False).parts[0].text
+        'hi'
+    """
+    try:
+        from lm15 import ImagePart, Message, TextPart
+    except ImportError as e:
+        raise ImportError(f"a.lm15() needs lm15 — install with: {LM15_INSTALL}") from e
+
+    parts = to_parts(artifacts, sources=sources, interleave=interleave, prompt=prompt)
+    if not parts:
+        raise ValueError(
+            "nothing to send: no text, no pictures and no prompt "
+            "(failed files are listed in a.errors)"
+        )
+    return Message.user(
+        [
+            TextPart(text=part["text"])
+            if part["type"] == "text"
+            else ImagePart(media_type=part["media_type"], data=part["data"])
+            for part in parts
+        ]
+    )
 
 
 # ---------------------------------------------------------------------------

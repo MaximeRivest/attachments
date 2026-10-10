@@ -51,6 +51,7 @@ DEPENDENCY_MAP: dict[str, tuple[tuple[str, ...], str]] = {
     "ocr": (("rapidocr", "onnxruntime"), "pip install attachments[ocr]"),
     "audio": (("faster_whisper",), "pip install attachments[audio]"),
     "mcp": (("mcp",), "pip install attachments[mcp]"),
+    "lm15": (("lm15",), "pip install attachments[lm15]"),
     # Old Office and OpenDocument files (.doc, .ppt, .odt, .odp, .ods) are
     # converted by LibreOffice, a program pip cannot install.
     "libreoffice": (

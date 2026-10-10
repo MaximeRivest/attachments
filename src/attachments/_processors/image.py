@@ -24,6 +24,7 @@ import os
 from typing import Any
 
 from .._options import Option, register_options
+from .._watermark import WATERMARK
 from ..types import (
     ERROR_INVALID_OPTION,
     ERROR_PARSE,
@@ -474,6 +475,7 @@ OPTIONS = (
         ),
         example="ocr_engine: lighton",
     ),
+    WATERMARK,
 )
 
 

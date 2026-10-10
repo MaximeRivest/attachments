@@ -52,7 +52,7 @@ class TestRegistration:
     def test_extension_registered_with_options(self):
         assert processors[".ipynb"] is ipynb_processor
         opts = get_options(".ipynb")
-        assert [o.name for o in opts] == ["outputs"]
+        assert [o.name for o in opts] == ["outputs", "watermark"]
         assert opts[0].default is False
 
 

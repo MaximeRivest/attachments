@@ -147,6 +147,71 @@ register_processor(".myf", my_processor)
 register_options(".myf", (Option("depth", "int", help="Parse depth."),))
 ```
 
+### Specialized processors
+
+A format can have several processors: the standard one, which reads every
+file, and named ones, each for a kind of file (invoices, scientific papers,
+contracts...). A named processor is one function, usually starting from the
+standard result:
+
+```python
+from attachments import Option, att, processor
+
+
+def looks_like_invoice(data: bytes, filename: str) -> bool:
+    # Runs for every file of these extensions: keep it cheap.
+    return "invoice" in filename.lower() or b"/Invoice" in data[:4096]
+
+
+@processor(
+    ".pdf",
+    name="invoice",
+    detect=looks_like_invoice,  # optional: without it, chosen only by name
+    options=(Option("currency", "str", help="ISO code", example="currency: EUR"),),
+)
+def invoice_pdf(data: bytes, *, base, currency: str = "USD", **options) -> dict:
+    artifact = base()                 # what att() gives without this processor
+    if artifact["meta"].get("error"):
+        return artifact               # pass failures through unchanged
+    artifact["text"] += f"\n\n(amounts in {currency})"
+    return artifact
+
+
+att("bill.pdf[processor: invoice, currency: EUR]")   # by name
+att("invoice-0042.pdf")                               # by detect
+att("invoice-0042.pdf[processor: default]")           # the standard one
+```
+
+- **Choosing.** `[processor: NAME]` picks one; otherwise the most recently
+  registered processor whose `detect(data, filename)` is true; otherwise
+  the standard one. An unknown name is a warning ("did you mean...?",
+  with the list), and the file is read as if it had not been given. A
+  `detect` that raises counts as no (logged).
+- **`base`.** Declare a `base` parameter to receive the standard processing:
+  `base()` returns the artifact the file would have without your processor
+  (with the standard options of the call, and service fallback when a
+  dependency is missing, as usual); `base(pages="1-2", images=True)` the
+  same with other options, in `att()`'s vocabulary; `base(other_bytes)`
+  reads other bytes (a decrypted copy, say). Without a `base` parameter,
+  nothing is passed.
+- **Options.** Yours are added to the standard ones (yours win on a name
+  clash) and reach only your function; the standard ones reach both.
+  `att.options(".pdf")` lists `processor` and your options.
+- **What ran** is in `meta["extra"]["processor"]`. Your result goes through
+  the same normalization as any other; a function that raises or returns
+  something other than an artifact gives a `processing-error` naming it.
+  Your function runs here, never on the service (the service does not know
+  it); `base()` may use the service.
+- **Pictures.** Labels (`watermark:`) are applied by core after your
+  processor, like after any other; you never see the option.
+- `reset_processors()` removes named processors too.
+
+A processor that makes pictures should declare the shared `watermark`
+option so labels work on its format too:
+`from attachments._watermark import WATERMARK` and add `WATERMARK` to its
+`options=(...)`. Core takes the option out before calling the processor and
+labels the result's pictures itself.
+
 ### Full Example
 
 Create `src/attachments/_processors/myformat.py`:

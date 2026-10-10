@@ -83,6 +83,7 @@ Options belong to the file type: `print(att.options(".pdf"))` (or
 | html, web pages | `main: false`, `links: true` | whole page instead of the main content; keep link addresses |
 | html, web pages | `screenshot: true`, `max_screens: 2` | pictures of the rendered page (`browser` extra + `playwright install chromium`) |
 | images | `max_dim`, `rotate: 90`, `image_format`, `quality` | |
+| anything with pictures | `watermark: page` | "page 3", "slide 2", "sheet Sales" in a strip above each picture (`name` adds the file name; other text is drawn as written). Off by default |
 | audio | `model: small`, `language: en` | transcription (`audio` extra) |
 
 **A wrong option does not fail.** `[pagez: 1]` or `[pages: 1-x]` prints a
@@ -138,7 +139,16 @@ OpenAI().chat.completions.create(
   question. `interleave=False` gives all text, then all pictures.
 - Both return one user message, `[{"role": "user", "content": [...]}]`; the
   system prompt goes in the API's own parameter.
-- Any other API (OpenAI Responses, Gemini, LiteLLM, lm15, your own): map the
+- lm15 (`attachments[lm15]`): `a.lm15(prompt)` is one ready `lm15.Message`
+  (text and image parts, same order), for any provider lm15 speaks:
+
+```python
+from lm15 import Request
+
+request = Request(model="claude-sonnet-4-5", messages=(a.lm15("What do the charts show?"),))
+```
+
+- Any other API (OpenAI Responses, Gemini, LiteLLM, your own): map the
   neutral parts, never base64-encode or resize pictures yourself:
 
 ```python

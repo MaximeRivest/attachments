@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`a.lm15()`**: one ready `lm15.Message` (typed text and image parts, each
+  page's pictures after its text, same `sources=` / `interleave=` options
+  as `claude()`), for every provider [lm15](https://lm15.dev) speaks; also
+  `attachments.to_lm15_message`. New extra: `attachments[lm15]`.
+- **Labels on pictures** (`watermark:`, back from 0.25, redone): `page`
+  writes "page 3", "slide 3" or "sheet Sales" in a white strip above each
+  picture; `name` adds the file name; any other text is drawn as written,
+  with `{name}` and `{page}` filled in. Never over the content; the picture
+  keeps its size (`max_dim` stays true); JPEG stays JPEG. Every format that
+  makes pictures (PDF, Office, images, SVG, web screenshots, notebooks),
+  read here or by the service. Off by default. 0.25's
+  `text|position|style` draws the text, with a warning.
+- **Specialized processors**: `@processor(".pdf", name="invoice",
+  detect=...)` adds a processor next to the standard one of a format,
+  chosen by `[processor: invoice]` or by its `detect`; a `base` parameter
+  receives the standard processing (`base()`, `base(pages="1-2")`). Its own
+  options join the standard ones, `att.options(".pdf")` lists it, and
+  `meta.extra.processor` says which ran.
+
+### Changed
+
+- The `image` and `heic` extras need Pillow 10.1 (its sized default font
+  draws the labels).
+
 ## [1.0.0b8] - 2026-10-10
 
 ### Changed

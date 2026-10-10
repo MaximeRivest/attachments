@@ -31,6 +31,7 @@ import xml.etree.ElementTree as ET
 from typing import Any
 
 from .._options import Option, register_options
+from .._watermark import WATERMARK
 from ..types import ERROR_PARSE, error_artifact, make_artifact, missing_dep_artifact
 from . import register_processor
 
@@ -163,6 +164,7 @@ OPTIONS = (
         help="Rasterize the SVG to PNG with cairosvg (true/false/auto/always).",
         example="images: true",
     ),
+    WATERMARK,
 )
 
 

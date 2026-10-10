@@ -81,7 +81,7 @@ def att_help() -> None:
         "Try:",
         '  a = att("report.pdf[pages: 1-4, images: true]")  # DSL options inline',
         '  a = att.from_prompt("compare `a.pdf` with b.csv")  # files a prompt names',
-        '  a.claude("Summarize.")          # Claude messages (a.openai(...) too)',
+        '  a.claude("Summarize.")          # Claude messages (a.openai, a.lm15 too)',
         "  a.chunk(max_chars=4000)         # segment-aware RAG chunks",
         "  a.parts(sources=False)          # text/image parts by page, no file names",
         "  a.raise_for_errors()            # stop on failures (att() never raises)",

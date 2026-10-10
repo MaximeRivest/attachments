@@ -35,6 +35,7 @@ from .render import estimate_tokens as estimate_tokens
 from .render import render_text as render_text
 from .render import to_claude_content as to_claude_content
 from .render import to_claude_messages as to_claude_messages
+from .render import to_lm15_message as to_lm15_message
 from .render import to_openai_messages as to_openai_messages
 from .render import to_parts as to_parts
 from .types import ERROR_INVALID_OPTION as ERROR_INVALID_OPTION
@@ -103,6 +104,7 @@ __all__ = [
     "to_claude_content",
     "to_claude_messages",
     "to_openai_messages",
+    "to_lm15_message",
     "chunk",
     "estimate_tokens",
     "processors",
@@ -125,6 +127,7 @@ class _Att:
         *,
         api_key: str | None = ...,
         prefer: Literal["local", "service", "local-only", "service-only"] | None = ...,
+        processor: str = ...,
         delimiter: str = ...,
         sep: str = ...,
         dpi: int = ...,
@@ -172,6 +175,7 @@ class _Att:
         tables: bool = ...,
         tree: bool | str = ...,
         url: str = ...,
+        watermark: str = ...,
         **options: Any,
     ) -> Artifacts: ...
     def options(
