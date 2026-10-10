@@ -169,6 +169,7 @@ class _Att:
         css: str = ...,
         sheet: str | int = ...,
         summary: bool = ...,
+        tables: bool = ...,
         tree: bool | str = ...,
         url: str = ...,
         **options: Any,

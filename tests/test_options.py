@@ -268,6 +268,7 @@ class TestSchemaExport:
             "quality",
             "ocr",
             "ocr_engine",
+            "tables",
             "max_pages",
         ]
         entry = next(o for o in pdf if o["name"] == "pages")

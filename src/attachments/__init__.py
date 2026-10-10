@@ -39,7 +39,7 @@ Every DSL option has a keyword-argument twin (kwargs win):
     >>> from attachments import att
     >>> [o["name"] for o in att.options(".pdf")]
     ['pages', 'password', 'images', 'dpi', 'max_dim', 'image_format', 'quality', \
-'ocr', 'ocr_engine', 'max_pages']
+'ocr', 'ocr_engine', 'tables', 'max_pages']
 
 Check Available Features:
 

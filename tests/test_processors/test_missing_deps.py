@@ -62,7 +62,8 @@ class TestProcessorsMissingDeps:
     """
 
     def test_pdf_missing_deps_returns_typed_error(self, mask_modules):
-        mask_modules("pypdf", "PyPDF2", "pdfminer")
+        # Any one of PyMuPDF, pypdf/PyPDF2 or pdfminer reads text.
+        mask_modules("pypdf", "PyPDF2", "pdfminer", "pymupdf", "fitz")
 
         result = processors[".pdf"](b"%PDF-1.4 minimal pdf")
 

@@ -226,6 +226,58 @@ def _extract_text_with_pypdf_or_pyPDF2(
         return (None, None, 0, None, extra, [])
 
 
+def _extract_text_with_pymupdf(
+    data: bytes,
+    password: str | None,
+    pick: PagePicker,
+    *,
+    tables: bool = True,
+) -> tuple[str | None, int | None, int, str | None, dict, list[dict]]:
+    """Text with PyMuPDF (``_pdf_text``): reading order kept, tables found.
+
+    Same return shape as the pypdf reader. ``text`` is ``None`` when
+    PyMuPDF is missing or cannot open the file (the caller then tries
+    pypdf); ``extra["password_required"]`` when the password is wrong.
+    """
+    extra: dict[str, Any] = {}
+    try:
+        try:
+            import pymupdf as fitz
+        except ImportError:
+            import fitz
+    except ImportError:
+        return (None, None, 0, None, extra, [])
+    from ._pdf_text import page_text
+
+    try:
+        doc = fitz.open(stream=data, filetype="pdf")
+    except Exception as e:
+        extra["pymupdf_error"] = str(e)
+        return (None, None, 0, None, extra, [])
+    try:
+        extra["encrypted"] = bool(doc.needs_pass or doc.is_encrypted)
+        if doc.needs_pass and not doc.authenticate(password or ""):
+            extra["password_required"] = True
+            return (None, None, 0, "pymupdf", extra, [])
+        total = doc.page_count
+        indices = pick(total)
+        texts: list[str] = []
+        found = 0
+        for i in indices:
+            try:
+                text, n = page_text(doc.load_page(i), fitz, tables=tables)
+            except Exception:
+                text, n = "", 0
+            texts.append(text.strip())
+            found += n
+        if found:
+            extra["tables"] = found
+        joined, segments = _join_pages_with_segments(texts, [i + 1 for i in indices])
+        return (joined, total, len(indices), "pymupdf", extra, segments)
+    finally:
+        doc.close()
+
+
 def _extract_text_with_pdfminer(
     data: bytes,
     password: str | None,
@@ -729,6 +781,7 @@ def process_pdf(
     # OCR options
     ocr: bool | str = "auto",  # False | True/"always" | "auto"
     ocr_engine: str = "rapidocr",  # "rapidocr" | "lighton"
+    tables: bool = True,
     **_opts: Any,
 ) -> dict:
     """
@@ -776,8 +829,13 @@ def process_pdf(
                                      (extra.ocr_engine_fallback); with forced
                                      OCR it is an invalid-option error.
 
+      - tables: bool                 Tables with ruling lines become
+                                     Markdown tables where they stand
+                                     (default True; PyMuPDF text only).
+
     Dependencies:
-      - Text: pypdf (preferred) or PyPDF2; fallback to pdfminer.six.
+      - Text: PyMuPDF (reading order, tables); pypdf or PyPDF2 when
+        PyMuPDF is missing or fails; then pdfminer.six.
       - Images: PyMuPDF (fitz) preferred; fallback pdf2image (+poppler).
       - OCR: rapidocr + onnxruntime (pip install attachments[ocr]).
     """
@@ -829,7 +887,11 @@ def process_pdf(
         return imgs2, backend2, merged
 
     # Typed missing-dependency signal: no text backend importable at all.
-    if not (check_dep("pdf-text").available or check_dep("pdf-fallback").available):
+    if not (
+        check_dep("pdf-images").available
+        or check_dep("pdf-text").available
+        or check_dep("pdf-fallback").available
+    ):
         return missing_dep_artifact(source, "pdf")
 
     extra: dict[str, Any] = {}
@@ -838,9 +900,18 @@ def process_pdf(
     segments: list[dict] = []
 
     # ---- TEXT extraction ----
+    # PyMuPDF first (reading order, tables, fewer run-together words); pypdf
+    # when PyMuPDF is missing or cannot open the file.
     text1, total_pages, parsed_pages, backend1, extra1, segments1 = (
-        _extract_text_with_pypdf_or_pyPDF2(data, password, pick)
+        _extract_text_with_pymupdf(data, password, pick, tables=bool(tables))
     )
+    if text1 is None and not extra1.get("password_required"):
+        pymupdf_error = extra1.get("pymupdf_error")
+        text1, total_pages, parsed_pages, backend1, extra1, segments1 = (
+            _extract_text_with_pypdf_or_pyPDF2(data, password, pick)
+        )
+        if pymupdf_error:
+            extra1["pymupdf_error"] = pymupdf_error
     extra.update(extra1)
     if backend1:
         extra["text_backend"] = backend1
@@ -1140,6 +1211,16 @@ register_options(
                 "LightOnOCR vLLM endpoint via ATTACHMENTS_LIGHTON_URL)."
             ),
             example="ocr_engine: lighton",
+        ),
+        Option(
+            "tables",
+            "bool",
+            default=True,
+            help=(
+                "Tables with ruling lines as Markdown tables, in place "
+                "(text pages; needs PyMuPDF)."
+            ),
+            example="tables: false",
         ),
         Option(
             "max_pages",

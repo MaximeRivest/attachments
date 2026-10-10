@@ -105,6 +105,7 @@ only a warning (`meta["warnings"]`), never an error.
 | `quality` | `int` | — | `85` | `quality: 75` | JPEG quality, 1-95 (used with image_format: jpeg). |
 | `ocr` | `bool_or_auto` | — | `"auto"` | `ocr: true` | Read pages with no text layer (scans) with RapidOCR: true/false, or auto (when rapidocr is installed; first 50 such pages). |
 | `ocr_engine` | `str` | — | `"rapidocr"` | `ocr_engine: lighton` | OCR engine: rapidocr (local, default) or lighton (remote LightOnOCR vLLM endpoint via ATTACHMENTS_LIGHTON_URL). |
+| `tables` | `bool` | — | `true` | `tables: false` | Tables with ruling lines as Markdown tables, in place (text pages; needs PyMuPDF). |
 | `max_pages` | `int` | — | — | `max_pages: 10` | Hard cap on the number of pages parsed/rendered. |
 
 ### `.svg`, `.svgz`

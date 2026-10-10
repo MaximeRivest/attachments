@@ -1139,6 +1139,15 @@
       },
       {
         "aliases": [],
+        "default": true,
+        "example": "tables: false",
+        "help": "Tables with ruling lines as Markdown tables, in place (text pages; needs PyMuPDF).",
+        "name": "tables",
+        "param": null,
+        "type": "bool"
+      },
+      {
+        "aliases": [],
         "default": null,
         "example": "max_pages: 10",
         "help": "Hard cap on the number of pages parsed/rendered.",

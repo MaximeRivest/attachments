@@ -368,7 +368,7 @@ runtime — `att.options(".pdf")` lists one processor's options,
 
 ```python
 >>> [o["name"] for o in att.options(".pdf")]
-['pages', 'password', 'images', 'dpi', 'max_dim', 'image_format', 'quality', 'ocr', 'ocr_engine', 'max_pages']
+['pages', 'password', 'images', 'dpi', 'max_dim', 'image_format', 'quality', 'ocr', 'ocr_engine', 'tables', 'max_pages']
 >>> att.options(".pdf")[0]
 {'name': 'pages', 'type': 'pages', 'aliases': ['page'], 'param': None, 'default': None,
  'help': 'Pages to include: a 1-based page number or range.', 'example': 'pages: 1-4'}
