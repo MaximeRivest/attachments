@@ -1,6 +1,8 @@
 """Processor for Word documents (.docx).
 
-Extracts text from paragraphs and tables. ``images: true`` adds a picture
+Text, headings, lists and tables as Markdown, read from the document's XML
+(``_docx_text``: content controls, text boxes, merged cells, the Strict
+format). ``images: true`` adds a picture
 of every page (drawn by LibreOffice, see ``_office_pages``);
 ``embedded_images: true`` adds the pictures stored in the file.
 Requires ``python-docx``: ``pip install attachments[docx]``
@@ -25,15 +27,6 @@ from ._office_pages import (
 )
 
 log = logging.getLogger("attachments.processors.docx")
-
-
-def _extract_table_text(table) -> str:
-    """Render a docx table as a simple pipe-delimited text table."""
-    rows: list[str] = []
-    for row in table.rows:
-        cells = [cell.text.strip() for cell in row.cells]
-        rows.append("| " + " | ".join(cells) + " |")
-    return "\n".join(rows)
 
 
 def docx_processor(
@@ -85,38 +78,31 @@ def docx_processor(
 
     import io
 
+    from ._docx_text import docx_markdown
+
+    # Text: read from the document's XML (content controls, text boxes,
+    # headings, lists, merged cells, the Strict format; see _docx_text).
     try:
-        doc = Document(io.BytesIO(data))
-    except Exception as e:
+        full_text, stats = docx_markdown(data)
+    except ValueError as e:
         log.warning("failed to open docx %s: %s", filename, e)
         return error_artifact(
             filename, ERROR_PARSE, f"Failed to parse Word document: {e}"
         )
 
-    # --- text extraction (paragraphs + tables in document order) ---
-    parts: list[str] = []
-    # Walk body elements to preserve paragraph/table ordering
-    for element in doc.element.body:
-        tag = element.tag.split("}")[-1] if "}" in element.tag else element.tag
-        if tag == "p":
-            # Find matching paragraph object
-            for para in doc.paragraphs:
-                if para._element is element:
-                    text = para.text.strip()
-                    if text:
-                        parts.append(text)
-                    break
-        elif tag == "tbl":
-            for table in doc.tables:
-                if table._element is element:
-                    parts.append(_extract_table_text(table))
-                    break
-
-    full_text = "\n\n".join(parts)
+    # python-docx only for the pictures stored in the file; it cannot open
+    # every document the text reader can (the Strict format), which then
+    # just has no embedded pictures.
+    doc = None
+    if extract_images:
+        try:
+            doc = Document(io.BytesIO(data))
+        except Exception as e:
+            log.debug("python-docx could not open %s for pictures: %s", filename, e)
 
     # --- image extraction ---
     images: list[dict[str, Any]] = []
-    if extract_images:
+    if doc is not None:
         for i, rel in enumerate(doc.part.rels.values()):
             if "image" in rel.reltype:
                 try:
@@ -137,8 +123,8 @@ def docx_processor(
 
     extra: dict[str, Any] = {
         "filename": filename,
-        "paragraphs": len(doc.paragraphs),
-        "tables": len(doc.tables),
+        "paragraphs": stats["paragraphs"],
+        "tables": stats["tables"],
         "images_extracted": len(images),
     }
     meta: dict[str, Any] = {"kind": "document", "extra": extra}

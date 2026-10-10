@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "attachments"
-version = "1.0.0b6"  # pre-release: plain `pip install attachments` still gets 0.25; see LAUNCH.md
+version = "1.0.0b7"  # pre-release: plain `pip install attachments` still gets 0.25; see LAUNCH.md
 description = "Turn anything into LLM-ready artifacts. Universal file and source processing."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -38,7 +38,7 @@ dependencies = []
 [project.optional-dependencies]
 # === Individual Processors ===
 pdf = [
-    "pypdf>=4.0",           # Modern pypdf (not pypdf2)
+    "pypdf>=6.17",          # 6.17: first to keep the spaces in some PDFs (olmOCR-bench)
     "pymupdf>=1.24",        # For image rendering
 ]
 pdf-fallback = [
@@ -141,7 +141,7 @@ dev = [
     # Service mode for testing
     "httpx>=0.27",
     # Common processors for testing
-    "pypdf>=4.0",
+    "pypdf>=6.17",
     "pymupdf>=1.24",
     "openpyxl>=3.1,<4.0",
     "pandas>=2.0,<3.0",

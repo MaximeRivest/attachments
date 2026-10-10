@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0b7] - 2026-10-09
+
+Fixes found by comparing attachments with markitdown and docling on their
+own test files and on olmOCR-bench ([evals/compare](evals/compare/README.md)).
+
+### Changed
+
+- **Word documents are read from their XML** (`_docx_text`, standard
+  library) instead of through python-docx's object model. Now read:
+  content controls (templates and forms; whole tables used to vanish),
+  text boxes, the "Strict" format (failed to open before), tracked changes
+  (as accepted), equations as plain text. Tables are Markdown tables with
+  a header line, a cell's paragraphs on one line (`<br>`), merged cells,
+  and a one-cell frame table read as its content. Headings (`#`) and list
+  items (`-`, `1.`) are marked. On the 40 Word test files: paragraphs
+  found 88.6% -> 100%, table rows 41.7% -> 99.0%. Also no longer slows down
+  quadratically on long documents. python-docx is still required, and used
+  only for embedded pictures.
+- **Small web tables of short values are tables**: Readability's rule
+  called every table under ~10 cells without header cells "layout" and
+  flattened it into lines. Now a table is layout only when its cells hold
+  page structure (a table, form, menu, section) or long text.
+- **The `pdf` extra requires pypdf 6.17 or later**: earlier versions run
+  the words of some PDFs together ("Toperkone'sselfup"; 10 points lower on
+  olmOCR-bench's small-print pages). A project pinning an older pypdf now
+  gets a version conflict instead of that text.
+- **OCR turns a page only for a confident, clearly better reading that
+  reads at least as much text**: an upright handwritten envelope was read
+  upside down (its "6" as one confident "9").
+
 ## [1.0.0b6] - 2026-10-09
 
 ### Changed
@@ -586,6 +616,7 @@ DSL options or their kwarg twins (`att("doc.pdf[pages: 1-4]")`). Custom
 loaders/presenters become processors or unpack handlers (see
 [DEVELOPMENT.md](DEVELOPMENT.md)).
 
+[1.0.0b7]: https://pypi.org/project/attachments/1.0.0b7/
 [1.0.0b6]: https://pypi.org/project/attachments/1.0.0b6/
 [1.0.0b5]: https://pypi.org/project/attachments/1.0.0b5/
 [1.0.0b4]: https://pypi.org/project/attachments/1.0.0b4/

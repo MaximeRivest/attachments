@@ -333,7 +333,15 @@ class TestTables:
         assert not is_data_table(table(8, 1))  # one column: layout
         assert is_data_table(table(10, 2))  # many rows: data
         assert is_data_table(table(2, 5))  # many columns: data
-        assert not is_data_table(table(3, 3))  # small grid: layout
+        # A small grid of short values is data (Readability says layout;
+        # losing a small table's rows and columns costs a model more).
+        assert is_data_table(table(3, 3))
+        layout = BeautifulSoup(
+            "<table><tr><td><nav>Home</nav></td><td>Main</td></tr>"
+            "<tr><td>a</td><td>b</td></tr></table>",
+            "lxml",
+        ).table
+        assert not is_data_table(layout)  # page structure inside: layout
 
 
 # ---------------------------------------------------------------------------

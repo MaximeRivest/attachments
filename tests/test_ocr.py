@@ -138,6 +138,33 @@ class TestTurnedPages:
         assert result.text.startswith("line 0")
 
 
+def test_poor_reading_both_ways_is_not_turned(monkeypatch):
+    """Handwriting reads poorly upright and upside down: keep it upright."""
+
+    def read_lines(image):
+        score = 0.62 if _corner(image) == "tl" else 0.7  # turned: a bit higher
+        return [Line(0, i * 50, 400, i * 50 + 30, f"line {i}", score) for i in range(4)]
+
+    monkeypatch.setattr(_ocr, "_read_lines", read_lines)
+    result = _ocr.recognize(_marked())
+    assert result.turned == 0 and result.text.startswith("line 0")
+
+
+def test_one_confident_symbol_does_not_turn_a_page(monkeypatch):
+    """Upside down, a "6" reads as one confident "9": not a reason to turn."""
+
+    def read_lines(image):
+        if _corner(image) == "tl":
+            return [
+                Line(0, i * 50, 400, i * 50 + 30, "To the Governor of", 0.6)
+                for i in range(4)
+            ]
+        return [Line(0, 0, 30, 30, "9", 0.99)]
+
+    monkeypatch.setattr(_ocr, "_read_lines", read_lines)
+    assert _ocr.recognize(_marked()).turned == 0
+
+
 class TestReadPages:
     def test_results_by_key_and_bounded_drawing(self):
         drawn: list[int] = []

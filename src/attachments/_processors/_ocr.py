@@ -48,6 +48,10 @@ MAX_WORKERS = 3
 #: text scores ~0.99; upside-down text ~0.65.
 TURN_SCORE = 0.8
 
+#: A turned reading replaces the first one only when its score is higher by
+#: at least this much (upside-down pages: ~0.65 upright, ~0.99 turned).
+TURN_MARGIN = 0.1
+
 _ENGINE: Any = None
 _ENGINE_LOCK = threading.Lock()
 
@@ -221,6 +225,11 @@ def _score(lines: list[Line]) -> float:
     return statistics.median(x.score for x in lines) if lines else 0.0
 
 
+def _confident_chars(lines: list[Line]) -> float:
+    """Characters read, each weighted by its line's score."""
+    return sum(len(x.text) * x.score for x in lines)
+
+
 def _sideways(lines: list[Line]) -> bool:
     """Text boxes taller than wide: the page is turned a quarter.
 
@@ -237,8 +246,10 @@ def recognize(image: Any) -> OcrText:
     """Read the text of one picture (a Pillow image), upright or turned.
 
     Read as it is first. A sideways page is read turned both ways, an
-    upside-down one (low score) turned half a turn, and the best-scoring
-    reading wins; upright pages are read once.
+    upside-down one (low score) turned half a turn; a turned reading wins
+    only when it is confident (``TURN_SCORE``), clearly better
+    (``TURN_MARGIN``) and reads at least as much text. Upright pages are
+    read once.
     """
     from PIL import Image
 
@@ -262,7 +273,17 @@ def recognize(image: Any) -> OcrText:
         candidates = ()
     for turn in candidates:
         lines, score = attempt(turn)
-        if score > best_score:
+        # Only a confident, clearly better reading turns the page: an
+        # upright handwritten page reads poorly both ways, and chance must
+        # not swap its text for garbage (seen on olmOCR-bench old scans).
+        # It must also read at least as much text: upside down, the "6" on
+        # an envelope reads as one confident "9" while the upright
+        # handwriting gives many uncertain lines.
+        if (
+            score >= TURN_SCORE
+            and score > best_score + TURN_MARGIN
+            and _confident_chars(lines) >= _confident_chars(best)
+        ):
             best_turn, best, best_score = turn, lines, score
     return OcrText(order_lines(best), round(best_score, 3), best_turn)
 

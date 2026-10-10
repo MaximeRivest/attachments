@@ -292,6 +292,21 @@ def _own_cells(tr: Any) -> list[Any]:
     return [c for c in tr.find_all(["td", "th"], recursive=False)]
 
 
+#: Inside a cell, these mark page structure (layout), not a value.
+_LAYOUT_TAGS = ("table", "form", "nav", "section", "article", "aside", "iframe")
+
+#: A data cell holds at most this many characters: more is a block of
+#: content that a one-line table cell would squeeze.
+_PLAIN_CELL_CHARS = 200
+
+
+def _plain_cell(cell: Any) -> bool:
+    """A value (short text, maybe a short list or heading), not a layout box."""
+    if cell.find(_LAYOUT_TAGS) is not None:
+        return False
+    return len(cell.get_text(" ", strip=True)) <= _PLAIN_CELL_CHARS
+
+
 def is_data_table(table: Any) -> bool:
     """Readability's test: does this ``<table>`` hold data (vs. layout)?
 
@@ -309,6 +324,22 @@ def is_data_table(table: Any) -> bool:
         ... )
         True
         >>> t("<table><tr><td>one cell of layout</td></tr></table>")
+        False
+        >>> t(
+        ...     "<table><tr><td>Name</td><td>Age</td></tr>"
+        ...     "<tr><td>Ann</td><td>9</td></tr></table>"
+        ... )
+        True
+        >>> t(
+        ...     "<table><tr><td><nav>Home</nav></td><td><form>Go</form></td></tr>"
+        ...     "<tr><td>Body</td><td>x</td></tr></table>"
+        ... )
+        False
+        >>> long = "long text " * 30
+        >>> t(
+        ...     f"<table><tr><td>{long}</td><td>x</td></tr>"
+        ...     "<tr><td>a</td><td>b</td></tr></table>"
+        ... )
         False
         >>> t('<table role="presentation"><tr><th>a</th></tr></table>')
         False
@@ -345,6 +376,11 @@ def is_data_table(table: Any) -> bool:
     if len(rows) <= 1 or columns <= 1:
         return False
     if len(rows) >= 10 or columns > 4:
+        return True
+    # Readability calls every small table without headers layout; for a
+    # model, losing the rows and columns of a small data table costs more.
+    # Short cells are data; layout tables hold page structure or long text.
+    if all(_plain_cell(c) for tr in rows for c in _own_cells(tr)):
         return True
     return len(rows) * columns > 10
 
