@@ -526,3 +526,43 @@ class TestAttArtifactValidator:
         result = att("/nonexistent/file.txt")
 
         assert_artifact(result[0], has_error=True)
+
+
+class TestMissingPartFallback:
+    """A result that kept its text but lacks pictures (``missing_part``) may
+    be asked of the service; if the service fails, the text stays."""
+
+    @staticmethod
+    def _partial(data: bytes, **_opts):
+        from attachments.types import missing_part
+
+        return missing_part(make_artifact(text="local text"), "svg", "The picture")
+
+    def test_service_fills_the_gap(self, monkeypatch):
+        register_processor(".part", self._partial)
+        monkeypatch.setattr(
+            "attachments.core._process_via_service",
+            lambda *a, **k: make_artifact(text="with picture", meta={"via": "service"}),
+        )
+        out = _process_single("a.part", b"x", prefer="local", api_key="k")
+        assert out["text"] == "with picture"
+
+    def test_service_failure_keeps_the_local_text(self, monkeypatch):
+        register_processor(".part", self._partial)
+        monkeypatch.setattr(
+            "attachments.core._process_via_service",
+            lambda *a, **k: error_artifact("a.part", ERROR_PARSE, "down"),
+        )
+        out = _process_single("a.part", b"x", prefer="local", api_key="k")
+        assert out["text"] == "local text" and "error" not in out["meta"]
+        assert out["meta"]["warnings"][-1].endswith("either: down")
+
+    def test_no_service_no_call(self, monkeypatch):
+        register_processor(".part", self._partial)
+
+        def _boom(*_a, **_k):
+            raise AssertionError("no service configured")
+
+        monkeypatch.setattr("attachments.core._process_via_service", _boom)
+        out = _process_single("a.part", b"x", prefer="local", api_key=None)
+        assert out["text"] == "local text"

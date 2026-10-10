@@ -27,18 +27,14 @@ returns the text alone, with a note.
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass, field
 from typing import Any
 
 from .._options import Option
 from .._pages import PagePicker
 from .._watermark import WATERMARK
 from ..deps import check_dep, find_libreoffice
-from ..types import (
-    ERROR_INVALID_OPTION,
-    ERROR_PARSE,
-    error_artifact,
-    missing_dep_artifact,
-)
+from ..types import ERROR_INVALID_OPTION, error_artifact, missing_part
 from ._imageout import DEFAULT_QUALITY, check_image_output
 
 log = logging.getLogger("attachments.processors.office_pages")
@@ -161,6 +157,35 @@ def check_render_options(
     return artifact
 
 
+@dataclass
+class Pictures:
+    """The pictures of an Office file's pages, and what went wrong.
+
+    A problem never costs the text: :meth:`finish` puts it in the
+    artifact as a warning (``missing`` also as
+    ``meta.extra.missing_dependency``, which lets core ask the service).
+    """
+
+    images: list[dict[str, Any]] = field(default_factory=list)
+    extra: dict[str, Any] = field(default_factory=dict)
+    note: str | None = None
+    unit: str = "page"
+    missing: str | None = None  # the feature that would have drawn them
+    failure: str | None = None  # LibreOffice could not print the file
+
+    def finish(self, artifact: dict[str, Any]) -> dict[str, Any]:
+        """Record the extras, note and any problem on *artifact*; return it."""
+        meta = artifact.setdefault("meta", {})
+        meta.setdefault("extra", {}).update(self.extra)
+        if self.note:
+            meta["note"] = self.note
+        if self.missing:
+            missing_part(artifact, self.missing, f"Pictures of the {self.unit}s")
+        if self.failure:
+            meta.setdefault("warnings", []).append(self.failure)
+        return artifact
+
+
 def office_pictures(
     data: bytes,
     ext: str,
@@ -173,18 +198,19 @@ def office_pictures(
     max_dim: int | None = DEFAULT_MAX_DIM,
     image_format: str = "auto",
     quality: int = DEFAULT_QUALITY,
-) -> tuple[list[dict[str, Any]], dict[str, Any], str | None] | dict[str, Any]:
+) -> Pictures:
     """Draw the pages of an Office file.
 
     Args:
         data: The file's bytes, in the format named by *ext*.
-        mode: ``"always"`` (missing pieces are an error) or ``"auto"``.
+        mode: ``"always"`` (missing pieces are a warning that names them)
+            or ``"auto"`` (a note).
         pick: Which pages, slides or sheets (0-based), given their count;
             ``None`` = all.
 
     Returns:
-        ``(images, extra, note)``, or an error artifact (missing LibreOffice
-        or renderer with ``mode="always"``, or a conversion failure).
+        :class:`Pictures`; never an error: the text of the file does not
+        depend on its pictures.
     """
     from .legacy_office import ConversionError, convert
     from .pdf import _render_pages_with_pdf2image, _render_pages_with_pymupdf
@@ -202,12 +228,10 @@ def office_pictures(
                     "(pip install pymupdf)."
                 )
             )
-            return [], {}, note
-        artifact = missing_dep_artifact(
-            source, "libreoffice" if soffice is None else "pdf-images"
+            return Pictures(note=note, unit=unit)
+        return Pictures(
+            unit=unit, missing="libreoffice" if soffice is None else "pdf-images"
         )
-        artifact["meta"]["kind"] = kind
-        return artifact
 
     try:
         pdf = convert(
@@ -220,11 +244,11 @@ def office_pictures(
         )
     except (ConversionError, OSError) as e:
         log.warning("LibreOffice could not print %s: %s", source, e)
-        artifact = error_artifact(
-            source, ERROR_PARSE, f"Failed to draw the {unit}s of {source}: {e}"
+        return Pictures(
+            unit=unit,
+            failure=f"Pictures of the {unit}s not made: LibreOffice could "
+            f"not print {source}: {e}",
         )
-        artifact["meta"]["kind"] = kind
-        return artifact
 
     blank = _blank_pages(pdf)
 
@@ -248,7 +272,7 @@ def office_pictures(
         extra["downscaled_pictures"] = info["downscaled_pages"]
     if blank:
         extra["blank_sheets"] = len(blank)
-    return images, extra, None
+    return Pictures(images=images, extra=extra, unit=unit)
 
 
 def _has_pdf2image() -> bool:

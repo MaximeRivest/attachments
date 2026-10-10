@@ -28,10 +28,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   options join the standard ones, `att.options(".pdf")` lists it, and
   `meta.extra.processor` says which ran.
 
+- **The MCP tool marks pages and returns long results in parts.** A
+  `[page N]` (`[slide N]`, `[sheet Name]`) line starts each page; at most
+  16,000 characters come back per call (`max_chars`, `0` = all), cut where
+  a page starts, with a `--- more ---` note: what was shown, `start=` for
+  the rest, the `pages` option to jump. Clients cut longer results in the
+  middle without a word (Pi past 20 KB): on a 40-page PDF, page 27 never
+  reached the agent (evals/bench, `mcp_pdf`: GPT-6 Luna 0/3).
+- **Private keys are recognised by their content.** A file that starts
+  like a private key (PEM, OpenSSH, PGP, PuTTY) is skipped in folders,
+  archives and repositories, and never attached from a prompt, whatever its
+  name (`deploy_key`, `server.txt`); `ignore: "!name"` keeps it.
+- `missing_part()` and `lacks_dependency()` (public): a processor that
+  cannot make a requested part keeps the text and says why; core asks the
+  service for the whole file when one is configured.
+
 ### Changed
 
+- **Pictures never cost a file its text.** `images: true` on Word,
+  PowerPoint or Excel without LibreOffice (or with LibreOffice failing on
+  the file), `screenshot: true` without Chromium, `images: true` on an SVG
+  without cairosvg: the file used to be a `missing-dependency` error, its
+  text lost; now the text is read and a warning names what to install.
+  A whole folder read with `images: true` no longer fails its Office files
+  (evals/bench, `folder`). With a service configured, it is still asked
+  for the pictures; if it fails, the text read here is kept.
+- `images: true` on a PDF with no page renderer (PyMuPDF, pdf2image) says
+  so in a warning; the pictures used to vanish without a word.
 - The `image` and `heic` extras need Pillow 10.1 (its sized default font
   draws the labels).
+
+### Fixed
+
+- PDFs printed nothing on standard output: PyMuPDF 1.27+ prints an advert
+  for its layout package from the table finder, which broke
+  `att --json > file`.
 
 ## [1.0.0b8] - 2026-10-10
 

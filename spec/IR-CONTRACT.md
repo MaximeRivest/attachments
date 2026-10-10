@@ -76,7 +76,13 @@ Rules:
 - `error_artifact(source, code, message) -> Artifact`
 - `missing_dep_artifact(source, feature) -> Artifact` — looks up the install
   hint from `deps.DEPENDENCY_MAP`, sets code `missing-dependency`
-- `is_missing_dependency(artifact) -> bool` — typed check; the ONLY way core
+- `is_missing_dependency(artifact) -> bool` — typed check for the error.
+- `missing_part(artifact, feature, part) -> Artifact` — a part that was asked
+  for but is not the file's content (pictures of pages, slides, sheets;
+  screenshots) could not be made: the artifact keeps its text, gets a
+  warning naming the part and the install command, and
+  `meta.extra.missing_dependency = feature`.
+- `lacks_dependency(artifact) -> bool` — either of the two; the ONLY way core
   routing may decide to fall back to the service. String-matching error
   messages is forbidden.
 - `normalize_artifact(artifact, source) -> Artifact` — fills required keys,
@@ -100,8 +106,11 @@ A processor is a pure function `(data: bytes, *, filename=None, **options) -> Ar
 
 ## Routing contract (core.py)
 
-- Local result with `is_missing_dependency(result)` and an API key configured
-  → try service.
+- Local result with `lacks_dependency(result)` and a service configured
+  → try service. When the local result had its text (`missing_part`) and the
+  service fails, the local result is returned, with a warning.
+- Pictures are never worth a file's text: a processor that cannot draw
+  requested pictures uses `missing_part`, never a missing-dependency error.
 - Service results get `meta.via = "service"`.
 - No processor for extension and not text → empty artifact with
   `meta.note = "no processor available"` (not an error).

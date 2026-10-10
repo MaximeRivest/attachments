@@ -378,9 +378,9 @@ class TestHtmlPage:
         assert fragment in error["message"]
         assert result["meta"]["kind"] == "html"
 
-    def test_screenshot_without_playwright_is_missing_dependency(self, monkeypatch):
+    def test_screenshot_without_playwright_keeps_the_text(self, monkeypatch):
         from attachments import deps
-        from attachments.types import is_missing_dependency
+        from attachments.types import is_missing_dependency, lacks_dependency
 
         real = deps.check_dep
 
@@ -392,9 +392,12 @@ class TestHtmlPage:
 
         monkeypatch.setattr("attachments._processors.html.check_dep", fake)
         result = processors[".html"](SIMPLE_HTML, screenshot=True)
-        assert is_missing_dependency(result)
-        assert "attachments[browser]" in result["meta"]["error"]["message"]
-        assert "playwright install chromium" in result["meta"]["error"]["message"]
+        assert result["text"] and result["images"] == []
+        assert not is_missing_dependency(result) and lacks_dependency(result)
+        [warning] = result["meta"]["warnings"]
+        assert warning.startswith("Screenshots not made")
+        assert "attachments[browser]" in warning
+        assert "playwright install chromium" in warning
 
     def test_deeply_nested_markup_does_not_crash(self):
         html = b"<div>" * 3000 + b"deep words" + b"</div>" * 3000

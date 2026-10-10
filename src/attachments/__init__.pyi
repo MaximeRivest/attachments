@@ -56,8 +56,10 @@ from .types import artifact_from_wire as artifact_from_wire
 from .types import artifact_to_wire as artifact_to_wire
 from .types import error_artifact as error_artifact
 from .types import is_missing_dependency as is_missing_dependency
+from .types import lacks_dependency as lacks_dependency
 from .types import make_artifact as make_artifact
 from .types import missing_dep_artifact as missing_dep_artifact
+from .types import missing_part as missing_part
 from .types import normalize_artifact as normalize_artifact
 
 __all__ = [
@@ -73,6 +75,8 @@ __all__ = [
     "error_artifact",
     "missing_dep_artifact",
     "is_missing_dependency",
+    "missing_part",
+    "lacks_dependency",
     "normalize_artifact",
     "artifact_to_wire",
     "artifact_from_wire",

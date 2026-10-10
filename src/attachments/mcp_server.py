@@ -52,6 +52,12 @@ MAX_IMAGES = 6
 #: a one-line text note so payloads stay agent-friendly.
 MAX_IMAGE_BYTES = 1_500_000
 
+#: Characters of text returned per ``att`` call (``max_chars``). Clients cut
+#: longer results without saying what was lost (Pi removes the middle of
+#: anything over 20 KB; Claude Code warns past 10,000 tokens), so a long
+#: document comes back in parts, each ending with how to get the next.
+MAX_CHARS = 16_000
+
 #: The teaching message shown when the mcp SDK is missing.
 _MISSING_MCP_MESSAGE = (
     f"attachments-mcp requires the mcp extra. Install with: {DEPENDENCY_MAP['mcp'][1]}"
@@ -114,8 +120,13 @@ Options go in the `options` dict (or inline DSL in the source string —
   - {"screenshot": true}      add pictures of a rendered web page
 Call att_options to discover every option per format.
 
-Returns extracted text (one "## <source>" block per file) followed by
-page/slide images when present. Errors never raise: they come back as
+Returns extracted text (one "## <source>" block per file, a "[page N]",
+"[slide N]" or "[sheet Name]" line where each starts) followed by the
+pictures of those pages when present. Long results come in parts of at
+most `max_chars` characters (default 16000; 0 = everything at once): a
+"--- more ---" note then says what was shown and how to get the rest
+(`start`, or the "pages" option to jump to a page). For a long document,
+ask for a page range first. Errors never raise: they come back as
 readable text under "--- notes ---" (e.g. unpack-error, parse-error,
 missing-dependency with its pip install remedy)."""
 
@@ -157,31 +168,205 @@ def _artifact_notes(artifacts: list[dict]) -> list[str]:
     return lines
 
 
-def _content_from_artifacts(source: str, artifacts: list[dict]) -> list[Any]:
+def _marker(segment: dict, artifact: dict) -> str | None:
+    """``[page 3]``, ``[slide 2]``, ``[sheet Sales]`` for a paged segment."""
+    from ._watermark import page_label
+
+    page = segment.get("page")
+    if not isinstance(page, int) or isinstance(page, bool):
+        return None
+    if segment.get("kind") == "sheet":
+        return f"[sheet {segment.get('label') or page}]"
+    return f"[{page_label({'page': page}, artifact)}]"
+
+
+def _render_marked(artifacts: list[dict]) -> tuple[str, list[tuple], list[tuple]]:
+    """The text the tool returns, with a marker line before each page.
+
+    Same blocks as ``render_text`` (``## <source>`` then the text), plus a
+    ``[page N]`` / ``[slide N]`` / ``[sheet Name]`` line where each page,
+    slide or sheet starts, so an agent can tell where it is in a document
+    and ask for other pages.
+
+    Returns ``(text, pages, images)``: *pages* lists ``(offset, source,
+    page, pages_in_artifact, kind)`` for each marker; *images* lists ``(offset,
+    image)``, the offset where the image belongs (the end of its page, or
+    of its artifact), so a part of the text comes with its own pictures.
+
+    Examples:
+        >>> art = {
+        ...     "text": "one\\n\\ntwo",
+        ...     "images": [],
+        ...     "meta": {
+        ...         "source": "a.pdf",
+        ...         "segments": [
+        ...             {
+        ...                 "kind": "page",
+        ...                 "label": "page 1",
+        ...                 "start": 0,
+        ...                 "end": 3,
+        ...                 "page": 1,
+        ...             },
+        ...             {
+        ...                 "kind": "page",
+        ...                 "label": "page 2",
+        ...                 "start": 5,
+        ...                 "end": 8,
+        ...                 "page": 2,
+        ...             },
+        ...         ],
+        ...     },
+        ... }
+        >>> print(_render_marked([art])[0])
+        ## a.pdf
+        [page 1]
+        one
+        <BLANKLINE>
+        [page 2]
+        two
+    """
+    from .render import _shown, _source
+
+    out = ""
+    pages: list[tuple] = []
+    placed: list[tuple] = []
+    for artifact in _shown(artifacts, True):
+        body = artifact.get("text") or ""
+        images = list(artifact.get("images") or [])
+        if not body.strip() and not images:
+            continue
+        src = _source(artifact)
+        out += ("\n\n" if out else "") + f"## {src}\n"
+        segments = sorted(
+            (
+                s
+                for s in ((artifact.get("meta") or {}).get("segments") or [])
+                if isinstance(s.get("start"), int) and _marker(s, artifact)
+            ),
+            key=lambda s: s["start"],
+        )
+        page_end: dict[int, int] = {}
+        if not body.strip():
+            out += "\n".join(f"[image: {i.get('name') or 'image'}]" for i in images)
+        elif not segments:
+            out += body.strip()
+        else:
+            parts = []
+            lead = body[: segments[0]["start"]].strip()
+            if lead:
+                parts.append((None, lead))
+            for k, seg in enumerate(segments):
+                stop = segments[k + 1]["start"] if k + 1 < len(segments) else len(body)
+                parts.append((seg, body[seg["start"] : stop].strip()))
+            mine = []
+            for k, (seg, chunk) in enumerate(parts):
+                if k:
+                    out += "\n\n"
+                if seg is not None:
+                    mine.append((len(out), seg["page"]))
+                    pages.append(
+                        (len(out), src, seg["page"], len(segments), seg.get("kind"))
+                    )
+                    out += _marker(seg, artifact) + ("\n" + chunk if chunk else "")
+                else:
+                    out += chunk
+            for k, (_offset, page) in enumerate(mine):
+                page_end[page] = mine[k + 1][0] if k + 1 < len(mine) else len(out)
+        for image in images:
+            page = image.get("page")
+            placed.append((page_end.get(page, len(out)), image))
+    return out, pages, placed
+
+
+def _content_from_artifacts(
+    source: str,
+    artifacts: list[dict],
+    *,
+    start: int = 0,
+    max_chars: int | None = None,
+) -> list[Any]:
     """Convert artifacts to MCP content blocks: text first, then images.
 
-    The text block is ``render_text(artifacts)`` plus a ``--- notes ---``
-    tail carrying errors/warnings/notes (the teaching layer must reach the
-    agent). Image blocks follow, capped at :data:`MAX_IMAGES`; each image
-    over :data:`MAX_IMAGE_BYTES` is skipped with a one-line text note.
+    The text is :func:`_render_marked` (``## <source>`` blocks with a
+    ``[page N]`` line where each page starts) plus a ``--- notes ---`` tail
+    carrying errors/warnings/notes (the teaching layer must reach the
+    agent). At most *max_chars* (default :data:`MAX_CHARS`; ``0`` = no
+    limit) characters from *start* are returned, cut where a page starts
+    when one is near; a ``--- more ---`` note then says what was shown and
+    how to get the rest (``start=``, or the ``pages`` option). Images
+    follow: those of the pages shown, capped at :data:`MAX_IMAGES`; each
+    image over :data:`MAX_IMAGE_BYTES` is skipped with a one-line note.
     Empty results produce explanatory text, never empty content.
     """
     from mcp.types import ImageContent, TextContent
 
-    from .render import render_text
-
-    text = render_text(artifacts)
+    full, pages, placed = _render_marked(artifacts)
     notes = _artifact_notes(artifacts)
+    budget = MAX_CHARS if max_chars is None else max_chars
+    start = max(0, min(int(start or 0), len(full)))
+    end = len(full)
+    if budget and end - start > budget:
+        limit = start + budget
+        # Cut where a page starts, if one does in the second half of the part.
+        starts = [p[0] for p in pages if start + budget // 2 < p[0] <= limit]
+        if starts:
+            end = max(starts)
+        else:
+            newline = full.rfind("\n", start + budget // 2, limit)
+            end = newline + 1 if newline > 0 else limit
+    text = full[start:end].rstrip()
+    if start:
+        text = f"(continued from character {start} of {len(full)})\n{text}"
+    more: list[str] = []
+    if start or end < len(full):
+        shown = [p for p in pages if start <= p[0] < end]
+        line = f"Shown: characters {start}-{end} of {len(full)}."
+        if end < len(full):
+            line += (
+                f" The rest: call att again with the same source and options "
+                f"and start={end}."
+            )
+        more.append(line)
+        by_source: dict[str, list[tuple]] = {}
+        for p in shown:
+            by_source.setdefault(p[1], []).append(p)
+        for src, ps in by_source.items():
+            first, last, total, kind = ps[0][2], ps[-1][2], ps[0][3], ps[-1][4]
+            unit = (
+                "sheets"
+                if kind == "sheet"
+                else "slides"
+                if kind == "slide"
+                else "pages"
+            )
+            if first == 1 and last == total:
+                more.append(f"{src}: all {total} {unit} shown")
+            elif kind == "sheet":
+                more.append(
+                    f"{src}: sheets {first}-{last} shown, of {total}; one sheet "
+                    'directly: options {"sheet": "<name>"}'
+                )
+            else:
+                nxt = f"{last + 1}-{min(total, last + 10)}"
+                more.append(
+                    f"{src}: {unit} {first}-{last} shown, of {total}; any {unit} "
+                    f'directly: options {{"pages": "{nxt}"}} '
+                    '(or "pages": "N" for one)'
+                )
 
     image_blocks: list[Any] = []
+    # The pictures of the pages shown (a page ending exactly at *start* was
+    # shown, with its pictures, in the previous part).
     images = [
-        image for artifact in artifacts for image in (artifact.get("images") or [])
+        image
+        for offset, image in placed
+        if (start == 0 or offset > start) and offset <= end
     ]
     for image in images:
         if len(image_blocks) >= MAX_IMAGES:
             notes.append(
                 f"{len(images) - MAX_IMAGES} more image(s) omitted "
-                f"(cap: {MAX_IMAGES} per call)"
+                f"(cap: {MAX_IMAGES} per call; ask for fewer pages to see them)"
             )
             break
         raw = image.get("bytes")
@@ -207,6 +392,8 @@ def _content_from_artifacts(source: str, artifacts: list[dict]) -> list[Any]:
 
     if not text and not image_blocks and not notes:
         text = f"(no content extracted from {source})"
+    if more:
+        text = f"{text}\n\n--- more ---\n" + "\n".join(more)
     if notes:
         tail = "\n".join(notes)
         text = f"{text}\n\n--- notes ---\n{tail}" if text else f"--- notes ---\n{tail}"
@@ -273,11 +460,18 @@ def create_server() -> Any:
     )
 
     @server.tool(name="att", description=_ATT_DESCRIPTION, structured_output=False)
-    def att_tool(source: str, options: dict | None = None) -> list[Any]:
+    def att_tool(
+        source: str,
+        options: dict | None = None,
+        start: int = 0,
+        max_chars: int = MAX_CHARS,
+    ) -> list[Any]:
         from . import att
 
         artifacts = att(source, **(options or {}))
-        return _content_from_artifacts(source, artifacts)
+        return _content_from_artifacts(
+            source, artifacts, start=start, max_chars=max_chars
+        )
 
     @server.tool(
         name="att_options",

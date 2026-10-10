@@ -186,3 +186,58 @@ def test_overview_conforms_to_the_artifact_schema(project: Path):
     schema = json.loads(schema_path.read_text())
     for artifact in att(str(project), max_files=1).to_wire():
         jsonschema.validate(artifact, schema)
+
+
+KEY = (
+    "-----BEGIN OPENSSH PRIVATE KEY-----\nb3BlbnNzaC1rZXktdjEAAAAA\n"
+    "-----END OPENSSH PRIVATE KEY-----\n"
+)
+
+
+class TestKeysWhateverTheirName:
+    """A private key in a file with an innocent name (the benchmark's
+    `deploy_key`) is a secret too: skipped by its first bytes."""
+
+    def test_folder(self, tmp_path: Path):
+        root = _tree(
+            tmp_path / "p",
+            {
+                "deploy_key": KEY,
+                "notes.txt": KEY + "x",
+                "app.py": "print(1)\n",
+                "docs/keys.md": f"Never commit this:\n{KEY}",
+            },
+        )
+        a = att(f"{root}/")
+        read = {x["meta"]["source"] for x in a[1:]}
+        assert read == {
+            "app.py",
+            "docs/keys.md",
+        }  # a key quoted in docs is not a key file
+        assert a[0]["meta"]["extra"]["skipped"]["secret"]["examples"] == [
+            "deploy_key",
+            "notes.txt",
+        ]
+        assert "secrets: 2 files" in a[0]["text"]
+
+    def test_ignore_option_brings_it_back(self, tmp_path: Path):
+        root = _tree(tmp_path / "p", {"deploy_key": KEY, "app.py": "x = 1\n"})
+        kept = att(f"{root}/[ignore: '!deploy_key']")
+        assert "deploy_key" in {x["meta"]["source"] for x in kept[1:]}
+        everything = att(f"{root}/[ignore: none]")
+        assert "deploy_key" in {x["meta"]["source"] for x in everything[1:]}
+
+    def test_archive(self, tmp_path: Path):
+        import zipfile
+
+        path = tmp_path / "bundle.zip"
+        with zipfile.ZipFile(path, "w") as z:
+            z.writestr("server/deploy_key", KEY)
+            z.writestr("server/app.py", "x = 1\n")
+        a = att(str(path))
+        assert [x["meta"]["source"] for x in a] == ["bundle.zip/server/app.py"]
+
+    def test_skipped_key_does_not_use_up_the_file_limit(self, tmp_path: Path):
+        root = _tree(tmp_path / "p", {"a_key": KEY, "b.txt": "b\n"})
+        a = att(f"{root}/[max_files: 1]")
+        assert [x["meta"]["source"] for x in a[1:]] == ["b.txt"]

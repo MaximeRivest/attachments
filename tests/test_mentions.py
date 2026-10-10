@@ -104,3 +104,10 @@ class TestFromPrompt:
     def test_options_apply(self, workspace: Path):
         [a] = att.from_prompt("data.csv", rows=1)
         assert a["text"] == "| a | b |\n| --- | --- |\n| 1 | 2 |"
+
+
+def test_a_key_file_is_never_attached_whatever_its_name(tmp_path: Path):
+    (tmp_path / "deploy_key").write_text("-----BEGIN RSA PRIVATE KEY-----\nMIIE\n")
+    (tmp_path / "app.py").write_text("x = 1\n")
+    a = att.from_prompt("check `deploy_key` and `app.py`", root=tmp_path)
+    assert [x["meta"]["source"] for x in a] == ["app.py"]

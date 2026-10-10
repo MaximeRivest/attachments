@@ -35,7 +35,10 @@ python -c "import attachments as a; print(a.__version__, hasattr(a, 'att'))"
   `audio` are large; `browser` (web page screenshots) also needs
   `playwright install chromium`. The core has no dependencies and reads text, code, CSV
   and JSON. A missing extra raises nothing: that file comes back with error
-  code `missing-dependency` and the exact `pip install` command.
+  code `missing-dependency` and the exact `pip install` command. Pictures
+  you ask for that cannot be drawn here (no LibreOffice, Chromium, PyMuPDF
+  or cairosvg) never cost the text: the file is read, and a warning in
+  `meta["warnings"]` names what is missing.
 
 ## 2. The one call
 
@@ -75,7 +78,7 @@ Options belong to the file type: `print(att.options(".pdf"))` (or
 | pdf, images | `ocr: true` | read the text of scans (needs the `ocr` extra). A PDF does it by itself, page by page, for pages with no text layer (the first 50; `ocr: true` for all) |
 | xlsx | `sheet: Sales`, `rows: 100` | one sheet; rows per sheet |
 | csv, tsv | `rows: 100`, `delimiter: ";"`, `summary: true` | |
-| docx, pptx, xlsx | `images: true` | a picture of each page, slide or sheet, numbered like the text (needs LibreOffice; `auto` = only if installed) |
+| docx, pptx, xlsx | `images: true` | a picture of each page, slide or sheet, numbered like the text (needs LibreOffice; without it the text is read and a warning says so; `auto` = only if installed, no warning) |
 | docx, pptx | `embedded_images: true` | the pictures stored in the file |
 | html | `images: true` | inline data-URI pictures |
 | doc, ppt, odt, odp, ods | as docx / pptx / xlsx | converted by LibreOffice (a program to install, not an extra) |

@@ -32,7 +32,7 @@ from typing import Any
 
 from .._options import Option, register_options
 from .._watermark import WATERMARK
-from ..types import ERROR_PARSE, error_artifact, make_artifact, missing_dep_artifact
+from ..types import ERROR_PARSE, error_artifact, make_artifact, missing_part
 from . import register_processor
 
 log = logging.getLogger("attachments.processors.svg")
@@ -121,6 +121,7 @@ def svg_processor(
 
     meta: dict[str, Any] = {"kind": "vector", "extra": extra}
     images: list[dict[str, Any]] = []
+    missing = False
 
     if render_images in (True, "always", "auto"):
         try:
@@ -128,9 +129,8 @@ def svg_processor(
         except ImportError:
             if render_images == "auto":
                 extra["render_skipped"] = "cairosvg not installed"
-                cairosvg = None
-            else:
-                return missing_dep_artifact(source, "svg")
+            cairosvg = None
+            missing = render_images != "auto"
         if cairosvg is not None:
             try:
                 png_bytes = cairosvg.svg2png(bytestring=data)
@@ -147,7 +147,10 @@ def svg_processor(
                 log.warning("rasterization failed for %s: %s", source, e)
                 meta.setdefault("warnings", []).append(f"rasterization failed: {e}")
 
-    return make_artifact(text=text, images=images, meta=meta)
+    artifact = make_artifact(text=text, images=images, meta=meta)
+    if missing:  # asked for, not made: the text stays, the service may draw it
+        missing_part(artifact, "svg", "Picture")
+    return artifact
 
 
 #: Extensions handled by this processor.

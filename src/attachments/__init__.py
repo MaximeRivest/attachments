@@ -123,8 +123,10 @@ from .types import (
     artifact_to_wire,
     error_artifact,
     is_missing_dependency,
+    lacks_dependency,
     make_artifact,
     missing_dep_artifact,
+    missing_part,
     normalize_artifact,
 )
 
@@ -144,6 +146,8 @@ __all__ = [
     "error_artifact",
     "missing_dep_artifact",
     "is_missing_dependency",
+    "missing_part",
+    "lacks_dependency",
     "normalize_artifact",
     "artifact_to_wire",
     "artifact_from_wire",

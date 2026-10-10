@@ -109,7 +109,9 @@ how likely you are to notice:
    picture of every page or slide by default (with LibreOffice, when
    installed). 1.0 does it with `[images: true]` — one picture per page,
    slide (hidden slides included) or sheet, numbered like the text — and
-   `[images: auto]` draws them only when LibreOffice is installed. The
+   `[images: auto]` draws them only when LibreOffice is installed. Without
+   LibreOffice, `[images: true]` still reads the text and adds a warning
+   naming what to install (pictures are never worth a file's text). The
    pictures stored inside a file are `[embedded_images: true]`.
 3. **Folders: files are read, with an overview first.** For a plain folder
    (`att .` on the command line) 0.25 showed only the tree unless you added
@@ -118,7 +120,8 @@ how likely you are to notice:
    gives the old tree view; `[tree: false]` drops the overview. So
    `att("docs/")[0]` is the overview, not the first file.
 4. **Folders skip different things.** Skipped by default: secrets (`.env`,
-   private keys, credential files), dependencies and generated files
+   private keys, credential files, and any file that starts like a
+   private key, whatever its name), dependencies and generated files
    (`node_modules`, virtual environments, caches, lock files, compiled and
    minified files), hidden files, and whatever `.gitignore` and
    `.attachmentsignore` exclude — with git's full rules, in subfolders and

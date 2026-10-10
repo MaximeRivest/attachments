@@ -314,6 +314,38 @@ def _decide(rules: list[Rule], path: str, is_dir: bool) -> bool | None:
 
 
 _SECRET_RULES = compile_rules(SECRET_PATTERNS)
+
+#: How key files start, whatever they are called: PEM private keys (RSA,
+#: EC, DSA, PKCS#8, encrypted), OpenSSH, PGP secret keys, PuTTY. Only the
+#: start of a file: a key quoted inside docs or code is not a key file.
+_KEY_FILE_START = re.compile(
+    rb"\A(?:\xef\xbb\xbf)?\s*(?:-----BEGIN [A-Z0-9 ]*PRIVATE KEY(?: BLOCK)?-----"
+    rb"|PuTTY-User-Key-File-\d)"
+)
+
+
+def looks_like_key(data: bytes) -> bool:
+    """Whether *data* is a private key file, by its first bytes.
+
+    Examples:
+        >>> looks_like_key(b"-----BEGIN OPENSSH PRIVATE KEY-----\\nb3Bl...")
+        True
+        >>> (
+        ...     looks_like_key(b"\\n-----BEGIN RSA PRIVATE KEY-----"),
+        ...     looks_like_key(b"-----BEGIN PGP PRIVATE KEY BLOCK-----"),
+        ... )
+        (True, True)
+        >>> looks_like_key(b"PuTTY-User-Key-File-3: ssh-ed25519")
+        True
+        >>> (
+        ...     looks_like_key(b"-----BEGIN PUBLIC KEY-----"),
+        ...     looks_like_key(b"# How to make a key: -----BEGIN RSA PRIVATE KEY-----"),
+        ... )
+        (False, False)
+    """
+    return bool(_KEY_FILE_START.match(data[:256]))
+
+
 _GENERATED_RULES = compile_rules(GENERATED_PATTERNS)
 
 
@@ -432,6 +464,26 @@ class IgnoreEngine:
             if decided is not None:
                 return decided
         return False
+
+    def check_content(self, path: str, data: bytes) -> str | None:
+        """``"secret"`` for a key file whatever its name, else ``None``.
+
+        After :meth:`check` let the file through: a private key in a file
+        named ``deploy_key`` or ``server.txt`` is a secret too. The
+        ``ignore`` option still decides first (``!deploy_key`` keeps it),
+        and ``ignore: none`` turns this off like the other default rules.
+
+        Examples:
+            >>> key = b"-----BEGIN OPENSSH PRIVATE KEY-----"
+            >>> IgnoreEngine().check_content("deploy_key", key)
+            'secret'
+            >>> IgnoreEngine(extra=["!deploy_key"]).check_content("deploy_key", key)
+            >>> IgnoreEngine(defaults=False).check_content("deploy_key", key)
+            >>> IgnoreEngine().check_content("a.py", b"print(1)")
+        """
+        if not self.defaults or _decide(self._extra_rules, path, False) is False:
+            return None
+        return SECRET if looks_like_key(data) else None
 
     def check_path(self, path: str) -> str | None:
         """Check a file path including every parent folder (no pruning walk).

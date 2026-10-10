@@ -139,13 +139,9 @@ def docx_processor(
             image_format=image_format,
             quality=quality or 85,
         )
-        if isinstance(pictures, dict):  # an error artifact
-            return pictures
-        page_images, picture_extra, note = pictures
-        images = page_images + images
-        extra.update(picture_extra)
-        if note:
-            meta["note"] = note
+        return pictures.finish(
+            make_artifact(text=full_text, images=pictures.images + images, meta=meta)
+        )
     return make_artifact(text=full_text, images=images, meta=meta)
 
 

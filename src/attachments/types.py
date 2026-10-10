@@ -338,6 +338,67 @@ def is_missing_dependency(artifact: dict) -> bool:
     return error.get("code") == ERROR_MISSING_DEPENDENCY
 
 
+#: ``meta.extra`` key naming the feature a result lacked for one of its
+#: parts (pictures): the text is there, the part is not.
+MISSING_PART = "missing_dependency"
+
+
+def missing_part(artifact: dict, feature: str, part: str) -> dict:
+    """Record that *part* of *artifact* was not made: *feature* is missing.
+
+    For a part that was asked for but is not the file's content (pictures
+    of pages, slides, sheets; screenshots): the artifact keeps its text,
+    gets a warning naming the part and the install command, and
+    ``meta.extra.missing_dependency`` = *feature*, so core can still ask
+    the service for the whole file (:func:`lacks_dependency`). Changes
+    *artifact* in place and returns it.
+
+    Examples:
+        >>> a = missing_part(make_artifact(text="Hello"), "svg", "Picture")
+        >>> a["text"], a["meta"]["extra"]["missing_dependency"]
+        ('Hello', 'svg')
+        >>> a["meta"]["warnings"]
+        ['Picture not made: it needs cairosvg — pip install attachments[svg]']
+        >>> is_missing_dependency(a), lacks_dependency(a)
+        (False, True)
+    """
+    from .deps import DEPENDENCY_MAP, check_dep
+
+    if feature in DEPENDENCY_MAP:
+        status = check_dep(feature)
+        hint = status.install_hint
+        names = ", ".join(
+            m.removeprefix("program:").split("|")[0] for m in status.modules
+        )
+    else:
+        hint, names = f"pip install attachments[{feature}]", feature
+    meta = artifact.setdefault("meta", {})
+    meta.setdefault("extra", {})[MISSING_PART] = feature
+    meta.setdefault("warnings", []).append(
+        f"{part} not made: it needs {names} — {hint}"
+    )
+    return artifact
+
+
+def lacks_dependency(artifact: dict) -> bool:
+    """Whether *artifact* is missing something a dependency would give.
+
+    True for a missing-dependency error (nothing read) and for a result
+    with a part missing (:func:`missing_part`): both may be asked of the
+    service. Typed, like :func:`is_missing_dependency`.
+
+    Examples:
+        >>> lacks_dependency(missing_dep_artifact("f.pdf", "pdf"))
+        True
+        >>> lacks_dependency(make_artifact(text="fine"))
+        False
+    """
+    if is_missing_dependency(artifact):
+        return True
+    extra = (artifact.get("meta") or {}).get("extra") or {}
+    return isinstance(extra.get(MISSING_PART), str)
+
+
 def normalize_artifact(artifact: dict, source: str) -> Artifact:
     """Ensure *artifact* has all required keys; set ``meta.source`` if absent.
 

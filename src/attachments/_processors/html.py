@@ -30,11 +30,12 @@ from .._watermark import WATERMARK
 from ..deps import check_dep
 from ..types import (
     ERROR_INVALID_OPTION,
-    ERROR_MISSING_DEPENDENCY,
     ERROR_PARSE,
+    MISSING_PART,
     error_artifact,
     make_artifact,
     missing_dep_artifact,
+    missing_part,
 )
 from . import register_processor
 from ._imageout import check_image_output, limit, output_format
@@ -256,6 +257,7 @@ def html_processor(
     ):
         meta["note"] = JS_PAGE_NOTE
 
+    missing = None
     if screenshot:
         shot_result = _screenshots(
             soup=soup,
@@ -269,13 +271,17 @@ def html_processor(
             extra=extra,
             warnings=warnings,
         )
-        if isinstance(shot_result, dict):  # a typed error artifact
-            return shot_result
-        out_images.extend(shot_result)
+        if isinstance(shot_result, str):  # the feature that would take them
+            missing = shot_result
+        else:
+            out_images.extend(shot_result)
 
     if warnings:
         meta["warnings"] = warnings
-    return make_artifact(text=text, images=out_images, meta=meta)
+    artifact = make_artifact(text=text, images=out_images, meta=meta)
+    if missing:
+        missing_part(artifact, missing, "Screenshots")
+    return artifact
 
 
 def _screenshots(
@@ -290,22 +296,19 @@ def _screenshots(
     quality: int | None,
     extra: dict[str, Any],
     warnings: list[str],
-) -> list[dict[str, Any]] | dict[str, Any]:
-    """Screens of the rendered page, or a typed missing-dependency artifact.
+) -> list[dict[str, Any]] | str:
+    """Screens of the rendered page, or the feature that would take them.
 
-    A missing browser is an error (it drives the service fallback, like a
-    forced OCR without rapidocr); a page that fails to load in the browser
-    keeps its text and gets a warning instead.
+    Nothing here costs the page its text: a missing browser (or Pillow, to
+    shrink the screens) comes back as the feature's name, which the caller
+    records with ``missing_part`` (a warning; core may ask the service); a
+    page that fails to load in the browser gets a warning.
     """
     if not check_dep("browser").available:
-        artifact = missing_dep_artifact(source, "browser")
-        artifact["meta"]["kind"] = "html"
-        return artifact
+        return "browser"
     dim = limit(max_dim)
     if dim is not None and not check_dep("image").available:
-        artifact = missing_dep_artifact(source, "image")
-        artifact["meta"]["kind"] = "html"
-        return artifact
+        return "image"
 
     from .._sources._guards import private_urls_blocked
     from ._browser import BrowserUnavailable, capture_screens, downscale
@@ -325,9 +328,10 @@ def _screenshots(
             block_private=private_urls_blocked(),
         )
     except BrowserUnavailable as e:
-        artifact = error_artifact(source, ERROR_MISSING_DEPENDENCY, str(e))
-        artifact["meta"]["kind"] = "html"
-        return artifact
+        log.info("no browser for %s: %s", source, e)
+        warnings.append(f"Screenshots not made: {e}")
+        extra[MISSING_PART] = "browser"
+        return []
     except Exception as e:
         log.warning("screenshot failed for %s: %s", source, e)
         first_line = (

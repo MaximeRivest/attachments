@@ -143,13 +143,15 @@ class TestRasterOptIn:
         assert result["images"] == []
         assert "renderer" not in result["meta"]["extra"]
 
-    def test_explicit_request_without_cairosvg_is_typed_missing_dep(self, mask_modules):
+    def test_explicit_request_without_cairosvg_keeps_the_text(self, mask_modules):
         mask_modules("cairosvg")
 
         result = svg_processor(_NS_SVG, filename="chart.svg", render_images=True)
 
-        assert is_missing_dependency(result)
-        assert "pip install attachments[svg]" in result["meta"]["error"]["message"]
+        assert not is_missing_dependency(result)
+        assert result["text"] == "Chart Title\nA simple chart\nHello world"
+        assert result["meta"]["extra"]["missing_dependency"] == "svg"
+        assert "pip install attachments[svg]" in result["meta"]["warnings"][0]
 
     def test_auto_without_cairosvg_keeps_text_with_render_skipped(self, mask_modules):
         mask_modules("cairosvg")

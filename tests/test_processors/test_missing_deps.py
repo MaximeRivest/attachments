@@ -119,15 +119,18 @@ class TestProcessorsMissingDeps:
         _assert_missing_dep(result)
         assert "pip install attachments[heic]" in result["meta"]["error"]["message"]
 
-    def test_svg_raster_missing_dep_returns_typed_error(self, mask_modules):
+    def test_svg_raster_missing_dep_keeps_the_text(self, mask_modules):
         mask_modules("cairosvg")
+        from attachments.types import lacks_dependency
 
         result = processors[".svg"](
-            b"<svg xmlns='http://www.w3.org/2000/svg'/>", render_images=True
+            b"<svg xmlns='http://www.w3.org/2000/svg'><text>Hi</text></svg>",
+            render_images=True,
         )
 
-        _assert_missing_dep(result)
-        assert "pip install attachments[svg]" in result["meta"]["error"]["message"]
+        assert "error" not in result["meta"] and result["text"] == "Hi"
+        assert lacks_dependency(result)
+        assert "pip install attachments[svg]" in result["meta"]["warnings"][0]
 
     def test_xls_missing_dep_returns_typed_error(self, mask_modules):
         mask_modules("xlrd")

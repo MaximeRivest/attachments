@@ -305,14 +305,8 @@ def _with_sheet_pictures(
         image_format=settings["image_format"],
         quality=settings["quality"] or 85,
     )
-    if isinstance(pictures, dict):  # an error artifact
-        return pictures
-    images, picture_extra, note = pictures
-    artifact["images"] = images
-    extra.update(picture_extra)
-    if note:
-        artifact["meta"]["note"] = note
-    return artifact
+    artifact["images"] = pictures.images
+    return pictures.finish(artifact)
 
 
 def xls_processor(data: bytes, **options: Any) -> dict[str, Any]:

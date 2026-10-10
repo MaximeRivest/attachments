@@ -39,7 +39,7 @@ from pathlib import Path
 from typing import Any
 
 from ._artifacts import Artifacts
-from ._sources._ignore import is_secret
+from ._sources._ignore import is_secret, looks_like_key
 from .dsl import parse_dsl
 
 log = logging.getLogger("attachments.mentions")
@@ -66,6 +66,15 @@ class Mention:
     explicit: bool  # quoted or in backticks: may name a folder
     url: bool
     start: int
+
+
+def _starts_like_key(path: Path) -> bool:
+    """Whether the file at *path* is a private key, by its first bytes."""
+    try:
+        with open(path, "rb") as fh:
+            return looks_like_key(fh.read(256))
+    except OSError:
+        return False
 
 
 def _strip_url(url: str) -> str:
@@ -201,7 +210,7 @@ def from_prompt(
             (located.relative_to(r).as_posix() for r in roots if _within(located, r)),
             located.name,
         )
-        if located.is_file() and is_secret(relative):
+        if located.is_file() and (is_secret(relative) or _starts_like_key(located)):
             log.info("not attaching %r from a prompt: looks like a secret", path_text)
             continue
         key = (str(located), tuple(sorted(dsl.items(), key=str)))

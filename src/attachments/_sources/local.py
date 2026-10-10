@@ -674,6 +674,13 @@ class _Budget:
             self.bytes_left -= size
         return True
 
+    def refund(self, size: int) -> None:
+        """Give back what :meth:`take` reserved for a file that was not kept."""
+        if self.files_left is not None:
+            self.files_left += 1
+        if self.bytes_left is not None:
+            self.bytes_left += size
+
     def _hit(self, limit: str) -> None:
         self.report.not_read += 1
         if self.report.limit is None:
@@ -697,7 +704,7 @@ def _expand_members(
     out: list[SourceFile] = []
     for name, content in members:
         shown = f"{archive_rel}/{name}" if archive_rel else name
-        reason = engine.check_path(name)
+        reason = engine.check_path(name) or engine.check_content(name, content)
         if reason:
             report.skip(reason, shown)
             continue
@@ -717,6 +724,7 @@ def read_tree(
     from .archives import _is_raw_archive_name
 
     budget = _Budget(opts, report)
+    contents = IgnoreEngine(extra=list(opts.ignore), defaults=opts.defaults)
     out: list[SourceFile] = []
     for candidate in candidates:
         if not opts.files:
@@ -730,6 +738,11 @@ def read_tree(
                 data = fh.read()
         except OSError:
             report.skip(UNREADABLE, candidate.rel)
+            continue
+        reason = contents.check_content(candidate.rel, data)
+        if reason:  # a key file with an innocent name: it never counted
+            report.skip(reason, candidate.rel)
+            budget.refund(candidate.size)
             continue
         if _is_raw_archive_name(candidate.rel):
             # The archive itself took one slot; its members are what counts.
@@ -786,7 +799,7 @@ def read_archive(
         members = _explode_archive_bytes("", data)
         engine = member_engine(dict(members), opts)
         for member, content in members:
-            reason = engine.check_path(member)
+            reason = engine.check_path(member) or engine.check_content(member, content)
             if reason:
                 report.skip(reason, member)
             elif budget.take(len(content)):

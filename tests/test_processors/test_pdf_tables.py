@@ -121,3 +121,22 @@ def test_nothing_printed_to_stdout(tmp_path):
     )
     assert out.returncode == 0, out.stderr
     assert out.stdout == ""
+
+
+def test_pictures_asked_without_a_renderer_say_so(monkeypatch):
+    """images: true with no PyMuPDF (nor pdf2image): the text stays, and a
+    warning says the pictures were not made and how to get them (they used
+    to vanish without a word)."""
+    pytest.importorskip("pypdf")
+    data = _pdf_with_table()
+    for name in ("pymupdf", "fitz", "pdf2image"):
+        monkeypatch.setitem(sys.modules, name, None)
+    from attachments.types import lacks_dependency
+
+    result = process_pdf(data, filename="t.pdf", render_images=True)
+    assert "Desk lamp" in result["text"] and result["images"] == []
+    assert lacks_dependency(result)
+    assert any(
+        w.startswith("Pictures of the pages not made") and "pymupdf" in w
+        for w in result["meta"]["warnings"]
+    )

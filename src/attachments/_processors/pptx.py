@@ -286,14 +286,9 @@ def pptx_processor(
             image_format=image_format,
             quality=quality or 85,
         )
-        if isinstance(pictures, dict):  # an error artifact
-            return pictures
-        slide_images, picture_extra, note = pictures
         # Each slide's picture first, then the pictures embedded in it.
-        images = sorted(slide_images + images, key=lambda im: im["page"])
-        extra.update(picture_extra)
-        if note:
-            meta["note"] = note
+        images = sorted(pictures.images + images, key=lambda im: im["page"])
+        return pictures.finish(make_artifact(text=text, images=images, meta=meta))
     return make_artifact(text=text, images=images, meta=meta)
 
 

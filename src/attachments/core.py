@@ -43,6 +43,7 @@ from .types import (
     Processor,
     error_artifact,
     is_missing_dependency,
+    lacks_dependency,
     make_artifact,
     normalize_artifact,
 )
@@ -511,13 +512,17 @@ def _run_standard(
 
     else:  # mode == "local" (default)
         # Try local first, fall back to service if deps missing
+        partial = None  # a local result with its text, missing a part
         if proc is not None:
             try:
                 result = _run_local()
-                # Typed check: only a missing-dependency result (plus an API
-                # key) may trigger service fallback. Other errors are final.
-                if not svc or not is_missing_dependency(result):
+                # Typed check: only a result lacking a dependency (nothing
+                # read, or pictures not made) plus a configured service may
+                # trigger the fallback. Other errors are final.
+                if not svc or not lacks_dependency(result):
                     return result
+                if not is_missing_dependency(result):
+                    partial = result
                 log.info("local dep error for %s, falling back to service", filename)
             except Exception as e:
                 if not key:
@@ -531,12 +536,20 @@ def _run_standard(
         # No local processor or local failed - try service if configured
         if svc:
             try:
-                return _process_via_service(filename, data, key, options=options)
+                served = _process_via_service(filename, data, key, options=options)
             except Exception as e:
                 log.error("service processing failed for %s: %s", filename, e)
-                return error_artifact(
+                served = error_artifact(
                     filename, ERROR_SERVICE, f"service processing failed: {e}"
                 )
+            if partial is not None and served.get("meta", {}).get("error"):
+                # The service could not fill the gap: keep the text read here.
+                problem = served["meta"]["error"].get("message", "")
+                partial["meta"].setdefault("warnings", []).append(
+                    f"The service could not make the missing part either: {problem}"
+                )
+                return partial
+            return served
 
         # No processor and no service
         if proc is None:

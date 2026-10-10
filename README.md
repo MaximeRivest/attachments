@@ -311,6 +311,7 @@ att("photo.jpg[rotate: 90]")            # Rotate 90° clockwise (photos are upri
 # Word, PowerPoint, Excel: pictures drawn by LibreOffice
 att("deck.pptx[pages: 2-4, images: true]")  # Slides 2-4, a picture of each
 att("report.docx[images: auto]")        # Page pictures if LibreOffice is installed
+# Without LibreOffice, images: true still reads the text; a warning says what is missing
 att("deck.pptx[embedded_images: true]") # The pictures stored in the slides
 
 # Folders, patterns, repos and archives (att.options("file://"))
@@ -333,7 +334,8 @@ att("https://arxiv.org/pdf/2301.00001.pdf[pages: 1-5]")
 
 A folder is read like a careful colleague would hand it over:
 
-- **Skipped by default**: secrets (`.env`, private keys, credential files),
+- **Skipped by default**: secrets (`.env`, private keys, credential files,
+  and any file that starts like a private key, whatever its name),
   dependencies and generated files (`node_modules`, virtual environments,
   caches, lock files, compiled and minified files), hidden files, and
   whatever `.gitignore` / `.attachmentsignore` exclude (full git rules,
@@ -630,6 +632,13 @@ The same one-call ingestion, as an MCP server: any MCP-capable agent gets
 an `att` tool (files, directories, globs, zip/tar, URLs, `github://` —
 text plus page/slide images, with errors returned as readable text, never
 exceptions) and an `att_options` tool to discover per-format options.
+
+Each page, slide or sheet starts with a `[page 3]` / `[slide 3]` /
+`[sheet Sales]` line, so an agent knows where it is. A long result comes
+in parts of at most 16,000 characters (`max_chars`; agents' clients cut
+longer results in the middle without saying so), each ending with what
+was shown and how to go on: `start=` for the next part, or the `pages`
+option to jump straight to a page.
 
 Claude Code:
 

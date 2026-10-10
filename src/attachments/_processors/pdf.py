@@ -24,6 +24,7 @@ from ..types import (
     ERROR_PROCESSING,
     error_artifact,
     make_artifact,
+    missing_part,
 )
 from . import register_processor
 from ._imageout import (
@@ -898,6 +899,7 @@ def process_pdf(
     extra: dict[str, Any] = {}
     text: str = ""
     images: list[dict] = []
+    pictures_missing = False  # images: true, and nothing installed can draw
     segments: list[dict] = []
 
     # ---- TEXT extraction ----
@@ -1085,6 +1087,17 @@ def process_pdf(
             if img_backend:
                 extra["image_backend"] = img_backend
                 images = imgs
+            elif always:  # asked for and not made: say so, keep the text
+                pictures_missing = not _renderer_installed()
+                if not pictures_missing:
+                    warnings.append(
+                        "Pictures of the pages not made: "
+                        + str(
+                            extra_img.get("render_fallback_note")
+                            or extra_img.get("render_note")
+                            or "the renderer failed"
+                        )
+                    )
         if made:
             images = sorted([*images, *made.values()], key=lambda im: im["page"])
             extra.setdefault(
@@ -1117,11 +1130,25 @@ def process_pdf(
         meta["warnings"] = warnings
     if segments:
         meta["segments"] = segments
-    return make_artifact(
+    artifact = make_artifact(
         text=text or "",
         images=images,  # list of {"name","mimetype","bytes","page"}
         meta=meta,
     )
+    if pictures_missing:
+        missing_part(artifact, "pdf-images", "Pictures of the pages")
+    return artifact
+
+
+def _renderer_installed() -> bool:
+    """Whether PyMuPDF or pdf2image can be imported (they draw pages)."""
+    for name in ("pymupdf", "fitz", "pdf2image"):
+        try:
+            __import__(name)
+            return True
+        except ImportError:
+            continue
+    return False
 
 
 register_processor(".pdf", process_pdf)

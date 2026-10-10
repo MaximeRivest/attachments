@@ -14,6 +14,7 @@ from __future__ import annotations
 import importlib
 import importlib.metadata
 import io
+import re
 import sys
 
 import anyio
@@ -305,3 +306,75 @@ class TestMain:
     def test_constants_sane(self):
         assert MAX_IMAGES == 6
         assert MAX_IMAGE_BYTES == 1_500_000
+
+
+# ---------------------------------------------------------------------------
+# Long documents: page markers and parts (the benchmark's mcp_pdf task)
+# ---------------------------------------------------------------------------
+
+
+def _long_pdf(path, pages: int = 40) -> None:
+    import pymupdf
+
+    doc = pymupdf.open()
+    for n in range(1, pages + 1):
+        body = f"Report page {n}. " + " ".join(f"word{n}-{k}" for k in range(220))
+        if n == 27:
+            body = "The approved budget for phase 3 is 2.4 million euros. " + body
+        doc.new_page().insert_textbox(pymupdf.Rect(40, 40, 570, 800), body, fontsize=8)
+    doc.save(str(path))
+    doc.close()
+
+
+class TestLongDocuments:
+    def test_pages_are_marked(self, tmp_path):
+        _two_page_pdf(tmp_path / "two.pdf")
+        text = _texts(_call("att", {"source": str(tmp_path / "two.pdf")}))
+        assert text.index("[page 1]") < text.index("alpha-page-one")
+        assert text.index("[page 2]") < text.index("beta-page-two")
+        assert "--- more ---" not in text
+
+    def test_long_document_comes_in_parts_that_cover_everything(self, tmp_path):
+        _long_pdf(tmp_path / "long.pdf")
+        source = str(tmp_path / "long.pdf")
+        seen, start, calls = "", 0, 0
+        while True:
+            text = _texts(_call("att", {"source": source, "start": start}))
+            calls += 1
+            assert len(text) < 20_000  # what Pi keeps uncut
+            body = text.split("\n\n--- more ---")[0]
+            seen += body
+            found = re.search(r"start=(\d+)\.", text)
+            if not found:
+                break
+            start = int(found.group(1))
+        assert calls > 1
+        assert all(f"[page {n}]" in seen for n in range(1, 41))
+        assert "2.4 million euros" in seen
+
+    def test_more_note_names_the_pages_and_how_to_jump(self, tmp_path):
+        _long_pdf(tmp_path / "long.pdf")
+        text = _texts(_call("att", {"source": str(tmp_path / "long.pdf")}))
+        more = text.split("--- more ---")[1]
+        assert re.search(r"long\.pdf: pages 1-\d+ shown, of 40", more)
+        assert '"pages": ' in more
+        # The first part ends where a page starts, never mid-page.
+        last = int(re.findall(r"\[page (\d+)\]", text)[-1])
+        assert f"word{last}-219" in text
+
+    def test_page_option_jumps(self, tmp_path):
+        _long_pdf(tmp_path / "long.pdf")
+        text = _texts(
+            _call(
+                "att",
+                {"source": str(tmp_path / "long.pdf"), "options": {"pages": "27"}},
+            )
+        )
+        assert text.startswith("## long.pdf\n[page 27]\nThe approved budget")
+
+    def test_max_chars_zero_is_everything(self, tmp_path):
+        _long_pdf(tmp_path / "long.pdf")
+        text = _texts(
+            _call("att", {"source": str(tmp_path / "long.pdf"), "max_chars": 0})
+        )
+        assert "--- more ---" not in text and "[page 40]" in text

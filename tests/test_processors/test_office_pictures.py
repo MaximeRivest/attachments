@@ -14,7 +14,7 @@ import pytest
 
 from attachments import att
 from attachments.deps import check_dep, find_libreoffice
-from attachments.types import is_missing_dependency
+from attachments.types import is_missing_dependency, lacks_dependency
 
 SOFFICE = find_libreoffice()
 can_draw = pytest.mark.skipif(
@@ -162,10 +162,19 @@ class TestWithoutLibreOffice:
             "attachments._processors._office_pages.find_libreoffice", lambda: None
         )
 
-    def test_true_is_a_missing_dependency(self, deck):
-        [a] = att(f"{deck}[images: true]")
-        assert is_missing_dependency(a)
-        assert "LibreOffice" in a["meta"]["error"]["message"]
+    def test_true_keeps_the_text_and_says_what_is_missing(self, deck, document):
+        for path, unit in ((deck, "slides"), (document, "pages")):
+            [a] = att(f"{path}[images: true]")
+            assert "error" not in a["meta"] and a["text"] and not a["images"]
+            assert not is_missing_dependency(a) and lacks_dependency(a)
+            [warning] = a["meta"]["warnings"]
+            assert warning.startswith(f"Pictures of the {unit} not made")
+            assert "LibreOffice" in warning
+
+    def test_a_folder_asking_for_pictures_still_reads_everything(self, deck, document):
+        """The benchmark's case: images: true on a whole folder."""
+        a = att(f"{deck.parent}/[images: true]").raise_for_errors()
+        assert len(a.errors) == 0 and "# One" in a.text
 
     def test_auto_keeps_the_text_with_a_note(self, deck):
         [a] = att(f"{deck}[images: auto]")
