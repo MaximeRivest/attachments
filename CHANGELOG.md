@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- The agent skill (`att --skill`) no longer says a plain `pip install
+  attachments` gets 0.25 (true until 1.0.0, which shipped it).
+
 ## [1.0.0] - 2026-10-13
 
 attachments 1.0: `pip install attachments` now installs this version (it

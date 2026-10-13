@@ -76,7 +76,7 @@ On top of "How to publish":
 - [x] Remove `>=1.0.0b1` from the install commands in README.md,
       `src/attachments/skill/SKILL.md` and docs/MIGRATION.md, and the
       sentences saying plain `pip install attachments` gets 0.25.
-- [ ] Pin an issue: "Migrating from 0.25? Read docs/MIGRATION.md".
+- [x] Pin an issue: "Migrating from 0.25? Read docs/MIGRATION.md" (#33).
 
 ## Announce
 

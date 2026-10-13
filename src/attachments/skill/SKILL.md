@@ -1,6 +1,6 @@
 ---
 name: attachments
-description: Use when Python code must turn files, folders, URLs, zip archives or GitHub repos (PDF, Word, Excel, PowerPoint, CSV, HTML, notebooks, images, audio) into text and images for a language model, with the `attachments` library (`from attachments import att`). Covers installing 1.0 (a plain `pip install attachments` gets the old 0.25 API), page, sheet and image options, Claude, OpenAI or provider-neutral messages with each page's picture next to its text, hiding file names from the model, stopping on unreadable files, image size and token budgets, RAG chunks with page numbers, and saving results as JSON.
+description: Use when Python code must turn files, folders, URLs, zip archives or GitHub repos (PDF, Word, Excel, PowerPoint, CSV, HTML, notebooks, images, audio) into text and images for a language model, with the `attachments` library (`from attachments import att`). Covers installing 1.0 (not the old 0.25 API that models remember), page, sheet and image options, Claude, OpenAI or provider-neutral messages with each page's picture next to its text, hiding file names from the model, stopping on unreadable files, image size and token budgets, RAG chunks with page numbers, and saving results as JSON.
 ---
 
 # Attachments 1.0: any file to text and images for a model
@@ -247,7 +247,7 @@ att --skill --install              # this skill, for Claude Code, Pi and Codex
 
 ## Mistakes that cost time
 
-- Installing 0.25 (`pip install attachments`) or writing its API.
+- Installing 0.25 (a pin below 1.0) or writing its API.
 - Expecting exceptions; sending an unchecked folder to a model.
 - Asking about charts without `images: true`.
 - Leaving file names in a classification or evaluation prompt.

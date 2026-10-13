@@ -57,9 +57,9 @@ has the folder bound into its sandbox, which still opens no local address). The 
   1914 letter of olmOCR-bench: "Bangor. Pa. may 22. nd 1914. Col. Rosevelt / Commade &
   Friend" (RapidOCR: "Bangou. .Pa. may22. P nd 1914. CeoeWRosevelt bernrade Frind"). The
   library's Markdown equals the benchmark's on all 1,403 saved answers.
-- **The library on the server is not a PyPI release**: `1.0.0b8+lighton.2` is 1.0.0b8 plus
-  this change (branch `server/1.0.0b8-lighton`, deployed with `release.sh --wheel`), because
-  `main` also holds unreleased work. The next PyPI release includes it.
+- **Releases:** since 2026-10-13 the server runs PyPI's 1.0.0 (`release.sh 1.0.0`). Before
+  that, for a few hours, `1.0.0b8+lighton.2`: 1.0.0b8 plus the LightOn change (branch
+  `server/1.0.0b8-lighton`, `release.sh --wheel`).
 
 ```bash
 systemctl status model-vllm-lighton-ocr     # running? why not? (journalctl -u model-vllm-lighton-ocr)
@@ -71,7 +71,7 @@ cat /run/gpu1-reserved                      # who holds GPU 1
 ## Everyday commands
 
 ```bash
-deploy/lambda/release.sh 1.0.0b9      # publish a PyPI version: build, unpack, switch, health check
+deploy/lambda/release.sh 1.0.1        # publish a PyPI version: build, unpack, switch, health check
 deploy/lambda/release.sh --rollback   # back to the previous release (two are kept)
 deploy/lambda/release.sh --status
 .venv/bin/python deploy/lambda/smoke.py                                          # lambda only
