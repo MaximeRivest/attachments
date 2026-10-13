@@ -3,8 +3,10 @@ name: Monitor api.attachments.dev
 # Checks the hosted service from outside, every 6 hours. A failed scheduled
 # run emails the person who last changed this file (GitHub's default for
 # scheduled workflows). Catches: the service down, a certificate within 21
-# days of expiry (renewal or nginx reload broken — the 2026-09 outage), and
-# the website down.
+# days of expiry (renewal broken; on AWS a missed nginx reload caused the
+# 2026-09 outage), and the website down. Since 2026-10-13 the service runs on
+# lambda behind the relay (deploy/lambda/README.md): this also catches lambda,
+# the tunnel or the home connection being down.
 on:
   schedule:
     - cron: "17 */6 * * *"
@@ -36,7 +38,7 @@ jobs:
             days=$(( ($(date -d "$end" +%s) - $(date +%s)) / 86400 ))
             echo "$host: certificate expires $end ($days days)"
             if [ "$days" -lt 21 ]; then
-              echo "::error::$host certificate expires in $days days — certbot renews at 30; check the certbot and nginx containers"
+              echo "::error::$host certificate expires in $days days — Caddy on the relay renews at 30; see deploy/lambda/README.md"
               status=1
             fi
           done

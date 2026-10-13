@@ -1,3 +1,6 @@
+> **Superseded on 2026-10-13:** production runs on lambda (`deploy/lambda/README.md`). This runbook
+> describes the former AWS setup and is kept for reference.
+
 # api.attachments.dev — launch-day runbook
 
 > **Build status:** the image builds and serves on amd64 (Podman 5,

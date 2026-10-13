@@ -1,0 +1,36 @@
+# attachments.dev and api.attachments.dev: served by lambda (home), which keeps an outbound SSH
+# tunnel to this relay (user att-tunnel, sshd_config.d/11-att-tunnel.conf); its end is
+# 127.0.0.1:18820, nginx on lambda behind it (rate limits, the website, the service). Nothing
+# here can reach lambda otherwise. No access log, like the rest of this Caddy. Visitors' addresses
+# reach lambda in X-Forwarded-For (Caddy sets it and ignores one a visitor sends); nginx there
+# counts its rate limits by it. Copy of /etc/caddy/conf.d/attachments.caddy on encrypted-link-relay.
+(attachments_lambda) {
+	header -Server
+	# The service's 25 MiB cap (nginx: 25m), enforced here too, a little above it so bigger uploads never cross the home connection.
+	request_body {
+		max_size 26MiB
+	}
+	reverse_proxy 127.0.0.1:18820 {
+		transport http {
+			dial_timeout 5s
+			# nginx waits 120 s for the service; a 10-page scan takes ~15 s on lambda
+			response_header_timeout 130s
+		}
+	}
+}
+
+api.attachments.dev {
+	import attachments_lambda
+}
+
+attachments.dev {
+	import attachments_lambda
+}
+
+www.attachments.dev {
+	redir https://attachments.dev{uri} 301
+}
+
+http://api.attachments.dev, http://attachments.dev, http://www.attachments.dev {
+	redir https://{host}{uri} 308
+}
