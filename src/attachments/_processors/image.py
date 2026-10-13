@@ -335,7 +335,7 @@ def image_processor(
                     if reader.fell_back:
                         extra["ocr_backend"] = "rapidocr"
                         extra["ocr_engine_fallback"] = "rapidocr"
-                        ocr_warnings.append(reader.warning("the image"))
+                        ocr_warnings.append(reader.warning())
                         if result.turned:
                             extra["ocr_turned"] = result.turned
                     else:

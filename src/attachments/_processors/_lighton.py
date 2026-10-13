@@ -91,7 +91,11 @@ _HEADING = re.compile(r"^[ \t]*#{1,6}[ \t]+")
 
 
 class Unavailable(Exception):
-    """The endpoint cannot be reached (refused, missing socket, timeout)."""
+    """The endpoint cannot be reached (refused, missing socket, timeout).
+
+    Its message is for the person who sent the file (it lands in
+    ``meta.warnings``); the technical detail goes to the log.
+    """
 
 
 class Incomplete(Exception):
@@ -213,16 +217,23 @@ def post_json(where: Endpoint, path: str, payload: dict) -> dict:
                 "POST", target, body=body, headers={"Content-Type": "application/json"}
             )
         except (OSError, http.client.HTTPException) as e:
-            raise Unavailable(f"cannot reach {where.label}: {e}") from e
+            log.warning("LightOn OCR: cannot reach %s: %s", where.label, e)
+            raise Unavailable("its server is not running right now") from e
         try:
             response = conn.getresponse()
             data = response.read()
         except TimeoutError as e:
-            raise Unavailable(f"{where.label} did not answer in time") from e
+            log.warning("LightOn OCR: %s did not answer in time", where.label)
+            raise Unavailable("its server did not answer in time") from e
         if response.status >= 400:
+            log.warning(
+                "LightOn OCR: HTTP %s from %s: %s",
+                response.status,
+                where.label,
+                data[:300].decode("utf-8", "replace"),
+            )
             raise RuntimeError(
-                f"HTTP {response.status} from {where.label}: "
-                f"{data[:200].decode('utf-8', 'replace')}"
+                f"its server answered with an error (HTTP {response.status})"
             )
         return json.loads(data)
     finally:
@@ -332,7 +343,7 @@ def read(image: Any, where: Endpoint, model: str | None = None) -> str:
     )
     choice = answer["choices"][0]
     if choice.get("finish_reason") == "length":
-        raise Incomplete(f"the model did not finish the page in {MAX_TOKENS} tokens")
+        raise Incomplete("it did not finish the page (it repeated itself)")
     raw = str(choice["message"].get("content") or "")
     return to_markdown(raw) if grounding else raw.strip()
 
@@ -385,8 +396,11 @@ class Reader:
                     self.unreachable = self.unreachable or reason
             except Incomplete as e:
                 reason = str(e)
+            except RuntimeError as e:
+                reason = str(e)
             except Exception as e:  # noqa: BLE001 - any failure: next engine
-                reason = f"{type(e).__name__}: {e}"
+                log.warning("LightOn OCR failed: %s: %s", type(e).__name__, e)
+                reason = "it failed on the page"
         else:
             reason = down
         if self.fallback is None:
@@ -396,14 +410,17 @@ class Reader:
             self.fell_back[call] = reason
         return self.fallback(image)
 
-    def warning(self, what: str = "pages") -> str | None:
-        """One sentence for ``meta.warnings`` when RapidOCR read anything."""
+    def warning(self, pages: int | None = None) -> str | None:
+        """One sentence for ``meta.warnings`` when RapidOCR read anything.
+
+        *pages*: how many pages OCR read (a document); ``None``: an image.
+        """
         if not self.fell_back:
             return None
-        reasons = sorted(set(self.fell_back.values()))
+        reasons = "; ".join(sorted(set(self.fell_back.values())))[:300]
         count = len(self.fell_back)
+        what = f"{count} of the {pages} scanned pages" if pages else "the image"
         return (
-            f"ocr: LightOnOCR could not read {count} of the {what} "
-            f"({'; '.join(reasons)[:300]}); RapidOCR read "
-            f"{'it' if count == 1 else 'them'} instead"
+            f"ocr: LightOnOCR did not read {what}: {reasons}. RapidOCR, a "
+            f"simpler engine, read {'it' if count == 1 else 'them'} instead"
         )

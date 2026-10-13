@@ -779,7 +779,7 @@ def _ocr_pages(
             extra["ocr_fallback_pages"] = sorted(reader.fell_back)
             if len(reader.fell_back) == len(results):
                 extra["ocr_backend"] = "rapidocr"
-            warnings.append(reader.warning(f"{len(results)} pages read by OCR"))
+            warnings.append(reader.warning(len(results)))
     turned = {str(n): r.turned for n, (r, _) in sorted(results.items()) if r.turned}
     if turned:
         extra["ocr_turned"] = turned

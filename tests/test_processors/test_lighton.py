@@ -272,8 +272,10 @@ class TestRapidOcrStandsIn:
         assert extra["ocr_engine_fallback"] == "rapidocr"
         assert extra["ocr_fallback_pages"] == [1, 2]
         [warning] = result["meta"]["warnings"]
-        assert "LightOnOCR could not read 2 of the 2 pages" in warning
-        assert "RapidOCR read them instead" in warning
+        assert "LightOnOCR did not read 2 of the 2 scanned pages" in warning
+        assert "its server is not running right now" in warning
+        assert "RapidOCR, a simpler engine, read them instead" in warning
+        assert "/" not in warning.split(":", 1)[1]  # no socket path for visitors
 
     def test_unfinished_page_alone_is_read_by_rapidocr(self, fake_tcp):
         fake_tcp.finish_by_call = {1: "length"}  # the first request never ends
@@ -292,7 +294,8 @@ class TestRapidOcrStandsIn:
         result = pdf(_scan_pdf(), ocr=True, ocr_engine="lighton")
 
         assert "PAGE 1 READ" in result["text"]
-        assert "HTTP 500" in result["meta"]["warnings"][0]
+        assert "error (HTTP 500)" in result["meta"]["warnings"][0]
+        assert "boom" not in result["meta"]["warnings"][0]  # server body: log only
 
     def test_unreachable_endpoint_is_asked_once(self, tmp_path):
         """After a refusal, later pages go straight to RapidOCR."""
@@ -311,7 +314,7 @@ class TestRapidOcrStandsIn:
         picture = Image.new("RGB", (10, 10), "white")
         for page in (1, 2, 3):
             assert reader(picture, page).text == "from rapidocr"
-        assert reader.unreachable and "cannot reach" in reader.unreachable
+        assert reader.unreachable == "its server is not running right now"
         assert sorted(reader.fell_back) == [1, 2, 3]
 
 
@@ -408,7 +411,10 @@ class TestImages:
 
         assert "HELLO" in result["text"]
         assert result["meta"]["extra"]["ocr_backend"] == "rapidocr"
-        assert "RapidOCR read it instead" in result["meta"]["warnings"][0]
+        assert result["meta"]["warnings"] == [
+            "ocr: LightOnOCR did not read the image: its server is not running "
+            "right now. RapidOCR, a simpler engine, read it instead"
+        ]
 
     def test_image_endpoint_down_without_rapidocr_is_an_error(
         self, nothing_listening, no_rapidocr
