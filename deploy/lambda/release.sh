@@ -2,6 +2,8 @@
 # Put a published attachments version live on lambda (api.attachments.dev).
 #
 #   deploy/lambda/release.sh 1.0.0b8      # build, switch, check; rolls back if the check fails
+#   deploy/lambda/release.sh --wheel dist/attachments-1.0.0b8+lighton.1-py3-none-any.whl
+#                                         # a wheel built here (a server-only build, not on PyPI)
 #   deploy/lambda/release.sh --rollback   # back to the previous release
 #   deploy/lambda/release.sh --status
 #
@@ -54,10 +56,15 @@ case "${1:-}" in
     switch_to "$prev"
     health "" && echo "back on $prev"
     exit 0 ;;
-""|-*) sed -n 2,7p "$0"; exit 2 ;;
+--wheel)
+    WHEEL=$(realpath "${2:?--wheel needs a wheel file}")
+    name=${WHEEL##*/}
+    [[ $name == attachments-*-py3-none-any.whl ]] || die "not an attachments wheel: $name"
+    VERSION=${name#attachments-}; VERSION=${VERSION%-py3-none-any.whl} ;;
+""|-*) sed -n 2,9p "$0"; exit 2 ;;
+*) VERSION=$1 ;;
 esac
 
-VERSION=$1
 DEST=$STATE/releases/$VERSION
 [ -e "$DEST" ] && die "$DEST exists already (remove it first to rebuild)"
 id attachments-api >/dev/null 2>&1 || die "user attachments-api missing: rebuild lambda with attachments-api.nix first"
@@ -67,17 +74,23 @@ trap 'rm -rf "$WORK"' EXIT
 mkdir -p "$WORK/dist" "$WORK/deploy"
 cp "$REPO/deploy/Dockerfile" "$REPO/deploy/warmup.py" "$REPO/deploy/wsgi.py" "$WORK/deploy/"
 
-# The wheel exactly as PyPI publishes it.
-read -r url sha < <(curl -fsS "https://pypi.org/pypi/attachments/$VERSION/json" | python3 -c '
+if [ -n "${WHEEL:-}" ]; then
+    cp "$WHEEL" "$WORK/dist/"
+    sha=$(sha256sum "$WHEEL" | cut -d' ' -f1)
+    echo "local wheel $name, sha256 $sha"
+else
+    # The wheel exactly as PyPI publishes it.
+    read -r url sha < <(curl -fsS "https://pypi.org/pypi/attachments/$VERSION/json" | python3 -c '
 import json, sys
 for u in json.load(sys.stdin)["urls"]:
     if u["filename"].endswith(".whl"):
         print(u["url"], u["digests"]["sha256"])')
-[ -n "${url:-}" ] || die "no wheel for $VERSION on PyPI"
-curl -fsSL -o "$WORK/dist/${url##*/}" "$url"
-echo "$sha  $WORK/dist/${url##*/}" | sha256sum -c --quiet || die "wheel checksum differs from PyPI's"
+    [ -n "${url:-}" ] || die "no wheel for $VERSION on PyPI"
+    curl -fsSL -o "$WORK/dist/${url##*/}" "$url"
+    echo "$sha  $WORK/dist/${url##*/}" | sha256sum -c --quiet || die "wheel checksum differs from PyPI's"
+fi
 
-IMAGE=localhost/attachments-api:$VERSION
+IMAGE=localhost/attachments-api:${VERSION//+/_}  # image tags allow no "+"
 echo "building $IMAGE (the build runs the strict warm-up: OCR, LibreOffice)"
 podman build -q -f "$WORK/deploy/Dockerfile" -t "$IMAGE" "$WORK" >/dev/null
 
