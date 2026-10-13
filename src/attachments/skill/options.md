@@ -19,7 +19,7 @@ only a warning (`meta["warnings"]`), never an error.
 | `quality` | `int` | — | — | `quality: 75` | JPEG quality, 1-95 (default 85 when encoding jpeg) |
 | `metadata` | `bool` | — | `false` | `metadata: true` | Keep the photo's metadata (GPS location, dates, camera); removed by default, pixels untouched |
 | `ocr` | `bool_or_auto` | — | `false` | `ocr: true` | Recognize text in the image with RapidOCR: true/false, or auto (only when rapidocr is installed) |
-| `ocr_engine` | `str` | — | `"rapidocr"` | `ocr_engine: lighton` | OCR engine: rapidocr (local, default) or lighton (remote LightOnOCR vLLM endpoint via ATTACHMENTS_LIGHTON_URL) |
+| `ocr_engine` | `str` | — | `"rapidocr"` | `ocr_engine: lighton` | OCR engine: rapidocr (local, default) or lighton (LightOnOCR, a server's vLLM endpoint via ATTACHMENTS_LIGHTON_URL; a server may make it its default with ATTACHMENTS_OCR_ENGINE) |
 | `watermark` | `str` | — | — | `watermark: page` | Label each picture in a strip above it: page (its page, slide or sheet), name (file name and page), or your own text ({name} and {page} are filled in). Off by default. |
 
 ### `.csv`, `.tsv`
@@ -110,7 +110,7 @@ only a warning (`meta["warnings"]`), never an error.
 | `image_format` | `str` | — | `"auto"` | `image_format: jpeg` | auto (jpeg for scanned and photo pages, png for the rest), png (lossless, sharpest text) or jpeg (far smaller for scans). |
 | `quality` | `int` | — | `85` | `quality: 75` | JPEG quality, 1-95 (used with image_format: jpeg). |
 | `ocr` | `bool_or_auto` | — | `"auto"` | `ocr: true` | Read pages with no text layer (scans) with RapidOCR: true/false, or auto (when rapidocr is installed; first 50 such pages). |
-| `ocr_engine` | `str` | — | `"rapidocr"` | `ocr_engine: lighton` | OCR engine: rapidocr (local, default) or lighton (remote LightOnOCR vLLM endpoint via ATTACHMENTS_LIGHTON_URL). |
+| `ocr_engine` | `str` | — | `"rapidocr"` | `ocr_engine: lighton` | OCR engine: rapidocr (local, default) or lighton (LightOnOCR, a server's vLLM endpoint via ATTACHMENTS_LIGHTON_URL; a server may make it its default with ATTACHMENTS_OCR_ENGINE). |
 | `tables` | `bool` | — | `true` | `tables: false` | Tables with ruling lines as Markdown tables, in place (text pages; needs PyMuPDF). |
 | `max_pages` | `int` | — | — | `max_pages: 10` | Hard cap on the number of pages parsed/rendered. |
 | `watermark` | `str` | — | — | `watermark: page` | Label each picture in a strip above it: page (its page, slide or sheet), name (file name and page), or your own text ({name} and {page} are filled in). Off by default. |

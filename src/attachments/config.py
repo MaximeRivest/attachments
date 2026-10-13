@@ -33,6 +33,7 @@ _DEFAULTS: dict = {
     "ocr_workers": None,
     "ocr_auto_pages": None,
     "ocr_max_pages": None,
+    "ocr_engine": None,
     "progress": True,
 }
 
@@ -46,6 +47,7 @@ _config: dict = {
     "ocr_workers": None,  # pages read at once by OCR; None = by cores
     "ocr_auto_pages": None,  # pages `ocr: auto` reads; None = 50
     "ocr_max_pages": None,  # most pages any OCR reads (servers); None = all
+    "ocr_engine": None,  # OCR engine when a request names none; None = rapidocr
     "progress": True,  # progress bar for long work, on terminals/notebooks
 }
 
@@ -95,6 +97,8 @@ as a number
                 ) from None
     if key in ("ocr_workers", "ocr_auto_pages", "ocr_max_pages"):
         return _check_ocr_workers(raw, f"ATTACHMENTS_{key.upper()} value {raw!r}")
+    if key == "ocr_engine":
+        return _check_ocr_engine(raw, f"ATTACHMENTS_OCR_ENGINE value {raw!r}")
     if key == "progress":
         value = raw.strip().lower()
         if value in ("1", "true", "yes", "on"):
@@ -110,6 +114,23 @@ as a number
                 f"Invalid ATTACHMENTS_PREFER value {raw!r}. Valid: {_VALID_PREFER}"
             )
     return raw
+
+
+def _check_ocr_engine(value, what: str) -> str:
+    """An ``ocr_engine`` value, lower-cased, else ValueError.
+
+    Examples:
+        >>> _check_ocr_engine("LightOn", "x")
+        'lighton'
+        >>> _check_ocr_engine("tesseract", "ocr_engine='tesseract'")
+        Traceback (most recent call last):
+        ...
+        ValueError: Invalid ocr_engine='tesseract': expected rapidocr or lighton
+    """
+    engine = str(value).strip().lower()
+    if engine not in ("rapidocr", "lighton"):
+        raise ValueError(f"Invalid {what}: expected rapidocr or lighton")
+    return engine
 
 
 def _check_ocr_workers(value, what: str) -> int:
@@ -153,6 +174,9 @@ def configure(**kwargs) -> None:
         ocr_max_pages: Most pages any OCR reads in one document, even with
             ``ocr: true`` (default ``None``: no limit). For servers, so a
             long scan cannot outlast the request timeout.
+        ocr_engine: OCR engine for requests that name none: ``"rapidocr"``
+            or ``"lighton"`` (default ``None``: rapidocr). For servers with
+            a LightOnOCR endpoint (``ATTACHMENTS_LIGHTON_URL``).
         progress: Show a progress bar for long work such as OCR, on a
             terminal or in a notebook (default ``True``; never in logs).
 
@@ -182,6 +206,10 @@ def configure(**kwargs) -> None:
     for key in ("ocr_workers", "ocr_auto_pages", "ocr_max_pages"):
         if kwargs.get(key) is not None:
             kwargs[key] = _check_ocr_workers(kwargs[key], f"{key}={kwargs[key]!r}")
+    if kwargs.get("ocr_engine") is not None:
+        kwargs["ocr_engine"] = _check_ocr_engine(
+            kwargs["ocr_engine"], f"ocr_engine={kwargs['ocr_engine']!r}"
+        )
     if "progress" in kwargs and not isinstance(kwargs["progress"], bool):
         raise ValueError(
             f"Invalid progress={kwargs['progress']!r}: expected True/False"
@@ -365,6 +393,7 @@ def reset_config() -> None:
         "ocr_workers": None,
         "ocr_auto_pages": None,
         "ocr_max_pages": None,
+        "ocr_engine": None,
         "progress": True,
     }
     _explicitly_set.clear()

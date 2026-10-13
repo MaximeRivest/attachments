@@ -205,10 +205,14 @@ ocr           bool_or_auto  —        "auto"      ocr: true            Read pag
                                                                       such pages).
 ocr_engine    str           —        "rapidocr"  ocr_engine: lighton  OCR engine: rapidocr
                                                                       (local, default) or
-                                                                      lighton (remote
-                                                                      LightOnOCR vLLM
+                                                                      lighton (LightOnOCR,
+                                                                      a server's vLLM
                                                                       endpoint via ATTACHM
-                                                                      ENTS_LIGHTON_URL).
+                                                                      ENTS_LIGHTON_URL; a
+                                                                      server may make it
+                                                                      its default with
+                                                                      ATTACHMENTS_OCR_ENGI
+                                                                      NE).
 max_pages     int           —        —           max_pages: 10        Hard cap on the
                                                                       number of pages
                                                                       parsed/rendered.

@@ -581,14 +581,16 @@ def _page_drawer(
     deliver: set[int],
     images_dpi: int,
     max_dim: int | None,
+    max_pixels: int | None = None,
 ) -> Any:
     """``draw(index)`` -> a :class:`_Picture` of that page, for OCR.
 
     Drawn at *dpi*, or smaller when the longest side would pass
-    ``OCR_MAX_DIM``. Pages in *deliver* also get their delivered size, so
-    the worker that reads the page can make its picture from the same
-    drawing. PyMuPDF when it opened the document, else pdf2image (no page
-    analysis there: pictures are PNG, at OCR size).
+    ``OCR_MAX_DIM`` or the picture *max_pixels*. Pages in *deliver* also
+    get their delivered size, so the worker that reads the page can make
+    its picture from the same drawing. PyMuPDF when it opened the
+    document, else pdf2image (no page analysis there: pictures are PNG, at
+    OCR size).
     """
     from PIL import Image
 
@@ -604,6 +606,9 @@ def _page_drawer(
             longest = max(page.rect.width, page.rect.height) * zoom
             if longest > OCR_MAX_DIM:
                 zoom *= OCR_MAX_DIM / longest
+            if max_pixels:
+                area = page.rect.width * page.rect.height
+                zoom = min(zoom, (max_pixels / area) ** 0.5)
             pix = page.get_pixmap(matrix=fitz.Matrix(zoom, zoom), alpha=False)
             if pix.n != 3:
                 pix = fitz.Pixmap(fitz.csRGB, pix)
@@ -640,9 +645,10 @@ def _ocr_pages(
     *,
     source: str,
     forced: bool,
-    engine_name: str,
+    engine_name: str | None,
     dpi: int,
     extra: dict[str, Any],
+    warnings: list[str],
     deliver: set[int],
     images_dpi: int,
     max_dim: int | None,
@@ -662,46 +668,55 @@ def _ocr_pages(
     OCR reads at most ``AUTO_OCR_MAX_PAGES`` pages; ``forced`` reads them
     all. Fills ``extra`` with ``ocr``, ``ocr_backend``, ``ocr_pages`` and,
     when a page had to be turned to be read, ``ocr_turned``.
+
+    With LightOnOCR, pages it cannot read (endpoint down, an error, a page
+    it does not finish) are read by RapidOCR when installed: listed in
+    ``extra["ocr_fallback_pages"]``, explained in *warnings*.
     """
     from functools import partial
     from pathlib import PurePath
 
     from PIL import Image
 
+    from ..config import get_config
     from ..deps import check_dep
     from ..types import missing_dep_artifact
-    from . import _ocr
-    from .image import LIGHTON_URL_ENV, LIGHTON_URL_UNSET_MSG, OCR_ENGINES, _lighton_url
+    from . import _lighton, _ocr
+    from .image import LIGHTON_URL_UNSET_MSG, OCR_ENGINES, resolve_engine
 
     def error(code: str, message: str) -> dict:
         artifact = error_artifact(source, code, message)
         artifact["meta"]["kind"] = "pdf"
         return artifact
 
-    engine = str(engine_name or "rapidocr").lower()
+    engine, explicit = resolve_engine(engine_name)
     if engine not in OCR_ENGINES:
         return error(
             ERROR_INVALID_OPTION,
             f"Unknown ocr_engine {engine_name!r} "
             f"(expected one of: {', '.join(OCR_ENGINES)})",
         )
-    url: str | None = None
-    if engine == "lighton":
-        url = _lighton_url()
-        if url is None:
-            if forced:
-                return error(ERROR_INVALID_OPTION, LIGHTON_URL_UNSET_MSG)
-            engine = "rapidocr"  # ocr: auto falls back to the local engine
-            extra["ocr_engine_fallback"] = "rapidocr"
-    if engine == "rapidocr" and not check_dep("ocr").available:
+    where = _lighton.endpoint() if engine == "lighton" else None
+    if engine == "lighton" and where is None:
+        if forced and explicit:
+            return error(ERROR_INVALID_OPTION, LIGHTON_URL_UNSET_MSG)
+        engine = "rapidocr"  # no endpoint configured: the local engine
+        extra["ocr_engine_fallback"] = "rapidocr"
+    rapidocr = check_dep("ocr").available
+    if engine == "rapidocr" and not rapidocr:
         return missing_dep_artifact(source, "ocr") if forced else None
 
     most, _why = _ocr_limit(forced)
     chosen = pages if most is None else pages[:most]
     skipped = [] if most is None else pages[most:]
-    recognize = (
-        _ocr.lighton_reader(url) if url and engine == "lighton" else _ocr.recognize
-    )
+    reader: _lighton.Reader | None = None
+    if engine == "lighton" and where is not None:
+        reader = _lighton.Reader(where, _ocr.recognize if rapidocr else None)
+        dpi = _lighton.DPI  # then lowered to its MAX_PIXELS while drawing
+
+    def recognize(image: Any, page: int) -> Any:
+        return reader(image, page) if reader is not None else _ocr.recognize(image)
+
     upright = {
         90: Image.Transpose.ROTATE_270,  # clockwise quarter turn
         180: Image.Transpose.ROTATE_180,
@@ -709,7 +724,7 @@ def _ocr_pages(
     }
 
     def work(picture: _Picture) -> tuple[Any, dict | None]:
-        read = recognize(picture.image)
+        read = recognize(picture.image, picture.page)
         if picture.deliver is None:
             return read, None
         image = picture.image
@@ -729,7 +744,13 @@ def _ocr_pages(
         }
 
     draw = _page_drawer(
-        data, doc, dpi, deliver=deliver, images_dpi=images_dpi, max_dim=max_dim
+        data,
+        doc,
+        dpi,
+        deliver=deliver,
+        images_dpi=images_dpi,
+        max_dim=max_dim,
+        max_pixels=_lighton.MAX_PIXELS if reader is not None else None,
     )
     try:
         results = _ocr.read_pages(
@@ -737,19 +758,28 @@ def _ocr_pages(
             total=len(chosen),
             label=f"OCR {PurePath(source).name}",
             read=work,
-            workers=4 if engine == "lighton" else None,  # remote: network-bound
+            # remote: the model batches pages, so more at once is faster
+            workers=(get_config("ocr_workers") or 8) if reader is not None else None,
         )
     except Exception as e:
-        if engine == "lighton":
+        if reader is not None:
             return error(
                 ERROR_PROCESSING,
                 f"LightOn OCR request failed: {e}. Check that the vLLM endpoint "
-                f"at {LIGHTON_URL_ENV} ({url}) is running and reachable.",
+                f"at {_lighton.URL_ENV} ({where.label}) is running and reachable.",
             )
         return error(ERROR_PROCESSING, f"OCR failed: {type(e).__name__}: {e}")
     extra["ocr"] = True
     extra["ocr_backend"] = engine
     extra["ocr_pages"] = sorted(results)
+    if reader is not None:
+        extra["ocr_model"] = reader.model
+        if reader.fell_back:
+            extra["ocr_engine_fallback"] = "rapidocr"
+            extra["ocr_fallback_pages"] = sorted(reader.fell_back)
+            if len(reader.fell_back) == len(results):
+                extra["ocr_backend"] = "rapidocr"
+            warnings.append(reader.warning(f"{len(results)} pages read by OCR"))
     turned = {str(n): r.turned for n, (r, _) in sorted(results.items()) if r.turned}
     if turned:
         extra["ocr_turned"] = turned
@@ -782,7 +812,7 @@ def process_pdf(
     quality: int = DEFAULT_QUALITY,
     # OCR options
     ocr: bool | str = "auto",  # False | True/"always" | "auto"
-    ocr_engine: str = "rapidocr",  # "rapidocr" | "lighton"
+    ocr_engine: str | None = None,  # "rapidocr" | "lighton"; None: configured
     tables: bool = True,
     **_opts: Any,
 ) -> dict:
@@ -822,14 +852,18 @@ def process_pdf(
                                      all, and with rapidocr missing returns
                                      the typed missing-dependency artifact;
                                      False never OCRs.
-      - ocr_engine: str              "rapidocr" (local, default) or "lighton"
-                                     (remote LightOnOCR vLLM endpoint, a
-                                     SERVER capability configured via the
-                                     ATTACHMENTS_LIGHTON_URL env var). With
-                                     ocr="auto" and the env var unset, falls
-                                     back to rapidocr silently
-                                     (extra.ocr_engine_fallback); with forced
-                                     OCR it is an invalid-option error.
+      - ocr_engine: str | None       "rapidocr" (local) or "lighton"
+                                     (LightOnOCR, a server's vLLM endpoint
+                                     set by ATTACHMENTS_LIGHTON_URL; see
+                                     _lighton). None: the configured engine
+                                     (ATTACHMENTS_OCR_ENGINE), else
+                                     rapidocr. No endpoint: rapidocr
+                                     (extra.ocr_engine_fallback), except an
+                                     explicit lighton with forced OCR (an
+                                     invalid-option error). Pages LightOn
+                                     fails on are read by RapidOCR when
+                                     installed (extra.ocr_fallback_pages,
+                                     a warning).
 
       - tables: bool                 Tables with ruling lines become
                                      Markdown tables where they stand
@@ -1037,6 +1071,7 @@ def process_pdf(
                 engine_name=ocr_engine,
                 dpi=max(int(images_dpi), OCR_DPI),
                 extra=extra,
+                warnings=warnings,
                 deliver=set(draw),
                 images_dpi=int(images_dpi),
                 max_dim=max_dim,
@@ -1235,8 +1270,9 @@ register_options(
             "str",
             default="rapidocr",
             help=(
-                "OCR engine: rapidocr (local, default) or lighton (remote "
-                "LightOnOCR vLLM endpoint via ATTACHMENTS_LIGHTON_URL)."
+                "OCR engine: rapidocr (local, default) or lighton (LightOnOCR, "
+                "a server's vLLM endpoint via ATTACHMENTS_LIGHTON_URL; a server "
+                "may make it its default with ATTACHMENTS_OCR_ENGINE)."
             ),
             example="ocr_engine: lighton",
         ),

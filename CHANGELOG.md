@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **LightOnOCR-3 as the OCR engine of a server** (`ocr_engine: lighton`,
+  `ATTACHMENTS_LIGHTON_URL`). Default model `lightonai/LightOnOCR-3-0.8B`
+  (was LightOnOCR-2-1B), read the way LightOn's published benchmark reads
+  it: pages up to 5 megapixels, grounding mode with running headers,
+  footers and page numbers left out, temperature 0.1 with a fixed seed. On
+  olmOCR-bench (1,403 pages, measured on an RTX 3090) attachments scores
+  82.8 with it, 39.7 with RapidOCR; on scanned pages 64 % against 20 %.
+  Pages it cannot read (the endpoint down, an error, a page it never
+  finishes) are read by RapidOCR when installed, page by page, listed in
+  `meta.extra.ocr_fallback_pages` with a warning, instead of failing the
+  file. The endpoint can be a unix socket (`unix:/path/to/vllm.sock`), for
+  servers whose sandbox allows no local address. No new dependency: the
+  client is the standard library.
+- **`configure(ocr_engine=...)` / `ATTACHMENTS_OCR_ENGINE`**: the engine for
+  requests that name none. A server with LightOnOCR sets it to `lighton`;
+  without an endpoint it quietly stays RapidOCR.
+
 - **`a.lm15()`**: one ready `lm15.Message` (typed text and image parts, each
   page's pictures after its text, same `sources=` / `interleave=` options
   as `claude()`), for every provider [lm15](https://lm15.dev) speaks; also

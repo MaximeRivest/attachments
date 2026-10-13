@@ -536,17 +536,3 @@ def read_pages(
         "%s: %d pages in %.1fs", label, len(results), time.monotonic() - started
     )
     return results
-
-
-def lighton_reader(url: str) -> Callable[[Any], OcrText]:
-    """A ``read`` function for :func:`read_pages` using a LightOnOCR endpoint."""
-    import io
-
-    from .image import _ocr_image_bytes_lighton
-
-    def read(image: Any) -> OcrText:
-        buffer = io.BytesIO()
-        image.save(buffer, format="PNG")
-        return OcrText(_ocr_image_bytes_lighton(buffer.getvalue(), url=url))
-
-    return read
