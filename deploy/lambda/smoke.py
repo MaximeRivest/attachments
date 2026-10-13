@@ -5,8 +5,9 @@
         https://api.attachments.dev https://attachments.dev
 
 Checks: health and version; a Word file, an old Word 97 file (LibreOffice) and a
-PowerPoint file read by the service; a 10-page scan read by OCR (time, and words read
-correctly against the text the scan was made from); that the service refuses to fetch
+PowerPoint file read by the service; a 10-page scan read by OCR (time, words read
+correctly against the text the scan was made from, and the engine: LightOnOCR, or
+RapidOCR while the model is not running); that the service refuses to fetch
 a private address; the browser (CORS) answer for the website; the website itself. It
 does not test the rate limit, which would lock this machine out for a minute. Needs
 this repository's .venv (attachments, PyMuPDF).
@@ -127,11 +128,15 @@ def main() -> int:
                 if have.get(w, 0) > 0:
                     have[w] -= 1
                     hit += 1
+            extra = a[0]["meta"].get("extra", {})
+            engine = extra.get("ocr_backend", "?")
+            if extra.get("ocr_fallback_pages"):
+                engine += f" (RapidOCR read pages {extra['ocr_fallback_pages']})"
             check(
                 "10-page scan by OCR",
                 hit / len(truth) > 0.97,
                 f"{took:.1f} s ({took / 10:.1f} s a page), "
-                f"{100 * hit / len(truth):.1f}% of words read",
+                f"{100 * hit / len(truth):.1f}% of words read, engine {engine}",
             )
         except Exception as e:  # noqa: BLE001
             check("10-page scan by OCR", False, f"{type(e).__name__}: {e}")

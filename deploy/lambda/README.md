@@ -27,6 +27,44 @@ visitor ─HTTPS─> relay (encrypted-link-relay, OVH, 144.217.95.30)
   12 CPUs, 16 GB, low CPU weight. No container network: rootful podman bridges have
   disturbed tailscaled on lambda before (ai-services.nix).
 
+## OCR: LightOnOCR-3 on GPU 1, RapidOCR standing in
+
+Since 2026-10-13 the service reads scanned pages with **LightOnOCR-3-0.8B** (olmOCR-bench on
+lambda: 82.8 against 39.7 for RapidOCR; scanned pages 64 % against 20 %). It runs as
+`model-vllm-lighton-ocr` (`hosts/lambda/attachments-api.nix`): vLLM on GPU 1, answering only on
+the unix socket `/run/lighton-ocr/vllm.sock` (group `lighton-ocr`; the service is a member and
+has the folder bound into its sandbox, which still opens no local address). The service sets
+`ATTACHMENTS_OCR_ENGINE=lighton` and `ATTACHMENTS_LIGHTON_URL=unix:/run/lighton-ocr/vllm.sock`.
+
+- **RapidOCR reads whatever LightOn cannot**, page by page: model not running, an error, a page
+  it never finishes. The answer says so (`meta.warnings`, `meta.extra.ocr_fallback_pages`) and
+  `meta.extra.ocr_backend` names the engine. Visitors never get an error for it.
+- **GPU 1 is shared.** The model starts only when GPU 1 has room (20 % of it, ~5 GB) and
+  nobody reserved it; otherwise it is skipped cleanly and `lighton-ocr-retry.timer` tries again
+  every 10 minutes. Figurer training reserves GPU 1: `figurer/train/gpu1_services.sh stop`
+  leaves `/run/gpu1-reserved` and stops it with the household services; `start` removes the
+  marker and starts them all. Every GPU 1 service now refuses to start while the marker is
+  there, so a rebuild cannot start them next to a training run (it did on 2026-10-13).
+- **A test page before use.** Each start ends with a check (`lighton-ocr-canary`): the model
+  must read a small invoice right, with the library's settings. If it does not, the service
+  stops and leaves `/run/lighton-ocr/disabled` with the reason; no more starts until someone
+  looks and removes it.
+- **Not yet seen running here** (2026-10-13): GPU 1 was held by Figurer training all day, so
+  the model, its 20 % memory share and the vLLM 0.29 runtime are untested together on lambda.
+  Everything else was tested: the socket and sandbox path with a stand-in server, end to end
+  through the public address; the test page check both ways; the library's Markdown against
+  the 1,403 benchmark answers (identical). The first real start is the test page check.
+- **The library on the server is not a PyPI release**: `1.0.0b8+lighton.2` is 1.0.0b8 plus
+  this change (branch `server/1.0.0b8-lighton`, deployed with `release.sh --wheel`), because
+  `main` also holds unreleased work. The next PyPI release includes it.
+
+```bash
+systemctl status model-vllm-lighton-ocr     # running? why not? (journalctl -u model-vllm-lighton-ocr)
+sudo cat /run/lighton-ocr/disabled          # present: the test page failed, and why
+sudo rm /run/lighton-ocr/disabled && sudo systemctl start lighton-ocr-retry   # try again
+cat /run/gpu1-reserved                      # who holds GPU 1
+```
+
 ## Everyday commands
 
 ```bash
