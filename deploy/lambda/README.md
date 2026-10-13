@@ -49,11 +49,14 @@ has the folder bound into its sandbox, which still opens no local address). The 
   must read a small invoice right, with the library's settings. If it does not, the service
   stops and leaves `/run/lighton-ocr/disabled` with the reason; no more starts until someone
   looks and removes it.
-- **Not yet seen running here** (2026-10-13): GPU 1 was held by Figurer training all day, so
-  the model, its 20 % memory share and the vLLM 0.29 runtime are untested together on lambda.
-  Everything else was tested: the socket and sandbox path with a stand-in server, end to end
-  through the public address; the test page check both ways; the library's Markdown against
-  the 1,403 benchmark answers (identical). The first real start is the test page check.
+- **Tested on lambda 2026-10-13** (on GPU 0 for 13 minutes, the science site's 9B paused, with
+  the service's exact command): first start 6.5 minutes (compiling, cached since), test page
+  read right; 1.7 GiB of weights, cache for 102,732 tokens, 5.3 GB in use under load. Through
+  the public address: a 10-page scan in 10 s, every word right; three such scans at once
+  13.5 s, no fallback; the same page twice, identical text; vLLM logs no page content. The
+  1914 letter of olmOCR-bench: "Bangor. Pa. may 22. nd 1914. Col. Rosevelt / Commade &
+  Friend" (RapidOCR: "Bangou. .Pa. may22. P nd 1914. CeoeWRosevelt bernrade Frind"). The
+  library's Markdown equals the benchmark's on all 1,403 saved answers.
 - **The library on the server is not a PyPI release**: `1.0.0b8+lighton.2` is 1.0.0b8 plus
   this change (branch `server/1.0.0b8-lighton`, deployed with `release.sh --wheel`), because
   `main` also holds unreleased work. The next PyPI release includes it.
