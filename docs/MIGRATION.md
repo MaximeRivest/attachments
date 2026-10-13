@@ -23,7 +23,7 @@ while you migrate.
 
 | | 0.25 | 1.0 |
 |---|---|---|
-| Install | `pip install attachments` | `pip install "attachments[pdf,docx,image]>=1.0.0b1"` (while 1.0 is in beta, a plain `pip install attachments` still gets 0.25) |
+| Install | `pip install attachments` | `pip install "attachments[pdf,docx,image]"` — the formats you use, as extras (to stay on 0.25: `pip install "attachments<1"`) |
 | Python | 3.10+ | **3.11+** (3.10 ends its life in October 2026) |
 | Always-installed packages | 12 (requests, beautifulsoup4, pillow, pydantic, pdfplumber, pillow-heif, nbformat, copykitten, typer, pyperclip, pytesseract, pypdfium2) | **none** — install the formats you use as extras |
 | OCR | Tesseract (a program to install) via pytesseract | RapidOCR, a pip extra: `attachments[ocr]` |

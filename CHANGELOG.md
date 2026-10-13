@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-10-13
+
+attachments 1.0: `pip install attachments` now installs this version (it
+installed 0.25 until today). 1.0 is a complete rewrite with a new API —
+coming from 0.25, read [docs/MIGRATION.md](docs/MIGRATION.md); to stay on
+0.25, pin `attachments<1`. The changes since 1.0.0b8:
+
 ### Added
 
 - **LightOnOCR-3 as the OCR engine of a server** (`ocr_engine: lighton`,
@@ -709,6 +716,7 @@ DSL options or their kwarg twins (`att("doc.pdf[pages: 1-4]")`). Custom
 loaders/presenters become processors or unpack handlers (see
 [DEVELOPMENT.md](DEVELOPMENT.md)).
 
+[1.0.0]: https://pypi.org/project/attachments/1.0.0/
 [1.0.0b8]: https://pypi.org/project/attachments/1.0.0b8/
 [1.0.0b7]: https://pypi.org/project/attachments/1.0.0b7/
 [1.0.0b6]: https://pypi.org/project/attachments/1.0.0b6/

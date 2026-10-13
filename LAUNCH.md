@@ -7,8 +7,8 @@ The 0.25 code lives on the `legacy-0.25` branch and its `v0.25.x` tags.
 
 | | |
 |---|---|
-| PyPI | `1.0.0b8` (beta) is the 1.0 pre-release; plain `pip install attachments` still gets 0.25.1 |
-| Hosted service | `api.attachments.dev` live, redeployed 2026-10-09 (see `deploy/DEPLOYED.md`, not in git) |
+| PyPI | `1.0.0` (2026-10-13): plain `pip install attachments` installs 1.0; 0.25 stays on `legacy-0.25` |
+| Hosted service | `api.attachments.dev` on lambda behind the relay since 2026-10-13 (`deploy/lambda/README.md`) |
 | Domain | `attachments.dev` is owned and serves the shipped default `service_url` |
 
 ## How to publish any version
@@ -72,8 +72,8 @@ updated at pypi.org → attachments → Publishing.
 
 On top of "How to publish":
 
-- [ ] Development Status `5 - Production/Stable`.
-- [ ] Remove `>=1.0.0b1` from the install commands in README.md,
+- [x] Development Status `5 - Production/Stable`.
+- [x] Remove `>=1.0.0b1` from the install commands in README.md,
       `src/attachments/skill/SKILL.md` and docs/MIGRATION.md, and the
       sentences saying plain `pip install attachments` gets 0.25.
 - [ ] Pin an issue: "Migrating from 0.25? Read docs/MIGRATION.md".

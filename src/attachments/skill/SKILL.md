@@ -16,16 +16,13 @@ All option names: `options.md` next to this file (generated from the code).
 python -c "import attachments as a; print(a.__version__, hasattr(a, 'att'))"
 ```
 
-- `False`, or no module: install 1.0. **`pip install attachments` and
-  `uv add attachments` install 0.25**, the old API (1.0 is a pre-release):
+- `False`, or no module: install 1.0 (a project pinned below it still has
+  0.25, the old API):
 
   ```bash
-  uv add "attachments[pdf,image]>=1.0.0b1"
-  pip install "attachments[pdf,image]>=1.0.0b1"
+  uv add "attachments[pdf,image]>=1.0"
+  pip install "attachments[pdf,image]>=1.0"
   ```
-
-  The `>=1.0.0b1` is what selects 1.0; `--pre` is not needed (and with pip
-  it would also pull pre-releases of every other package).
 
   A local checkout: `uv add --editable /path/to/attachments`.
 - Never write 0.25 code, which models remember: `Attachments("f.pdf")`,
