@@ -676,8 +676,6 @@ def _ocr_pages(
     from functools import partial
     from pathlib import PurePath
 
-    from PIL import Image
-
     from ..config import get_config
     from ..deps import check_dep
     from ..types import missing_dep_artifact
@@ -705,6 +703,12 @@ def _ocr_pages(
     rapidocr = check_dep("ocr").available
     if engine == "rapidocr" and not rapidocr:
         return missing_dep_artifact(source, "ocr") if forced else None
+    # Every engine reads Pillow pictures (RapidOCR depends on Pillow; LightOn
+    # does not). Imported only now: without an engine the pages are still
+    # drawn, by PyMuPDF alone, so attachments[pdf] needs no Pillow for them.
+    if not check_dep("image").available:
+        return missing_dep_artifact(source, "image") if forced else None
+    from PIL import Image
 
     most, _why = _ocr_limit(forced)
     chosen = pages if most is None else pages[:most]

@@ -7,8 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-10-13
+
 ### Fixed
 
+- **Scanned PDFs with `attachments[pdf]` alone** (no OCR, no Pillow) were a
+  `missing-dependency` error, the pages lost: OCR imported Pillow before
+  finding that no engine was installed. They are read again as before:
+  pictures of the pages (PyMuPDF draws them without Pillow) and the hint
+  saying how to get their text. A new CI job installs each extra alone and
+  reads a file of every format, so an extra that is not enough for its own
+  format cannot ship again (`scripts/check_extras.sh` runs it locally).
+- **Install advice for a missing module names what to install**: the extra
+  that provides it (`No module named 'PIL'` → `pip install
+  attachments[image]`), else its package name (`fitz` → `pymupdf`). It
+  used to repeat the import name: `pip install PIL` does not exist.
 - The agent skill (`att --skill`) no longer says a plain `pip install
   attachments` gets 0.25 (true until 1.0.0, which shipped it).
 
@@ -721,6 +734,7 @@ DSL options or their kwarg twins (`att("doc.pdf[pages: 1-4]")`). Custom
 loaders/presenters become processors or unpack handlers (see
 [DEVELOPMENT.md](DEVELOPMENT.md)).
 
+[1.0.1]: https://pypi.org/project/attachments/1.0.1/
 [1.0.0]: https://pypi.org/project/attachments/1.0.0/
 [1.0.0b8]: https://pypi.org/project/attachments/1.0.0b8/
 [1.0.0b7]: https://pypi.org/project/attachments/1.0.0b7/

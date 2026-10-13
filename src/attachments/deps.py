@@ -74,6 +74,59 @@ DEPENDENCY_MAP: dict[str, tuple[tuple[str, ...], str]] = {
 }
 
 
+#: pip names of imports that name no feature above and whose package is
+#: called something else (``import PIL`` comes from ``pillow``).
+_PIP_NAMES = {
+    "PIL": "pillow",
+    "fitz": "pymupdf",
+    "cv2": "opencv-python-headless",
+    "yaml": "pyyaml",
+    "bs4": "beautifulsoup4",
+    "docx": "python-docx",
+    "pptx": "python-pptx",
+    "sklearn": "scikit-learn",
+}
+
+
+def install_hint_for(module: str) -> str:
+    """The install command for a missing import, by its module name.
+
+    A module one of the features needs gets that feature's command (the
+    extra pins versions that work); with several, the feature needing the
+    fewest other modules (``PIL``: image, not heic). Any other module gets
+    ``pip install`` with its package name, which can differ from the
+    import name.
+
+    Examples:
+        >>> install_hint_for("PIL")
+        'pip install attachments[image]'
+        >>> install_hint_for("PIL.Image")
+        'pip install attachments[image]'
+        >>> install_hint_for("docx")
+        'pip install attachments[docx]'
+        >>> install_hint_for("onnxruntime")
+        'pip install attachments[ocr]'
+        >>> install_hint_for("fitz")
+        'pip install pymupdf'
+        >>> install_hint_for("yaml")
+        'pip install pyyaml'
+        >>> install_hint_for("somepackage")
+        'pip install somepackage'
+    """
+    top = module.split(".")[0]
+    if top == "fitz":  # PyMuPDF's old import name
+        top = "pymupdf"
+    candidates = [
+        (len(modules), hint)
+        for feature, (modules, hint) in DEPENDENCY_MAP.items()
+        if feature not in PROGRAM_FEATURES
+        and any(top in alternatives.split("|") for alternatives in modules)
+    ]
+    if candidates:
+        return min(candidates, key=lambda c: c[0])[1]
+    return f"pip install {_PIP_NAMES.get(top, top)}"
+
+
 @lru_cache(maxsize=128)
 def _can_import(module: str) -> bool:
     """Check if a module can be imported without actually importing it.

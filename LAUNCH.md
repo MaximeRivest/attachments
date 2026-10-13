@@ -29,7 +29,8 @@ Actions page does everything except the upload: a dry run.
 3. Move the `## [Unreleased]` notes under `## [X.Y.Z] - YYYY-MM-DD` in
    CHANGELOG.md. The release fails without that section; it becomes the
    GitHub release text.
-4. Commit, push `main`, wait for CI to pass.
+4. Commit, push `main`, wait for CI to pass. CI's `extras` job installs
+   each extra alone (`scripts/check_extras.sh` does the same locally).
 5. `git tag vX.Y.Z && git push origin vX.Y.Z`. Watch the run on GitHub.
 6. Check from a clean machine:
 

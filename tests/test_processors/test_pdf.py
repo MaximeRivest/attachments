@@ -390,6 +390,37 @@ class TestPdfOcr:
         assert error["code"] == ERROR_MISSING_DEPENDENCY
         assert "pip install attachments[ocr]" in error["message"]
 
+    # attachments[pdf] alone has PyMuPDF but no Pillow. 1.0.0 failed every
+    # scanned PDF there ("No module named 'PIL' — pip install PIL"): OCR
+    # imported Pillow before finding that no engine was installed.
+
+    @pytest.fixture
+    def mask_pillow(self, monkeypatch):
+        """Simulate attachments[pdf] alone: no OCR engine, no Pillow."""
+        for name in ("rapidocr", "PIL", "PIL.Image"):
+            monkeypatch.setitem(sys.modules, name, None)
+        clear_cache()
+        yield
+        clear_cache()
+
+    def test_scan_without_pillow_keeps_pictures_and_hint(
+        self, scanned_pdf_bytes: bytes, mask_pillow
+    ):
+        result = processors[".pdf"](scanned_pdf_bytes)
+
+        assert "error" not in result["meta"]
+        assert result["meta"]["extra"]["ocr_hint"] == SCANNED_PDF_HINT
+        assert len(result["images"]) == 1  # drawn by PyMuPDF alone
+
+    def test_forced_ocr_without_pillow_names_the_extra(
+        self, scanned_pdf_bytes: bytes, mask_pillow
+    ):
+        result = processors[".pdf"](scanned_pdf_bytes, ocr=True)
+
+        error = result["meta"]["error"]
+        assert error["code"] == ERROR_MISSING_DEPENDENCY
+        assert "pip install attachments[ocr]" in error["message"]
+
 
 # LightOn OCR: tests/test_processors/test_lighton.py
 

@@ -108,6 +108,11 @@ def _artifact_from_exception(source: str, exc: Exception, context: str) -> dict:
         'missing-dependency'
         >>> "pip install" in a["meta"]["error"]["message"]
         True
+        >>> a = _artifact_from_exception(
+        ...     "s.pdf", ModuleNotFoundError(name="PIL"), "local"
+        ... )
+        >>> a["meta"]["error"]["message"].endswith("pip install attachments[image]")
+        True
         >>> a = _artifact_from_exception("f.xyz", ValueError("bad"), "local")
         >>> a["meta"]["error"]["code"]
         'processing-error'
@@ -115,11 +120,14 @@ def _artifact_from_exception(source: str, exc: Exception, context: str) -> dict:
         'local processing failed: bad'
     """
     if isinstance(exc, ImportError):
-        # exc.name is set when the import machinery raised the error;
-        # fall back to the bundle extra covering all built-in processors.
+        # exc.name is set when the import machinery raised the error: the
+        # extra (or package) providing that module; without it, the bundle
+        # extra covering all built-in processors.
+        from .deps import install_hint_for
+
         missing = getattr(exc, "name", None)
         remedy = (
-            f"pip install {missing}"
+            install_hint_for(missing)
             if missing
             else "pip install attachments[all-local]"
         )

@@ -46,3 +46,38 @@ jobs:
       - name: MCP server on the older SDK (mcp 1.x; the lock has 2.x)
         run: uv run --with "mcp>=1.17,<2" pytest -q -o addopts="" tests/test_mcp_server.py
 
+
+  # Each extra alone, the way people install them. The suite above has every
+  # extra at once, so it cannot see an extra that is not enough for its own
+  # format: 1.0.0 shipped attachments[pdf] failing every scanned PDF (Pillow
+  # was imported before it was needed), with the advice "pip install PIL".
+  extras:
+    name: extras (${{ matrix.extras || 'bare' }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        extras: ["", "pdf", "image", "docx", "pptx", "xlsx", "html", "svg", "office", "pdf,ocr", "all-local"]
+    env:
+      EXTRAS: ${{ matrix.extras }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Install uv and set Python
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          python-version: "3.12"
+
+      - name: Build the package
+        run: uv build --wheel -o dist
+
+      - name: Install it with these extras only
+        run: |
+          wheel="$PWD/$(ls dist/*.whl)"
+          uv venv /tmp/env
+          if [ -n "$EXTRAS" ]; then req="attachments[$EXTRAS] @ file://$wheel"; else req="attachments @ file://$wheel"; fi
+          VIRTUAL_ENV=/tmp/env uv pip install "$req"
+
+      - name: Read every sample file
+        working-directory: /tmp
+        run: /tmp/env/bin/python "$GITHUB_WORKSPACE/tests/extras/check.py" "$EXTRAS"
