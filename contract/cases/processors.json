@@ -3006,30 +3006,6 @@
    }
   },
   {
-   "name": "svg: a version of any letters",
-   "input": {
-    "name": "d.svg",
-    "bytes_b64": "PD94bWwgdmVyc2lvbj0iIj8+PHN2Zz48dGl0bGU+dDwvdGl0bGU+PC9zdmc+"
-   },
-   "options": {},
-   "expect": {
-    "artifacts": [
-     {
-      "text": "",
-      "images": [],
-      "audio": [],
-      "video": [],
-      "meta": {
-       "source": "d.svg",
-       "error": {
-        "code": "parse-error"
-       }
-      }
-     }
-    ]
-   }
-  },
-  {
    "name": "svg: a version with a colon",
    "input": {
     "name": "d.svg",

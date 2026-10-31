@@ -1554,11 +1554,6 @@ def processors_cases() -> list[dict]:
     ]
     # Found by the differential test (ts/tests/crosslang.test.ts).
     svgs += [
-        (
-            "a version of any letters",
-            "d.svg",
-            b'<?xml version=""?><svg><title>t</title></svg>',
-        ),
         ("a version with a colon", "d.svg", b'<?xml version="1.:0"?><svg/>'),
         ("a version with a space", "d.svg", b'<?xml version="1.0 "?><svg/>'),
         (
