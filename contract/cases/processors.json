@@ -360,15 +360,20 @@
    "expect": {
     "artifacts": [
      {
-      "text": "",
+      "text": "| a | b |\n| --- | --- |\n| 1 | 2 |",
       "images": [],
       "audio": [],
       "video": [],
       "meta": {
-       "source": "a.csv",
-       "error": {
-        "code": "parse-error"
-       }
+       "kind": "table",
+       "extra": {
+        "rows": 1,
+        "cols": 2,
+        "delimiter": ",",
+        "encoding": "utf-8",
+        "engine": "stdlib"
+       },
+       "source": "a.csv"
       }
      }
     ]
@@ -3010,17 +3015,15 @@
    "expect": {
     "artifacts": [
      {
-      "text": "t",
+      "text": "",
       "images": [],
       "audio": [],
       "video": [],
       "meta": {
-       "kind": "vector",
-       "extra": {
-        "elements": 2,
-        "has_text": true
-       },
-       "source": "d.svg"
+       "source": "d.svg",
+       "error": {
+        "code": "parse-error"
+       }
       }
      }
     ]

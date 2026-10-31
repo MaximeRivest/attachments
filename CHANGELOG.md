@@ -51,6 +51,14 @@ Found by writing the contract's cases:
   `/unpack` answer is a service error too.
 - A GitHub `ref` reaches the clone as written (`v1.0+build` became
   `v1.0 build`).
+- **CSV files guess their delimiter the same way on every Python**:
+  CPython changed `csv.Sniffer` in patch releases (3.11.17, 3.12.15,
+  3.13.16, 3.14), so the same file could give another table on another
+  Python. Attachments now carries the newer version
+  (`_processors/_sniffer.py`), which is also linear in time on long quoted
+  samples where the old one was quadratic.
+- **CSV saved with old-Mac line ends (`\r`, Excel's "CSV (Macintosh)")
+  reads as a table**; it was a parse error.
 - `att.from_prompt` no longer takes a quoted option value
   (`table.xlsx[sheet: 'S 1']`) for a file name and loses the file, and no
   longer cuts a long extension (`a.verylongextension`) or an e-mail

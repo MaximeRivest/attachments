@@ -10,18 +10,26 @@ import { guessDecode } from "../decode.ts";
 import type { ProcessorFn } from "../processors.ts";
 import { CodePoints, isBlank } from "../text.ts";
 
-// -- csv.Sniffer ---------------------------------------------------------------------
+// -- the delimiter guess: CPython's newest csv.Sniffer ---------------------------
+//
+// Attachments carries its own copy (Python: _processors/_sniffer.py),
+// CPython's version from patch releases 3.11.17, 3.12.15, 3.13.16 and
+// 3.14: line breaks normalized first, a quoted field's body matched
+// possessively (linear time). Older Pythons' standard library guesses
+// differently on some files; the copy makes every implementation agree.
 
 /** Python's `\w` (Unicode letters, digits, `_`), and its multiline `^` / `$` (only `\n` breaks a line). */
 const W = "\\p{L}\\p{N}_";
 const BOL = "(?:(?<![\\s\\S])|(?<=\\n))";
 const EOL = "(?=\\n|(?![\\s\\S]))";
+/** `(?:(?P=quote){2}|(?!(?P=quote)).)*+`: possessive, emulated with a captured lookahead. */
+const BODY = "(?=(?<body>(?:\\k<quote>\\k<quote>|(?!\\k<quote>)[\\s\\S])*))\\k<body>";
 
 const QUOTE_PATTERNS = [
-  `(?<delim>[^${W}\\n"'])(?<space> ?)(?<quote>["']).*?\\k<quote>\\k<delim>`,
-  `(?:${BOL}|\\n)(?<quote>["']).*?\\k<quote>(?<delim>[^${W}\\n"'])(?<space> ?)`,
-  `(?<delim>[^${W}\\n"'])(?<space> ?)(?<quote>["']).*?\\k<quote>(?:${EOL}|\\n)`,
-  `(?:${BOL}|\\n)(?<quote>["']).*?\\k<quote>(?:${EOL}|\\n)`,
+  `(?<delim>[^${W}\\n"'])(?<space> ?)(?<quote>["'])${BODY}\\k<quote>\\k<delim>`,
+  `(?:${BOL}|\\n)(?<quote>["'])${BODY}\\k<quote>(?<delim>[^${W}\\n"'])(?<space> ?)`,
+  `(?<delim>[^${W}\\n"'])(?<space> ?)(?<quote>["'])${BODY}\\k<quote>(?:${EOL}|\\n)`,
+  `(?:${BOL}|\\n)(?<quote>["'])${BODY}\\k<quote>(?:${EOL}|\\n)`,
 ].map((p) => new RegExp(p, "gsu"));
 
 /** The first key with the largest count (Python's `max(d, key=d.get)`). */
@@ -113,8 +121,9 @@ function guessDelimiter(sample: string, delimiters: string): string {
   return items.at(-1)![1];
 }
 
-/** Python's `csv.Sniffer().sniff(sample, delimiters).delimiter`, or `null` when it finds none. */
-export function sniffDelimiter(sample: string, delimiters: string): string | null {
+/** The delimiter CPython's newest `csv.Sniffer().sniff(sample, delimiters)` finds, or `null`. */
+export function sniffDelimiter(raw: string, delimiters: string): string | null {
+  const sample = raw.replaceAll("\r\n", "\n").replaceAll("\r", "\n");
   let delimiter = guessQuoteAndDelimiter(sample, delimiters);
   if (!delimiter) delimiter = guessDelimiter(sample, delimiters);
   return delimiter || null;
@@ -129,7 +138,7 @@ export class CsvError extends Error {
 type State = "START_RECORD" | "START_FIELD" | "IN_FIELD" | "IN_QUOTED_FIELD" | "QUOTE_IN_QUOTED_FIELD" | "EAT_CRNL";
 const END = null; // the end of a line, after its characters
 
-/** Python's `csv.reader(io.StringIO(text), delimiter=delimiter)`, all rows. */
+/** Python's `csv.reader(io.StringIO(text, newline=""), delimiter=delimiter)`, all rows. */
 export function readCsv(text: string, delimiter: string): string[][] {
   const rows: string[][] = [];
   let state: State = "START_RECORD";
@@ -204,8 +213,8 @@ export function readCsv(text: string, delimiter: string): string[][] {
         throw new CsvError("new-line character seen in unquoted field - do you need to open the file with newline=''?");
     }
   };
-  // io.StringIO yields lines that end after each "\n".
-  const lines = text.match(/[^\n]*\n|[^\n]+$/gu) ?? [];
+  // io.StringIO(text, newline="") yields lines ending in "\n", "\r\n" or "\r".
+  const lines = text.match(/[^\r\n]*(?:\r\n|\r|\n)|[^\r\n]+$/gu) ?? [];
   let i = 0;
   while (i < lines.length) {
     do {

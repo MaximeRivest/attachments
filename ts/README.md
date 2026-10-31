@@ -37,7 +37,7 @@ await att(fileInput.files[0]);
 
 TypeScript reads these itself, exactly as Python does: text (Markdown,
 code, JSON, YAML, …, and any file that looks like text), **CSV and TSV**
-(Python's separator guesser and reader, ported), **Jupyter notebooks**,
+(the separator guesser Attachments carries, and Python's reader, ported), **Jupyter notebooks**,
 and the text of **SVG** drawings (with an XML parser that accepts and
 refuses what Python's does). It unpacks folders, patterns, zip and tar
 archives, downloads and GitHub repositories the same way too.

@@ -462,8 +462,9 @@ export function parseXml(data: Uint8Array): XmlElement {
   const input = new Input(doc);
   const decl = /^<\?xml(?=[ \t\n?])/u.exec(doc);
   if (decl) {
-    // version, then encoding and standalone, each optional, in that order.
-    const m = /^<\?xml[ \t\n]+version[ \t\n]*=[ \t\n]*(["'])[A-Za-z0-9._-]*\1(?:[ \t\n]+encoding[ \t\n]*=[ \t\n]*(["'])[A-Za-z][A-Za-z0-9._-]*\2)?(?:[ \t\n]+standalone[ \t\n]*=[ \t\n]*(["'])(?:yes|no)\3)?[ \t\n]*\?>/u.exec(doc);
+    // version ("1." and digits, as XML 1.0 and expat 2.7+ require), then
+    // encoding and standalone, each optional, in that order.
+    const m = /^<\?xml[ \t\n]+version[ \t\n]*=[ \t\n]*(["'])1\.[0-9]+\1(?:[ \t\n]+encoding[ \t\n]*=[ \t\n]*(["'])[A-Za-z][A-Za-z0-9._-]*\2)?(?:[ \t\n]+standalone[ \t\n]*=[ \t\n]*(["'])(?:yes|no)\3)?[ \t\n]*\?>/u.exec(doc);
     if (!m) fail("XML declaration not well-formed");
     input.pos = m![0].length;
   }

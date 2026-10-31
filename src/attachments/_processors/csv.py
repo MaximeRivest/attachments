@@ -2,7 +2,8 @@
 
 Always works with the stdlib only: bytes are decoded with
 :func:`attachments.utils.guess_decode` (latin-1 tolerant), the delimiter is
-sniffed with :class:`csv.Sniffer` (restricted to ``,;\\t|``), and the rows
+guessed with CPython's ``csv.Sniffer``, carried in ``_sniffer.py`` so every Python
+version guesses alike (restricted to ``,;\\t|``), and the rows
 are rendered as a markdown pipe table capped at ``rows`` data rows.
 
 Deliberate divergences from attachments v1:
@@ -35,6 +36,7 @@ from .._options import Option, register_options
 from ..types import ERROR_PARSE, error_artifact, make_artifact
 from ..utils import guess_decode
 from . import register_processor
+from ._sniffer import sniff_delimiter
 
 #: Word aliases accepted by the ``delimiter`` option.
 _DELIMITER_WORDS = {
@@ -71,14 +73,10 @@ def _resolve_delimiter(delimiter: str | None, text: str, source: str) -> str:
         if word in _DELIMITER_WORDS:
             return _DELIMITER_WORDS[word]
         return str(delimiter)[0]
-    try:
-        return (
-            csv.Sniffer()
-            .sniff(text[:_SNIFF_WINDOW], delimiters=_SNIFF_DELIMITERS)
-            .delimiter
-        )
-    except Exception:
-        return "\t" if source.lower().endswith(".tsv") else ","
+    found = sniff_delimiter(text[:_SNIFF_WINDOW], _SNIFF_DELIMITERS)
+    if found is not None:
+        return found
+    return "\t" if source.lower().endswith(".tsv") else ","
 
 
 def _cell(value: Any) -> str:
@@ -187,7 +185,9 @@ def csv_processor(
         old_limit = csv.field_size_limit()
         try:
             csv.field_size_limit(sys.maxsize)
-            records = list(csv.reader(io.StringIO(text), delimiter=delim))
+            # newline="": lines end at \n, \r\n or \r (old Mac), as the csv
+            # docs require, so a \r line end is not "a new-line in a field"
+            records = list(csv.reader(io.StringIO(text, newline=""), delimiter=delim))
         finally:
             csv.field_size_limit(old_limit)
         header, data_rows = records[0], records[1:]

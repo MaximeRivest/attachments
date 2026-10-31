@@ -16,10 +16,11 @@
   `checkDeps()`. Text is read here; every other format by the
   Attachments service when one is configured.
 - CSV and TSV, Jupyter notebooks and SVG text read here, exactly as
-  Python reads them (`contract/processors.md`): Python's `csv.Sniffer`
-  and `csv.reader`, a JSON parser that keeps Python's `NaN` and number
-  spelling, and an XML parser that agrees with expat, checked on
-  random files against Python (26,400 after the last fix).
+  Python reads them (`contract/processors.md`): CPython's newest
+  `csv.Sniffer` and its `csv.reader`, a JSON parser that keeps Python's
+  `NaN` and number spelling, and an XML parser that agrees with expat
+  2.9 (the standard's XML declaration), checked against Python on random
+  files (15,600 after the last change).
 - `attachments-dev/extend`: `processor()` and `source()` of your own,
   the artifact helpers.
 - Passes all 1,473 contract cases (except the two declared gaps), and

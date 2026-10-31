@@ -55,7 +55,8 @@ for f in json.load(sys.stdin):
     for a in wire:
         if "error" in a["meta"]: a["meta"]["error"] = {"code": a["meta"]["error"]["code"]}
     out.append(wire)
-print(json.dumps(out))`;
+# NaN is not JSON: written as null, as JSON.stringify writes it.
+print(json.dumps(json.loads(json.dumps(out), parse_constant=lambda c: None)))`;
   const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith("ATTACHMENTS_")));
   return JSON.parse(execFileSync(python, ["-c", script], { env, input: JSON.stringify(files), maxBuffer: 256 * 1024 * 1024 }).toString());
 }
