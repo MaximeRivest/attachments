@@ -9,14 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **The server reads web addresses**: `POST /process` with JSON
-  `{"url": "https://…", "options": {…}}` answers exactly what
-  `att(url, **options)` gives on a client — the page read with its own
-  address (links resolve, `meta.source` is the final address), any other
-  file by its type — behind the server's guards. One Artifact, as for an
-  upload; an address holding many files (a repository, a zip) is HTTP 400,
-  pointing to `/unpack`. The attachments.dev playground uses it.
-
 - **A contract every implementation answers to** (`contract/`, renamed
   from `spec/`): `presenting.md` writes down how artifacts become text,
   parts, messages, chunks, token estimates and the printed summary, and
@@ -37,6 +29,20 @@ Found by writing the contract's cases:
   no pictures (it was refused only when a picture needed it).
 - A page selection accepts only the digits 0 to 9 (other scripts' digits,
   such as `٣`, were read as numbers).
+
+## [1.1.0] - 2026-10-31
+
+The server reads web addresses, and no longer reads its own files.
+
+### Added
+
+- **The server reads web addresses**: `POST /process` with JSON
+  `{"url": "https://…", "options": {…}}` answers exactly what
+  `att(url, **options)` gives on a client — the page read with its own
+  address (links resolve, `meta.source` is the final address), any other
+  file by its type — behind the server's guards. One Artifact, as for an
+  upload; an address holding many files (a repository, a zip) is HTTP 400,
+  pointing to `/unpack`. The attachments.dev playground uses it.
 
 ### Security
 
