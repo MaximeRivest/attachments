@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-31
+
+The server reads web addresses, and no longer reads its own files.
+
 ### Added
 
 - **The server reads web addresses**: `POST /process` with JSON
