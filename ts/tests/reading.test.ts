@@ -74,6 +74,7 @@ function fixture(name: string, files: Record<string, any>): string {
 
 const AREAS: Record<string, (c: Case, doc: ReturnType<typeof load>) => Promise<unknown> | unknown> = {
   inputs: runAtt,
+  processors: runAtt,
   archives: runAtt,
   async trees(c, doc) {
     const previous = process.cwd();

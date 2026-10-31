@@ -1,11 +1,12 @@
 # Attachments in many languages (TypeScript first)
 
 *Status, 2026-10-31: agreed (npm name `attachments-dev`). Steps 1 to 3
-done: the contract (`presenting.md`, `reading.md`, `server.md`, 2,040
+done: the contract (`presenting.md`, `reading.md`, `server.md`, 1,473
 cases) with Python passing, and `ts/` passing every case except the
 declared `archive/bz2-xz` gap, its client checked against Python's
-server on every sample format. Step 4 (text-like processors) has text;
-CSV, notebooks and SVG-as-text are next, then step 5.*
+server on every sample format. Step 4 done: text, CSV, notebooks and
+SVG text are read in TypeScript exactly as in Python (`processors.md`,
+and a differential test on random files). Next: step 5, by format.*
 
 *Earlier: proposal, nothing built. Written after FunctAI's
 TypeScript side asked for documents as inputs (functai conversation

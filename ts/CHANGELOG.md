@@ -15,8 +15,13 @@
   `att.fromPrompt()`, `att.options()`, `att.help()`; `configure()`,
   `checkDeps()`. Text is read here; every other format by the
   Attachments service when one is configured.
+- CSV and TSV, Jupyter notebooks and SVG text read here, exactly as
+  Python reads them (`contract/processors.md`): Python's `csv.Sniffer`
+  and `csv.reader`, a JSON parser that keeps Python's `NaN` and number
+  spelling, and an XML parser that agrees with expat, checked on
+  random files against Python (26,400 after the last fix).
 - `attachments-dev/extend`: `processor()` and `source()` of your own,
   the artifact helpers.
-- Passes all 2,040 contract cases (except the two declared gaps), and
+- Passes all 1,473 contract cases (except the two declared gaps), and
   gives exactly Python's reading of every sample file through Python's
   server.

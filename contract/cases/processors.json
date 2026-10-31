@@ -1,0 +1,3372 @@
+{
+ "area": "processors",
+ "review": "draft",
+ "cases": [
+  {
+   "name": "csv: comma",
+   "input": {
+    "name": "a.csv",
+    "bytes_b64": "bmFtZSxhZ2UKQWRhLDM2CkFsYW4sNDEK"
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "| name | age |\n| --- | --- |\n| Ada | 36 |\n| Alan | 41 |",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "table",
+       "extra": {
+        "rows": 2,
+        "cols": 2,
+        "delimiter": ",",
+        "encoding": "utf-8",
+        "engine": "stdlib"
+       },
+       "source": "a.csv"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "csv: semicolon",
+   "input": {
+    "name": "a.csv",
+    "bytes_b64": "bmFtZTthZ2UKQWRhOzM2CkFsYW47NDEK"
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "| name | age |\n| --- | --- |\n| Ada | 36 |\n| Alan | 41 |",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "table",
+       "extra": {
+        "rows": 2,
+        "cols": 2,
+        "delimiter": ";",
+        "encoding": "utf-8",
+        "engine": "stdlib"
+       },
+       "source": "a.csv"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "csv: tab",
+   "input": {
+    "name": "a.csv",
+    "bytes_b64": "bmFtZQlhZ2UKQWRhCTM2Cg=="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "| name | age |\n| --- | --- |\n| Ada | 36 |",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "table",
+       "extra": {
+        "rows": 1,
+        "cols": 2,
+        "delimiter": "\t",
+        "encoding": "utf-8",
+        "engine": "stdlib"
+       },
+       "source": "a.csv"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "csv: pipe",
+   "input": {
+    "name": "a.csv",
+    "bytes_b64": "bmFtZXxhZ2UKQWRhfDM2CkFsYW58NDEK"
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "| name | age |\n| --- | --- |\n| Ada | 36 |\n| Alan | 41 |",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "table",
+       "extra": {
+        "rows": 2,
+        "cols": 2,
+        "delimiter": "|",
+        "encoding": "utf-8",
+        "engine": "stdlib"
+       },
+       "source": "a.csv"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "csv: one column, csv",
+   "input": {
+    "name": "a.csv",
+    "bytes_b64": "b25lCnR3bwp0aHJlZQo="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "| one |\n| --- |\n| two |\n| three |",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "table",
+       "extra": {
+        "rows": 2,
+        "cols": 1,
+        "delimiter": ",",
+        "encoding": "utf-8",
+        "engine": "stdlib"
+       },
+       "source": "a.csv"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "csv: one column, tsv",
+   "input": {
+    "name": "a.tsv",
+    "bytes_b64": "b25lCnR3bwp0aHJlZQo="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "| one |\n| --- |\n| two |\n| three |",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "table",
+       "extra": {
+        "rows": 2,
+        "cols": 1,
+        "delimiter": "\t",
+        "encoding": "utf-8",
+        "engine": "stdlib"
+       },
+       "source": "a.tsv"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "csv: quoted fields with commas",
+   "input": {
+    "name": "a.csv",
+    "bytes_b64": "bmFtZSxxdW90ZQpBZGEsImhlbGxvLCB3b3JsZCIKQWxhbiwiYSAiImIiIiBjIgo="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "| name | quote |\n| --- | --- |\n| Ada | hello, world |\n| Alan | a \"b\" c |",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "table",
+       "extra": {
+        "rows": 2,
+        "cols": 2,
+        "delimiter": ",",
+        "encoding": "utf-8",
+        "engine": "stdlib"
+       },
+       "source": "a.csv"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "csv: quoted with semicolons",
+   "input": {
+    "name": "a.csv",
+    "bytes_b64": "ImEiOyJiIjsiYyIKIjEiOyIyIjsiMyIK"
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "| a | b | c |\n| --- | --- | --- |\n| 1 | 2 | 3 |",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "table",
+       "extra": {
+        "rows": 1,
+        "cols": 3,
+        "delimiter": ";",
+        "encoding": "utf-8",
+        "engine": "stdlib"
+       },
+       "source": "a.csv"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "csv: single quotes",
+   "input": {
+    "name": "a.csv",
+    "bytes_b64": "J2EnLCdiJwonMScsJzInCg=="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "| 'a' | 'b' |\n| --- | --- |\n| '1' | '2' |",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "table",
+       "extra": {
+        "rows": 1,
+        "cols": 2,
+        "delimiter": ",",
+        "encoding": "utf-8",
+        "engine": "stdlib"
+       },
+       "source": "a.csv"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "csv: a quote then a space",
+   "input": {
+    "name": "a.csv",
+    "bytes_b64": "eCwgImEiLCAiYiIKeSwgImMiLCAiZCIK"
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "| x |  \"a\" |  \"b\" |\n| --- | --- | --- |\n| y |  \"c\" |  \"d\" |",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "table",
+       "extra": {
+        "rows": 1,
+        "cols": 3,
+        "delimiter": ",",
+        "encoding": "utf-8",
+        "engine": "stdlib"
+       },
+       "source": "a.csv"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "csv: a line break in quotes",
+   "input": {
+    "name": "a.csv",
+    "bytes_b64": "YSxiCiJsaW5lCmJyZWFrIiwyCg=="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "| a | b |\n| --- | --- |\n| line break | 2 |",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "table",
+       "extra": {
+        "rows": 1,
+        "cols": 2,
+        "delimiter": ",",
+        "encoding": "utf-8",
+        "engine": "stdlib"
+       },
+       "source": "a.csv"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "csv: crlf",
+   "input": {
+    "name": "a.csv",
+    "bytes_b64": "YSxiDQoxLDINCg=="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "| a | b |\n| --- | --- |\n| 1 | 2 |",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "table",
+       "extra": {
+        "rows": 1,
+        "cols": 2,
+        "delimiter": ",",
+        "encoding": "utf-8",
+        "engine": "stdlib"
+       },
+       "source": "a.csv"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "csv: old mac line ends",
+   "input": {
+    "name": "a.csv",
+    "bytes_b64": "YSxiDTEsMg0="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "a.csv",
+       "error": {
+        "code": "parse-error"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "csv: text after a closing quote",
+   "input": {
+    "name": "a.csv",
+    "bytes_b64": "YSxiCiJ4InksMgo="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "| a | b |\n| --- | --- |\n| xy | 2 |",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "table",
+       "extra": {
+        "rows": 1,
+        "cols": 2,
+        "delimiter": ",",
+        "encoding": "utf-8",
+        "engine": "stdlib"
+       },
+       "source": "a.csv"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "csv: an unterminated quote",
+   "input": {
+    "name": "a.csv",
+    "bytes_b64": "YSxiCiJvcGVuLDIKMyw0Cg=="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "| a | b |\n| --- | --- |\n| open,2 3,4  |",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "table",
+       "extra": {
+        "rows": 1,
+        "cols": 2,
+        "delimiter": ",",
+        "encoding": "utf-8",
+        "engine": "stdlib"
+       },
+       "source": "a.csv"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "csv: a quote inside a field",
+   "input": {
+    "name": "a.csv",
+    "bytes_b64": "YSxiCngieSwyCg=="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "| a | b |\n| --- | --- |\n| x\"y | 2 |",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "table",
+       "extra": {
+        "rows": 1,
+        "cols": 2,
+        "delimiter": ",",
+        "encoding": "utf-8",
+        "engine": "stdlib"
+       },
+       "source": "a.csv"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "csv: empty lines",
+   "input": {
+    "name": "a.csv",
+    "bytes_b64": "CmEsYgoKMSwyCgo="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "|  |\n|  |\n| a | b |\n|  |\n| 1 | 2 |\n|  |",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "table",
+       "extra": {
+        "rows": 4,
+        "cols": 0,
+        "delimiter": ",",
+        "encoding": "utf-8",
+        "engine": "stdlib"
+       },
+       "source": "a.csv"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "csv: ragged rows",
+   "input": {
+    "name": "a.csv",
+    "bytes_b64": "YSxiLGMKMQoxLDIsMyw0Cg=="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "| a | b | c |\n| --- | --- | --- |\n| 1 |\n| 1 | 2 | 3 | 4 |",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "table",
+       "extra": {
+        "rows": 2,
+        "cols": 3,
+        "delimiter": ",",
+        "encoding": "utf-8",
+        "engine": "stdlib"
+       },
+       "source": "a.csv"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "csv: pipes and line breaks in cells",
+   "input": {
+    "name": "a.csv",
+    "bytes_b64": "YSxiCiJ4fHkiLCJwDQpxIgo="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "| a | b |\n| --- | --- |\n| x\\|y | p q |",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "table",
+       "extra": {
+        "rows": 1,
+        "cols": 2,
+        "delimiter": ",",
+        "encoding": "utf-8",
+        "engine": "stdlib"
+       },
+       "source": "a.csv"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "csv: empty",
+   "input": {
+    "name": "a.csv",
+    "bytes_b64": ""
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "table",
+       "note": "empty CSV",
+       "extra": {
+        "rows": 0,
+        "encoding": "utf-8",
+        "engine": "stdlib"
+       },
+       "source": "a.csv"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "csv: only white space",
+   "input": {
+    "name": "a.csv",
+    "bytes_b64": "IAoJCg=="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "table",
+       "note": "empty CSV",
+       "extra": {
+        "rows": 0,
+        "encoding": "utf-8",
+        "engine": "stdlib"
+       },
+       "source": "a.csv"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "csv: a header only",
+   "input": {
+    "name": "a.csv",
+    "bytes_b64": "YSxiLGMK"
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "| a | b | c |\n| --- | --- | --- |",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "table",
+       "extra": {
+        "rows": 0,
+        "cols": 3,
+        "delimiter": ",",
+        "encoding": "utf-8",
+        "engine": "stdlib"
+       },
+       "source": "a.csv"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "csv: rows truncated",
+   "input": {
+    "name": "a.csv",
+    "bytes_b64": "bgowCjEKMgozCjQKNQo2CjcKOAo5Cg=="
+   },
+   "options": {
+    "rows": 3
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "| n |\n| --- |\n| 0 |\n| 1 |\n| 2 |",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "table",
+       "extra": {
+        "rows": 10,
+        "cols": 1,
+        "delimiter": ",",
+        "encoding": "utf-8",
+        "engine": "stdlib",
+        "rows_truncated": true
+       },
+       "source": "a.csv"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "csv: rows: 0",
+   "input": {
+    "name": "a.csv",
+    "bytes_b64": "YSxiCjEsMgo="
+   },
+   "options": {
+    "rows": 0
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "| a | b |\n| --- | --- |",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "table",
+       "extra": {
+        "rows": 1,
+        "cols": 2,
+        "delimiter": ",",
+        "encoding": "utf-8",
+        "engine": "stdlib",
+        "rows_truncated": true
+       },
+       "source": "a.csv"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "csv: default truncation",
+   "input": {
+    "name": "a.csv",
+    "bytes_b64": "bixtCjAseAoxLHgKMix4CjMseAo0LHgKNSx4CjYseAo3LHgKOCx4CjkseAoxMCx4CjExLHgKMTIseAoxMyx4CjE0LHgKMTUseAoxNix4CjE3LHgKMTgseAoxOSx4CjIwLHgKMjEseAoyMix4CjIzLHgKMjQseAoyNSx4CjI2LHgKMjcseAoyOCx4CjI5LHgKMzAseAozMSx4CjMyLHgKMzMseAozNCx4CjM1LHgKMzYseAozNyx4CjM4LHgKMzkseAo0MCx4CjQxLHgKNDIseAo0Myx4CjQ0LHgKNDUseAo0Nix4CjQ3LHgKNDgseAo0OSx4CjUwLHgKNTEseAo1Mix4CjUzLHgKNTQseAo1NSx4CjU2LHgKNTcseAo1OCx4CjU5LHgKNjAseAo2MSx4CjYyLHgKNjMseAo2NCx4CjY1LHgKNjYseAo2Nyx4CjY4LHgKNjkseAo3MCx4CjcxLHgKNzIseAo3Myx4Cjc0LHgKNzUseAo3Nix4Cjc3LHgKNzgseAo3OSx4CjgwLHgKODEseAo4Mix4CjgzLHgKODQseAo4NSx4Cjg2LHgKODcseAo4OCx4Cjg5LHgKOTAseAo5MSx4CjkyLHgKOTMseAo5NCx4Cjk1LHgKOTYseAo5Nyx4Cjk4LHgKOTkseAoxMDAseAoxMDEseAoxMDIseAoxMDMseAoxMDQseAoxMDUseAoxMDYseAoxMDcseAoxMDgseAoxMDkseAoxMTAseAoxMTEseAoxMTIseAoxMTMseAoxMTQseAoxMTUseAoxMTYseAoxMTcseAoxMTgseAoxMTkseAoxMjAseAoxMjEseAoxMjIseAoxMjMseAoxMjQseAoxMjUseAoxMjYseAoxMjcseAoxMjgseAoxMjkseAoxMzAseAoxMzEseAoxMzIseAoxMzMseAoxMzQseAoxMzUseAoxMzYseAoxMzcseAoxMzgseAoxMzkseAoxNDAseAoxNDEseAoxNDIseAoxNDMseAoxNDQseAoxNDUseAoxNDYseAoxNDcseAoxNDgseAoxNDkseAoxNTAseAoxNTEseAoxNTIseAoxNTMseAoxNTQseAoxNTUseAoxNTYseAoxNTcseAoxNTgseAoxNTkseAoxNjAseAoxNjEseAoxNjIseAoxNjMseAoxNjQseAoxNjUseAoxNjYseAoxNjcseAoxNjgseAoxNjkseAoxNzAseAoxNzEseAoxNzIseAoxNzMseAoxNzQseAoxNzUseAoxNzYseAoxNzcseAoxNzgseAoxNzkseAoxODAseAoxODEseAoxODIseAoxODMseAoxODQseAoxODUseAoxODYseAoxODcseAoxODgseAoxODkseAoxOTAseAoxOTEseAoxOTIseAoxOTMseAoxOTQseAoxOTUseAoxOTYseAoxOTcseAoxOTgseAoxOTkseAoyMDAseAoyMDEseAoyMDIseAoyMDMseAoyMDQseAo="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "| n | m |\n| --- | --- |\n| 0 | x |\n| 1 | x |\n| 2 | x |\n| 3 | x |\n| 4 | x |\n| 5 | x |\n| 6 | x |\n| 7 | x |\n| 8 | x |\n| 9 | x |\n| 10 | x |\n| 11 | x |\n| 12 | x |\n| 13 | x |\n| 14 | x |\n| 15 | x |\n| 16 | x |\n| 17 | x |\n| 18 | x |\n| 19 | x |\n| 20 | x |\n| 21 | x |\n| 22 | x |\n| 23 | x |\n| 24 | x |\n| 25 | x |\n| 26 | x |\n| 27 | x |\n| 28 | x |\n| 29 | x |\n| 30 | x |\n| 31 | x |\n| 32 | x |\n| 33 | x |\n| 34 | x |\n| 35 | x |\n| 36 | x |\n| 37 | x |\n| 38 | x |\n| 39 | x |\n| 40 | x |\n| 41 | x |\n| 42 | x |\n| 43 | x |\n| 44 | x |\n| 45 | x |\n| 46 | x |\n| 47 | x |\n| 48 | x |\n| 49 | x |\n| 50 | x |\n| 51 | x |\n| 52 | x |\n| 53 | x |\n| 54 | x |\n| 55 | x |\n| 56 | x |\n| 57 | x |\n| 58 | x |\n| 59 | x |\n| 60 | x |\n| 61 | x |\n| 62 | x |\n| 63 | x |\n| 64 | x |\n| 65 | x |\n| 66 | x |\n| 67 | x |\n| 68 | x |\n| 69 | x |\n| 70 | x |\n| 71 | x |\n| 72 | x |\n| 73 | x |\n| 74 | x |\n| 75 | x |\n| 76 | x |\n| 77 | x |\n| 78 | x |\n| 79 | x |\n| 80 | x |\n| 81 | x |\n| 82 | x |\n| 83 | x |\n| 84 | x |\n| 85 | x |\n| 86 | x |\n| 87 | x |\n| 88 | x |\n| 89 | x |\n| 90 | x |\n| 91 | x |\n| 92 | x |\n| 93 | x |\n| 94 | x |\n| 95 | x |\n| 96 | x |\n| 97 | x |\n| 98 | x |\n| 99 | x |\n| 100 | x |\n| 101 | x |\n| 102 | x |\n| 103 | x |\n| 104 | x |\n| 105 | x |\n| 106 | x |\n| 107 | x |\n| 108 | x |\n| 109 | x |\n| 110 | x |\n| 111 | x |\n| 112 | x |\n| 113 | x |\n| 114 | x |\n| 115 | x |\n| 116 | x |\n| 117 | x |\n| 118 | x |\n| 119 | x |\n| 120 | x |\n| 121 | x |\n| 122 | x |\n| 123 | x |\n| 124 | x |\n| 125 | x |\n| 126 | x |\n| 127 | x |\n| 128 | x |\n| 129 | x |\n| 130 | x |\n| 131 | x |\n| 132 | x |\n| 133 | x |\n| 134 | x |\n| 135 | x |\n| 136 | x |\n| 137 | x |\n| 138 | x |\n| 139 | x |\n| 140 | x |\n| 141 | x |\n| 142 | x |\n| 143 | x |\n| 144 | x |\n| 145 | x |\n| 146 | x |\n| 147 | x |\n| 148 | x |\n| 149 | x |\n| 150 | x |\n| 151 | x |\n| 152 | x |\n| 153 | x |\n| 154 | x |\n| 155 | x |\n| 156 | x |\n| 157 | x |\n| 158 | x |\n| 159 | x |\n| 160 | x |\n| 161 | x |\n| 162 | x |\n| 163 | x |\n| 164 | x |\n| 165 | x |\n| 166 | x |\n| 167 | x |\n| 168 | x |\n| 169 | x |\n| 170 | x |\n| 171 | x |\n| 172 | x |\n| 173 | x |\n| 174 | x |\n| 175 | x |\n| 176 | x |\n| 177 | x |\n| 178 | x |\n| 179 | x |\n| 180 | x |\n| 181 | x |\n| 182 | x |\n| 183 | x |\n| 184 | x |\n| 185 | x |\n| 186 | x |\n| 187 | x |\n| 188 | x |\n| 189 | x |\n| 190 | x |\n| 191 | x |\n| 192 | x |\n| 193 | x |\n| 194 | x |\n| 195 | x |\n| 196 | x |\n| 197 | x |\n| 198 | x |\n| 199 | x |",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "table",
+       "extra": {
+        "rows": 205,
+        "cols": 2,
+        "delimiter": ",",
+        "encoding": "utf-8",
+        "engine": "stdlib",
+        "rows_truncated": true
+       },
+       "source": "a.csv"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "csv: delimiter: semicolon",
+   "input": {
+    "name": "a.csv",
+    "bytes_b64": "YTtiLGMKMTsyLDMK"
+   },
+   "options": {
+    "delimiter": "semicolon"
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "| a | b,c |\n| --- | --- |\n| 1 | 2,3 |",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "table",
+       "extra": {
+        "rows": 1,
+        "cols": 2,
+        "delimiter": ";",
+        "encoding": "utf-8",
+        "engine": "stdlib"
+       },
+       "source": "a.csv"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "csv: delimiter: a character",
+   "input": {
+    "name": "a.csv",
+    "bytes_b64": "YTtiLGMKMTsyLDMK"
+   },
+   "options": {
+    "delimiter": ";"
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "| a | b,c |\n| --- | --- |\n| 1 | 2,3 |",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "table",
+       "extra": {
+        "rows": 1,
+        "cols": 2,
+        "delimiter": ";",
+        "encoding": "utf-8",
+        "engine": "stdlib"
+       },
+       "source": "a.csv"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "csv: delimiter: TAB in capitals",
+   "input": {
+    "name": "a.csv",
+    "bytes_b64": "YQliCjEJMgo="
+   },
+   "options": {
+    "delimiter": " TAB "
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "| a | b |\n| --- | --- |\n| 1 | 2 |",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "table",
+       "extra": {
+        "rows": 1,
+        "cols": 2,
+        "delimiter": "\t",
+        "encoding": "utf-8",
+        "engine": "stdlib"
+       },
+       "source": "a.csv"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "csv: delimiter: first character",
+   "input": {
+    "name": "a.csv",
+    "bytes_b64": "YSNiCjEjMgo="
+   },
+   "options": {
+    "delimiter": "#!"
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "| a | b |\n| --- | --- |\n| 1 | 2 |",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "table",
+       "extra": {
+        "rows": 1,
+        "cols": 2,
+        "delimiter": "#",
+        "encoding": "utf-8",
+        "engine": "stdlib"
+       },
+       "source": "a.csv"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "csv: latin-1",
+   "input": {
+    "name": "a.csv",
+    "bytes_b64": "bm9tLHZpbGxlClpv6SxNb250culhbAo="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "| nom | ville |\n| --- | --- |\n| Zoé | Montréal |",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "table",
+       "extra": {
+        "rows": 1,
+        "cols": 2,
+        "delimiter": ",",
+        "encoding": "latin-1",
+        "engine": "stdlib"
+       },
+       "source": "a.csv"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "csv: a byte order mark stays in the first cell",
+   "input": {
+    "name": "a.csv",
+    "bytes_b64": "77u/YSxiCjEsMgo="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "| ﻿a | b |\n| --- | --- |\n| 1 | 2 |",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "table",
+       "extra": {
+        "rows": 1,
+        "cols": 2,
+        "delimiter": ",",
+        "encoding": "utf-8",
+        "engine": "stdlib"
+       },
+       "source": "a.csv"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "csv: a NUL in a cell",
+   "input": {
+    "name": "a.csv",
+    "bytes_b64": "YSxiCngAeSwyCg=="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "| a | b |\n| --- | --- |\n| x\u0000y | 2 |",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "table",
+       "extra": {
+        "rows": 1,
+        "cols": 2,
+        "delimiter": ",",
+        "encoding": "utf-8",
+        "engine": "stdlib"
+       },
+       "source": "a.csv"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "csv: unicode",
+   "input": {
+    "name": "a.csv",
+    "bytes_b64": "w6l0w6ks8J+YgArDsSzmlocK"
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "| été | 😀 |\n| --- | --- |\n| ñ | 文 |",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "table",
+       "extra": {
+        "rows": 1,
+        "cols": 2,
+        "delimiter": ",",
+        "encoding": "utf-8",
+        "engine": "stdlib"
+       },
+       "source": "a.csv"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "csv: commas and semicolons, both regular",
+   "input": {
+    "name": "a.csv",
+    "bytes_b64": "YSxiO2MKMSwyOzMKNCw1OzYK"
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "| a | b;c |\n| --- | --- |\n| 1 | 2;3 |\n| 4 | 5;6 |",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "table",
+       "extra": {
+        "rows": 2,
+        "cols": 2,
+        "delimiter": ",",
+        "encoding": "utf-8",
+        "engine": "stdlib"
+       },
+       "source": "a.csv"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "csv: pipes and semicolons, both regular",
+   "input": {
+    "name": "a.csv",
+    "bytes_b64": "YXxiO2MKMXwyOzMKNHw1OzYK"
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "| a\\|b | c |\n| --- | --- |\n| 1\\|2 | 3 |\n| 4\\|5 | 6 |",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "table",
+       "extra": {
+        "rows": 2,
+        "cols": 2,
+        "delimiter": ";",
+        "encoding": "utf-8",
+        "engine": "stdlib"
+       },
+       "source": "a.csv"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "csv: mostly consistent",
+   "input": {
+    "name": "a.csv",
+    "bytes_b64": "YSxiLGMKMSwyLDMKMSwyLDMKMSwyLDMKMSwyLDMKMSwyLDMKMSwyLDMKMSwyLDMKMSwyLDMKMSwyLDMKMSwyCjE7MgoxOzIK"
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "| a | b | c |\n| --- | --- | --- |\n| 1 | 2 | 3 |\n| 1 | 2 | 3 |\n| 1 | 2 | 3 |\n| 1 | 2 | 3 |\n| 1 | 2 | 3 |\n| 1 | 2 | 3 |\n| 1 | 2 | 3 |\n| 1 | 2 | 3 |\n| 1 | 2 | 3 |\n| 1 | 2 |\n| 1;2 |\n| 1;2 |",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "table",
+       "extra": {
+        "rows": 12,
+        "cols": 3,
+        "delimiter": ",",
+        "encoding": "utf-8",
+        "engine": "stdlib"
+       },
+       "source": "a.csv"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "csv: more than ten lines, a delimiter found later",
+   "input": {
+    "name": "a.csv",
+    "bytes_b64": "eAp4CngKeAp4CngKeAp4CngKeAphO2IKMTsyCmE7YgoxOzIKYTtiCjE7Mgo="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "| x |\n| --- |\n| x |\n| x |\n| x |\n| x |\n| x |\n| x |\n| x |\n| x |\n| x |\n| a;b |\n| 1;2 |\n| a;b |\n| 1;2 |\n| a;b |\n| 1;2 |",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "table",
+       "extra": {
+        "rows": 15,
+        "cols": 1,
+        "delimiter": ",",
+        "encoding": "utf-8",
+        "engine": "stdlib"
+       },
+       "source": "a.csv"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "csv: a sample longer than 8192 characters",
+   "input": {
+    "name": "a.csv",
+    "bytes_b64": "YSxiCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCjEsMgoxLDIKMSwyCng7eTt6Cg=="
+   },
+   "options": {
+    "rows": 2
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "| a | b |\n| --- | --- |\n| 1 | 2 |\n| 1 | 2 |",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "table",
+       "extra": {
+        "rows": 2101,
+        "cols": 2,
+        "delimiter": ",",
+        "encoding": "utf-8",
+        "engine": "stdlib",
+        "rows_truncated": true
+       },
+       "source": "a.csv"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "csv: an unknown option",
+   "input": {
+    "name": "a.csv",
+    "bytes_b64": "YSxiCjEsMgo="
+   },
+   "options": {
+    "sheet": "x"
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "| a | b |\n| --- | --- |\n| 1 | 2 |",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "table",
+       "extra": {
+        "rows": 1,
+        "cols": 2,
+        "delimiter": ",",
+        "encoding": "utf-8",
+        "engine": "stdlib"
+       },
+       "warnings": [
+        "Unknown option 'sheet' for .csv"
+       ],
+       "source": "a.csv"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "csv: text sniffed with quotes and a newline delimiter",
+   "input": {
+    "name": "a.csv",
+    "bytes_b64": "ImEiCiJiIgoiYyIK"
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "| a |\n| --- |\n| b |\n| c |",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "table",
+       "extra": {
+        "rows": 2,
+        "cols": 1,
+        "delimiter": ",",
+        "encoding": "utf-8",
+        "engine": "stdlib"
+       },
+       "source": "a.csv"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "ipynb: cells of every kind",
+   "input": {
+    "name": "my.notebook.IPYNB",
+    "bytes_b64": "eyJjZWxscyI6IFt7ImNlbGxfdHlwZSI6ICJtYXJrZG93biIsICJzb3VyY2UiOiAiIyBUaXRsZSDwn5iAXG5cblNvbWUgKnRleHQqLiIsICJtZXRhZGF0YSI6IHt9fSwgeyJjZWxsX3R5cGUiOiAiY29kZSIsICJzb3VyY2UiOiBbImltcG9ydCBtYXRoXG4iLCAicHJpbnQobWF0aC5waSkiXSwgIm1ldGFkYXRhIjoge30sICJleGVjdXRpb25fY291bnQiOiAxLCAib3V0cHV0cyI6IFt7Im91dHB1dF90eXBlIjogInN0cmVhbSIsICJuYW1lIjogInN0ZG91dCIsICJ0ZXh0IjogWyJcbjMuMTQxNTlcbiIsICJcbiJdfSwgeyJvdXRwdXRfdHlwZSI6ICJleGVjdXRlX3Jlc3VsdCIsICJkYXRhIjogeyJ0ZXh0L3BsYWluIjogWyInZG9uZSciXX0sICJtZXRhZGF0YSI6IHt9LCAiZXhlY3V0aW9uX2NvdW50IjogMX0sIHsib3V0cHV0X3R5cGUiOiAiZGlzcGxheV9kYXRhIiwgImRhdGEiOiB7ImltYWdlL3BuZyI6IFsiaVZCT1J3MEtHZ29BQUFBTlNVaEVVZ0FBQUFFQUFBQUJDQVlBQUFBZlxuIiwgIkZjU0pBQUFBRFVsRVFWUjQybU5rK005UUR3QURoZ0dBV2pSOWF3QUFBQUJKUlU1RXJrSmdnZz09Il0sICJ0ZXh0L3BsYWluIjogIjxGaWd1cmU+In0sICJtZXRhZGF0YSI6IHt9fSwgeyJvdXRwdXRfdHlwZSI6ICJkaXNwbGF5X2RhdGEiLCAiZGF0YSI6IHsiaW1hZ2UvcG5nIjogImlWQk9SdzBLR2dvQUFBQU5TVWhFVWdBQUFBRUFBQUFCQ0FZQUFBQWZGY1NKQUFBQURVbEVRVlI0Mm1OaytNOVFEd0FEaGdHQVdqUjlhd0FBQUFCSlJVNUVya0pnZ2c9PSJ9LCAibWV0YWRhdGEiOiB7fX0sIHsib3V0cHV0X3R5cGUiOiAiZXJyb3IiLCAiZW5hbWUiOiAiRSIsICJldmFsdWUiOiAidiIsICJ0cmFjZWJhY2siOiBbIlRyYWNlYmFjayIsICJFOiB2Il19LCB7Im91dHB1dF90eXBlIjogImNsZWFyX291dHB1dCJ9LCB7Im91dHB1dF90eXBlIjogInN0cmVhbSIsICJ0ZXh0IjogIlxuXG4ifSwgIm5vdCBhbiBvYmplY3QiXX0sIHsiY2VsbF90eXBlIjogInJhdyIsICJzb3VyY2UiOiBudWxsLCAibWV0YWRhdGEiOiB7fX1dLCAibWV0YWRhdGEiOiB7fSwgIm5iZm9ybWF0IjogNCwgIm5iZm9ybWF0X21pbm9yIjogNX0="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "# Title 😀\n\nSome *text*.\n\n```python\nimport math\nprint(math.pi)\n```\n\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "notebook",
+       "extra": {
+        "cell_counts": {
+         "code": 1,
+         "markdown": 1,
+         "raw": 1
+        },
+        "language": "python",
+        "nbformat": 4
+       },
+       "segments": [
+        {
+         "kind": "section",
+         "label": "cell 1 (markdown)",
+         "start": 0,
+         "end": 23
+        },
+        {
+         "kind": "section",
+         "label": "cell 2 (code)",
+         "start": 25,
+         "end": 65
+        },
+        {
+         "kind": "section",
+         "label": "cell 3 (raw)",
+         "start": 67,
+         "end": 67
+        }
+       ],
+       "source": "my.notebook.IPYNB"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "ipynb: with outputs",
+   "input": {
+    "name": "nb.ipynb",
+    "bytes_b64": "eyJjZWxscyI6IFt7ImNlbGxfdHlwZSI6ICJtYXJrZG93biIsICJzb3VyY2UiOiAiIyBUaXRsZSDwn5iAXG5cblNvbWUgKnRleHQqLiIsICJtZXRhZGF0YSI6IHt9fSwgeyJjZWxsX3R5cGUiOiAiY29kZSIsICJzb3VyY2UiOiBbImltcG9ydCBtYXRoXG4iLCAicHJpbnQobWF0aC5waSkiXSwgIm1ldGFkYXRhIjoge30sICJleGVjdXRpb25fY291bnQiOiAxLCAib3V0cHV0cyI6IFt7Im91dHB1dF90eXBlIjogInN0cmVhbSIsICJuYW1lIjogInN0ZG91dCIsICJ0ZXh0IjogWyJcbjMuMTQxNTlcbiIsICJcbiJdfSwgeyJvdXRwdXRfdHlwZSI6ICJleGVjdXRlX3Jlc3VsdCIsICJkYXRhIjogeyJ0ZXh0L3BsYWluIjogWyInZG9uZSciXX0sICJtZXRhZGF0YSI6IHt9LCAiZXhlY3V0aW9uX2NvdW50IjogMX0sIHsib3V0cHV0X3R5cGUiOiAiZGlzcGxheV9kYXRhIiwgImRhdGEiOiB7ImltYWdlL3BuZyI6IFsiaVZCT1J3MEtHZ29BQUFBTlNVaEVVZ0FBQUFFQUFBQUJDQVlBQUFBZlxuIiwgIkZjU0pBQUFBRFVsRVFWUjQybU5rK005UUR3QURoZ0dBV2pSOWF3QUFBQUJKUlU1RXJrSmdnZz09Il0sICJ0ZXh0L3BsYWluIjogIjxGaWd1cmU+In0sICJtZXRhZGF0YSI6IHt9fSwgeyJvdXRwdXRfdHlwZSI6ICJkaXNwbGF5X2RhdGEiLCAiZGF0YSI6IHsiaW1hZ2UvcG5nIjogImlWQk9SdzBLR2dvQUFBQU5TVWhFVWdBQUFBRUFBQUFCQ0FZQUFBQWZGY1NKQUFBQURVbEVRVlI0Mm1OaytNOVFEd0FEaGdHQVdqUjlhd0FBQUFCSlJVNUVya0pnZ2c9PSJ9LCAibWV0YWRhdGEiOiB7fX0sIHsib3V0cHV0X3R5cGUiOiAiZXJyb3IiLCAiZW5hbWUiOiAiRSIsICJldmFsdWUiOiAidiIsICJ0cmFjZWJhY2siOiBbIlRyYWNlYmFjayIsICJFOiB2Il19LCB7Im91dHB1dF90eXBlIjogImNsZWFyX291dHB1dCJ9LCB7Im91dHB1dF90eXBlIjogInN0cmVhbSIsICJ0ZXh0IjogIlxuXG4ifSwgIm5vdCBhbiBvYmplY3QiXX0sIHsiY2VsbF90eXBlIjogInJhdyIsICJzb3VyY2UiOiBudWxsLCAibWV0YWRhdGEiOiB7fX1dLCAibWV0YWRhdGEiOiB7fSwgIm5iZm9ybWF0IjogNCwgIm5iZm9ybWF0X21pbm9yIjogNX0="
+   },
+   "options": {
+    "outputs": true
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "# Title 😀\n\nSome *text*.\n\n```python\nimport math\nprint(math.pi)\n```\n\n```output\n3.14159\n```\n\n```output\n'done'\n```\n\n```output\n<Figure>\n```\n\n```output\nTraceback\nE: v\n```\n\n",
+      "images": [
+       {
+        "name": "nb-cell-2-output.png",
+        "mimetype": "image/png",
+        "bytes_b64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+       },
+       {
+        "name": "nb-cell-2-output-2.png",
+        "mimetype": "image/png",
+        "bytes_b64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+       }
+      ],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "notebook",
+       "extra": {
+        "cell_counts": {
+         "code": 1,
+         "markdown": 1,
+         "raw": 1
+        },
+        "language": "python",
+        "nbformat": 4
+       },
+       "segments": [
+        {
+         "kind": "section",
+         "label": "cell 1 (markdown)",
+         "start": 0,
+         "end": 23
+        },
+        {
+         "kind": "section",
+         "label": "cell 2 (code)",
+         "start": 25,
+         "end": 164
+        },
+        {
+         "kind": "section",
+         "label": "cell 3 (raw)",
+         "start": 166,
+         "end": 166
+        }
+       ],
+       "source": "nb.ipynb"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "ipynb: the language from language_info",
+   "input": {
+    "name": "nb.ipynb",
+    "bytes_b64": "eyJjZWxscyI6IFt7ImNlbGxfdHlwZSI6ICJjb2RlIiwgInNvdXJjZSI6IFsiaW1wb3J0IG1hdGhcbiIsICJwcmludChtYXRoLnBpKSJdLCAibWV0YWRhdGEiOiB7fSwgImV4ZWN1dGlvbl9jb3VudCI6IDEsICJvdXRwdXRzIjogW3sib3V0cHV0X3R5cGUiOiAic3RyZWFtIiwgIm5hbWUiOiAic3Rkb3V0IiwgInRleHQiOiBbIlxuMy4xNDE1OVxuIiwgIlxuIl19LCB7Im91dHB1dF90eXBlIjogImV4ZWN1dGVfcmVzdWx0IiwgImRhdGEiOiB7InRleHQvcGxhaW4iOiBbIidkb25lJyJdfSwgIm1ldGFkYXRhIjoge30sICJleGVjdXRpb25fY291bnQiOiAxfSwgeyJvdXRwdXRfdHlwZSI6ICJkaXNwbGF5X2RhdGEiLCAiZGF0YSI6IHsiaW1hZ2UvcG5nIjogWyJpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQUVBQUFBQkNBWUFBQUFmXG4iLCAiRmNTSkFBQUFEVWxFUVZSNDJtTmsrTTlRRHdBRGhnR0FXalI5YXdBQUFBQkpSVTVFcmtKZ2dnPT0iXSwgInRleHQvcGxhaW4iOiAiPEZpZ3VyZT4ifSwgIm1ldGFkYXRhIjoge319LCB7Im91dHB1dF90eXBlIjogImRpc3BsYXlfZGF0YSIsICJkYXRhIjogeyJpbWFnZS9wbmciOiAiaVZCT1J3MEtHZ29BQUFBTlNVaEVVZ0FBQUFFQUFBQUJDQVlBQUFBZkZjU0pBQUFBRFVsRVFWUjQybU5rK005UUR3QURoZ0dBV2pSOWF3QUFBQUJKUlU1RXJrSmdnZz09In0sICJtZXRhZGF0YSI6IHt9fSwgeyJvdXRwdXRfdHlwZSI6ICJlcnJvciIsICJlbmFtZSI6ICJFIiwgImV2YWx1ZSI6ICJ2IiwgInRyYWNlYmFjayI6IFsiVHJhY2ViYWNrIiwgIkU6IHYiXX0sIHsib3V0cHV0X3R5cGUiOiAiY2xlYXJfb3V0cHV0In0sIHsib3V0cHV0X3R5cGUiOiAic3RyZWFtIiwgInRleHQiOiAiXG5cbiJ9LCAibm90IGFuIG9iamVjdCJdfV0sICJtZXRhZGF0YSI6IHsibGFuZ3VhZ2VfaW5mbyI6IHsibmFtZSI6ICJqdWxpYSJ9fSwgIm5iZm9ybWF0IjogNCwgIm5iZm9ybWF0X21pbm9yIjogNX0="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "```julia\nimport math\nprint(math.pi)\n```",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "notebook",
+       "extra": {
+        "cell_counts": {
+         "code": 1,
+         "markdown": 0,
+         "raw": 0
+        },
+        "language": "julia",
+        "nbformat": 4
+       },
+       "segments": [
+        {
+         "kind": "section",
+         "label": "cell 1 (code)",
+         "start": 0,
+         "end": 39
+        }
+       ],
+       "source": "nb.ipynb"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "ipynb: the language from kernelspec",
+   "input": {
+    "name": "nb.ipynb",
+    "bytes_b64": "eyJjZWxscyI6IFt7ImNlbGxfdHlwZSI6ICJjb2RlIiwgInNvdXJjZSI6IFsiaW1wb3J0IG1hdGhcbiIsICJwcmludChtYXRoLnBpKSJdLCAibWV0YWRhdGEiOiB7fSwgImV4ZWN1dGlvbl9jb3VudCI6IDEsICJvdXRwdXRzIjogW3sib3V0cHV0X3R5cGUiOiAic3RyZWFtIiwgIm5hbWUiOiAic3Rkb3V0IiwgInRleHQiOiBbIlxuMy4xNDE1OVxuIiwgIlxuIl19LCB7Im91dHB1dF90eXBlIjogImV4ZWN1dGVfcmVzdWx0IiwgImRhdGEiOiB7InRleHQvcGxhaW4iOiBbIidkb25lJyJdfSwgIm1ldGFkYXRhIjoge30sICJleGVjdXRpb25fY291bnQiOiAxfSwgeyJvdXRwdXRfdHlwZSI6ICJkaXNwbGF5X2RhdGEiLCAiZGF0YSI6IHsiaW1hZ2UvcG5nIjogWyJpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQUVBQUFBQkNBWUFBQUFmXG4iLCAiRmNTSkFBQUFEVWxFUVZSNDJtTmsrTTlRRHdBRGhnR0FXalI5YXdBQUFBQkpSVTVFcmtKZ2dnPT0iXSwgInRleHQvcGxhaW4iOiAiPEZpZ3VyZT4ifSwgIm1ldGFkYXRhIjoge319LCB7Im91dHB1dF90eXBlIjogImRpc3BsYXlfZGF0YSIsICJkYXRhIjogeyJpbWFnZS9wbmciOiAiaVZCT1J3MEtHZ29BQUFBTlNVaEVVZ0FBQUFFQUFBQUJDQVlBQUFBZkZjU0pBQUFBRFVsRVFWUjQybU5rK005UUR3QURoZ0dBV2pSOWF3QUFBQUJKUlU1RXJrSmdnZz09In0sICJtZXRhZGF0YSI6IHt9fSwgeyJvdXRwdXRfdHlwZSI6ICJlcnJvciIsICJlbmFtZSI6ICJFIiwgImV2YWx1ZSI6ICJ2IiwgInRyYWNlYmFjayI6IFsiVHJhY2ViYWNrIiwgIkU6IHYiXX0sIHsib3V0cHV0X3R5cGUiOiAiY2xlYXJfb3V0cHV0In0sIHsib3V0cHV0X3R5cGUiOiAic3RyZWFtIiwgInRleHQiOiAiXG5cbiJ9LCAibm90IGFuIG9iamVjdCJdfV0sICJtZXRhZGF0YSI6IHsia2VybmVsc3BlYyI6IHsibGFuZ3VhZ2UiOiAiUiJ9fSwgIm5iZm9ybWF0IjogNCwgIm5iZm9ybWF0X21pbm9yIjogNX0="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "```R\nimport math\nprint(math.pi)\n```",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "notebook",
+       "extra": {
+        "cell_counts": {
+         "code": 1,
+         "markdown": 0,
+         "raw": 0
+        },
+        "language": "R",
+        "nbformat": 4
+       },
+       "segments": [
+        {
+         "kind": "section",
+         "label": "cell 1 (code)",
+         "start": 0,
+         "end": 35
+        }
+       ],
+       "source": "nb.ipynb"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "ipynb: an empty language falls through",
+   "input": {
+    "name": "nb.ipynb",
+    "bytes_b64": "eyJjZWxscyI6IFt7ImNlbGxfdHlwZSI6ICJjb2RlIiwgInNvdXJjZSI6IFsiaW1wb3J0IG1hdGhcbiIsICJwcmludChtYXRoLnBpKSJdLCAibWV0YWRhdGEiOiB7fSwgImV4ZWN1dGlvbl9jb3VudCI6IDEsICJvdXRwdXRzIjogW3sib3V0cHV0X3R5cGUiOiAic3RyZWFtIiwgIm5hbWUiOiAic3Rkb3V0IiwgInRleHQiOiBbIlxuMy4xNDE1OVxuIiwgIlxuIl19LCB7Im91dHB1dF90eXBlIjogImV4ZWN1dGVfcmVzdWx0IiwgImRhdGEiOiB7InRleHQvcGxhaW4iOiBbIidkb25lJyJdfSwgIm1ldGFkYXRhIjoge30sICJleGVjdXRpb25fY291bnQiOiAxfSwgeyJvdXRwdXRfdHlwZSI6ICJkaXNwbGF5X2RhdGEiLCAiZGF0YSI6IHsiaW1hZ2UvcG5nIjogWyJpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQUVBQUFBQkNBWUFBQUFmXG4iLCAiRmNTSkFBQUFEVWxFUVZSNDJtTmsrTTlRRHdBRGhnR0FXalI5YXdBQUFBQkpSVTVFcmtKZ2dnPT0iXSwgInRleHQvcGxhaW4iOiAiPEZpZ3VyZT4ifSwgIm1ldGFkYXRhIjoge319LCB7Im91dHB1dF90eXBlIjogImRpc3BsYXlfZGF0YSIsICJkYXRhIjogeyJpbWFnZS9wbmciOiAiaVZCT1J3MEtHZ29BQUFBTlNVaEVVZ0FBQUFFQUFBQUJDQVlBQUFBZkZjU0pBQUFBRFVsRVFWUjQybU5rK005UUR3QURoZ0dBV2pSOWF3QUFBQUJKUlU1RXJrSmdnZz09In0sICJtZXRhZGF0YSI6IHt9fSwgeyJvdXRwdXRfdHlwZSI6ICJlcnJvciIsICJlbmFtZSI6ICJFIiwgImV2YWx1ZSI6ICJ2IiwgInRyYWNlYmFjayI6IFsiVHJhY2ViYWNrIiwgIkU6IHYiXX0sIHsib3V0cHV0X3R5cGUiOiAiY2xlYXJfb3V0cHV0In0sIHsib3V0cHV0X3R5cGUiOiAic3RyZWFtIiwgInRleHQiOiAiXG5cbiJ9LCAibm90IGFuIG9iamVjdCJdfV0sICJtZXRhZGF0YSI6IHsibGFuZ3VhZ2VfaW5mbyI6IHsibmFtZSI6ICIifSwgImtlcm5lbHNwZWMiOiB7Imxhbmd1YWdlIjogInIifX0sICJuYmZvcm1hdCI6IDQsICJuYmZvcm1hdF9taW5vciI6IDV9"
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "```r\nimport math\nprint(math.pi)\n```",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "notebook",
+       "extra": {
+        "cell_counts": {
+         "code": 1,
+         "markdown": 0,
+         "raw": 0
+        },
+        "language": "r",
+        "nbformat": 4
+       },
+       "segments": [
+        {
+         "kind": "section",
+         "label": "cell 1 (code)",
+         "start": 0,
+         "end": 35
+        }
+       ],
+       "source": "nb.ipynb"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "ipynb: a long output is cut",
+   "input": {
+    "name": "nb.ipynb",
+    "bytes_b64": "eyJjZWxscyI6IFt7ImNlbGxfdHlwZSI6ICJjb2RlIiwgInNvdXJjZSI6ICJ4IiwgIm91dHB1dHMiOiBbeyJvdXRwdXRfdHlwZSI6ICJzdHJlYW0iLCAidGV4dCI6ICJ5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5ICAgXG5cdHp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6In1dfV0sICJtZXRhZGF0YSI6IHt9LCAibmJmb3JtYXQiOiA0LCAibmJmb3JtYXRfbWlub3IiOiA1fQ=="
+   },
+   "options": {
+    "outputs": true
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "```python\nx\n```\n\n```output\nyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy   \n\tzzzzz\n… (truncated)\n```",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "notebook",
+       "extra": {
+        "cell_counts": {
+         "code": 1,
+         "markdown": 0,
+         "raw": 0
+        },
+        "language": "python",
+        "nbformat": 4
+       },
+       "segments": [
+        {
+         "kind": "section",
+         "label": "cell 1 (code)",
+         "start": 0,
+         "end": 2045
+        }
+       ],
+       "source": "nb.ipynb"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "ipynb: no cells",
+   "input": {
+    "name": "nb.ipynb",
+    "bytes_b64": "eyJjZWxscyI6IFtdLCAibWV0YWRhdGEiOiB7fSwgIm5iZm9ybWF0IjogNCwgIm5iZm9ybWF0X21pbm9yIjogNX0="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "notebook",
+       "extra": {
+        "cell_counts": {
+         "code": 0,
+         "markdown": 0,
+         "raw": 0
+        },
+        "language": "python",
+        "nbformat": 4
+       },
+       "source": "nb.ipynb"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "ipynb: cells that are not objects",
+   "input": {
+    "name": "nb.ipynb",
+    "bytes_b64": "eyJjZWxscyI6IFsxLCBudWxsLCB7ImNlbGxfdHlwZSI6ICJtYXJrZG93biIsICJzb3VyY2UiOiAiIyBUaXRsZSDwn5iAXG5cblNvbWUgKnRleHQqLiIsICJtZXRhZGF0YSI6IHt9fV0sICJtZXRhZGF0YSI6IHt9LCAibmJmb3JtYXQiOiA0LCAibmJmb3JtYXRfbWlub3IiOiA1fQ=="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "\n\n\n\n# Title 😀\n\nSome *text*.",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "notebook",
+       "extra": {
+        "cell_counts": {
+         "code": 0,
+         "markdown": 1,
+         "raw": 2
+        },
+        "language": "python",
+        "nbformat": 4
+       },
+       "segments": [
+        {
+         "kind": "section",
+         "label": "cell 1 (raw)",
+         "start": 0,
+         "end": 0
+        },
+        {
+         "kind": "section",
+         "label": "cell 2 (raw)",
+         "start": 2,
+         "end": 2
+        },
+        {
+         "kind": "section",
+         "label": "cell 3 (markdown)",
+         "start": 4,
+         "end": 27
+        }
+       ],
+       "source": "nb.ipynb"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "ipynb: a source that is a number",
+   "input": {
+    "name": "nb.ipynb",
+    "bytes_b64": "eyJjZWxscyI6IFt7ImNlbGxfdHlwZSI6ICJjb2RlIiwgInNvdXJjZSI6IDQyfSwgeyJjZWxsX3R5cGUiOiAibWFya2Rvd24iLCAic291cmNlIjogWzEsIHRydWUsIG51bGwsICJ4Il19XSwgIm1ldGFkYXRhIjoge30sICJuYmZvcm1hdCI6IDQsICJuYmZvcm1hdF9taW5vciI6IDV9"
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "```python\n42\n```\n\n1TrueNonex",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "notebook",
+       "extra": {
+        "cell_counts": {
+         "code": 1,
+         "markdown": 1,
+         "raw": 0
+        },
+        "language": "python",
+        "nbformat": 4
+       },
+       "segments": [
+        {
+         "kind": "section",
+         "label": "cell 1 (code)",
+         "start": 0,
+         "end": 16
+        },
+        {
+         "kind": "section",
+         "label": "cell 2 (markdown)",
+         "start": 18,
+         "end": 28
+        }
+       ],
+       "source": "nb.ipynb"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "ipynb: an unknown cell type",
+   "input": {
+    "name": "nb.ipynb",
+    "bytes_b64": "eyJjZWxscyI6IFt7ImNlbGxfdHlwZSI6ICJoZWFkaW5nIiwgInNvdXJjZSI6ICJoIn1dLCAibWV0YWRhdGEiOiB7fSwgIm5iZm9ybWF0IjogNCwgIm5iZm9ybWF0X21pbm9yIjogNX0="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "h",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "notebook",
+       "extra": {
+        "cell_counts": {
+         "code": 0,
+         "markdown": 0,
+         "raw": 1
+        },
+        "language": "python",
+        "nbformat": 4
+       },
+       "segments": [
+        {
+         "kind": "section",
+         "label": "cell 1 (raw)",
+         "start": 0,
+         "end": 1
+        }
+       ],
+       "source": "nb.ipynb"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "ipynb: no nbformat",
+   "input": {
+    "name": "nb.ipynb",
+    "bytes_b64": "eyJjZWxscyI6IFtdfQ=="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "notebook",
+       "extra": {
+        "cell_counts": {
+         "code": 0,
+         "markdown": 0,
+         "raw": 0
+        },
+        "language": "python",
+        "nbformat": 4
+       },
+       "source": "nb.ipynb"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "ipynb: NaN in the metadata",
+   "input": {
+    "name": "nb.ipynb",
+    "bytes_b64": "eyJjZWxscyI6IFt7ImNlbGxfdHlwZSI6ICJtYXJrZG93biIsICJzb3VyY2UiOiAieCJ9XSwgIm1ldGFkYXRhIjogeyJ2IjogTmFOLCAidyI6IC1JbmZpbml0eX0sICJuYmZvcm1hdCI6IDR9"
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "x",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "notebook",
+       "extra": {
+        "cell_counts": {
+         "code": 0,
+         "markdown": 1,
+         "raw": 0
+        },
+        "language": "python",
+        "nbformat": 4
+       },
+       "segments": [
+        {
+         "kind": "section",
+         "label": "cell 1 (markdown)",
+         "start": 0,
+         "end": 1
+        }
+       ],
+       "source": "nb.ipynb"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "ipynb: nbformat 3",
+   "input": {
+    "name": "nb.ipynb",
+    "bytes_b64": "eyJ3b3Jrc2hlZXRzIjogW10sICJuYmZvcm1hdCI6IDN9"
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "nb.ipynb",
+       "error": {
+        "code": "parse-error"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "ipynb: not JSON",
+   "input": {
+    "name": "nb.ipynb",
+    "bytes_b64": "e25vdCBqc29u"
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "nb.ipynb",
+       "error": {
+        "code": "parse-error"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "ipynb: a JSON list",
+   "input": {
+    "name": "nb.ipynb",
+    "bytes_b64": "WzEsIDJd"
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "nb.ipynb",
+       "error": {
+        "code": "parse-error"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "ipynb: no cells key",
+   "input": {
+    "name": "nb.ipynb",
+    "bytes_b64": "eyJtZXRhZGF0YSI6IHt9fQ=="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "nb.ipynb",
+       "error": {
+        "code": "parse-error"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "ipynb: cells not a list",
+   "input": {
+    "name": "nb.ipynb",
+    "bytes_b64": "eyJjZWxscyI6IHt9fQ=="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "nb.ipynb",
+       "error": {
+        "code": "parse-error"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "ipynb: a byte order mark",
+   "input": {
+    "name": "nb.ipynb",
+    "bytes_b64": "77u/eyJjZWxscyI6IFt7ImNlbGxfdHlwZSI6ICJtYXJrZG93biIsICJzb3VyY2UiOiAiIyBUaXRsZSDwn5iAXG5cblNvbWUgKnRleHQqLiIsICJtZXRhZGF0YSI6IHt9fV0sICJtZXRhZGF0YSI6IHt9LCAibmJmb3JtYXQiOiA0LCAibmJmb3JtYXRfbWlub3IiOiA1fQ=="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "nb.ipynb",
+       "error": {
+        "code": "parse-error"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "ipynb: invalid UTF-8 is replaced",
+   "input": {
+    "name": "nb.ipynb",
+    "bytes_b64": "eyJjZWxscyI6IFt7ImNlbGxfdHlwZSI6ICJtYXJrZG93biIsICJzb3VyY2UiOiAiY2Fm6SJ9XX0="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "caf�",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "notebook",
+       "extra": {
+        "cell_counts": {
+         "code": 0,
+         "markdown": 1,
+         "raw": 0
+        },
+        "language": "python",
+        "nbformat": 4
+       },
+       "segments": [
+        {
+         "kind": "section",
+         "label": "cell 1 (markdown)",
+         "start": 0,
+         "end": 4
+        }
+       ],
+       "source": "nb.ipynb"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "ipynb: metadata that is a list",
+   "input": {
+    "name": "nb.ipynb",
+    "bytes_b64": "eyJjZWxscyI6IFtdLCAibWV0YWRhdGEiOiBbMV19"
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "nb.ipynb",
+       "error": {
+        "code": "processing-error"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "ipynb: an image that does not decode",
+   "input": {
+    "name": "nb.ipynb",
+    "bytes_b64": "eyJjZWxscyI6IFt7ImNlbGxfdHlwZSI6ICJjb2RlIiwgInNvdXJjZSI6ICIiLCAib3V0cHV0cyI6IFt7Im91dHB1dF90eXBlIjogImRpc3BsYXlfZGF0YSIsICJkYXRhIjogeyJpbWFnZS9wbmciOiAiYSJ9fV19XSwgIm1ldGFkYXRhIjoge30sICJuYmZvcm1hdCI6IDQsICJuYmZvcm1hdF9taW5vciI6IDV9"
+   },
+   "options": {
+    "outputs": true
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "```python\n\n```",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "notebook",
+       "extra": {
+        "cell_counts": {
+         "code": 1,
+         "markdown": 0,
+         "raw": 0
+        },
+        "language": "python",
+        "nbformat": 4
+       },
+       "segments": [
+        {
+         "kind": "section",
+         "label": "cell 1 (code)",
+         "start": 0,
+         "end": 14
+        }
+       ],
+       "source": "nb.ipynb"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: text elements",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMCIgaGVpZ2h0PSIyMCIgdmlld0JveD0iMCAwIDEwIDIwIj48dGl0bGU+IEEgdGl0bGUgPC90aXRsZT48ZGVzYz5BCiBkZXNjcmlwdGlvbjwvZGVzYz48Zz48dGV4dCB4PSIxIj5IZWxsbyA8dHNwYW4+YmlnPC90c3Bhbj4gd29ybGQ8L3RleHQ+PHRleHQ+PHRleHRQYXRoPm9uIGEgcGF0aDwvdGV4dFBhdGg+PC90ZXh0PjwvZz48dGV4dD4gIDwvdGV4dD48cmVjdC8+PC9zdmc+"
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "A title\nA\n description\nHello big world\non a path",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "vector",
+       "extra": {
+        "width": "10",
+        "height": "20",
+        "viewBox": "0 0 10 20",
+        "elements": 10,
+        "has_text": true
+       },
+       "source": "d.svg"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: text outside text elements is not read",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxnPmlnbm9yZWQ8L2c+PHRleHQ+a2VwdDwvdGV4dD48L3N2Zz4="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "kept",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "vector",
+       "extra": {
+        "elements": 3,
+        "has_text": true
+       },
+       "source": "d.svg"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: nested text is read once",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "PHN2Zz48dGV4dD5hPHRleHQ+YjwvdGV4dD5jPC90ZXh0Pjwvc3ZnPg=="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "a b c",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "vector",
+       "extra": {
+        "elements": 3,
+        "has_text": true
+       },
+       "source": "d.svg"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: a prefix",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "PHM6c3ZnIHhtbG5zOnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48czp0aXRsZT50PC9zOnRpdGxlPjwvczpzdmc+"
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "t",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "vector",
+       "extra": {
+        "elements": 2,
+        "has_text": true
+       },
+       "source": "d.svg"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: an unbound prefix",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "PHN2Zz48czp0aXRsZT50PC9zOnRpdGxlPjwvc3ZnPg=="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "d.svg",
+       "error": {
+        "code": "parse-error"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: no text",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxIDEiPjxyZWN0Lz48Y2lyY2xlLz48L3N2Zz4="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "vector",
+       "extra": {
+        "viewBox": "0 0 1 1",
+        "elements": 3,
+        "has_text": false
+       },
+       "source": "d.svg"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: a comment joins text",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "PHN2Zz48dGV4dD5hPCEtLSBjIC0tPmI8L3RleHQ+PC9zdmc+"
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "ab",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "vector",
+       "extra": {
+        "elements": 2,
+        "has_text": true
+       },
+       "source": "d.svg"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: a processing instruction joins text",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "PHN2Zz48dGV4dD5hPD9waSB4Pz5iPC90ZXh0Pjwvc3ZnPg=="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "ab",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "vector",
+       "extra": {
+        "elements": 2,
+        "has_text": true
+       },
+       "source": "d.svg"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: CDATA",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "PHN2Zz48dGV4dD48IVtDREFUQVthIDwgYl1dPiAmYW1wOyBjPC90ZXh0Pjwvc3ZnPg=="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "a < b & c",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "vector",
+       "extra": {
+        "elements": 2,
+        "has_text": true
+       },
+       "source": "d.svg"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: entities from the DTD",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "PCFET0NUWVBFIHN2ZyBbPCFFTlRJVFkgd2hvICJ0aGUgJmFtcDsgd29ybGQiPjwhRU5USVRZIGhpICJIZWxsbyAmd2hvOyI+XT48c3ZnPjx0ZXh0PiZoaTshPC90ZXh0Pjwvc3ZnPg=="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "Hello the & world!",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "vector",
+       "extra": {
+        "elements": 2,
+        "has_text": true
+       },
+       "source": "d.svg"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: an external entity",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "PCFET0NUWVBFIHN2ZyBbPCFFTlRJVFkgZSBTWVNURU0gImYudHh0Ij5dPjxzdmc+PHRleHQ+JmU7PC90ZXh0Pjwvc3ZnPg=="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "d.svg",
+       "error": {
+        "code": "parse-error"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: an undefined entity",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "PHN2Zz48dGV4dD4mbm9wZTs8L3RleHQ+PC9zdmc+"
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "d.svg",
+       "error": {
+        "code": "parse-error"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: character references",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "PHN2Zz48dGV4dD5jYWYmI3hlOTsgJiMyMzM7ICZsdDsmZ3Q7JmFwb3M7JnF1b3Q7ICYjeDFGNjAwOzwvdGV4dD48L3N2Zz4="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "café é <>'\" 😀",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "vector",
+       "extra": {
+        "elements": 2,
+        "has_text": true
+       },
+       "source": "d.svg"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: an invalid character reference",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "PHN2Zz48dGV4dD4mIzA7PC90ZXh0Pjwvc3ZnPg=="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "d.svg",
+       "error": {
+        "code": "parse-error"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: line breaks",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "PHN2Zz48dGV4dD5hDQpiDWMmIzEzO2Q8L3RleHQ+PC9zdmc+"
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "a\nb\nc\rd",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "vector",
+       "extra": {
+        "elements": 2,
+        "has_text": true
+       },
+       "source": "d.svg"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: attribute values",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "PHN2ZyB3aWR0aD0iIDEKCTIgIiBoZWlnaHQ9ImEmIzEwO2IiIHZpZXdCb3g9IjAmIzk7MCIvPg=="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "vector",
+       "extra": {
+        "width": " 1  2 ",
+        "height": "a\nb",
+        "viewBox": "0\t0",
+        "elements": 1,
+        "has_text": false
+       },
+       "source": "d.svg"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: a public DOCTYPE",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "PD94bWwgdmVyc2lvbj0iMS4wIiBzdGFuZGFsb25lPSJubyI/Pgo8IURPQ1RZUEUgc3ZnIFBVQkxJQyAiLS8vVzNDLy9EVEQgU1ZHIDEuMS8vRU4iICJodHRwOi8vd3d3LnczLm9yZy9HcmFwaGljcy9TVkcvMS4xL0RURC9zdmcxMS5kdGQiPgo8c3ZnPjx0aXRsZT50PC90aXRsZT48L3N2Zz4="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "t",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "vector",
+       "extra": {
+        "elements": 2,
+        "has_text": true
+       },
+       "source": "d.svg"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: latin-1 declared",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iSVNPLTg4NTktMSI/Pjxzdmc+PHRleHQ+Y2Fm6SCTPC90ZXh0Pjwvc3ZnPg=="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "café ",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "vector",
+       "extra": {
+        "elements": 2,
+        "has_text": true
+       },
+       "source": "d.svg"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: windows-1252 declared",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0id2luZG93cy0xMjUyIj8+PHN2Zz48dGV4dD6TcZQ8L3RleHQ+PC9zdmc+"
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "“q”",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "vector",
+       "extra": {
+        "elements": 2,
+        "has_text": true
+       },
+       "source": "d.svg"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: an unknown encoding",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0ibm9wZS04Ij8+PHN2Zy8+"
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "d.svg",
+       "error": {
+        "code": "parse-error"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: invalid UTF-8",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "PHN2Zz48dGV4dD7pPC90ZXh0Pjwvc3ZnPg=="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "d.svg",
+       "error": {
+        "code": "parse-error"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: a byte order mark",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "77u/PHN2Zz48dGl0bGU+Ym9tPC90aXRsZT48L3N2Zz4="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "bom",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "vector",
+       "extra": {
+        "elements": 2,
+        "has_text": true
+       },
+       "source": "d.svg"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: UTF-16",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "//48AHMAdgBnAD4APAB0AGkAdABsAGUAPgBzAGkAeAB0AGUAZQBuACAA6QA8AC8AdABpAHQAbABlAD4APAAvAHMAdgBnAD4A"
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "sixteen é",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "vector",
+       "extra": {
+        "elements": 2,
+        "has_text": true
+       },
+       "source": "d.svg"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: white space before the declaration",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "ICA8P3htbCB2ZXJzaW9uPSIxLjAiPz48c3ZnLz4="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "d.svg",
+       "error": {
+        "code": "parse-error"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: white space before the root",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "CgogIDxzdmc+PHRpdGxlPnQ8L3RpdGxlPjwvc3ZnPgo="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "t",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "vector",
+       "extra": {
+        "elements": 2,
+        "has_text": true
+       },
+       "source": "d.svg"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: junk after the root",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "PHN2Zy8+PHN2Zy8+"
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "d.svg",
+       "error": {
+        "code": "parse-error"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: text after the root",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "PHN2Zy8+dGV4dA=="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "d.svg",
+       "error": {
+        "code": "parse-error"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: a mismatched tag",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "PHN2Zz48dGV4dD48L3N2Zz48L3RleHQ+"
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "d.svg",
+       "error": {
+        "code": "parse-error"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: unclosed",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "PHN2Zz48dGV4dD4="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "d.svg",
+       "error": {
+        "code": "parse-error"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: a duplicate attribute",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "PHN2ZyBhPSIxIiBhPSIyIi8+"
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "d.svg",
+       "error": {
+        "code": "parse-error"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: a control character",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "PHN2Zz48dGV4dD5hAWI8L3RleHQ+PC9zdmc+"
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "d.svg",
+       "error": {
+        "code": "parse-error"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: empty",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": ""
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "d.svg",
+       "error": {
+        "code": "parse-error"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: not XML",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "anVzdCB0ZXh0"
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "d.svg",
+       "error": {
+        "code": "parse-error"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: a comment with --",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "PHN2Zz48IS0tIGEgLS0gYiAtLT48L3N2Zz4="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "d.svg",
+       "error": {
+        "code": "parse-error"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: gzip by name",
+   "input": {
+    "name": "d.svgz",
+    "bytes_b64": "H4sIAAAAAAACA7MpLku3synJLMlJtavKLChITbHRh/Bs9EFSALDQCiwgAAAA"
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "zipped",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "vector",
+       "extra": {
+        "elements": 2,
+        "has_text": true,
+        "compressed": true
+       },
+       "source": "d.svgz"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: gzip by content",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "H4sIAAAAAAACA7MpLku3synJLMlJtavKLChITbHRh/Bs9EFSALDQCiwgAAAA"
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "zipped",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "vector",
+       "extra": {
+        "elements": 2,
+        "has_text": true,
+        "compressed": true
+       },
+       "source": "d.svg"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: svgz that is not gzip",
+   "input": {
+    "name": "d.svgz",
+    "bytes_b64": "PHN2Zy8+"
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "d.svgz",
+       "error": {
+        "code": "parse-error"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: prefixed attributes are not width",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "PHN2ZyB4bWxuczphPSJ1IiBhOndpZHRoPSIxIiB3aWR0aD0iMiIgeG1sOnNwYWNlPSJwcmVzZXJ2ZSIvPg=="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "vector",
+       "extra": {
+        "width": "2",
+        "elements": 1,
+        "has_text": false
+       },
+       "source": "d.svg"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: ampersand without a name",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "PHN2Zz48dGV4dD5hICYgYjwvdGV4dD48L3N2Zz4="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "d.svg",
+       "error": {
+        "code": "parse-error"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: a less-than in an attribute",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "PHN2ZyBhPSI8Ii8+"
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "d.svg",
+       "error": {
+        "code": "parse-error"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: ATTLIST defaults",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "PCFET0NUWVBFIHN2ZyBbPCFBVFRMSVNUIHN2ZyB3aWR0aCBDREFUQSAiMTAwIj5dPjxzdmc+PHRpdGxlPnQ8L3RpdGxlPjwvc3ZnPg=="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "t",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "vector",
+       "extra": {
+        "width": "100",
+        "elements": 2,
+        "has_text": true
+       },
+       "source": "d.svg"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: an entity with markup",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "PCFET0NUWVBFIHN2ZyBbPCFFTlRJVFkgdCAiPHRpdGxlPmZyb20gYW4gZW50aXR5PC90aXRsZT4iPl0+PHN2Zz4mdDs8L3N2Zz4="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "from an entity",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "vector",
+       "extra": {
+        "elements": 2,
+        "has_text": true
+       },
+       "source": "d.svg"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: a version of any letters",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "PD94bWwgdmVyc2lvbj0iIj8+PHN2Zz48dGl0bGU+dDwvdGl0bGU+PC9zdmc+"
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "t",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "vector",
+       "extra": {
+        "elements": 2,
+        "has_text": true
+       },
+       "source": "d.svg"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: a version with a colon",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "PD94bWwgdmVyc2lvbj0iMS46MCI/PjxzdmcvPg=="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "d.svg",
+       "error": {
+        "code": "parse-error"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: a version with a space",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "PD94bWwgdmVyc2lvbj0iMS4wICI/PjxzdmcvPg=="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "d.svg",
+       "error": {
+        "code": "parse-error"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: a declaration out of order",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "PD94bWwgdmVyc2lvbj0iMS4wIiBzdGFuZGFsb25lPSJ5ZXMiIGVuY29kaW5nPSJ1dGYtOCI/PjxzdmcvPg=="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "d.svg",
+       "error": {
+        "code": "parse-error"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: a processing instruction needs a space",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "PD9waSJ4Ij8+PHN2Zy8+"
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "d.svg",
+       "error": {
+        "code": "parse-error"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: a target starting with xml",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "PD94bWx4IGE/Pjxzdmc+PHRpdGxlPnQ8L3RpdGxlPjwvc3ZnPg=="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "t",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "vector",
+       "extra": {
+        "elements": 2,
+        "has_text": true
+       },
+       "source": "d.svg"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: a colon in a target",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "PD9wOmkgYT8+PHN2Zy8+"
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "d.svg",
+       "error": {
+        "code": "parse-error"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: a name starting with a colon",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "PHN2ZyA6d2lkdGg9IjEiLz4="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "d.svg",
+       "error": {
+        "code": "parse-error"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: a name ending with a colon",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "PHN2ZzovPg=="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "d.svg",
+       "error": {
+        "code": "parse-error"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: two colons",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "PGE6YjpjIHhtbG5zOmE9InUiLz4="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "d.svg",
+       "error": {
+        "code": "parse-error"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: a DOCTYPE name with a prefix",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "PCFET0NUWVBFIGE6Yj48c3ZnPjx0aXRsZT50PC90aXRsZT48L3N2Zz4="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "t",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "vector",
+       "extra": {
+        "elements": 2,
+        "has_text": true
+       },
+       "source": "d.svg"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: a DOCTYPE name starting with a colon",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "PCFET0NUWVBFIDp2Zz48c3ZnLz4="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "d.svg",
+       "error": {
+        "code": "parse-error"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: ]]> in text",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "PHN2Zz48dGV4dD5hXV0+YjwvdGV4dD48L3N2Zz4="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "d.svg",
+       "error": {
+        "code": "parse-error"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: ]] in text",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "PHN2Zz48dGV4dD5hXV1iPC90ZXh0Pjwvc3ZnPg=="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "a]]b",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "vector",
+       "extra": {
+        "elements": 2,
+        "has_text": true
+       },
+       "source": "d.svg"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "svg: an incomplete reference in an entity",
+   "input": {
+    "name": "d.svg",
+    "bytes_b64": "PCFET0NUWVBFIHN2ZyBbPCFFTlRJVFkgZSAieCAmeSI+XT48c3ZnLz4="
+   },
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "d.svg",
+       "error": {
+        "code": "parse-error"
+       }
+      }
+     }
+    ]
+   }
+  }
+ ]
+}

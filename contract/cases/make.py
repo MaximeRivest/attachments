@@ -896,6 +896,7 @@ READING_AREAS = {
     "routing": (_reading.routing_cases, {}),
     "downloads": (lambda: _reading.downloads_cases()[0], {}),
     "naming": (_reading.naming_cases, {}),
+    "processors": (_reading.processors_cases, {}),
 }
 
 #: Data a reading area's cases share (beside its fixtures).

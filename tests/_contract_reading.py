@@ -413,3 +413,5 @@ def _naming(case: dict) -> dict:
 AREAS["routing"] = _routing
 AREAS["downloads"] = _downloads
 AREAS["naming"] = lambda case, doc: _naming(case)
+
+AREAS["processors"] = lambda case, doc: run_att(case)

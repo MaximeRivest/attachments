@@ -35,12 +35,15 @@ await att(fileInput.files[0]);
 
 ## What reads what
 
-TypeScript reads text itself (text, Markdown, code, JSON, YAML, …, and
-any file that looks like text), and unpacks folders, patterns, zip and tar
-archives, downloads and GitHub repositories exactly as Python does.
+TypeScript reads these itself, exactly as Python does: text (Markdown,
+code, JSON, YAML, …, and any file that looks like text), **CSV and TSV**
+(Python's separator guesser and reader, ported), **Jupyter notebooks**,
+and the text of **SVG** drawings (with an XML parser that accepts and
+refuses what Python's does). It unpacks folders, patterns, zip and tar
+archives, downloads and GitHub repositories the same way too.
 
-Every other format (PDF, Word, PowerPoint, Excel, CSV, HTML, images,
-audio, notebooks) is read by the **Attachments service**, the Python
+Every other format (PDF, Word, PowerPoint, Excel, HTML, images, audio),
+and an SVG's picture, is read by the **Attachments service**, the Python
 package running as a server, when you configure one:
 
 ```ts
@@ -87,6 +90,9 @@ answering many users keeps keys apart with `att.with({ apiKey })`.
   decorators: `processor({ extensions, name, detect, options, process })`.
 - **Picture labels** (`watermark`) are drawn by the service: TypeScript
   cannot draw, so it sends the option along.
+- `[summary: true]` on a CSV: Python adds a summary with pandas;
+  TypeScript returns the table with a warning (the service has it).
+- Integers in a notebook past 2^53 lose precision when printed.
 - **Not here**: `.tar.bz2` and `.tar.xz` (the contract's `archive/bz2-xz`
   extension: refused with `unpack-error`), sparse tar members, zip members
   compressed with bzip2 or lzma; the command line, the MCP server, the HTTP
@@ -110,7 +116,9 @@ npm run generate   # after contract/dsl-schema.json or reading-data.json change
 ../check           # everything: the contract, Python, TypeScript
 ```
 
-The test against Python's server runs when `../.venv` exists (`uv sync`
-in the repository); the Anthropic, OpenAI and lm15 packages are
+The tests against Python (its server, and a differential test feeding
+both languages the same random CSV, notebook and SVG bytes; set
+`ATT_FUZZ_SEED` and `ATT_FUZZ_SVGS` to explore further) run when
+`../.venv` exists (`uv sync` in the repository); the Anthropic, OpenAI and lm15 packages are
 development dependencies only (a test compiles the messages against their
 types).

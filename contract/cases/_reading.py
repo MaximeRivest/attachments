@@ -7,6 +7,9 @@ fixture into a fresh temporary folder, makes it the current folder, and
 runs ``att(input, options)`` with ``prefer: local-only`` and no service.
 """
 
+# Literal file contents (SVG, CSV, notebooks) read best on one line each.
+# ruff: noqa: E501
+
 from __future__ import annotations
 
 import base64
@@ -1164,4 +1167,431 @@ def naming_cases() -> list[dict]:
         "a//b",
     ]:
         cases.append({"name": f"sanitize {name!r}", "call": "sanitize", "value": name})
+    return cases
+
+
+# ---------------------------------------------------------------------------
+# The processors every implementation has: CSV, notebooks, SVG
+# ---------------------------------------------------------------------------
+
+
+def _nb(cells, metadata=None, **extra) -> bytes:
+    import json
+
+    doc = {
+        "cells": cells,
+        "metadata": metadata or {},
+        "nbformat": 4,
+        "nbformat_minor": 5,
+    }
+    doc.update(extra)
+    return json.dumps(doc, ensure_ascii=False).encode()
+
+
+PNG_1x1 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+
+
+def processors_cases() -> list[dict]:
+    csvs: list[tuple[str, str, bytes, dict]] = [
+        ("comma", "a.csv", b"name,age\nAda,36\nAlan,41\n", {}),
+        ("semicolon", "a.csv", b"name;age\nAda;36\nAlan;41\n", {}),
+        ("tab", "a.csv", b"name\tage\nAda\t36\n", {}),
+        ("pipe", "a.csv", b"name|age\nAda|36\nAlan|41\n", {}),
+        ("one column, csv", "a.csv", b"one\ntwo\nthree\n", {}),
+        ("one column, tsv", "a.tsv", b"one\ntwo\nthree\n", {}),
+        (
+            "quoted fields with commas",
+            "a.csv",
+            b'name,quote\nAda,"hello, world"\nAlan,"a ""b"" c"\n',
+            {},
+        ),
+        ("quoted with semicolons", "a.csv", b'"a";"b";"c"\n"1";"2";"3"\n', {}),
+        ("single quotes", "a.csv", b"'a','b'\n'1','2'\n", {}),
+        ("a quote then a space", "a.csv", b'x, "a", "b"\ny, "c", "d"\n', {}),
+        ("a line break in quotes", "a.csv", b'a,b\n"line\nbreak",2\n', {}),
+        ("crlf", "a.csv", b"a,b\r\n1,2\r\n", {}),
+        ("old mac line ends", "a.csv", b"a,b\r1,2\r", {}),
+        ("text after a closing quote", "a.csv", b'a,b\n"x"y,2\n', {}),
+        ("an unterminated quote", "a.csv", b'a,b\n"open,2\n3,4\n', {}),
+        ("a quote inside a field", "a.csv", b'a,b\nx"y,2\n', {}),
+        ("empty lines", "a.csv", b"\na,b\n\n1,2\n\n", {}),
+        ("ragged rows", "a.csv", b"a,b,c\n1\n1,2,3,4\n", {}),
+        ("pipes and line breaks in cells", "a.csv", b'a,b\n"x|y","p\r\nq"\n', {}),
+        ("empty", "a.csv", b"", {}),
+        ("only white space", "a.csv", b" \n\t\n", {}),
+        ("a header only", "a.csv", b"a,b,c\n", {}),
+        (
+            "rows truncated",
+            "a.csv",
+            b"n\n" + b"".join(b"%d\n" % i for i in range(10)),
+            {"rows": 3},
+        ),
+        ("rows: 0", "a.csv", b"a,b\n1,2\n", {"rows": 0}),
+        (
+            "default truncation",
+            "a.csv",
+            b"n,m\n" + b"".join(b"%d,x\n" % i for i in range(205)),
+            {},
+        ),
+        (
+            "delimiter: semicolon",
+            "a.csv",
+            b"a;b,c\n1;2,3\n",
+            {"delimiter": "semicolon"},
+        ),
+        ("delimiter: a character", "a.csv", b"a;b,c\n1;2,3\n", {"delimiter": ";"}),
+        (
+            "delimiter: TAB in capitals",
+            "a.csv",
+            b"a\tb\n1\t2\n",
+            {"delimiter": " TAB "},
+        ),
+        ("delimiter: first character", "a.csv", b"a#b\n1#2\n", {"delimiter": "#!"}),
+        ("latin-1", "a.csv", b"nom,ville\nZo\xe9,Montr\xe9al\n", {}),
+        (
+            "a byte order mark stays in the first cell",
+            "a.csv",
+            "\ufeffa,b\n1,2\n".encode(),
+            {},
+        ),
+        ("a NUL in a cell", "a.csv", b"a,b\nx\x00y,2\n", {}),
+        ("unicode", "a.csv", "été,😀\nñ,文\n".encode(), {}),
+        ("commas and semicolons, both regular", "a.csv", b"a,b;c\n1,2;3\n4,5;6\n", {}),
+        ("pipes and semicolons, both regular", "a.csv", b"a|b;c\n1|2;3\n4|5;6\n", {}),
+        (
+            "mostly consistent",
+            "a.csv",
+            b"a,b,c\n" + b"1,2,3\n" * 9 + b"1,2\n" + b"1;2\n" * 2,
+            {},
+        ),
+        (
+            "more than ten lines, a delimiter found later",
+            "a.csv",
+            b"x\n" * 10 + b"a;b\n1;2\n" * 3,
+            {},
+        ),
+        (
+            "a sample longer than 8192 characters",
+            "a.csv",
+            b"a,b\n" + b"1,2\n" * 2100 + b"x;y;z\n",
+            {"rows": 2},
+        ),
+        ("an unknown option", "a.csv", b"a,b\n1,2\n", {"sheet": "x"}),
+        (
+            "text sniffed with quotes and a newline delimiter",
+            "a.csv",
+            b'"a"\n"b"\n"c"\n',
+            {},
+        ),
+    ]
+    cases = [
+        {"name": f"csv: {n}", "input": {"name": f, "bytes_b64": b64(d)}, "options": o}
+        for n, f, d, o in csvs
+    ]
+
+    code = {
+        "cell_type": "code",
+        "source": ["import math\n", "print(math.pi)"],
+        "metadata": {},
+        "execution_count": 1,
+        "outputs": [
+            {"output_type": "stream", "name": "stdout", "text": ["\n3.14159\n", "\n"]},
+            {
+                "output_type": "execute_result",
+                "data": {"text/plain": ["'done'"]},
+                "metadata": {},
+                "execution_count": 1,
+            },
+            {
+                "output_type": "display_data",
+                "data": {
+                    "image/png": [PNG_1x1[:40] + "\n", PNG_1x1[40:]],
+                    "text/plain": "<Figure>",
+                },
+                "metadata": {},
+            },
+            {
+                "output_type": "display_data",
+                "data": {"image/png": PNG_1x1},
+                "metadata": {},
+            },
+            {
+                "output_type": "error",
+                "ename": "E",
+                "evalue": "v",
+                "traceback": ["Traceback", "E: v"],
+            },
+            {"output_type": "clear_output"},
+            {"output_type": "stream", "text": "\n\n"},
+            "not an object",
+        ],
+    }
+    md = {
+        "cell_type": "markdown",
+        "source": "# Title 😀\n\nSome *text*.",
+        "metadata": {},
+    }
+    raw = {"cell_type": "raw", "source": None, "metadata": {}}
+    long_out = {
+        "cell_type": "code",
+        "source": "x",
+        "outputs": [
+            {"output_type": "stream", "text": ("y" * 1990) + "   \n\t" + "z" * 50}
+        ],
+    }
+    notebooks: list[tuple[str, bytes, dict]] = [
+        ("cells of every kind", _nb([md, code, raw]), {}),
+        ("with outputs", _nb([md, code, raw]), {"outputs": True}),
+        (
+            "the language from language_info",
+            _nb([code], {"language_info": {"name": "julia"}}),
+            {},
+        ),
+        (
+            "the language from kernelspec",
+            _nb([code], {"kernelspec": {"language": "R"}}),
+            {},
+        ),
+        (
+            "an empty language falls through",
+            _nb(
+                [code], {"language_info": {"name": ""}, "kernelspec": {"language": "r"}}
+            ),
+            {},
+        ),
+        ("a long output is cut", _nb([long_out]), {"outputs": True}),
+        ("no cells", _nb([]), {}),
+        ("cells that are not objects", _nb([1, None, md]), {}),
+        (
+            "a source that is a number",
+            _nb(
+                [
+                    {"cell_type": "code", "source": 42},
+                    {"cell_type": "markdown", "source": [1, True, None, "x"]},
+                ]
+            ),
+            {},
+        ),
+        ("an unknown cell type", _nb([{"cell_type": "heading", "source": "h"}]), {}),
+        ("no nbformat", b'{"cells": []}', {}),
+        (
+            "NaN in the metadata",
+            b'{"cells": [{"cell_type": "markdown", "source": "x"}], '
+            b'"metadata": {"v": NaN, "w": -Infinity}, "nbformat": 4}',
+            {},
+        ),
+        ("nbformat 3", b'{"worksheets": [], "nbformat": 3}', {}),
+        ("not JSON", b"{not json", {}),
+        ("a JSON list", b"[1, 2]", {}),
+        ("no cells key", b'{"metadata": {}}', {}),
+        ("cells not a list", b'{"cells": {}}', {}),
+        ("a byte order mark", "\ufeff".encode() + _nb([md]), {}),
+        (
+            "invalid UTF-8 is replaced",
+            b'{"cells": [{"cell_type": "markdown", "source": "caf\xe9"}]}',
+            {},
+        ),
+        ("metadata that is a list", b'{"cells": [], "metadata": [1]}', {}),
+        (
+            "an image that does not decode",
+            _nb(
+                [
+                    {
+                        "cell_type": "code",
+                        "source": "",
+                        "outputs": [
+                            {"output_type": "display_data", "data": {"image/png": "a"}}
+                        ],
+                    }
+                ]
+            ),
+            {"outputs": True},
+        ),
+    ]
+    cases += [
+        {
+            "name": f"ipynb: {n}",
+            "input": {
+                "name": "my.notebook.IPYNB" if "kind" in n else "nb.ipynb",
+                "bytes_b64": b64(d),
+            },
+            "options": o,
+        }
+        for n, d, o in notebooks
+    ]
+
+    ns = 'xmlns="http://www.w3.org/2000/svg"'
+    svgs: list[tuple[str, str, bytes]] = [
+        (
+            "text elements",
+            "d.svg",
+            f'<svg {ns} width="10" height="20" viewBox="0 0 10 20"><title> A title </title><desc>A\n description</desc>'
+            '<g><text x="1">Hello <tspan>big</tspan> world</text><text><textPath>on a path</textPath></text></g>'
+            "<text>  </text><rect/></svg>".encode(),
+        ),
+        (
+            "text outside text elements is not read",
+            "d.svg",
+            f"<svg {ns}><g>ignored</g><text>kept</text></svg>".encode(),
+        ),
+        (
+            "nested text is read once",
+            "d.svg",
+            b"<svg><text>a<text>b</text>c</text></svg>",
+        ),
+        (
+            "a prefix",
+            "d.svg",
+            b'<s:svg xmlns:s="http://www.w3.org/2000/svg"><s:title>t</s:title></s:svg>',
+        ),
+        ("an unbound prefix", "d.svg", b"<svg><s:title>t</s:title></svg>"),
+        (
+            "no text",
+            "d.svg",
+            f'<svg {ns} viewBox="0 0 1 1"><rect/><circle/></svg>'.encode(),
+        ),
+        ("a comment joins text", "d.svg", b"<svg><text>a<!-- c -->b</text></svg>"),
+        (
+            "a processing instruction joins text",
+            "d.svg",
+            b"<svg><text>a<?pi x?>b</text></svg>",
+        ),
+        ("CDATA", "d.svg", b"<svg><text><![CDATA[a < b]]> &amp; c</text></svg>"),
+        (
+            "entities from the DTD",
+            "d.svg",
+            b'<!DOCTYPE svg [<!ENTITY who "the &amp; world"><!ENTITY hi "Hello &who;">]><svg><text>&hi;!</text></svg>',
+        ),
+        (
+            "an external entity",
+            "d.svg",
+            b'<!DOCTYPE svg [<!ENTITY e SYSTEM "f.txt">]><svg><text>&e;</text></svg>',
+        ),
+        ("an undefined entity", "d.svg", b"<svg><text>&nope;</text></svg>"),
+        (
+            "character references",
+            "d.svg",
+            b"<svg><text>caf&#xe9; &#233; &lt;&gt;&apos;&quot; &#x1F600;</text></svg>",
+        ),
+        ("an invalid character reference", "d.svg", b"<svg><text>&#0;</text></svg>"),
+        ("line breaks", "d.svg", b"<svg><text>a\r\nb\rc&#13;d</text></svg>"),
+        (
+            "attribute values",
+            "d.svg",
+            b'<svg width=" 1\n\t2 " height="a&#10;b" viewBox="0&#9;0"/>',
+        ),
+        (
+            "a public DOCTYPE",
+            "d.svg",
+            b'<?xml version="1.0" standalone="no"?>\n<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" '
+            b'"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">\n<svg><title>t</title></svg>',
+        ),
+        (
+            "latin-1 declared",
+            "d.svg",
+            b'<?xml version="1.0" encoding="ISO-8859-1"?><svg><text>caf\xe9 \x93</text></svg>',
+        ),
+        (
+            "windows-1252 declared",
+            "d.svg",
+            b'<?xml version="1.0" encoding="windows-1252"?><svg><text>\x93q\x94</text></svg>',
+        ),
+        (
+            "an unknown encoding",
+            "d.svg",
+            b'<?xml version="1.0" encoding="nope-8"?><svg/>',
+        ),
+        ("invalid UTF-8", "d.svg", b"<svg><text>\xe9</text></svg>"),
+        ("a byte order mark", "d.svg", b"\xef\xbb\xbf<svg><title>bom</title></svg>"),
+        ("UTF-16", "d.svg", "<svg><title>sixteen é</title></svg>".encode("utf-16")),
+        (
+            "white space before the declaration",
+            "d.svg",
+            b'  <?xml version="1.0"?><svg/>',
+        ),
+        (
+            "white space before the root",
+            "d.svg",
+            b"\n\n  <svg><title>t</title></svg>\n",
+        ),
+        ("junk after the root", "d.svg", b"<svg/><svg/>"),
+        ("text after the root", "d.svg", b"<svg/>text"),
+        ("a mismatched tag", "d.svg", b"<svg><text></svg></text>"),
+        ("unclosed", "d.svg", b"<svg><text>"),
+        ("a duplicate attribute", "d.svg", b'<svg a="1" a="2"/>'),
+        ("a control character", "d.svg", b"<svg><text>a\x01b</text></svg>"),
+        ("empty", "d.svg", b""),
+        ("not XML", "d.svg", b"just text"),
+        ("a comment with --", "d.svg", b"<svg><!-- a -- b --></svg>"),
+        (
+            "gzip by name",
+            "d.svgz",
+            gzip.compress(b"<svg><title>zipped</title></svg>", mtime=0),
+        ),
+        (
+            "gzip by content",
+            "d.svg",
+            gzip.compress(b"<svg><title>zipped</title></svg>", mtime=0),
+        ),
+        ("svgz that is not gzip", "d.svgz", b"<svg/>"),
+        (
+            "prefixed attributes are not width",
+            "d.svg",
+            b'<svg xmlns:a="u" a:width="1" width="2" xml:space="preserve"/>',
+        ),
+        ("ampersand without a name", "d.svg", b"<svg><text>a & b</text></svg>"),
+        ("a less-than in an attribute", "d.svg", b'<svg a="<"/>'),
+        (
+            "ATTLIST defaults",
+            "d.svg",
+            b'<!DOCTYPE svg [<!ATTLIST svg width CDATA "100">]><svg><title>t</title></svg>',
+        ),
+        (
+            "an entity with markup",
+            "d.svg",
+            b'<!DOCTYPE svg [<!ENTITY t "<title>from an entity</title>">]><svg>&t;</svg>',
+        ),
+    ]
+    # Found by the differential test (ts/tests/crosslang.test.ts).
+    svgs += [
+        (
+            "a version of any letters",
+            "d.svg",
+            b'<?xml version=""?><svg><title>t</title></svg>',
+        ),
+        ("a version with a colon", "d.svg", b'<?xml version="1.:0"?><svg/>'),
+        ("a version with a space", "d.svg", b'<?xml version="1.0 "?><svg/>'),
+        (
+            "a declaration out of order",
+            "d.svg",
+            b'<?xml version="1.0" standalone="yes" encoding="utf-8"?><svg/>',
+        ),
+        ("a processing instruction needs a space", "d.svg", b'<?pi"x"?><svg/>'),
+        (
+            "a target starting with xml",
+            "d.svg",
+            b"<?xmlx a?><svg><title>t</title></svg>",
+        ),
+        ("a colon in a target", "d.svg", b"<?p:i a?><svg/>"),
+        ("a name starting with a colon", "d.svg", b'<svg :width="1"/>'),
+        ("a name ending with a colon", "d.svg", b"<svg:/>"),
+        ("two colons", "d.svg", b'<a:b:c xmlns:a="u"/>'),
+        (
+            "a DOCTYPE name with a prefix",
+            "d.svg",
+            b"<!DOCTYPE a:b><svg><title>t</title></svg>",
+        ),
+        ("a DOCTYPE name starting with a colon", "d.svg", b"<!DOCTYPE :vg><svg/>"),
+        ("]]> in text", "d.svg", b"<svg><text>a]]>b</text></svg>"),
+        ("]] in text", "d.svg", b"<svg><text>a]]b</text></svg>"),
+        (
+            "an incomplete reference in an entity",
+            "d.svg",
+            b'<!DOCTYPE svg [<!ENTITY e "x &y">]><svg/>',
+        ),
+    ]
+    cases += [
+        {"name": f"svg: {n}", "input": {"name": f, "bytes_b64": b64(d)}, "options": {}}
+        for n, f, d in svgs
+    ]
     return cases

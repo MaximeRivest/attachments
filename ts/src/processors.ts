@@ -9,9 +9,13 @@ import { errorArtifact, makeArtifact, missingDepArtifact } from "./artifact.ts";
 import { READING } from "./generated/reading.ts";
 import { PROCESSOR_OPTIONS } from "./generated/schema.ts";
 import { cpLength } from "./text.ts";
+import { guessDecode, latin1 } from "./decode.ts";
 import type { Artifact } from "./types.ts";
 import { zipNames } from "./sources/archives.ts";
 import type { OptionDecl, OptionValue } from "./options.ts";
+import { csvProcessor } from "./readers/csv.ts";
+import { ipynbProcessor } from "./readers/ipynb.ts";
+import { svgProcessor } from "./readers/svg.ts";
 
 /** What a processor gets besides the file and its options. */
 export interface ProcessorContext {
@@ -52,23 +56,6 @@ export function normalizeKey(key: string): string {
 
 // -- the text processor --------------------------------------------------------------
 
-const utf8Strict = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
-
-function latin1(data: Uint8Array): string {
-  let out = "";
-  for (let i = 0; i < data.length; i += 8192) out += String.fromCharCode(...data.subarray(i, i + 8192));
-  return out;
-}
-
-/** UTF-8 (a byte order mark kept), else Latin-1, which decodes any bytes. */
-export function guessDecode(data: Uint8Array): [encoding: "utf-8" | "latin-1", text: string] {
-  try {
-    return ["utf-8", utf8Strict.decode(data)];
-  } catch {
-    return ["latin-1", latin1(data)];
-  }
-}
-
 export const textProcessor: ProcessorFn = (data, _options, { filename }) => {
   const [encoding, text] = guessDecode(data);
   return makeArtifact({ text, meta: { kind: "text", extra: { encoding, chars: cpLength(text), filename } } });
@@ -76,6 +63,9 @@ export const textProcessor: ProcessorFn = (data, _options, { filename }) => {
 
 processors.set("__text__", textProcessor);
 for (const ext of READING.text_extensions) processors.set(ext, textProcessor);
+for (const ext of [".csv", ".tsv"]) processors.set(ext, csvProcessor);
+processors.set(".ipynb", ipynbProcessor);
+for (const ext of [".svg", ".svgz"]) processors.set(ext, svgProcessor);
 
 /** Processors that only say a reader is missing. */
 export const PLACEHOLDERS = new WeakSet<ProcessorFn>();
@@ -164,4 +154,4 @@ export function routeProcessor(filename: string, data: Uint8Array): [ProcessorFn
   return [null, ext];
 }
 
-export { extension, errorArtifact };
+export { extension, errorArtifact, guessDecode };
