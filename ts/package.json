@@ -11,7 +11,16 @@
     "directory": "ts"
   },
   "homepage": "https://attachments.dev",
-  "keywords": ["llm", "pdf", "documents", "claude", "openai", "lm15", "rag", "context"],
+  "keywords": [
+    "llm",
+    "pdf",
+    "documents",
+    "claude",
+    "openai",
+    "lm15",
+    "rag",
+    "context"
+  ],
   "engines": {
     "node": ">=22.18.0"
   },
@@ -29,7 +38,25 @@
     },
     "./package.json": "./package.json"
   },
-  "files": ["dist", "src", "README.md", "LICENSE", "CHANGELOG.md"],
+  "imports": {
+    "#platform": {
+      "node": {
+        "attachments-source": "./src/platform/node.ts",
+        "default": "./dist/platform/node.js"
+      },
+      "default": {
+        "attachments-source": "./src/platform/browser.ts",
+        "default": "./dist/platform/browser.js"
+      }
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
   "scripts": {
     "build": "rm -rf dist && tsc -p tsconfig.build.json",
     "check": "tsc --noEmit",

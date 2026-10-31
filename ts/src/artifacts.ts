@@ -94,6 +94,8 @@ export class Artifacts extends Array<Artifact> {
     return Artifacts.from(Array.prototype.slice.call(this, start, end) as Artifact[]);
   }
 
+  override concat(...items: ConcatArray<Artifact>[]): Artifacts;
+  override concat(...items: (Artifact | ConcatArray<Artifact>)[]): Artifacts;
   override concat(...items: (Artifact | ConcatArray<Artifact>)[]): Artifacts {
     return Artifacts.from(Array.prototype.concat.apply(Array.from(this), items) as Artifact[]);
   }

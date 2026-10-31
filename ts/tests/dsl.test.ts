@@ -7,7 +7,7 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
 import { parseDsl } from "attachments-dev/extend";
-import { optionsModule, readSchema, schemaModule } from "../tools/generate.ts";
+import { optionsModule, readingModule, readReadingData, readSchema, schemaModule } from "../tools/generate.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const vectors = JSON.parse(readFileSync(join(here, "..", "..", "contract", "dsl-test-vectors.json"), "utf8")).vectors;
@@ -29,4 +29,5 @@ test("src/generated is what tools/generate.ts writes from the contract", () => {
   const generated = join(here, "..", "src", "generated");
   assert.equal(readFileSync(join(generated, "schema.ts"), "utf8"), schemaModule(schema), "run: npm run generate");
   assert.equal(readFileSync(join(generated, "options.ts"), "utf8"), optionsModule(schema), "run: npm run generate");
+  assert.equal(readFileSync(join(generated, "reading.ts"), "utf8"), readingModule(readReadingData()), "run: npm run generate");
 });

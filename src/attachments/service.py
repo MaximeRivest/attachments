@@ -145,8 +145,11 @@ def process_via_service(
             f"Service error: {error_detail}", status_code=response.status_code
         )
 
-    # Parse response
-    result = response.json()
+    # Parse response (a proxy's HTML page is the service's failure too)
+    try:
+        result = response.json()
+    except ValueError as exc:
+        raise ServiceError("Service returned an invalid artifact: not JSON") from exc
 
     # Wire form -> in-process artifact (bytes_b64 -> bytes). A response that
     # is not a valid artifact is the service's failure, not the file's.
@@ -212,14 +215,18 @@ def unpack_via_service(
         )
 
     # Parse response - files are base64 encoded
-    result = response.json()
-    files = []
-    for item in result.get("files", []):
-        filename = item["filename"]
-        data = base64.b64decode(item["data_b64"])
-        files.append((filename, data))
+    return _file_list(response)
 
-    return files
+
+def _file_list(response: Any) -> list[tuple[str, bytes]]:
+    """``{"files": [{"filename", "data_b64"}]}`` as pairs; ServiceError if not."""
+    try:
+        return [
+            (item["filename"], base64.b64decode(item["data_b64"], validate=True))
+            for item in response.json().get("files", [])
+        ]
+    except (ValueError, KeyError, TypeError, AttributeError) as exc:
+        raise ServiceError("Service returned an invalid file list") from exc
 
 
 def unpack_bytes_via_service(
@@ -296,11 +303,7 @@ def unpack_bytes_via_service(
         )
 
     # Parse response - files are base64 encoded
-    result = response.json()
-    files = []
-    for item in result.get("files", []):
-        files.append((item["filename"], base64.b64decode(item["data_b64"])))
-    return files
+    return _file_list(response)
 
 
 def check_service_health(api_key: str | None = None) -> dict:

@@ -1,0 +1,382 @@
+{
+ "area": "naming",
+ "review": "draft",
+ "cases": [
+  {
+   "name": "disposition None",
+   "call": "disposition",
+   "value": null,
+   "expect": {
+    "value": null
+   }
+  },
+  {
+   "name": "disposition ''",
+   "call": "disposition",
+   "value": "",
+   "expect": {
+    "value": null
+   }
+  },
+  {
+   "name": "disposition 'attachment; filename=\"report.pdf\"'",
+   "call": "disposition",
+   "value": "attachment; filename=\"report.pdf\"",
+   "expect": {
+    "value": "report.pdf"
+   }
+  },
+  {
+   "name": "disposition 'attachment; filename=data.csv'",
+   "call": "disposition",
+   "value": "attachment; filename=data.csv",
+   "expect": {
+    "value": "data.csv"
+   }
+  },
+  {
+   "name": "disposition 'attachment; filename*=UTF-8\\'\\'na%C3%AFve%20file.txt; filename=\"fallback.txt\"'",
+   "call": "disposition",
+   "value": "attachment; filename*=UTF-8''na%C3%AFve%20file.txt; filename=\"fallback.txt\"",
+   "expect": {
+    "value": "naïve file.txt"
+   }
+  },
+  {
+   "name": "disposition 'inline; FILENAME=\"Upper.TXT\"'",
+   "call": "disposition",
+   "value": "inline; FILENAME=\"Upper.TXT\"",
+   "expect": {
+    "value": "Upper.TXT"
+   }
+  },
+  {
+   "name": "disposition \"attachment; filename='single.txt'\"",
+   "call": "disposition",
+   "value": "attachment; filename='single.txt'",
+   "expect": {
+    "value": "single.txt"
+   }
+  },
+  {
+   "name": "disposition \"attachment; filename*=utf-8''%E2%82%AC%20rates.csv\"",
+   "call": "disposition",
+   "value": "attachment; filename*=utf-8''%E2%82%AC%20rates.csv",
+   "expect": {
+    "value": "€ rates.csv"
+   }
+  },
+  {
+   "name": "disposition 'attachment'",
+   "call": "disposition",
+   "value": "attachment",
+   "expect": {
+    "value": null
+   }
+  },
+  {
+   "name": "type 'README.md' 'text/html; charset=utf-8'",
+   "call": "type",
+   "filename": "README.md",
+   "content_type": "text/html; charset=utf-8",
+   "url": "https://github.com/o/r/blob/main/README.md",
+   "expect": {
+    "value": [
+     "README.md.html",
+     "The server sent a web page (text/html), not the .md file its address suggests; it was read as HTML. For the file itself, use https://raw.githubusercontent.com/o/r/main/README.md"
+    ]
+   }
+  },
+  {
+   "name": "type '1706.03762' 'application/pdf'",
+   "call": "type",
+   "filename": "1706.03762",
+   "content_type": "application/pdf",
+   "url": "u",
+   "expect": {
+    "value": [
+     "1706.03762.pdf",
+     null
+    ]
+   }
+  },
+  {
+   "name": "type 'data.csv' 'text/plain'",
+   "call": "type",
+   "filename": "data.csv",
+   "content_type": "text/plain",
+   "url": "u",
+   "expect": {
+    "value": [
+     "data.csv",
+     null
+    ]
+   }
+  },
+  {
+   "name": "type 'photo.JPEG' 'image/jpeg'",
+   "call": "type",
+   "filename": "photo.JPEG",
+   "content_type": "image/jpeg",
+   "url": "u",
+   "expect": {
+    "value": [
+     "photo.JPEG",
+     null
+    ]
+   }
+  },
+  {
+   "name": "type 'index.php' 'text/html'",
+   "call": "type",
+   "filename": "index.php",
+   "content_type": "text/html",
+   "url": "u",
+   "expect": {
+    "value": [
+     "index.php.html",
+     null
+    ]
+   }
+  },
+  {
+   "name": "type 'page.HTM' 'text/html'",
+   "call": "type",
+   "filename": "page.HTM",
+   "content_type": "text/html",
+   "url": "u",
+   "expect": {
+    "value": [
+     "page.HTM",
+     null
+    ]
+   }
+  },
+  {
+   "name": "type 'x.png' 'image/jpeg'",
+   "call": "type",
+   "filename": "x.png",
+   "content_type": "image/jpeg",
+   "url": "u",
+   "expect": {
+    "value": [
+     "x.png.jpg",
+     "The server sent JPG data (image/jpeg), not the .png file its address suggests; it was read as JPG."
+    ]
+   }
+  },
+  {
+   "name": "type 'noext' 'image/png'",
+   "call": "type",
+   "filename": "noext",
+   "content_type": "image/png",
+   "url": "u",
+   "expect": {
+    "value": [
+     "noext.png",
+     null
+    ]
+   }
+  },
+  {
+   "name": "type 'a.svgz' 'image/svg+xml'",
+   "call": "type",
+   "filename": "a.svgz",
+   "content_type": "image/svg+xml",
+   "url": "u",
+   "expect": {
+    "value": [
+     "a.svgz",
+     null
+    ]
+   }
+  },
+  {
+   "name": "type 'v1.2.3' 'application/pdf'",
+   "call": "type",
+   "filename": "v1.2.3",
+   "content_type": "application/pdf",
+   "url": "u",
+   "expect": {
+    "value": [
+     "v1.2.3.pdf",
+     null
+    ]
+   }
+  },
+  {
+   "name": "type 'table.json' 'text/csv'",
+   "call": "type",
+   "filename": "table.json",
+   "content_type": "text/csv",
+   "url": "u",
+   "expect": {
+    "value": [
+     "table.json.csv",
+     "The server sent CSV data (text/csv), not the .json file its address suggests; it was read as CSV."
+    ]
+   }
+  },
+  {
+   "name": "type 'x.html' 'application/xhtml+xml'",
+   "call": "type",
+   "filename": "x.html",
+   "content_type": "application/xhtml+xml",
+   "url": "u",
+   "expect": {
+    "value": [
+     "x.html",
+     null
+    ]
+   }
+  },
+  {
+   "name": "type 'report.pdf' 'APPLICATION/PDF'",
+   "call": "type",
+   "filename": "report.pdf",
+   "content_type": "APPLICATION/PDF",
+   "url": "u",
+   "expect": {
+    "value": [
+     "report.pdf",
+     null
+    ]
+   }
+  },
+  {
+   "name": "type 'x.txt' None",
+   "call": "type",
+   "filename": "x.txt",
+   "content_type": null,
+   "url": "u",
+   "expect": {
+    "value": [
+     "x.txt",
+     null
+    ]
+   }
+  },
+  {
+   "name": "type 'x.do' 'text/html'",
+   "call": "type",
+   "filename": "x.do",
+   "content_type": "text/html",
+   "url": "u",
+   "expect": {
+    "value": [
+     "x.do.html",
+     null
+    ]
+   }
+  },
+  {
+   "name": "type 'x.verylong' 'text/html'",
+   "call": "type",
+   "filename": "x.verylong",
+   "content_type": "text/html",
+   "url": "u",
+   "expect": {
+    "value": [
+     "x.verylong.html",
+     null
+    ]
+   }
+  },
+  {
+   "name": "raw https://github.com/psf/requests/blob/main/README.md",
+   "call": "raw",
+   "url": "https://github.com/psf/requests/blob/main/README.md",
+   "expect": {
+    "value": "https://raw.githubusercontent.com/psf/requests/main/README.md"
+   }
+  },
+  {
+   "name": "raw https://example.com/a/b/blob/c",
+   "call": "raw",
+   "url": "https://example.com/a/b/blob/c",
+   "expect": {
+    "value": null
+   }
+  },
+  {
+   "name": "raw https://www.github.com/o/r/blob/v1/a/b.py",
+   "call": "raw",
+   "url": "https://www.github.com/o/r/blob/v1/a/b.py",
+   "expect": {
+    "value": "https://raw.githubusercontent.com/o/r/v1/a/b.py"
+   }
+  },
+  {
+   "name": "raw https://github.com/o/r/tree/main/x",
+   "call": "raw",
+   "url": "https://github.com/o/r/tree/main/x",
+   "expect": {
+    "value": null
+   }
+  },
+  {
+   "name": "sanitize 'normal/path/file.txt'",
+   "call": "sanitize",
+   "value": "normal/path/file.txt",
+   "expect": {
+    "value": "normal/path/file.txt"
+   }
+  },
+  {
+   "name": "sanitize '../../../etc/passwd'",
+   "call": "sanitize",
+   "value": "../../../etc/passwd",
+   "expect": {
+    "value": "etc/passwd"
+   }
+  },
+  {
+   "name": "sanitize '/absolute/path.txt'",
+   "call": "sanitize",
+   "value": "/absolute/path.txt",
+   "expect": {
+    "value": "absolute/path.txt"
+   }
+  },
+  {
+   "name": "sanitize 'windows\\\\path\\\\f.txt'",
+   "call": "sanitize",
+   "value": "windows\\path\\f.txt",
+   "expect": {
+    "value": "windows/path/f.txt"
+   }
+  },
+  {
+   "name": "sanitize './current/./dir/file.txt'",
+   "call": "sanitize",
+   "value": "./current/./dir/file.txt",
+   "expect": {
+    "value": "current/dir/file.txt"
+   }
+  },
+  {
+   "name": "sanitize ''",
+   "call": "sanitize",
+   "value": "",
+   "expect": {
+    "value": ""
+   }
+  },
+  {
+   "name": "sanitize '..'",
+   "call": "sanitize",
+   "value": "..",
+   "expect": {
+    "value": ""
+   }
+  },
+  {
+   "name": "sanitize 'a//b'",
+   "call": "sanitize",
+   "value": "a//b",
+   "expect": {
+    "value": "a/b"
+   }
+  }
+ ]
+}

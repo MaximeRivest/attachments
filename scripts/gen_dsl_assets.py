@@ -35,6 +35,7 @@ from attachments import dsl_schema
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_PATH = REPO_ROOT / "contract" / "dsl-schema.json"
+READING_DATA_PATH = REPO_ROOT / "contract" / "reading-data.json"
 DOCS_PATH = REPO_ROOT / "docs" / "dsl-options.md"
 INIT_PATH = REPO_ROOT / "src" / "attachments" / "__init__.py"
 STUB_PATH = REPO_ROOT / "src" / "attachments" / "__init__.pyi"
@@ -46,6 +47,38 @@ _TABLE_HEADER = (
     "| Option | Type | Aliases | Default | Example | Description |\n"
     "| --- | --- | --- | --- | --- | --- |"
 )
+
+
+def reading_data() -> dict[str, Any]:
+    """Tables every implementation copies (contract/reading.md).
+
+    The skip rules' pattern lists, the overview's reason names and
+    remedies, the archive suffixes, the content types that rename a
+    download, and the text processor's extensions.
+    """
+    from attachments._overview import _KIND_WORDS, _REASONS
+    from attachments._processors import processors
+    from attachments._processors.text import text_processor
+    from attachments._sources import _ignore
+    from attachments._sources.archives import RAW_ARCHIVE_SUFFIXES
+    from attachments._sources.http import _DYNAMIC_PAGE_EXTENSIONS, _TYPE_EXTENSIONS
+
+    return {
+        "version": 1,
+        "vcs_dirs": sorted(_ignore.VCS_DIRS),
+        "ignore_files": list(_ignore.IGNORE_FILES),
+        "secret_patterns": list(_ignore.SECRET_PATTERNS),
+        "generated_patterns": list(_ignore.GENERATED_PATTERNS),
+        "cachedir_signature": _ignore.CACHEDIR_SIGNATURE.decode("ascii"),
+        "skip_reasons": {k: list(v) for k, v in _REASONS.items()},
+        "tree_kinds": dict(_KIND_WORDS),
+        "archive_suffixes": list(RAW_ARCHIVE_SUFFIXES),
+        "type_extensions": {k: [v[0], list(v[1])] for k, v in _TYPE_EXTENSIONS.items()},
+        "dynamic_page_extensions": sorted(_DYNAMIC_PAGE_EXTENSIONS),
+        "text_extensions": sorted(
+            k for k, f in processors.items() if f is text_processor and k != "__text__"
+        ),
+    }
 
 
 def render_schema_json(schema: dict[str, Any]) -> str:
@@ -265,7 +298,7 @@ def render_init_stub(schema: dict[str, Any]) -> str:
         "",
         "import os",
         "from collections.abc import Iterable",
-        "from typing import Any, Literal",
+        "from typing import Any, BinaryIO, Literal",
         "",
     ]
     # ``att`` is intentionally NOT re-exported: it is declared below as an
@@ -286,7 +319,10 @@ def render_init_stub(schema: dict[str, Any]) -> str:
         "class _Att:",
         "    def __call__(",
         "        self,",
-        "        input: str | os.PathLike[str] | Iterable[str | os.PathLike[str]],",
+        "        input: str",
+        "        | os.PathLike[str]",
+        "        | BinaryIO",
+        "        | Iterable[str | os.PathLike[str] | BinaryIO],",
         "        *,",
         "        api_key: str | None = ...,",
         '        prefer: Literal["local", "service", "local-only", "service-only"]'
@@ -328,6 +364,10 @@ def main() -> None:
     SCHEMA_PATH.parent.mkdir(parents=True, exist_ok=True)
     DOCS_PATH.parent.mkdir(parents=True, exist_ok=True)
     SCHEMA_PATH.write_text(render_schema_json(schema), encoding="utf-8")
+    READING_DATA_PATH.write_text(
+        json.dumps(reading_data(), indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
     DOCS_PATH.write_text(render_options_markdown(schema), encoding="utf-8")
     STUB_PATH.write_text(render_init_stub(schema), encoding="utf-8")
     SKILL_OPTIONS_PATH.write_text(render_skill_options(schema), encoding="utf-8")

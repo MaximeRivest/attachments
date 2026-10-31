@@ -1,0 +1,729 @@
+{
+ "area": "globs",
+ "review": "draft",
+ "cases": [
+  {
+   "name": "split 'docs/*.txt'",
+   "call": "split",
+   "pattern": "docs/*.txt",
+   "expect": {
+    "value": [
+     "docs",
+     [
+      "*.txt"
+     ]
+    ]
+   }
+  },
+  {
+   "name": "split 'src/**/x.py'",
+   "call": "split",
+   "pattern": "src/**/x.py",
+   "expect": {
+    "value": [
+     "src",
+     [
+      "**",
+      "x.py"
+     ]
+    ]
+   }
+  },
+  {
+   "name": "split 'src/*/file.txt'",
+   "call": "split",
+   "pattern": "src/*/file.txt",
+   "expect": {
+    "value": [
+     "src",
+     [
+      "*",
+      "file.txt"
+     ]
+    ]
+   }
+  },
+  {
+   "name": "split 'file[1].txt'",
+   "call": "split",
+   "pattern": "file[1].txt",
+   "expect": {
+    "value": [
+     "",
+     [
+      "file[1].txt"
+     ]
+    ]
+   }
+  },
+  {
+   "name": "split 'plain/file.txt'",
+   "call": "split",
+   "pattern": "plain/file.txt",
+   "expect": {
+    "value": [
+     "plain",
+     [
+      "file.txt"
+     ]
+    ]
+   }
+  },
+  {
+   "name": "split 'odd[name'",
+   "call": "split",
+   "pattern": "odd[name",
+   "expect": {
+    "value": [
+     "",
+     [
+      "odd[name"
+     ]
+    ]
+   }
+  },
+  {
+   "name": "split 'a/b[/c'",
+   "call": "split",
+   "pattern": "a/b[/c",
+   "expect": {
+    "value": [
+     "a/b[",
+     [
+      "c"
+     ]
+    ]
+   }
+  },
+  {
+   "name": "split '*.py'",
+   "call": "split",
+   "pattern": "*.py",
+   "expect": {
+    "value": [
+     "",
+     [
+      "*.py"
+     ]
+    ]
+   }
+  },
+  {
+   "name": "split '/abs/dir/**/*.md'",
+   "call": "split",
+   "pattern": "/abs/dir/**/*.md",
+   "expect": {
+    "value": [
+     "/abs/dir",
+     [
+      "**",
+      "*.md"
+     ]
+    ]
+   }
+  },
+  {
+   "name": "split '/*.py'",
+   "call": "split",
+   "pattern": "/*.py",
+   "expect": {
+    "value": [
+     "/",
+     [
+      "*.py"
+     ]
+    ]
+   }
+  },
+  {
+   "name": "split 'a?b'",
+   "call": "split",
+   "pattern": "a?b",
+   "expect": {
+    "value": [
+     "",
+     [
+      "a?b"
+     ]
+    ]
+   }
+  },
+  {
+   "name": "split 'dir/[!x]'",
+   "call": "split",
+   "pattern": "dir/[!x]",
+   "expect": {
+    "value": [
+     "dir",
+     [
+      "[!x]"
+     ]
+    ]
+   }
+  },
+  {
+   "name": "'*/x.py' hidden=False on 'a/x.py'",
+   "call": "match",
+   "components": [
+    "*",
+    "x.py"
+   ],
+   "hidden": false,
+   "path": "a/x.py",
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "'*/x.py' hidden=False on 'a/b/x.py'",
+   "call": "match",
+   "components": [
+    "*",
+    "x.py"
+   ],
+   "hidden": false,
+   "path": "a/b/x.py",
+   "expect": {
+    "value": false
+   }
+  },
+  {
+   "name": "'*/x.py' hidden=False on '.h/x.py'",
+   "call": "match",
+   "components": [
+    "*",
+    "x.py"
+   ],
+   "hidden": false,
+   "path": ".h/x.py",
+   "expect": {
+    "value": false
+   }
+  },
+  {
+   "name": "'*/x.py' hidden=False on 'x.py'",
+   "call": "match",
+   "components": [
+    "*",
+    "x.py"
+   ],
+   "hidden": false,
+   "path": "x.py",
+   "expect": {
+    "value": false
+   }
+  },
+  {
+   "name": "'**/*.md' hidden=False on 'a.md'",
+   "call": "match",
+   "components": [
+    "**",
+    "*.md"
+   ],
+   "hidden": false,
+   "path": "a.md",
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "'**/*.md' hidden=False on 'a/b/c.md'",
+   "call": "match",
+   "components": [
+    "**",
+    "*.md"
+   ],
+   "hidden": false,
+   "path": "a/b/c.md",
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "'**/*.md' hidden=False on '.h/c.md'",
+   "call": "match",
+   "components": [
+    "**",
+    "*.md"
+   ],
+   "hidden": false,
+   "path": ".h/c.md",
+   "expect": {
+    "value": false
+   }
+  },
+  {
+   "name": "'**/*.md' hidden=False on 'a/.c.md'",
+   "call": "match",
+   "components": [
+    "**",
+    "*.md"
+   ],
+   "hidden": false,
+   "path": "a/.c.md",
+   "expect": {
+    "value": false
+   }
+  },
+  {
+   "name": "'**/*.md' hidden=False on 'a/b'",
+   "call": "match",
+   "components": [
+    "**",
+    "*.md"
+   ],
+   "hidden": false,
+   "path": "a/b",
+   "expect": {
+    "value": false
+   }
+  },
+  {
+   "name": "'**/*.md' hidden=True on 'a.md'",
+   "call": "match",
+   "components": [
+    "**",
+    "*.md"
+   ],
+   "hidden": true,
+   "path": "a.md",
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "'**/*.md' hidden=True on '.h/c.md'",
+   "call": "match",
+   "components": [
+    "**",
+    "*.md"
+   ],
+   "hidden": true,
+   "path": ".h/c.md",
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "'**/*.md' hidden=True on 'a/.c.md'",
+   "call": "match",
+   "components": [
+    "**",
+    "*.md"
+   ],
+   "hidden": true,
+   "path": "a/.c.md",
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "'**' hidden=False on 'a'",
+   "call": "match",
+   "components": [
+    "**"
+   ],
+   "hidden": false,
+   "path": "a",
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "'**' hidden=False on 'a/b'",
+   "call": "match",
+   "components": [
+    "**"
+   ],
+   "hidden": false,
+   "path": "a/b",
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "'**' hidden=False on '.a'",
+   "call": "match",
+   "components": [
+    "**"
+   ],
+   "hidden": false,
+   "path": ".a",
+   "expect": {
+    "value": false
+   }
+  },
+  {
+   "name": "'.h/*' hidden=False on '.h/a'",
+   "call": "match",
+   "components": [
+    ".h",
+    "*"
+   ],
+   "hidden": false,
+   "path": ".h/a",
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "'.h/*' hidden=False on '.h/.b'",
+   "call": "match",
+   "components": [
+    ".h",
+    "*"
+   ],
+   "hidden": false,
+   "path": ".h/.b",
+   "expect": {
+    "value": false
+   }
+  },
+  {
+   "name": "'*.txt' hidden=False on 'é.txt'",
+   "call": "match",
+   "components": [
+    "*.txt"
+   ],
+   "hidden": false,
+   "path": "é.txt",
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "'*.txt' hidden=False on '😀.txt'",
+   "call": "match",
+   "components": [
+    "*.txt"
+   ],
+   "hidden": false,
+   "path": "😀.txt",
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "'*.txt' hidden=False on '.txt'",
+   "call": "match",
+   "components": [
+    "*.txt"
+   ],
+   "hidden": false,
+   "path": ".txt",
+   "expect": {
+    "value": false
+   }
+  },
+  {
+   "name": "'*.txt' hidden=False on 'a.txt/b'",
+   "call": "match",
+   "components": [
+    "*.txt"
+   ],
+   "hidden": false,
+   "path": "a.txt/b",
+   "expect": {
+    "value": false
+   }
+  },
+  {
+   "name": "'?.txt' hidden=False on '😀.txt'",
+   "call": "match",
+   "components": [
+    "?.txt"
+   ],
+   "hidden": false,
+   "path": "😀.txt",
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "'?.txt' hidden=False on 'a.txt'",
+   "call": "match",
+   "components": [
+    "?.txt"
+   ],
+   "hidden": false,
+   "path": "a.txt",
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "'?.txt' hidden=False on 'ab.txt'",
+   "call": "match",
+   "components": [
+    "?.txt"
+   ],
+   "hidden": false,
+   "path": "ab.txt",
+   "expect": {
+    "value": false
+   }
+  },
+  {
+   "name": "'[ab]*' hidden=False on 'apple'",
+   "call": "match",
+   "components": [
+    "[ab]*"
+   ],
+   "hidden": false,
+   "path": "apple",
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "'[ab]*' hidden=False on 'cherry'",
+   "call": "match",
+   "components": [
+    "[ab]*"
+   ],
+   "hidden": false,
+   "path": "cherry",
+   "expect": {
+    "value": false
+   }
+  },
+  {
+   "name": "'[ab]*' hidden=False on 'b'",
+   "call": "match",
+   "components": [
+    "[ab]*"
+   ],
+   "hidden": false,
+   "path": "b",
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "'[!ab]*' hidden=False on 'apple'",
+   "call": "match",
+   "components": [
+    "[!ab]*"
+   ],
+   "hidden": false,
+   "path": "apple",
+   "expect": {
+    "value": false
+   }
+  },
+  {
+   "name": "'[!ab]*' hidden=False on 'cherry'",
+   "call": "match",
+   "components": [
+    "[!ab]*"
+   ],
+   "hidden": false,
+   "path": "cherry",
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "'[!ab]*' hidden=False on '.c'",
+   "call": "match",
+   "components": [
+    "[!ab]*"
+   ],
+   "hidden": false,
+   "path": ".c",
+   "expect": {
+    "value": false
+   }
+  },
+  {
+   "name": "'[^ab]*' hidden=False on 'apple'",
+   "call": "match",
+   "components": [
+    "[^ab]*"
+   ],
+   "hidden": false,
+   "path": "apple",
+   "expect": {
+    "value": false
+   }
+  },
+  {
+   "name": "'[^ab]*' hidden=False on 'cherry'",
+   "call": "match",
+   "components": [
+    "[^ab]*"
+   ],
+   "hidden": false,
+   "path": "cherry",
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "'[a-' hidden=False on '[a-'",
+   "call": "match",
+   "components": [
+    "[a-"
+   ],
+   "hidden": false,
+   "path": "[a-",
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "'[a-' hidden=False on 'a'",
+   "call": "match",
+   "components": [
+    "[a-"
+   ],
+   "hidden": false,
+   "path": "a",
+   "expect": {
+    "value": false
+   }
+  },
+  {
+   "name": "'a**b' hidden=False on 'ab'",
+   "call": "match",
+   "components": [
+    "a**b"
+   ],
+   "hidden": false,
+   "path": "ab",
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "'a**b' hidden=False on 'axyb'",
+   "call": "match",
+   "components": [
+    "a**b"
+   ],
+   "hidden": false,
+   "path": "axyb",
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "'a**b' hidden=False on 'ax/yb'",
+   "call": "match",
+   "components": [
+    "a**b"
+   ],
+   "hidden": false,
+   "path": "ax/yb",
+   "expect": {
+    "value": false
+   }
+  },
+  {
+   "name": "'d/**/f' hidden=False on 'd/f'",
+   "call": "match",
+   "components": [
+    "d",
+    "**",
+    "f"
+   ],
+   "hidden": false,
+   "path": "d/f",
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "'d/**/f' hidden=False on 'd/x/f'",
+   "call": "match",
+   "components": [
+    "d",
+    "**",
+    "f"
+   ],
+   "hidden": false,
+   "path": "d/x/f",
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "'d/**/f' hidden=False on 'd/.x/f'",
+   "call": "match",
+   "components": [
+    "d",
+    "**",
+    "f"
+   ],
+   "hidden": false,
+   "path": "d/.x/f",
+   "expect": {
+    "value": false
+   }
+  },
+  {
+   "name": "is a pattern: 'docs/*.txt'",
+   "call": "is_pattern",
+   "text": "docs/*.txt",
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "is a pattern: 'file[1].txt'",
+   "call": "is_pattern",
+   "text": "file[1].txt",
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "is a pattern: 'plain.txt'",
+   "call": "is_pattern",
+   "text": "plain.txt",
+   "expect": {
+    "value": false
+   }
+  },
+  {
+   "name": "is a pattern: 'odd[name'",
+   "call": "is_pattern",
+   "text": "odd[name",
+   "expect": {
+    "value": false
+   }
+  },
+  {
+   "name": "is a pattern: 'a/[x]/b'",
+   "call": "is_pattern",
+   "text": "a/[x]/b",
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "is a pattern: '[]'",
+   "call": "is_pattern",
+   "text": "[]",
+   "expect": {
+    "value": false
+   }
+  },
+  {
+   "name": "is a pattern: 'x[/]y'",
+   "call": "is_pattern",
+   "text": "x[/]y",
+   "expect": {
+    "value": false
+   }
+  },
+  {
+   "name": "is a pattern: '?'",
+   "call": "is_pattern",
+   "text": "?",
+   "expect": {
+    "value": true
+   }
+  }
+ ]
+}

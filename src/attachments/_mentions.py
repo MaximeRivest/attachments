@@ -40,7 +40,7 @@ from typing import Any
 
 from ._artifacts import Artifacts
 from ._sources._ignore import is_secret, looks_like_key
-from .dsl import parse_dsl
+from .dsl import parse_dsl_written
 
 log = logging.getLogger("attachments.mentions")
 
@@ -55,6 +55,7 @@ _URL = re.compile(r"https?://[^\s<>\"'`]+")
 _BARE = re.compile(
     r"(?<![\w@/~.-])"  # not inside a word, an email or a longer path
     r"((?:~|\.{1,2})?/?(?:[\w.-]+/)*[\w-][\w.-]*\.[A-Za-z0-9]{1,10})"
+    r"(?![\w@-])"  # it ends the word: not "a.verylongextension", not "a.b@c.org"
     r"(\[[^\]\n]*\])?"  # optional DSL options
 )
 _TRAILING = ".,;:!?"
@@ -89,6 +90,18 @@ def _strip_url(url: str) -> str:
     return url + dsl
 
 
+def _inside_brackets(prompt: str, at: int) -> bool:
+    """Whether *at* is inside an unclosed ``[`` on its line (an options block).
+
+    Examples:
+        >>> _inside_brackets("t.xlsx[sheet: 'S 1']", 14), _inside_brackets("'a' [b]", 0)
+        (True, False)
+    """
+    line_start = prompt.rfind("\n", 0, at) + 1
+    before = prompt[line_start:at]
+    return before.rfind("[") > before.rfind("]")
+
+
 def find_mentions(prompt: str) -> list[Mention]:
     """Candidate file/URL mentions in *prompt*, in order of appearance.
 
@@ -110,8 +123,8 @@ def find_mentions(prompt: str) -> list[Mention]:
 
     for match in _QUOTED.finditer(prompt):
         text = next(g for g in match.groups() if g is not None).strip()
-        if not text:
-            continue
+        if not text or _inside_brackets(prompt, match.start()):
+            continue  # a quoted value in options: report.xlsx[sheet: 'S 1']
         taken.append(match.span())
         is_url = bool(_URL.fullmatch(text.split("[", 1)[0]))
         found.append(Mention(text, True, is_url, match.start()))
@@ -191,7 +204,7 @@ def from_prompt(
     seen: set[tuple[str, tuple]] = set()
     out = Artifacts()
     for mention in find_mentions(prompt):
-        path_text, dsl = parse_dsl(mention.text)
+        path_text, dsl = parse_dsl_written(mention.text)
         if mention.url:
             if not urls:
                 log.info("not fetching %s (from_prompt urls=False)", path_text)

@@ -1,0 +1,1129 @@
+{
+ "area": "ignore",
+ "review": "draft",
+ "cases": [
+  {
+   "name": "['*.log'] on 'a/b/debug.log'",
+   "call": "decide",
+   "patterns": [
+    "*.log"
+   ],
+   "path": "a/b/debug.log",
+   "is_dir": false,
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "['*.log'] on 'debug.log'",
+   "call": "decide",
+   "patterns": [
+    "*.log"
+   ],
+   "path": "debug.log",
+   "is_dir": false,
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "['*.log'] on 'debug.logs'",
+   "call": "decide",
+   "patterns": [
+    "*.log"
+   ],
+   "path": "debug.logs",
+   "is_dir": false,
+   "expect": {
+    "value": null
+   }
+  },
+  {
+   "name": "['/*.log'] on 'a/debug.log'",
+   "call": "decide",
+   "patterns": [
+    "/*.log"
+   ],
+   "path": "a/debug.log",
+   "is_dir": false,
+   "expect": {
+    "value": null
+   }
+  },
+  {
+   "name": "['/*.log'] on 'x.log'",
+   "call": "decide",
+   "patterns": [
+    "/*.log"
+   ],
+   "path": "x.log",
+   "is_dir": false,
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "['doc/*.txt'] on 'doc/x.txt'",
+   "call": "decide",
+   "patterns": [
+    "doc/*.txt"
+   ],
+   "path": "doc/x.txt",
+   "is_dir": false,
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "['doc/*.txt'] on 'doc/sub/x.txt'",
+   "call": "decide",
+   "patterns": [
+    "doc/*.txt"
+   ],
+   "path": "doc/sub/x.txt",
+   "is_dir": false,
+   "expect": {
+    "value": null
+   }
+  },
+  {
+   "name": "['doc/*.txt'] on 'a/doc/x.txt'",
+   "call": "decide",
+   "patterns": [
+    "doc/*.txt"
+   ],
+   "path": "a/doc/x.txt",
+   "is_dir": false,
+   "expect": {
+    "value": null
+   }
+  },
+  {
+   "name": "['**/foo'] on 'a/b/foo'",
+   "call": "decide",
+   "patterns": [
+    "**/foo"
+   ],
+   "path": "a/b/foo",
+   "is_dir": false,
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "['**/foo'] on 'foo'",
+   "call": "decide",
+   "patterns": [
+    "**/foo"
+   ],
+   "path": "foo",
+   "is_dir": false,
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "['a/**/b'] on 'a/b'",
+   "call": "decide",
+   "patterns": [
+    "a/**/b"
+   ],
+   "path": "a/b",
+   "is_dir": false,
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "['a/**/b'] on 'a/x/y/b'",
+   "call": "decide",
+   "patterns": [
+    "a/**/b"
+   ],
+   "path": "a/x/y/b",
+   "is_dir": false,
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "['a/**/b'] on 'ab'",
+   "call": "decide",
+   "patterns": [
+    "a/**/b"
+   ],
+   "path": "ab",
+   "is_dir": false,
+   "expect": {
+    "value": null
+   }
+  },
+  {
+   "name": "['abc/**'] on 'abc/x/y'",
+   "call": "decide",
+   "patterns": [
+    "abc/**"
+   ],
+   "path": "abc/x/y",
+   "is_dir": false,
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "['abc/**'] on 'abc'/",
+   "call": "decide",
+   "patterns": [
+    "abc/**"
+   ],
+   "path": "abc",
+   "is_dir": true,
+   "expect": {
+    "value": null
+   }
+  },
+  {
+   "name": "['**'] on 'x'",
+   "call": "decide",
+   "patterns": [
+    "**"
+   ],
+   "path": "x",
+   "is_dir": false,
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "['**'] on 'a/b'/",
+   "call": "decide",
+   "patterns": [
+    "**"
+   ],
+   "path": "a/b",
+   "is_dir": true,
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "['file[0-9].txt'] on 'file7.txt'",
+   "call": "decide",
+   "patterns": [
+    "file[0-9].txt"
+   ],
+   "path": "file7.txt",
+   "is_dir": false,
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "['file[0-9].txt'] on 'filex.txt'",
+   "call": "decide",
+   "patterns": [
+    "file[0-9].txt"
+   ],
+   "path": "filex.txt",
+   "is_dir": false,
+   "expect": {
+    "value": null
+   }
+  },
+  {
+   "name": "['file[!0-9].txt'] on 'file7.txt'",
+   "call": "decide",
+   "patterns": [
+    "file[!0-9].txt"
+   ],
+   "path": "file7.txt",
+   "is_dir": false,
+   "expect": {
+    "value": null
+   }
+  },
+  {
+   "name": "['file[!0-9].txt'] on 'filex.txt'",
+   "call": "decide",
+   "patterns": [
+    "file[!0-9].txt"
+   ],
+   "path": "filex.txt",
+   "is_dir": false,
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "['file[!0-9].txt'] on 'file/.txt'",
+   "call": "decide",
+   "patterns": [
+    "file[!0-9].txt"
+   ],
+   "path": "file/.txt",
+   "is_dir": false,
+   "expect": {
+    "value": null
+   }
+  },
+  {
+   "name": "['[]a].txt'] on '].txt'",
+   "call": "decide",
+   "patterns": [
+    "[]a].txt"
+   ],
+   "path": "].txt",
+   "is_dir": false,
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "['[]a].txt'] on 'a.txt'",
+   "call": "decide",
+   "patterns": [
+    "[]a].txt"
+   ],
+   "path": "a.txt",
+   "is_dir": false,
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "['[z-a].txt'] on 'z.txt'",
+   "call": "decide",
+   "patterns": [
+    "[z-a].txt"
+   ],
+   "path": "z.txt",
+   "is_dir": false,
+   "expect": {
+    "value": null
+   }
+  },
+  {
+   "name": "['\\\\#notes', '\\\\!bang'] on '#notes'",
+   "call": "decide",
+   "patterns": [
+    "\\#notes",
+    "\\!bang"
+   ],
+   "path": "#notes",
+   "is_dir": false,
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "['\\\\#notes', '\\\\!bang'] on '!bang'",
+   "call": "decide",
+   "patterns": [
+    "\\#notes",
+    "\\!bang"
+   ],
+   "path": "!bang",
+   "is_dir": false,
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "['# comment', '  ', 'x'] on 'x'",
+   "call": "decide",
+   "patterns": [
+    "# comment",
+    "  ",
+    "x"
+   ],
+   "path": "x",
+   "is_dir": false,
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "['# comment', '  ', 'x'] on '# comment'",
+   "call": "decide",
+   "patterns": [
+    "# comment",
+    "  ",
+    "x"
+   ],
+   "path": "# comment",
+   "is_dir": false,
+   "expect": {
+    "value": null
+   }
+  },
+  {
+   "name": "['trailing   ', 'escaped\\\\ '] on 'trailing'",
+   "call": "decide",
+   "patterns": [
+    "trailing   ",
+    "escaped\\ "
+   ],
+   "path": "trailing",
+   "is_dir": false,
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "['trailing   ', 'escaped\\\\ '] on 'escaped '",
+   "call": "decide",
+   "patterns": [
+    "trailing   ",
+    "escaped\\ "
+   ],
+   "path": "escaped ",
+   "is_dir": false,
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "['trailing   ', 'escaped\\\\ '] on 'escaped'",
+   "call": "decide",
+   "patterns": [
+    "trailing   ",
+    "escaped\\ "
+   ],
+   "path": "escaped",
+   "is_dir": false,
+   "expect": {
+    "value": null
+   }
+  },
+  {
+   "name": "['build/'] on 'build'/",
+   "call": "decide",
+   "patterns": [
+    "build/"
+   ],
+   "path": "build",
+   "is_dir": true,
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "['build/'] on 'build'",
+   "call": "decide",
+   "patterns": [
+    "build/"
+   ],
+   "path": "build",
+   "is_dir": false,
+   "expect": {
+    "value": null
+   }
+  },
+  {
+   "name": "['build/'] on 'a/build'/",
+   "call": "decide",
+   "patterns": [
+    "build/"
+   ],
+   "path": "a/build",
+   "is_dir": true,
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "['*.tmp', '!keep.tmp'] on 'x.tmp'",
+   "call": "decide",
+   "patterns": [
+    "*.tmp",
+    "!keep.tmp"
+   ],
+   "path": "x.tmp",
+   "is_dir": false,
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "['*.tmp', '!keep.tmp'] on 'keep.tmp'",
+   "call": "decide",
+   "patterns": [
+    "*.tmp",
+    "!keep.tmp"
+   ],
+   "path": "keep.tmp",
+   "is_dir": false,
+   "expect": {
+    "value": false
+   }
+  },
+  {
+   "name": "['!keep.tmp', '*.tmp'] on 'keep.tmp'",
+   "call": "decide",
+   "patterns": [
+    "!keep.tmp",
+    "*.tmp"
+   ],
+   "path": "keep.tmp",
+   "is_dir": false,
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "['a?c'] on 'abc'",
+   "call": "decide",
+   "patterns": [
+    "a?c"
+   ],
+   "path": "abc",
+   "is_dir": false,
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "['a?c'] on 'a/c'",
+   "call": "decide",
+   "patterns": [
+    "a?c"
+   ],
+   "path": "a/c",
+   "is_dir": false,
+   "expect": {
+    "value": null
+   }
+  },
+  {
+   "name": "['ü*.txt'] on 'über.txt'",
+   "call": "decide",
+   "patterns": [
+    "ü*.txt"
+   ],
+   "path": "über.txt",
+   "is_dir": false,
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "['ü*.txt'] on 'Über.txt'",
+   "call": "decide",
+   "patterns": [
+    "ü*.txt"
+   ],
+   "path": "Über.txt",
+   "is_dir": false,
+   "expect": {
+    "value": null
+   }
+  },
+  {
+   "name": "['?.txt'] on '😀.txt'",
+   "call": "decide",
+   "patterns": [
+    "?.txt"
+   ],
+   "path": "😀.txt",
+   "is_dir": false,
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "['?.txt'] on 'ab.txt'",
+   "call": "decide",
+   "patterns": [
+    "?.txt"
+   ],
+   "path": "ab.txt",
+   "is_dir": false,
+   "expect": {
+    "value": null
+   }
+  },
+  {
+   "name": "['*.TXT'] on 'a.txt'",
+   "call": "decide",
+   "patterns": [
+    "*.TXT"
+   ],
+   "path": "a.txt",
+   "is_dir": false,
+   "expect": {
+    "value": null
+   }
+  },
+  {
+   "name": "['a/'] on 'a'/",
+   "call": "decide",
+   "patterns": [
+    "a/"
+   ],
+   "path": "a",
+   "is_dir": true,
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "['a/'] on 'x/a'/",
+   "call": "decide",
+   "patterns": [
+    "a/"
+   ],
+   "path": "x/a",
+   "is_dir": true,
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "['/'] on 'a'",
+   "call": "decide",
+   "patterns": [
+    "/"
+   ],
+   "path": "a",
+   "is_dir": false,
+   "expect": {
+    "value": null
+   }
+  },
+  {
+   "name": "['!'] on 'a'",
+   "call": "decide",
+   "patterns": [
+    "!"
+   ],
+   "path": "a",
+   "is_dir": false,
+   "expect": {
+    "value": null
+   }
+  },
+  {
+   "name": "['a**b'] on 'axyb'",
+   "call": "decide",
+   "patterns": [
+    "a**b"
+   ],
+   "path": "axyb",
+   "is_dir": false,
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "['a**b'] on 'ax/yb'",
+   "call": "decide",
+   "patterns": [
+    "a**b"
+   ],
+   "path": "ax/yb",
+   "is_dir": false,
+   "expect": {
+    "value": null
+   }
+  },
+  {
+   "name": "['foo/**/'] on 'foo/a'/",
+   "call": "decide",
+   "patterns": [
+    "foo/**/"
+   ],
+   "path": "foo/a",
+   "is_dir": true,
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "['foo/**/'] on 'foo/a'",
+   "call": "decide",
+   "patterns": [
+    "foo/**/"
+   ],
+   "path": "foo/a",
+   "is_dir": false,
+   "expect": {
+    "value": null
+   }
+  },
+  {
+   "name": "['[a-c]*'] on 'bob'",
+   "call": "decide",
+   "patterns": [
+    "[a-c]*"
+   ],
+   "path": "bob",
+   "is_dir": false,
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "['[a-c]*'] on 'dave'",
+   "call": "decide",
+   "patterns": [
+    "[a-c]*"
+   ],
+   "path": "dave",
+   "is_dir": false,
+   "expect": {
+    "value": null
+   }
+  },
+  {
+   "name": "['\\\\[x]'] on '[x]'",
+   "call": "decide",
+   "patterns": [
+    "\\[x]"
+   ],
+   "path": "[x]",
+   "is_dir": false,
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "['\\\\[x]'] on 'x'",
+   "call": "decide",
+   "patterns": [
+    "\\[x]"
+   ],
+   "path": "x",
+   "is_dir": false,
+   "expect": {
+    "value": null
+   }
+  },
+  {
+   "name": "['[['] on '[['",
+   "call": "decide",
+   "patterns": [
+    "[["
+   ],
+   "path": "[[",
+   "is_dir": false,
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "engine {} on '.git'/",
+   "call": "check",
+   "engine": {},
+   "path": ".git",
+   "is_dir": true,
+   "expect": {
+    "value": "vcs"
+   }
+  },
+  {
+   "name": "engine {} on 'a/.hg'/",
+   "call": "check",
+   "engine": {},
+   "path": "a/.hg",
+   "is_dir": true,
+   "expect": {
+    "value": "vcs"
+   }
+  },
+  {
+   "name": "engine {} on 'src/.env'",
+   "call": "check",
+   "engine": {},
+   "path": "src/.env",
+   "is_dir": false,
+   "expect": {
+    "value": "secret"
+   }
+  },
+  {
+   "name": "engine {} on '.env.example'",
+   "call": "check",
+   "engine": {},
+   "path": ".env.example",
+   "is_dir": false,
+   "expect": {
+    "value": "hidden"
+   }
+  },
+  {
+   "name": "engine {} on '.env.local'",
+   "call": "check",
+   "engine": {},
+   "path": ".env.local",
+   "is_dir": false,
+   "expect": {
+    "value": "secret"
+   }
+  },
+  {
+   "name": "engine {} on 'home/.aws/credentials'",
+   "call": "check",
+   "engine": {},
+   "path": "home/.aws/credentials",
+   "is_dir": false,
+   "expect": {
+    "value": "secret"
+   }
+  },
+  {
+   "name": "engine {} on 'deploy/id_ed25519'",
+   "call": "check",
+   "engine": {},
+   "path": "deploy/id_ed25519",
+   "is_dir": false,
+   "expect": {
+    "value": "secret"
+   }
+  },
+  {
+   "name": "engine {} on 'client_secret_123.json'",
+   "call": "check",
+   "engine": {},
+   "path": "client_secret_123.json",
+   "is_dir": false,
+   "expect": {
+    "value": "secret"
+   }
+  },
+  {
+   "name": "engine {} on 'x.tfstate'",
+   "call": "check",
+   "engine": {},
+   "path": "x.tfstate",
+   "is_dir": false,
+   "expect": {
+    "value": "secret"
+   }
+  },
+  {
+   "name": "engine {} on 'node_modules'/",
+   "call": "check",
+   "engine": {},
+   "path": "node_modules",
+   "is_dir": true,
+   "expect": {
+    "value": "generated"
+   }
+  },
+  {
+   "name": "engine {} on 'node_modules'",
+   "call": "check",
+   "engine": {},
+   "path": "node_modules",
+   "is_dir": false,
+   "expect": {
+    "value": null
+   }
+  },
+  {
+   "name": "engine {} on 'pkg.egg-info'/",
+   "call": "check",
+   "engine": {},
+   "path": "pkg.egg-info",
+   "is_dir": true,
+   "expect": {
+    "value": "generated"
+   }
+  },
+  {
+   "name": "engine {} on 'a/__pycache__'/",
+   "call": "check",
+   "engine": {},
+   "path": "a/__pycache__",
+   "is_dir": true,
+   "expect": {
+    "value": "generated"
+   }
+  },
+  {
+   "name": "engine {} on 'uv.lock'",
+   "call": "check",
+   "engine": {},
+   "path": "uv.lock",
+   "is_dir": false,
+   "expect": {
+    "value": "generated"
+   }
+  },
+  {
+   "name": "engine {} on 'a/b/x.min.js'",
+   "call": "check",
+   "engine": {},
+   "path": "a/b/x.min.js",
+   "is_dir": false,
+   "expect": {
+    "value": "generated"
+   }
+  },
+  {
+   "name": "engine {} on 'x.map'",
+   "call": "check",
+   "engine": {},
+   "path": "x.map",
+   "is_dir": false,
+   "expect": {
+    "value": "generated"
+   }
+  },
+  {
+   "name": "engine {} on '.DS_Store'",
+   "call": "check",
+   "engine": {},
+   "path": ".DS_Store",
+   "is_dir": false,
+   "expect": {
+    "value": "generated"
+   }
+  },
+  {
+   "name": "engine {} on '.idea'/",
+   "call": "check",
+   "engine": {},
+   "path": ".idea",
+   "is_dir": true,
+   "expect": {
+    "value": "hidden"
+   }
+  },
+  {
+   "name": "engine {} on '.editorconfig'",
+   "call": "check",
+   "engine": {},
+   "path": ".editorconfig",
+   "is_dir": false,
+   "expect": {
+    "value": "hidden"
+   }
+  },
+  {
+   "name": "engine {} on 'src/app.py'",
+   "call": "check",
+   "engine": {},
+   "path": "src/app.py",
+   "is_dir": false,
+   "expect": {
+    "value": null
+   }
+  },
+  {
+   "name": "engine {} on 'build'/",
+   "call": "check",
+   "engine": {},
+   "path": "build",
+   "is_dir": true,
+   "expect": {
+    "value": null
+   }
+  },
+  {
+   "name": "engine {'hidden': True} on '.idea'/",
+   "call": "check",
+   "engine": {
+    "hidden": true
+   },
+   "path": ".idea",
+   "is_dir": true,
+   "expect": {
+    "value": null
+   }
+  },
+  {
+   "name": "engine {'hidden': True} on '.env'",
+   "call": "check",
+   "engine": {
+    "hidden": true
+   },
+   "path": ".env",
+   "is_dir": false,
+   "expect": {
+    "value": "secret"
+   }
+  },
+  {
+   "name": "engine {'extra': ['!uv.lock']} on 'uv.lock'",
+   "call": "check",
+   "engine": {
+    "extra": [
+     "!uv.lock"
+    ]
+   },
+   "path": "uv.lock",
+   "is_dir": false,
+   "expect": {
+    "value": null
+   }
+  },
+  {
+   "name": "engine {'extra': ['*.py']} on 'a.py'",
+   "call": "check",
+   "engine": {
+    "extra": [
+     "*.py"
+    ]
+   },
+   "path": "a.py",
+   "is_dir": false,
+   "expect": {
+    "value": "ignore option"
+   }
+  },
+  {
+   "name": "engine {'extra': ['!.git']} on '.git'/",
+   "call": "check",
+   "engine": {
+    "extra": [
+     "!.git"
+    ]
+   },
+   "path": ".git",
+   "is_dir": true,
+   "expect": {
+    "value": "vcs"
+   }
+  },
+  {
+   "name": "engine {'defaults': False} on '.env'",
+   "call": "check",
+   "engine": {
+    "defaults": false
+   },
+   "path": ".env",
+   "is_dir": false,
+   "expect": {
+    "value": null
+   }
+  },
+  {
+   "name": "engine {'defaults': False} on 'node_modules'/",
+   "call": "check",
+   "engine": {
+    "defaults": false
+   },
+   "path": "node_modules",
+   "is_dir": true,
+   "expect": {
+    "value": null
+   }
+  },
+  {
+   "name": "engine {'defaults': False} on '.git'/",
+   "call": "check",
+   "engine": {
+    "defaults": false
+   },
+   "path": ".git",
+   "is_dir": true,
+   "expect": {
+    "value": "vcs"
+   }
+  },
+  {
+   "name": "engine {'defaults': False, 'extra': ['*.md']} on 'x.md'",
+   "call": "check",
+   "engine": {
+    "defaults": false,
+    "extra": [
+     "*.md"
+    ]
+   },
+   "path": "x.md",
+   "is_dir": false,
+   "expect": {
+    "value": "ignore option"
+   }
+  },
+  {
+   "name": "key file b'-----BEGIN OPENSSH PRIVATE KEY-----\\nx'",
+   "call": "key",
+   "bytes_b64": "LS0tLS1CRUdJTiBPUEVOU1NIIFBSSVZBVEUgS0VZLS0tLS0KeA==",
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "key file b'\\xef\\xbb\\xbf  \\n-----BEGIN RSA PRIVATE KEY-----'",
+   "call": "key",
+   "bytes_b64": "77u/ICAKLS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQ==",
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "key file b'-----BEGIN PGP PRIVATE KEY BLOCK-----'",
+   "call": "key",
+   "bytes_b64": "LS0tLS1CRUdJTiBQR1AgUFJJVkFURSBLRVkgQkxPQ0stLS0tLQ==",
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "key file b'-----BEGIN ENCRYPTED PRIVATE KEY-----'",
+   "call": "key",
+   "bytes_b64": "LS0tLS1CRUdJTiBFTkNSWVBURUQgUFJJVkFURSBLRVktLS0tLQ==",
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "key file b'PuTTY-User-Key-File-3: ssh-ed25519'",
+   "call": "key",
+   "bytes_b64": "UHVUVFktVXNlci1LZXktRmlsZS0zOiBzc2gtZWQyNTUxOQ==",
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "key file b'-----BEGIN PUBLIC KEY-----'",
+   "call": "key",
+   "bytes_b64": "LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0=",
+   "expect": {
+    "value": false
+   }
+  },
+  {
+   "name": "key file b'# docs: -----BEGIN RSA PRIVATE KEY-----'",
+   "call": "key",
+   "bytes_b64": "IyBkb2NzOiAtLS0tLUJFR0lOIFJTQSBQUklWQVRFIEtFWS0tLS0t",
+   "expect": {
+    "value": false
+   }
+  },
+  {
+   "name": "key file b'                                        '",
+   "call": "key",
+   "bytes_b64": "ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgLS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQ==",
+   "expect": {
+    "value": false
+   }
+  },
+  {
+   "name": "key file b'-----BEGIN private KEY-----'",
+   "call": "key",
+   "bytes_b64": "LS0tLS1CRUdJTiBwcml2YXRlIEtFWS0tLS0t",
+   "expect": {
+    "value": false
+   }
+  },
+  {
+   "name": "key file b'PuTTY-User-Key-File-x'",
+   "call": "key",
+   "bytes_b64": "UHVUVFktVXNlci1LZXktRmlsZS14",
+   "expect": {
+    "value": false
+   }
+  },
+  {
+   "name": "key file b'\\t\\x0b\\x0c\\r-----BEGIN EC PRIVATE KEY-----'",
+   "call": "key",
+   "bytes_b64": "CQsMDS0tLS0tQkVHSU4gRUMgUFJJVkFURSBLRVktLS0tLQ==",
+   "expect": {
+    "value": true
+   }
+  }
+ ]
+}

@@ -77,6 +77,43 @@ function colonOutsideQuotes(segment: string): number {
 }
 
 /**
+ * An option value from the string: typed, and as written. An option of
+ * type `str` takes the text (`[password: 007]` is `"007"`), every other
+ * type the typed value (contract/reading.md, "Options").
+ *
+ * @internal
+ */
+export class Written {
+  readonly value: DslValue;
+  readonly text: string;
+
+  constructor(value: DslValue, text: string) {
+    this.value = value;
+    this.text = text;
+  }
+
+  toString(): string {
+    return this.text;
+  }
+
+  toJSON(): DslValue {
+    return this.value;
+  }
+}
+
+function unquote(raw: string): string {
+  const value = strip(raw);
+  if (value.length >= 2 && value[0] === value.at(-1) && (value[0] === '"' || value[0] === "'")) return value.slice(1, -1);
+  return value;
+}
+
+/** {@link parseDsl} with each value's text as written. @internal */
+export function parseDslWritten(input: string): [source: string, options: Record<string, Written>] {
+  const [source, splits] = split(input);
+  return [source, Object.fromEntries(splits.map(([k, v]) => [k, new Written(typeValue(v), unquote(v))]))];
+}
+
+/**
  * Split an input into its source and raw options.
  *
  * @example
@@ -84,8 +121,15 @@ function colonOutsideQuotes(segment: string): number {
  * // ["report.pdf", { pages: [1, 4], images: true }]
  */
 export function parseDsl(input: string): [source: string, options: Record<string, DslValue>] {
+  const [source, splits] = split(input);
+  const options: Record<string, DslValue> = {};
+  for (const [key, value] of splits) options[key] = typeValue(value); // the last occurrence wins
+  return [source, options];
+}
+
+function split(input: string): [string, [string, string][]] {
   const text = strip(input);
-  if (!text.endsWith("]")) return [text, {}];
+  if (!text.endsWith("]")) return [text, []];
   let depth = 0;
   let blockStart = -1;
   for (let i = text.length - 1; i >= 0; i--) {
@@ -98,28 +142,24 @@ export function parseDsl(input: string): [source: string, options: Record<string
       }
     }
   }
-  if (blockStart === -1) return [text, {}];
+  if (blockStart === -1) return [text, []];
   const source = strip(text.slice(0, blockStart));
   const body = text.slice(blockStart + 1, -1);
-  if (!strip(body)) return [source, {}];
+  if (!strip(body)) return [source, []];
   const segments = splitOutsideQuotes(body, ",");
   if (segments.length > 1 && !strip(segments.at(-1)!)) segments.pop();
   const splits: [string, string][] = [];
   for (const segment of segments) {
     const colon = colonOutsideQuotes(segment);
     if (colon === -1) {
-      if (splits.length === 0) return [text, {}];
+      if (splits.length === 0) return [text, []];
       const last = splits.at(-1)!;
       last[1] = `${last[1]},${segment}`;
       continue;
     }
     splits.push([segment.slice(0, colon), segment.slice(colon + 1)]);
   }
-  const options: Record<string, DslValue> = {};
-  for (const [key, value] of splits) {
-    options[normalizeKey(key)] = typeValue(value); // the last occurrence wins
-  }
-  return [source, options];
+  return [source, splits.map(([k, v]) => [normalizeKey(k), v])];
 }
 
 function sameValue(a: DslValue, b: DslValue): boolean {

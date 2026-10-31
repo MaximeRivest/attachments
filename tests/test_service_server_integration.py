@@ -446,10 +446,25 @@ class TestCoreFallbackModes:
         out = _process_single("a.bar", b"x", prefer="service", api_key="k")
         assert out["text"] == "local fallback"
 
-    def test_local_exception_uses_service_when_key_present(self, monkeypatch):
+    def test_local_crash_is_final_even_with_a_key(self, monkeypatch):
+        """A crash is not a missing dependency: the file is not uploaded for it."""
+
         @register_processor(".err")
         def _local_raises(data: bytes, **_opts):
             raise RuntimeError("boom")
+
+        def _service_called(data: bytes, **_opts):  # pragma: no cover - must not run
+            raise AssertionError("the file was sent to the service")
+
+        monkeypatch.setattr("attachments.service.process_via_service", _service_called)
+
+        out = _process_single("a.err", b"x", prefer="local", api_key="k")
+        assert out["meta"]["error"]["code"] == "processing-error"
+
+    def test_local_missing_module_uses_service(self, monkeypatch):
+        @register_processor(".err")
+        def _local_lacks(data: bytes, **_opts):
+            raise ModuleNotFoundError("No module named 'fakelib'", name="fakelib")
 
         def _service_ok(data: bytes, **_opts):
             return make_artifact(text="saved by service")

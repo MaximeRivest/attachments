@@ -1,0 +1,502 @@
+{
+ "area": "downloads",
+ "review": "draft",
+ "routes": {
+  "/notes.txt": {
+   "status": 200,
+   "headers": {
+    "Content-Type": "text/plain"
+   },
+   "body": "plain notes"
+  },
+  "/d": {
+   "status": 200,
+   "headers": {
+    "Content-Disposition": "attachment; filename=\"report.md\""
+   },
+   "body": "# from a disposition"
+  },
+  "/e": {
+   "status": 200,
+   "headers": {
+    "Content-Disposition": "attachment; filename*=UTF-8''r%C3%A9sum%C3%A9.txt"
+   },
+   "body": "résumé"
+  },
+  "/old": {
+   "status": 301,
+   "headers": {
+    "Location": "/moved/new.txt"
+   }
+  },
+  "/moved/new.txt": {
+   "status": 200,
+   "headers": {
+    "Content-Type": "text/plain"
+   },
+   "body": "moved here"
+  },
+  "/loop": {
+   "status": 302,
+   "headers": {
+    "Location": "/loop"
+   }
+  },
+  "/missing.txt": {
+   "status": 404,
+   "body": "not found"
+  },
+  "/": {
+   "status": 200,
+   "headers": {
+    "Content-Type": "text/plain"
+   },
+   "body": "the root"
+  },
+  "/data.json": {
+   "status": 200,
+   "headers": {
+    "Content-Type": "application/json"
+   },
+   "body": "{\"a\": 1}"
+  },
+  "/bundle.zip": {
+   "status": 200,
+   "headers": {
+    "Content-Type": "application/zip"
+   },
+   "body_b64": "UEsDBBQAAAAIAAAAIVBqOeDQBwAAAAUAAAAFAAAAYS50eHRLzCnISAQAUEsDBBQAAAAIAAAAIVDrNXWEBQAAAAMAAAAGAAAAYi9jLm1kU1ZIBgBQSwECFAMUAAAACAAAACFQajng0AcAAAAFAAAABQAAAAAAAAAAAAAAgAEAAAAAYS50eHRQSwECFAMUAAAACAAAACFQ6zV1hAUAAAADAAAABgAAAAAAAAAAAAAAgAEqAAAAYi9jLm1kUEsFBgAAAAACAAIAZwAAAFMAAAAAAA=="
+  },
+  "/caf%C3%A9.txt": {
+   "status": 200,
+   "body": "percent-encoded name"
+  },
+  "/odd": {
+   "status": 200,
+   "headers": {
+    "Content-Type": "text/plain"
+   },
+   "body_b64": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0+P0BBQkNERUZHSElKS0xNTk9QUVJTVFVWV1hZWltcXV5fYGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6e3x9fn+AgYKDhIWGh4iJiouMjY6PkJGSk5SVlpeYmZqbnJ2en6ChoqOkpaanqKmqq6ytrq+wsbKztLW2t7i5uru8vb6/wMHCw8TFxsfIycrLzM3Oz9DR0tPU1dbX2Nna29zd3t/g4eLj5OXm5+jp6uvs7e7v8PHy8/T19vf4+fr7/P3+/w=="
+  }
+ },
+ "cases": [
+  {
+   "name": "a text file",
+   "path": "/notes.txt",
+   "options": {},
+   "block_private": false,
+   "expect": {
+    "artifacts": [
+     {
+      "text": "plain notes",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 11,
+        "filename": "notes.txt"
+       },
+       "source": "http://HOST/notes.txt"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "a name from Content-Disposition",
+   "path": "/d",
+   "options": {},
+   "block_private": false,
+   "expect": {
+    "artifacts": [
+     {
+      "text": "# from a disposition",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 20,
+        "filename": "report.md"
+       },
+       "source": "http://HOST/d"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "a name from filename*",
+   "path": "/e",
+   "options": {},
+   "block_private": false,
+   "expect": {
+    "artifacts": [
+     {
+      "text": "résumé",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 6,
+        "filename": "résumé.txt"
+       },
+       "source": "http://HOST/e"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "a redirect",
+   "path": "/old",
+   "options": {},
+   "block_private": false,
+   "expect": {
+    "artifacts": [
+     {
+      "text": "moved here",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 10,
+        "filename": "new.txt"
+       },
+       "source": "http://HOST/moved/new.txt"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "too many redirects",
+   "path": "/loop",
+   "options": {},
+   "block_private": false,
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "http://HOST/loop",
+       "error": {
+        "code": "unpack-error"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "not found",
+   "path": "/missing.txt",
+   "options": {},
+   "block_private": false,
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "http://HOST/missing.txt",
+       "error": {
+        "code": "unpack-error"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "the root",
+   "path": "/",
+   "options": {},
+   "block_private": false,
+   "expect": {
+    "artifacts": [
+     {
+      "text": "the root",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 8,
+        "filename": "download"
+       },
+       "source": "http://HOST/"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "JSON",
+   "path": "/data.json",
+   "options": {},
+   "block_private": false,
+   "expect": {
+    "artifacts": [
+     {
+      "text": "{\"a\": 1}",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 8,
+        "filename": "data.json"
+       },
+       "source": "http://HOST/data.json"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "a zip by name",
+   "path": "/bundle.zip",
+   "options": {},
+   "block_private": false,
+   "expect": {
+    "artifacts": [
+     {
+      "text": "alpha",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 5,
+        "filename": "bundle.zip/a.txt"
+       },
+       "source": "bundle.zip/a.txt"
+      }
+     },
+     {
+      "text": "# c",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 3,
+        "filename": "bundle.zip/b/c.md"
+       },
+       "source": "bundle.zip/b/c.md"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "a zip, its tree",
+   "path": "/bundle.zip",
+   "options": {
+    "tree": true
+   },
+   "block_private": false,
+   "expect": {
+    "artifacts": [
+     {
+      "text": "Archive http://HOST/bundle.zip — 2 files read, 8 B\n\nbundle.zip/\n├── a.txt\n└── b/\n    └── c.md",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "http://HOST/bundle.zip",
+       "kind": "directory",
+       "extra": {
+        "kind": "archive",
+        "root": "bundle.zip",
+        "files": 2,
+        "bytes": 8,
+        "skipped": {}
+       }
+      }
+     },
+     {
+      "text": "alpha",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 5,
+        "filename": "bundle.zip/a.txt"
+       },
+       "source": "bundle.zip/a.txt"
+      }
+     },
+     {
+      "text": "# c",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 3,
+        "filename": "bundle.zip/b/c.md"
+       },
+       "source": "bundle.zip/b/c.md"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "a percent-encoded name",
+   "path": "/caf%C3%A9.txt",
+   "options": {},
+   "block_private": false,
+   "expect": {
+    "artifacts": [
+     {
+      "text": "percent-encoded name",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 20,
+        "filename": "café.txt"
+       },
+       "source": "http://HOST/caf%C3%A9.txt"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "options on a download",
+   "path": "/notes.txt[pagez: 1]",
+   "options": {},
+   "block_private": false,
+   "expect": {
+    "artifacts": [
+     {
+      "text": "plain notes",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 11,
+        "filename": "notes.txt"
+       },
+       "warnings": [
+        "Unknown option 'pagez' for .txt"
+       ],
+       "source": "http://HOST/notes.txt"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "folder options on a single download",
+   "path": "/notes.txt",
+   "options": {
+    "max_files": 2
+   },
+   "block_private": false,
+   "expect": {
+    "artifacts": [
+     {
+      "text": "plain notes",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 11,
+        "filename": "notes.txt"
+       },
+       "warnings": [
+        "Unknown option 'max_files' for .txt"
+       ],
+       "source": "http://HOST/notes.txt"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "bytes with no reader",
+   "path": "/odd",
+   "options": {},
+   "block_private": false,
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "http://HOST/odd",
+       "note": "no local processor available"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "a private address, blocked",
+   "path": "/notes.txt",
+   "options": {},
+   "block_private": true,
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "http://HOST/notes.txt",
+       "error": {
+        "code": "unpack-error"
+       }
+      }
+     }
+    ]
+   }
+  }
+ ]
+}

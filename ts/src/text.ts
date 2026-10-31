@@ -163,3 +163,47 @@ export function jsonSize(text: string): number {
 export function lower(text: string): string {
   return text.toLowerCase();
 }
+
+/** Python's string order: by code point (JavaScript's `<` compares UTF-16 units). */
+export function comparePoints(a: string, b: string): number {
+  const n = Math.min(a.length, b.length);
+  for (let i = 0; i < n; i++) {
+    const x = a.codePointAt(i)!;
+    const y = b.codePointAt(i)!;
+    if (x !== y) return x - y;
+    if (x > 0xffff) i++;
+  }
+  return a.length - b.length;
+}
+
+/**
+ * Python's `repr` of an option value, for messages pinned word for word:
+ * text in single quotes (double when it holds a single quote and no
+ * double), a two-number range as `(1, 4)` (Python's tuple), booleans as
+ * `True`/`False`.
+ */
+export function pyRepr(value: unknown): string {
+  if (typeof value === "string") {
+    const quote = value.includes("'") && !value.includes('"') ? '"' : "'";
+    let out = "";
+    for (const ch of value) {
+      const c = ch.codePointAt(0)!;
+      if (ch === "\\") out += "\\\\";
+      else if (ch === quote) out += `\\${quote}`;
+      else if (ch === "\n") out += "\\n";
+      else if (ch === "\r") out += "\\r";
+      else if (ch === "\t") out += "\\t";
+      else if (c < 0x20 || c === 0x7f) out += `\\x${c.toString(16).padStart(2, "0")}`;
+      else out += ch;
+    }
+    return quote + out + quote;
+  }
+  if (typeof value === "boolean") return value ? "True" : "False";
+  if (value === null || value === undefined) return "None";
+  if (Array.isArray(value)) {
+    const inner = value.map(pyRepr).join(", ");
+    return value.length === 2 && value.every((v) => typeof v === "number" && Number.isInteger(v)) ? `(${inner})` : `[${inner}]`;
+  }
+  if (typeof value === "object") return String(value);
+  return String(value);
+}

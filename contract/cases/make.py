@@ -28,6 +28,10 @@ sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "tests"))
 
 from _contract import run  # noqa: E402
+from _contract_reading import AREAS as READING  # noqa: E402
+
+sys.path.insert(0, str(HERE))
+import _reading  # noqa: E402
 
 #: Areas a person has read case by case against the rules. Until then a
 #: file says ``"review": "draft"``: it pins today's behavior, and a
@@ -880,7 +884,55 @@ AREAS = {
 }
 
 
+#: Reading areas (contract/reading.md): builder, and fixtures their cases name.
+READING_AREAS = {
+    "inputs": (_reading.inputs_cases, {}),
+    "archives": (_reading.archives_cases, {}),
+    "trees": (_reading.trees_cases, {"PROJECT": _reading.PROJECT}),
+    "ignore": (_reading.ignore_cases, {}),
+    "globs": (_reading.globs_cases, {}),
+    "text": (_reading.text_cases, {}),
+    "mentions": (_reading.mentions_cases, {}),
+    "routing": (_reading.routing_cases, {}),
+    "downloads": (lambda: _reading.downloads_cases()[0], {}),
+    "naming": (_reading.naming_cases, {}),
+}
+
+#: Data a reading area's cases share (beside its fixtures).
+SHARED = {
+    "routing": {"fake_options": _reading.FAKE_OPTIONS, "behaviors": _reading.BEHAVIORS},
+    "downloads": {"routes": _reading.downloads_cases()[1]},
+}
+
+
+def write(area: str, doc: dict) -> None:
+    path = HERE / f"{area}.json"
+    path.write_text(json.dumps(doc, ensure_ascii=False, indent=1) + "\n")
+    print(f"{path.relative_to(ROOT)}: {len(doc['cases'])} cases")
+
+
+def check_names(area: str, cases: list[dict]) -> None:
+    names = [c["name"] for c in cases]
+    duplicates = {n for n in names if names.count(n) > 1}
+    if duplicates:
+        raise SystemExit(f"{area}: duplicate case names {sorted(duplicates)}")
+
+
 def main() -> None:
+    for area, (make, fixtures) in READING_AREAS.items():
+        cases = make()
+        check_names(area, cases)
+        doc: dict = {
+            "area": area,
+            "review": "reviewed" if area in REVIEWED else "draft",
+        }
+        if fixtures:
+            doc["fixtures"] = fixtures
+        doc.update(SHARED.get(area, {}))
+        doc["cases"] = cases
+        for case in cases:
+            case["expect"] = READING[area](case, doc)
+        write(area, doc)
     for area, make in AREAS.items():
         cases = make()
         names = [c["name"] for c in cases]

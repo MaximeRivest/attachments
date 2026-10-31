@@ -126,6 +126,98 @@ def _find_colon_outside_quotes(segment: str) -> int:
     return -1
 
 
+class Written:
+    """An option value from the string: its typed value and its text as written.
+
+    ``[password: 007]`` types as the integer ``7``, but a password, a git
+    tag (``ref: 1.10``) or a CSS selector is text, and must arrive as
+    written. Which one an option wants is known only when it is resolved
+    against its declaration (``attachments._options``): an option of type
+    ``str`` takes :attr:`text`, every other type :attr:`value`.
+
+    Examples:
+        >>> w = parse_dsl_written("x[password: 007]")[1]["password"]
+        >>> w.value, w.text, str(w)
+        (7, '007', '007')
+    """
+
+    __slots__ = ("value", "text")
+
+    def __init__(self, value: Any, text: str) -> None:
+        self.value = value
+        self.text = text
+
+    def __str__(self) -> str:
+        return self.text
+
+    def __repr__(self) -> str:
+        return f"Written({self.value!r}, {self.text!r})"
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, Written):
+            return (self.value, self.text) == (other.value, other.text)
+        return NotImplemented
+
+    def __hash__(self) -> int:
+        return hash((repr(self.value), self.text))
+
+
+def _unquote(raw: str) -> str:
+    """The text of a raw value: trimmed, and without its quotes when quoted."""
+    value = raw.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+        return value[1:-1]
+    return value
+
+
+def _split(input: str) -> tuple[str, list[tuple[str, str]]]:
+    """``(source, [(normalized key, raw value), ...])``: the grammar, untyped."""
+    input = input.strip()
+    if not input.endswith("]"):
+        return input, []
+
+    # Find the '[' matching the final ']' (the final balanced group).
+    depth = 0
+    block_start = -1
+    for i in range(len(input) - 1, -1, -1):
+        if input[i] == "]":
+            depth += 1
+        elif input[i] == "[":
+            depth -= 1
+            if depth == 0:
+                block_start = i
+                break
+    if block_start == -1:
+        return input, []
+
+    source = input[:block_start].strip()
+    body = input[block_start + 1 : -1]
+
+    # An empty group `[]` is an empty options block and is stripped.
+    if not body.strip():
+        return source, []
+
+    segments = _split_outside_quotes(body, ",")
+    # Trailing comma tolerated: drop one final empty segment.
+    if len(segments) > 1 and not segments[-1].strip():
+        segments.pop()
+
+    # The first segment must contain ':' outside quotes, else the whole group
+    # is part of the source. A later segment without ':' continues the
+    # previous value (commas inside a value: page lists, CSS selectors).
+    splits: list[tuple[str, str]] = []
+    for segment in segments:
+        colon = _find_colon_outside_quotes(segment)
+        if colon == -1:
+            if not splits:
+                return input, []
+            key, value = splits[-1]
+            splits[-1] = (key, f"{value},{segment}")
+            continue
+        splits.append((segment[:colon], segment[colon + 1 :]))
+    return source, [(_normalize_key(k), v) for k, v in splits]
+
+
 def parse_dsl(input: str) -> tuple[str, dict[str, Any]]:
     """Parse an input string into ``(source, raw_options)``.
 
@@ -134,6 +226,7 @@ def parse_dsl(input: str) -> tuple[str, dict[str, Any]]:
     contains a ``:`` outside quotes; otherwise the whole group stays in the
     source. A later segment without ``:`` continues the previous value, so
     ``[pages: 1,3,5]`` and ``[select: h1, p]`` need no quotes.
+
     Keys are normalized; values are typed but NOT resolved against any
     processor schema (that happens in ``attachments._options``).
 
@@ -157,55 +250,26 @@ def parse_dsl(input: str) -> tuple[str, dict[str, Any]]:
         >>> parse_dsl("page.html[select: h1, p]")
         ('page.html', {'select': 'h1, p'})
     """
-    input = input.strip()
-    if not input.endswith("]"):
-        return input, {}
+    source, splits = _split(input)
+    # Duplicate keys: last occurrence wins (plain dict assignment).
+    return source, {key: _type_value(raw) for key, raw in splits}
 
-    # Find the '[' matching the final ']' (the final balanced group).
-    depth = 0
-    block_start = -1
-    for i in range(len(input) - 1, -1, -1):
-        if input[i] == "]":
-            depth += 1
-        elif input[i] == "[":
-            depth -= 1
-            if depth == 0:
-                block_start = i
-                break
-    if block_start == -1:
-        return input, {}
 
-    source = input[:block_start].strip()
-    body = input[block_start + 1 : -1]
+def parse_dsl_written(input: str) -> tuple[str, dict[str, Written]]:
+    """:func:`parse_dsl`, each value with its text as written (:class:`Written`).
 
-    # An empty group `[]` is an empty options block and is stripped.
-    if not body.strip():
-        return source, {}
+    What ``att()`` uses: options of type ``str`` take the text, so
+    ``[password: 007]`` is ``"007"``, not ``"7"``.
 
-    segments = _split_outside_quotes(body, ",")
-    # Trailing comma tolerated: drop one final empty segment.
-    if len(segments) > 1 and not segments[-1].strip():
-        segments.pop()
-
-    # The first segment must contain ':' outside quotes, else the whole group
-    # is part of the source. A later segment without ':' continues the
-    # previous value (commas inside a value: page lists, CSS selectors).
-    splits: list[tuple[str, str]] = []
-    for segment in segments:
-        colon = _find_colon_outside_quotes(segment)
-        if colon == -1:
-            if not splits:
-                return input, {}
-            key, value = splits[-1]
-            splits[-1] = (key, f"{value},{segment}")
-            continue
-        splits.append((segment[:colon], segment[colon + 1 :]))
-
-    options: dict[str, Any] = {}
-    for raw_key, raw_value in splits:
-        # Duplicate keys: last occurrence wins (plain dict assignment).
-        options[_normalize_key(raw_key)] = _type_value(raw_value)
-    return source, options
+    Examples:
+        >>> source, options = parse_dsl_written("repo[ref: 1.10, depth: 2]")
+        >>> source, options["ref"].text, options["depth"].value
+        ('repo', '1.10', 2)
+    """
+    source, splits = _split(input)
+    return source, {
+        key: Written(_type_value(raw), _unquote(raw)) for key, raw in splits
+    }
 
 
 def _format_value(value: Any) -> str:

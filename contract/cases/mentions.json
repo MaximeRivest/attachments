@@ -1,0 +1,320 @@
+{
+ "area": "mentions",
+ "review": "draft",
+ "cases": [
+  {
+   "name": "mentions 0: 'Read `notes/a b.txt`, data.csv and repor'",
+   "call": "find",
+   "prompt": "Read `notes/a b.txt`, data.csv and report.pdf[pages: 1-2]. Mail me@x.org, see https://x.org/p.pdf). It's fine.",
+   "expect": {
+    "value": [
+     {
+      "text": "notes/a b.txt",
+      "explicit": true,
+      "url": false
+     },
+     {
+      "text": "data.csv",
+      "explicit": false,
+      "url": false
+     },
+     {
+      "text": "report.pdf[pages: 1-2]",
+      "explicit": false,
+      "url": false
+     },
+     {
+      "text": "https://x.org/p.pdf",
+      "explicit": false,
+      "url": true
+     }
+    ]
+   }
+  },
+  {
+   "name": "mentions 1: 'Compare \"my notes.txt\" with “curly.md” a'",
+   "call": "find",
+   "prompt": "Compare \"my notes.txt\" with “curly.md” and ‘single.md’ and 'plain.md'.",
+   "expect": {
+    "value": [
+     {
+      "text": "my notes.txt",
+      "explicit": true,
+      "url": false
+     },
+     {
+      "text": "curly.md",
+      "explicit": true,
+      "url": false
+     },
+     {
+      "text": "single.md",
+      "explicit": true,
+      "url": false
+     },
+     {
+      "text": "plain.md",
+      "explicit": true,
+      "url": false
+     }
+    ]
+   }
+  },
+  {
+   "name": "mentions 2: 'Node.js and e.g. are not files; neither '",
+   "call": "find",
+   "prompt": "Node.js and e.g. are not files; neither is v1.2 or 3.14.",
+   "expect": {
+    "value": [
+     {
+      "text": "Node.js",
+      "explicit": false,
+      "url": false
+     },
+     {
+      "text": "e.g",
+      "explicit": false,
+      "url": false
+     },
+     {
+      "text": "v1.2",
+      "explicit": false,
+      "url": false
+     },
+     {
+      "text": "3.14",
+      "explicit": false,
+      "url": false
+     }
+    ]
+   }
+  },
+  {
+   "name": "mentions 3: 'Look at src/app.py, ./rel.py, ../up.py, '",
+   "call": "find",
+   "prompt": "Look at src/app.py, ./rel.py, ../up.py, ~/home.txt and /abs/x.py.",
+   "expect": {
+    "value": [
+     {
+      "text": "src/app.py",
+      "explicit": false,
+      "url": false
+     },
+     {
+      "text": "./rel.py",
+      "explicit": false,
+      "url": false
+     },
+     {
+      "text": "../up.py",
+      "explicit": false,
+      "url": false
+     },
+     {
+      "text": "~/home.txt",
+      "explicit": false,
+      "url": false
+     },
+     {
+      "text": "/abs/x.py",
+      "explicit": false,
+      "url": false
+     }
+    ]
+   }
+  },
+  {
+   "name": "mentions 4: 'A path in a sentence: docs/guide.md.'",
+   "call": "find",
+   "prompt": "A path in a sentence: docs/guide.md.",
+   "expect": {
+    "value": [
+     {
+      "text": "docs/guide.md",
+      "explicit": false,
+      "url": false
+     }
+    ]
+   }
+  },
+  {
+   "name": "mentions 5: 'https://example.com/a_(b).html, (https:/'",
+   "call": "find",
+   "prompt": "https://example.com/a_(b).html, (https://x.org/y) and https://x.org/z?q=1&r=2.",
+   "expect": {
+    "value": [
+     {
+      "text": "https://example.com/a_(b).html",
+      "explicit": false,
+      "url": true
+     },
+     {
+      "text": "https://x.org/y",
+      "explicit": false,
+      "url": true
+     },
+     {
+      "text": "https://x.org/z?q=1&r=2",
+      "explicit": false,
+      "url": true
+     }
+    ]
+   }
+  },
+  {
+   "name": "mentions 6: 'Two of the same: a.txt a.txt `a.txt`'",
+   "call": "find",
+   "prompt": "Two of the same: a.txt a.txt `a.txt`",
+   "expect": {
+    "value": [
+     {
+      "text": "a.txt",
+      "explicit": false,
+      "url": false
+     },
+     {
+      "text": "a.txt",
+      "explicit": false,
+      "url": false
+     },
+     {
+      "text": "a.txt",
+      "explicit": true,
+      "url": false
+     }
+    ]
+   }
+  },
+  {
+   "name": "mentions 7: 'Options: report.pdf[pages: 1-2, images: '",
+   "call": "find",
+   "prompt": "Options: report.pdf[pages: 1-2, images: true] and table.xlsx[sheet: 'S 1'].",
+   "expect": {
+    "value": [
+     {
+      "text": "report.pdf[pages: 1-2, images: true]",
+      "explicit": false,
+      "url": false
+     },
+     {
+      "text": "table.xlsx[sheet: 'S 1']",
+      "explicit": false,
+      "url": false
+     }
+    ]
+   }
+  },
+  {
+   "name": "mentions 8: 'Ünïcode naïve_file.md and 文件.txt and фай'",
+   "call": "find",
+   "prompt": "Ünïcode naïve_file.md and 文件.txt and файл.md",
+   "expect": {
+    "value": [
+     {
+      "text": "naïve_file.md",
+      "explicit": false,
+      "url": false
+     },
+     {
+      "text": "文件.txt",
+      "explicit": false,
+      "url": false
+     },
+     {
+      "text": "файл.md",
+      "explicit": false,
+      "url": false
+     }
+    ]
+   }
+  },
+  {
+   "name": "mentions 9: 'Inside words: abc.def@ghi.com x/y.z.w __'",
+   "call": "find",
+   "prompt": "Inside words: abc.def@ghi.com x/y.z.w __init__.py",
+   "expect": {
+    "value": [
+     {
+      "text": "x/y.z.w",
+      "explicit": false,
+      "url": false
+     },
+     {
+      "text": "__init__.py",
+      "explicit": false,
+      "url": false
+     }
+    ]
+   }
+  },
+  {
+   "name": "mentions 10: 'Backtick `folder/` and quotes \"unclosed'",
+   "call": "find",
+   "prompt": "Backtick `folder/` and quotes \"unclosed",
+   "expect": {
+    "value": [
+     {
+      "text": "folder/",
+      "explicit": true,
+      "url": false
+     }
+    ]
+   }
+  },
+  {
+   "name": "mentions 11: ''",
+   "call": "find",
+   "prompt": "",
+   "expect": {
+    "value": []
+   }
+  },
+  {
+   "name": "mentions 12: \"it's Bob's file.txt\"",
+   "call": "find",
+   "prompt": "it's Bob's file.txt",
+   "expect": {
+    "value": [
+     {
+      "text": "file.txt",
+      "explicit": false,
+      "url": false
+     }
+    ]
+   }
+  },
+  {
+   "name": "mentions 13: 'a.verylongextension b.tar.gz c.TXT'",
+   "call": "find",
+   "prompt": "a.verylongextension b.tar.gz c.TXT",
+   "expect": {
+    "value": [
+     {
+      "text": "b.tar.gz",
+      "explicit": false,
+      "url": false
+     },
+     {
+      "text": "c.TXT",
+      "explicit": false,
+      "url": false
+     }
+    ]
+   }
+  },
+  {
+   "name": "mentions 14: '`https://x.org/q.pdf[pages: 1]`'",
+   "call": "find",
+   "prompt": "`https://x.org/q.pdf[pages: 1]`",
+   "expect": {
+    "value": [
+     {
+      "text": "https://x.org/q.pdf[pages: 1]",
+      "explicit": true,
+      "url": true
+     }
+    ]
+   }
+  }
+ ]
+}

@@ -1,0 +1,1725 @@
+{
+ "area": "routing",
+ "review": "draft",
+ "fake_options": [
+  {
+   "name": "pages",
+   "type": "pages",
+   "aliases": [
+    "page"
+   ],
+   "param": null,
+   "default": null,
+   "help": "",
+   "example": "pages: 1-4"
+  },
+  {
+   "name": "password",
+   "type": "str",
+   "aliases": [
+    "pw"
+   ],
+   "param": null,
+   "default": null,
+   "help": "",
+   "example": ""
+  },
+  {
+   "name": "dpi",
+   "type": "int",
+   "aliases": [],
+   "param": null,
+   "default": null,
+   "help": "",
+   "example": "dpi: 150"
+  }
+ ],
+ "behaviors": [
+  "text",
+  "missing",
+  "partial",
+  "parse-error",
+  "throw",
+  "missing-module"
+ ],
+ "cases": [
+  {
+   "name": "local, no service: read here",
+   "behavior": "text",
+   "input": {
+    "name": "x.fake",
+    "bytes_b64": "bG9jYWwgd29yZHM="
+   },
+   "prefer": "local",
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "local words",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "source": "x.fake"
+      }
+     }
+    ],
+    "requests": []
+   }
+  },
+  {
+   "name": "local, no service: a missing reader is an error",
+   "behavior": "missing",
+   "input": {
+    "name": "x.fake",
+    "bytes_b64": "bG9jYWwgd29yZHM="
+   },
+   "prefer": "local",
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "x.fake",
+       "error": {
+        "code": "missing-dependency"
+       }
+      }
+     }
+    ],
+    "requests": []
+   }
+  },
+  {
+   "name": "local: a missing reader goes to the service",
+   "behavior": "missing",
+   "input": {
+    "name": "x.fake",
+    "bytes_b64": "bG9jYWwgd29yZHM="
+   },
+   "prefer": "local",
+   "options": {},
+   "service": {
+    "answers": [
+     {
+      "status": 200,
+      "json": {
+       "text": "from the service",
+       "images": [],
+       "audio": [],
+       "video": [],
+       "meta": {
+        "source": "x.fake",
+        "kind": "text"
+       }
+      }
+     }
+    ],
+    "v1": false
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "from the service",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "x.fake",
+       "kind": "text",
+       "via": "service"
+      }
+     }
+    ],
+    "requests": [
+     {
+      "method": "POST",
+      "path": "/process",
+      "auth": null,
+      "filename": "x.fake",
+      "fields": {},
+      "file_b64": "bG9jYWwgd29yZHM="
+     }
+    ]
+   }
+  },
+  {
+   "name": "local: what reads here is not sent",
+   "behavior": "text",
+   "input": {
+    "name": "x.fake",
+    "bytes_b64": "bG9jYWwgd29yZHM="
+   },
+   "prefer": "local",
+   "options": {},
+   "service": {
+    "answers": [
+     {
+      "status": 200,
+      "json": {
+       "text": "from the service",
+       "images": [],
+       "audio": [],
+       "video": [],
+       "meta": {
+        "source": "x.fake",
+        "kind": "text"
+       }
+      }
+     }
+    ],
+    "v1": false
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "local words",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "source": "x.fake"
+      }
+     }
+    ],
+    "requests": []
+   }
+  },
+  {
+   "name": "local: a failed service call is the error",
+   "behavior": "missing",
+   "input": {
+    "name": "x.fake",
+    "bytes_b64": "bG9jYWwgd29yZHM="
+   },
+   "prefer": "local",
+   "options": {},
+   "service": {
+    "answers": [
+     {
+      "status": 500,
+      "json": {
+       "error": "boom"
+      }
+     }
+    ],
+    "v1": false
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "x.fake",
+       "error": {
+        "code": "service-error"
+       }
+      }
+     }
+    ],
+    "requests": [
+     {
+      "method": "POST",
+      "path": "/process",
+      "auth": null,
+      "filename": "x.fake",
+      "fields": {},
+      "file_b64": "bG9jYWwgd29yZHM="
+     }
+    ]
+   }
+  },
+  {
+   "name": "local: a part missing, the service fails, the text stays",
+   "behavior": "partial",
+   "input": {
+    "name": "x.fake",
+    "bytes_b64": "bG9jYWwgd29yZHM="
+   },
+   "prefer": "local",
+   "options": {},
+   "service": {
+    "answers": [
+     {
+      "status": 500,
+      "json": {
+       "error": "boom"
+      }
+     }
+    ],
+    "v1": false
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "partial text",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "extra": {
+        "missing_dependency": "image"
+       },
+       "warnings": [
+        "pictures not made",
+        "The service could not make the missing part either: service error: Service error: boom"
+       ],
+       "source": "x.fake"
+      }
+     }
+    ],
+    "requests": [
+     {
+      "method": "POST",
+      "path": "/process",
+      "auth": null,
+      "filename": "x.fake",
+      "fields": {},
+      "file_b64": "bG9jYWwgd29yZHM="
+     }
+    ]
+   }
+  },
+  {
+   "name": "local: a part missing, the service has it",
+   "behavior": "partial",
+   "input": {
+    "name": "x.fake",
+    "bytes_b64": "bG9jYWwgd29yZHM="
+   },
+   "prefer": "local",
+   "options": {},
+   "service": {
+    "answers": [
+     {
+      "status": 200,
+      "json": {
+       "text": "with a picture",
+       "images": [
+        {
+         "name": "p1.png",
+         "mimetype": "image/png",
+         "bytes_b64": "iVBORw==",
+         "page": 1
+        }
+       ],
+       "audio": [],
+       "video": [],
+       "meta": {
+        "source": "x.fake",
+        "kind": "pdf"
+       }
+      }
+     }
+    ],
+    "v1": false
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "with a picture",
+      "images": [
+       {
+        "name": "p1.png",
+        "mimetype": "image/png",
+        "bytes_b64": "iVBORw==",
+        "page": 1
+       }
+      ],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "x.fake",
+       "kind": "pdf",
+       "via": "service"
+      }
+     }
+    ],
+    "requests": [
+     {
+      "method": "POST",
+      "path": "/process",
+      "auth": null,
+      "filename": "x.fake",
+      "fields": {},
+      "file_b64": "bG9jYWwgd29yZHM="
+     }
+    ]
+   }
+  },
+  {
+   "name": "local: a parse error is final",
+   "behavior": "parse-error",
+   "input": {
+    "name": "x.fake",
+    "bytes_b64": "bG9jYWwgd29yZHM="
+   },
+   "prefer": "local",
+   "options": {},
+   "service": {
+    "answers": [
+     {
+      "status": 200,
+      "json": {
+       "text": "from the service",
+       "images": [],
+       "audio": [],
+       "video": [],
+       "meta": {
+        "source": "x.fake",
+        "kind": "text"
+       }
+      }
+     }
+    ],
+    "v1": false
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "x.fake",
+       "error": {
+        "code": "parse-error"
+       }
+      }
+     }
+    ],
+    "requests": []
+   }
+  },
+  {
+   "name": "local: a crash is final, nothing is sent",
+   "behavior": "throw",
+   "input": {
+    "name": "x.fake",
+    "bytes_b64": "bG9jYWwgd29yZHM="
+   },
+   "prefer": "local",
+   "options": {},
+   "service": {
+    "answers": [
+     {
+      "status": 200,
+      "json": {
+       "text": "from the service",
+       "images": [],
+       "audio": [],
+       "video": [],
+       "meta": {
+        "source": "x.fake",
+        "kind": "text"
+       }
+      }
+     }
+    ],
+    "v1": false
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "x.fake",
+       "error": {
+        "code": "processing-error"
+       }
+      }
+     }
+    ],
+    "requests": []
+   }
+  },
+  {
+   "name": "local: a missing module goes to the service",
+   "behavior": "missing-module",
+   "input": {
+    "name": "x.fake",
+    "bytes_b64": "bG9jYWwgd29yZHM="
+   },
+   "prefer": "local",
+   "options": {},
+   "service": {
+    "answers": [
+     {
+      "status": 200,
+      "json": {
+       "text": "from the service",
+       "images": [],
+       "audio": [],
+       "video": [],
+       "meta": {
+        "source": "x.fake",
+        "kind": "text"
+       }
+      }
+     }
+    ],
+    "v1": false
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "from the service",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "x.fake",
+       "kind": "text",
+       "via": "service"
+      }
+     }
+    ],
+    "requests": [
+     {
+      "method": "POST",
+      "path": "/process",
+      "auth": null,
+      "filename": "x.fake",
+      "fields": {},
+      "file_b64": "bG9jYWwgd29yZHM="
+     }
+    ]
+   }
+  },
+  {
+   "name": "local: a crash without a service",
+   "behavior": "throw",
+   "input": {
+    "name": "x.fake",
+    "bytes_b64": "bG9jYWwgd29yZHM="
+   },
+   "prefer": "local",
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "x.fake",
+       "error": {
+        "code": "processing-error"
+       }
+      }
+     }
+    ],
+    "requests": []
+   }
+  },
+  {
+   "name": "local: no reader for these bytes, the service reads them",
+   "behavior": "text",
+   "input": {
+    "name": "blob.zzz",
+    "bytes_b64": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0+P0BBQkNERUZHSElKS0xNTk9QUVJTVFVWV1hZWltcXV5fYGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6e3x9fn+AgYKDhIWGh4iJiouMjY6PkJGSk5SVlpeYmZqbnJ2en6ChoqOkpaanqKmqq6ytrq+wsbKztLW2t7i5uru8vb6/wMHCw8TFxsfIycrLzM3Oz9DR0tPU1dbX2Nna29zd3t/g4eLj5OXm5+jp6uvs7e7v8PHy8/T19vf4+fr7/P3+/w=="
+   },
+   "prefer": "local",
+   "options": {},
+   "service": {
+    "answers": [
+     {
+      "status": 200,
+      "json": {
+       "text": "from the service",
+       "images": [],
+       "audio": [],
+       "video": [],
+       "meta": {
+        "source": "x.fake",
+        "kind": "text"
+       }
+      }
+     }
+    ],
+    "v1": false
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "from the service",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "x.fake",
+       "kind": "text",
+       "via": "service"
+      }
+     }
+    ],
+    "requests": [
+     {
+      "method": "POST",
+      "path": "/process",
+      "auth": null,
+      "filename": "blob.zzz",
+      "fields": {},
+      "file_b64": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0+P0BBQkNERUZHSElKS0xNTk9QUVJTVFVWV1hZWltcXV5fYGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6e3x9fn+AgYKDhIWGh4iJiouMjY6PkJGSk5SVlpeYmZqbnJ2en6ChoqOkpaanqKmqq6ytrq+wsbKztLW2t7i5uru8vb6/wMHCw8TFxsfIycrLzM3Oz9DR0tPU1dbX2Nna29zd3t/g4eLj5OXm5+jp6uvs7e7v8PHy8/T19vf4+fr7/P3+/w=="
+     }
+    ]
+   }
+  },
+  {
+   "name": "local: no reader, no service",
+   "behavior": "text",
+   "input": {
+    "name": "blob.zzz",
+    "bytes_b64": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0+P0BBQkNERUZHSElKS0xNTk9QUVJTVFVWV1hZWltcXV5fYGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6e3x9fn+AgYKDhIWGh4iJiouMjY6PkJGSk5SVlpeYmZqbnJ2en6ChoqOkpaanqKmqq6ytrq+wsbKztLW2t7i5uru8vb6/wMHCw8TFxsfIycrLzM3Oz9DR0tPU1dbX2Nna29zd3t/g4eLj5OXm5+jp6uvs7e7v8PHy8/T19vf4+fr7/P3+/w=="
+   },
+   "prefer": "local",
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "blob.zzz",
+       "note": "no processor available"
+      }
+     }
+    ],
+    "requests": []
+   }
+  },
+  {
+   "name": "service: the service first",
+   "behavior": "text",
+   "input": {
+    "name": "x.fake",
+    "bytes_b64": "bG9jYWwgd29yZHM="
+   },
+   "prefer": "service",
+   "options": {},
+   "service": {
+    "answers": [
+     {
+      "status": 200,
+      "json": {
+       "text": "from the service",
+       "images": [],
+       "audio": [],
+       "video": [],
+       "meta": {
+        "source": "x.fake",
+        "kind": "text"
+       }
+      }
+     }
+    ],
+    "v1": false
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "from the service",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "x.fake",
+       "kind": "text",
+       "via": "service"
+      }
+     }
+    ],
+    "requests": [
+     {
+      "method": "POST",
+      "path": "/process",
+      "auth": null,
+      "filename": "x.fake",
+      "fields": {},
+      "file_b64": "bG9jYWwgd29yZHM="
+     }
+    ]
+   }
+  },
+  {
+   "name": "service: refused, read here",
+   "behavior": "text",
+   "input": {
+    "name": "x.fake",
+    "bytes_b64": "bG9jYWwgd29yZHM="
+   },
+   "prefer": "service",
+   "options": {},
+   "service": {
+    "answers": [
+     {
+      "status": 401,
+      "json": {
+       "error": "Unauthorized"
+      }
+     }
+    ],
+    "v1": false
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "local words",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "source": "x.fake"
+      }
+     }
+    ],
+    "requests": [
+     {
+      "method": "POST",
+      "path": "/process",
+      "auth": null,
+      "filename": "x.fake",
+      "fields": {},
+      "file_b64": "bG9jYWwgd29yZHM="
+     }
+    ]
+   }
+  },
+  {
+   "name": "service: refused, no reader here",
+   "behavior": "text",
+   "input": {
+    "name": "blob.zzz",
+    "bytes_b64": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0+P0BBQkNERUZHSElKS0xNTk9QUVJTVFVWV1hZWltcXV5fYGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6e3x9fn+AgYKDhIWGh4iJiouMjY6PkJGSk5SVlpeYmZqbnJ2en6ChoqOkpaanqKmqq6ytrq+wsbKztLW2t7i5uru8vb6/wMHCw8TFxsfIycrLzM3Oz9DR0tPU1dbX2Nna29zd3t/g4eLj5OXm5+jp6uvs7e7v8PHy8/T19vf4+fr7/P3+/w=="
+   },
+   "prefer": "service",
+   "options": {},
+   "service": {
+    "answers": [
+     {
+      "status": 500,
+      "json": {
+       "error": "boom"
+      }
+     }
+    ],
+    "v1": false
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "blob.zzz",
+       "note": "no processor available"
+      }
+     }
+    ],
+    "requests": [
+     {
+      "method": "POST",
+      "path": "/process",
+      "auth": null,
+      "filename": "blob.zzz",
+      "fields": {},
+      "file_b64": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0+P0BBQkNERUZHSElKS0xNTk9QUVJTVFVWV1hZWltcXV5fYGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6e3x9fn+AgYKDhIWGh4iJiouMjY6PkJGSk5SVlpeYmZqbnJ2en6ChoqOkpaanqKmqq6ytrq+wsbKztLW2t7i5uru8vb6/wMHCw8TFxsfIycrLzM3Oz9DR0tPU1dbX2Nna29zd3t/g4eLj5OXm5+jp6uvs7e7v8PHy8/T19vf4+fr7/P3+/w=="
+     }
+    ]
+   }
+  },
+  {
+   "name": "service: no service configured, read here",
+   "behavior": "text",
+   "input": {
+    "name": "x.fake",
+    "bytes_b64": "bG9jYWwgd29yZHM="
+   },
+   "prefer": "service",
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "local words",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "source": "x.fake"
+      }
+     }
+    ],
+    "requests": []
+   }
+  },
+  {
+   "name": "local-only: a missing reader stays missing",
+   "behavior": "missing",
+   "input": {
+    "name": "x.fake",
+    "bytes_b64": "bG9jYWwgd29yZHM="
+   },
+   "prefer": "local-only",
+   "options": {},
+   "service": {
+    "answers": [
+     {
+      "status": 200,
+      "json": {
+       "text": "from the service",
+       "images": [],
+       "audio": [],
+       "video": [],
+       "meta": {
+        "source": "x.fake",
+        "kind": "text"
+       }
+      }
+     }
+    ],
+    "v1": false
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "x.fake",
+       "error": {
+        "code": "missing-dependency"
+       }
+      }
+     }
+    ],
+    "requests": []
+   }
+  },
+  {
+   "name": "local-only: no reader",
+   "behavior": "text",
+   "input": {
+    "name": "blob.zzz",
+    "bytes_b64": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0+P0BBQkNERUZHSElKS0xNTk9QUVJTVFVWV1hZWltcXV5fYGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6e3x9fn+AgYKDhIWGh4iJiouMjY6PkJGSk5SVlpeYmZqbnJ2en6ChoqOkpaanqKmqq6ytrq+wsbKztLW2t7i5uru8vb6/wMHCw8TFxsfIycrLzM3Oz9DR0tPU1dbX2Nna29zd3t/g4eLj5OXm5+jp6uvs7e7v8PHy8/T19vf4+fr7/P3+/w=="
+   },
+   "prefer": "local-only",
+   "options": {},
+   "service": {
+    "answers": [
+     {
+      "status": 200,
+      "json": {
+       "text": "from the service",
+       "images": [],
+       "audio": [],
+       "video": [],
+       "meta": {
+        "source": "x.fake",
+        "kind": "text"
+       }
+      }
+     }
+    ],
+    "v1": false
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "blob.zzz",
+       "note": "no local processor available"
+      }
+     }
+    ],
+    "requests": []
+   }
+  },
+  {
+   "name": "service-only: no service configured",
+   "behavior": "text",
+   "input": {
+    "name": "x.fake",
+    "bytes_b64": "bG9jYWwgd29yZHM="
+   },
+   "prefer": "service-only",
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "x.fake",
+       "error": {
+        "code": "service-error"
+       }
+      }
+     }
+    ],
+    "requests": []
+   }
+  },
+  {
+   "name": "service-only: the service",
+   "behavior": "text",
+   "input": {
+    "name": "x.fake",
+    "bytes_b64": "bG9jYWwgd29yZHM="
+   },
+   "prefer": "service-only",
+   "options": {},
+   "service": {
+    "answers": [
+     {
+      "status": 200,
+      "json": {
+       "text": "from the service",
+       "images": [],
+       "audio": [],
+       "video": [],
+       "meta": {
+        "source": "x.fake",
+        "kind": "text"
+       }
+      }
+     }
+    ],
+    "v1": false
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "from the service",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "x.fake",
+       "kind": "text",
+       "via": "service"
+      }
+     }
+    ],
+    "requests": [
+     {
+      "method": "POST",
+      "path": "/process",
+      "auth": null,
+      "filename": "x.fake",
+      "fields": {},
+      "file_b64": "bG9jYWwgd29yZHM="
+     }
+    ]
+   }
+  },
+  {
+   "name": "service-only: quota",
+   "behavior": "text",
+   "input": {
+    "name": "x.fake",
+    "bytes_b64": "bG9jYWwgd29yZHM="
+   },
+   "prefer": "service-only",
+   "options": {},
+   "service": {
+    "answers": [
+     {
+      "status": 402,
+      "json": {
+       "error": "quota"
+      }
+     }
+    ],
+    "v1": false
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "x.fake",
+       "error": {
+        "code": "service-error"
+       }
+      }
+     }
+    ],
+    "requests": [
+     {
+      "method": "POST",
+      "path": "/process",
+      "auth": null,
+      "filename": "x.fake",
+      "fields": {},
+      "file_b64": "bG9jYWwgd29yZHM="
+     }
+    ]
+   }
+  },
+  {
+   "name": "service-only: too large",
+   "behavior": "text",
+   "input": {
+    "name": "x.fake",
+    "bytes_b64": "bG9jYWwgd29yZHM="
+   },
+   "prefer": "service-only",
+   "options": {},
+   "service": {
+    "answers": [
+     {
+      "status": 413,
+      "json": {
+       "error": "big"
+      }
+     }
+    ],
+    "v1": false
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "x.fake",
+       "error": {
+        "code": "service-error"
+       }
+      }
+     }
+    ],
+    "requests": [
+     {
+      "method": "POST",
+      "path": "/process",
+      "auth": null,
+      "filename": "x.fake",
+      "fields": {},
+      "file_b64": "bG9jYWwgd29yZHM="
+     }
+    ]
+   }
+  },
+  {
+   "name": "service-only: an answer that is not an artifact",
+   "behavior": "text",
+   "input": {
+    "name": "x.fake",
+    "bytes_b64": "bG9jYWwgd29yZHM="
+   },
+   "prefer": "service-only",
+   "options": {},
+   "service": {
+    "answers": [
+     {
+      "status": 200,
+      "json": {
+       "text": 5
+      }
+     }
+    ],
+    "v1": false
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "x.fake",
+       "error": {
+        "code": "service-error"
+       }
+      }
+     }
+    ],
+    "requests": [
+     {
+      "method": "POST",
+      "path": "/process",
+      "auth": null,
+      "filename": "x.fake",
+      "fields": {},
+      "file_b64": "bG9jYWwgd29yZHM="
+     }
+    ]
+   }
+  },
+  {
+   "name": "service-only: an answer that is not JSON",
+   "behavior": "text",
+   "input": {
+    "name": "x.fake",
+    "bytes_b64": "bG9jYWwgd29yZHM="
+   },
+   "prefer": "service-only",
+   "options": {},
+   "service": {
+    "answers": [
+     {
+      "status": 200,
+      "body": "<html>oops</html>"
+     }
+    ],
+    "v1": false
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "x.fake",
+       "error": {
+        "code": "service-error"
+       }
+      }
+     }
+    ],
+    "requests": [
+     {
+      "method": "POST",
+      "path": "/process",
+      "auth": null,
+      "filename": "x.fake",
+      "fields": {},
+      "file_b64": "bG9jYWwgd29yZHM="
+     }
+    ]
+   }
+  },
+  {
+   "name": "service-only: an error that is not JSON",
+   "behavior": "text",
+   "input": {
+    "name": "x.fake",
+    "bytes_b64": "bG9jYWwgd29yZHM="
+   },
+   "prefer": "service-only",
+   "options": {},
+   "service": {
+    "answers": [
+     {
+      "status": 503,
+      "body": "busy"
+     }
+    ],
+    "v1": false
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "x.fake",
+       "error": {
+        "code": "service-error"
+       }
+      }
+     }
+    ],
+    "requests": [
+     {
+      "method": "POST",
+      "path": "/process",
+      "auth": null,
+      "filename": "x.fake",
+      "fields": {},
+      "file_b64": "bG9jYWwgd29yZHM="
+     }
+    ]
+   }
+  },
+  {
+   "name": "service-only: pictures come back as bytes",
+   "behavior": "text",
+   "input": {
+    "name": "x.fake",
+    "bytes_b64": "bG9jYWwgd29yZHM="
+   },
+   "prefer": "service-only",
+   "options": {},
+   "service": {
+    "answers": [
+     {
+      "status": 200,
+      "json": {
+       "text": "with a picture",
+       "images": [
+        {
+         "name": "p1.png",
+         "mimetype": "image/png",
+         "bytes_b64": "iVBORw==",
+         "page": 1
+        }
+       ],
+       "audio": [],
+       "video": [],
+       "meta": {
+        "source": "x.fake",
+        "kind": "pdf"
+       }
+      }
+     }
+    ],
+    "v1": false
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "with a picture",
+      "images": [
+       {
+        "name": "p1.png",
+        "mimetype": "image/png",
+        "bytes_b64": "iVBORw==",
+        "page": 1
+       }
+      ],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "x.fake",
+       "kind": "pdf",
+       "via": "service"
+      }
+     }
+    ],
+    "requests": [
+     {
+      "method": "POST",
+      "path": "/process",
+      "auth": null,
+      "filename": "x.fake",
+      "fields": {},
+      "file_b64": "bG9jYWwgd29yZHM="
+     }
+    ]
+   }
+  },
+  {
+   "name": "service-only: a key is sent",
+   "behavior": "text",
+   "input": {
+    "name": "x.fake",
+    "bytes_b64": "bG9jYWwgd29yZHM="
+   },
+   "prefer": "service-only",
+   "options": {},
+   "service": {
+    "answers": [
+     {
+      "status": 200,
+      "json": {
+       "text": "from the service",
+       "images": [],
+       "audio": [],
+       "video": [],
+       "meta": {
+        "source": "x.fake",
+        "kind": "text"
+       }
+      }
+     }
+    ],
+    "v1": false
+   },
+   "api_key": "att_secret",
+   "expect": {
+    "artifacts": [
+     {
+      "text": "from the service",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "x.fake",
+       "kind": "text",
+       "via": "service"
+      }
+     }
+    ],
+    "requests": [
+     {
+      "method": "POST",
+      "path": "/process",
+      "auth": "Bearer att_secret",
+      "filename": "x.fake",
+      "fields": {},
+      "file_b64": "bG9jYWwgd29yZHM="
+     }
+    ]
+   }
+  },
+  {
+   "name": "service-only: an address ending in /v1",
+   "behavior": "text",
+   "input": {
+    "name": "x.fake",
+    "bytes_b64": "bG9jYWwgd29yZHM="
+   },
+   "prefer": "service-only",
+   "options": {},
+   "service": {
+    "answers": [
+     {
+      "status": 200,
+      "json": {
+       "text": "from the service",
+       "images": [],
+       "audio": [],
+       "video": [],
+       "meta": {
+        "source": "x.fake",
+        "kind": "text"
+       }
+      }
+     }
+    ],
+    "v1": true
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "from the service",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "x.fake",
+       "kind": "text",
+       "via": "service"
+      }
+     }
+    ],
+    "requests": [
+     {
+      "method": "POST",
+      "path": "/v1/process",
+      "auth": null,
+      "filename": "x.fake",
+      "fields": {},
+      "file_b64": "bG9jYWwgd29yZHM="
+     }
+    ]
+   }
+  },
+  {
+   "name": "service-only: an answer without a source gets the file's name",
+   "behavior": "text",
+   "input": {
+    "name": "x.fake",
+    "bytes_b64": "bG9jYWwgd29yZHM="
+   },
+   "prefer": "service-only",
+   "options": {},
+   "service": {
+    "answers": [
+     {
+      "status": 200,
+      "json": {
+       "text": "t",
+       "images": [],
+       "audio": [],
+       "video": [],
+       "meta": {}
+      }
+     }
+    ],
+    "v1": false
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "t",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "via": "service",
+       "source": "x.fake"
+      }
+     }
+    ],
+    "requests": [
+     {
+      "method": "POST",
+      "path": "/process",
+      "auth": null,
+      "filename": "x.fake",
+      "fields": {},
+      "file_b64": "bG9jYWwgd29yZHM="
+     }
+    ]
+   }
+  },
+  {
+   "name": "service-only: options as given, text as written",
+   "behavior": "text",
+   "input": {
+    "text": "x.fake[pw: 007, pages: 1-4, dpi: 300, zz: 1.50]",
+    "file": "x.fake",
+    "bytes_b64": "bG9jYWwgd29yZHM="
+   },
+   "prefer": "service-only",
+   "options": {
+    "dpi": 150,
+    "extra": "kept"
+   },
+   "service": {
+    "answers": [
+     {
+      "status": 200,
+      "json": {
+       "text": "from the service",
+       "images": [],
+       "audio": [],
+       "video": [],
+       "meta": {
+        "source": "x.fake",
+        "kind": "text"
+       }
+      }
+     }
+    ],
+    "v1": false
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "from the service",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "x.fake",
+       "kind": "text",
+       "via": "service"
+      }
+     }
+    ],
+    "requests": [
+     {
+      "method": "POST",
+      "path": "/process",
+      "auth": null,
+      "filename": "x.fake",
+      "fields": {
+       "pw": "007",
+       "pages": [
+        1,
+        4
+       ],
+       "dpi": 150,
+       "zz": 1.5,
+       "extra": "kept"
+      },
+      "file_b64": "bG9jYWwgd29yZHM="
+     }
+    ]
+   }
+  },
+  {
+   "name": "service-only: folder and processor options are not sent",
+   "behavior": "text",
+   "input": {
+    "name": "x.fake",
+    "bytes_b64": "bG9jYWwgd29yZHM="
+   },
+   "prefer": "service-only",
+   "options": {
+    "max_files": 3,
+    "processor": "default"
+   },
+   "service": {
+    "answers": [
+     {
+      "status": 200,
+      "json": {
+       "text": "from the service",
+       "images": [],
+       "audio": [],
+       "video": [],
+       "meta": {
+        "source": "x.fake",
+        "kind": "text"
+       }
+      }
+     }
+    ],
+    "v1": false
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "from the service",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "x.fake",
+       "kind": "text",
+       "via": "service",
+       "warnings": [
+        "Folder options (max_files) apply to folders, patterns, repositories and archives; ignored for a single file."
+       ]
+      }
+     }
+    ],
+    "requests": [
+     {
+      "method": "POST",
+      "path": "/process",
+      "auth": null,
+      "filename": "x.fake",
+      "fields": {},
+      "file_b64": "bG9jYWwgd29yZHM="
+     }
+    ]
+   }
+  },
+  {
+   "name": "service-only: a file name with quotes and spaces",
+   "behavior": "text",
+   "input": {
+    "name": "a \"q\" é\tb.fake",
+    "bytes_b64": "bG9jYWwgd29yZHM="
+   },
+   "prefer": "service-only",
+   "options": {},
+   "service": {
+    "answers": [
+     {
+      "status": 200,
+      "json": {
+       "text": "from the service",
+       "images": [],
+       "audio": [],
+       "video": [],
+       "meta": {
+        "source": "x.fake",
+        "kind": "text"
+       }
+      }
+     }
+    ],
+    "v1": false
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "from the service",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "x.fake",
+       "kind": "text",
+       "via": "service"
+      }
+     }
+    ],
+    "requests": [
+     {
+      "method": "POST",
+      "path": "/process",
+      "auth": null,
+      "filename": "a %22q%22 é%09b.fake",
+      "fields": {},
+      "file_b64": "bG9jYWwgd29yZHM="
+     }
+    ]
+   }
+  },
+  {
+   "name": "local: options resolved here, text as written",
+   "behavior": "text",
+   "input": {
+    "text": "x.fake[password: 007, dpi: 300]",
+    "file": "x.fake",
+    "bytes_b64": "bG9jYWwgd29yZHM="
+   },
+   "prefer": "local",
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "local words",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "password": "007",
+        "dpi": 300
+       },
+       "source": "x.fake"
+      }
+     }
+    ],
+    "requests": []
+   }
+  },
+  {
+   "name": "local: an unknown option warns",
+   "behavior": "text",
+   "input": {
+    "text": "x.fake[pagez: 2]",
+    "file": "x.fake",
+    "bytes_b64": "bG9jYWwgd29yZHM="
+   },
+   "prefer": "local",
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "local words",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "warnings": [
+        "Unknown option 'pagez' for .fake — did you mean 'pages'? (e.g. [pages: 1-4])"
+       ],
+       "source": "x.fake"
+      }
+     }
+    ],
+    "requests": []
+   }
+  },
+  {
+   "name": "local: an invalid value warns",
+   "behavior": "text",
+   "input": {
+    "text": "x.fake[dpi: high]",
+    "file": "x.fake",
+    "bytes_b64": "bG9jYWwgd29yZHM="
+   },
+   "prefer": "local",
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "local words",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "warnings": [
+        "Invalid value for option 'dpi' on .fake: expected an integer, got 'high' (e.g. [dpi: 150])"
+       ],
+       "source": "x.fake"
+      }
+     }
+    ],
+    "requests": []
+   }
+  },
+  {
+   "name": "local: an unknown processor warns",
+   "behavior": "text",
+   "input": {
+    "name": "x.fake",
+    "bytes_b64": "bG9jYWwgd29yZHM="
+   },
+   "prefer": "local",
+   "options": {
+    "processor": "nope"
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "local words",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "warnings": [
+        "Unknown processor 'nope' for .fake — only the standard one (default) reads it"
+       ],
+       "source": "x.fake"
+      }
+     }
+    ],
+    "requests": []
+   }
+  },
+  {
+   "name": "local: options win over the string",
+   "behavior": "text",
+   "input": {
+    "text": "x.fake[dpi: 300]",
+    "file": "x.fake",
+    "bytes_b64": "bG9jYWwgd29yZHM="
+   },
+   "prefer": "local",
+   "options": {
+    "dpi": 72
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "local words",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "dpi": 72
+       },
+       "source": "x.fake"
+      }
+     }
+    ],
+    "requests": []
+   }
+  }
+ ]
+}

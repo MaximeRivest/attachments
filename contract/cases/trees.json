@@ -1,0 +1,7322 @@
+{
+ "area": "trees",
+ "review": "draft",
+ "fixtures": {
+  "PROJECT": {
+   "proj/.git/HEAD": "ref: refs/heads/main\n",
+   "proj/.git/refs/heads/main": "0123456789abcdef0123456789abcdef01234567\n",
+   "proj/.git/config": "[core]\n\tbare = false\n[remote \"origin\"]\n\turl = https://bot:ghp_tok@github.com/o/proj.git\n",
+   "proj/.git/info/exclude": "excluded.txt\n",
+   "proj/.gitignore": "*.log\nbuild/\n!keep.log\n/rootonly.txt\n",
+   "proj/README.md": "# Proj\n\nA small project.\n",
+   "proj/excluded.txt": "excluded by .git/info/exclude",
+   "proj/rootonly.txt": "anchored pattern",
+   "proj/debug.log": "noise",
+   "proj/keep.log": "kept by a negated pattern",
+   "proj/build/out.txt": "built",
+   "proj/src/app.py": "print('hi')\n",
+   "proj/src/rootonly.txt": "not anchored here",
+   "proj/src/trace.log": "skipped by the parent's .gitignore",
+   "proj/src/.env": "SECRET=1\n",
+   "proj/src/util/helpers.py": "def helper():\n    return 1\n",
+   "proj/.env.example": "SECRET=\n",
+   "proj/.hidden/notes.txt": "hidden notes",
+   "proj/.attachmentsignore": "docs/private/\n",
+   "proj/docs/guide.md": "# Guide\n",
+   "proj/docs/private/plan.md": "private",
+   "proj/docs/sub/.gitignore": "*.tmp\n!wanted.tmp\n",
+   "proj/docs/sub/x.tmp": "temporary",
+   "proj/docs/sub/wanted.tmp": "wanted",
+   "proj/docs/sub/y.md": "y",
+   "proj/node_modules/x/index.js": "module.exports = 1\n",
+   "proj/package-lock.json": "{}",
+   "proj/lib.min.js": "minified",
+   "proj/venv/pyvenv.cfg": "home = /usr\n",
+   "proj/venv/lib/site.py": "venv code",
+   "proj/cache/CACHEDIR.TAG": "Signature: 8a477f597d28d172789f06886806bc55\n# a cache\n",
+   "proj/cache/blob.txt": "cached",
+   "proj/deploy_key": "-----BEGIN OPENSSH PRIVATE KEY-----\nb3BlbnNzaC1rZXktdjEAAAAA\n-----END OPENSSH PRIVATE KEY-----\n",
+   "proj/server.pem": "pem",
+   "proj/data/é.txt": "e acute",
+   "proj/data/😀.txt": "emoji",
+   "proj/data/ﬀ.txt": "ligature",
+   "proj/data/Z.txt": "capital",
+   "proj/data/a.txt": "lower",
+   "proj/data/latin.txt": {
+    "b64": "Y2Fm6SBjcuhtZQ=="
+   },
+   "proj/data/bom.txt": {
+    "b64": "77u/d2l0aCBhIGJ5dGUgb3JkZXIgbWFyaw=="
+   },
+   "proj/data/empty.txt": "",
+   "proj/data/blob.bin": {
+    "b64": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0+P0BBQkNERUZHSElKS0xNTk9QUVJTVFVWV1hZWltcXV5fYGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6e3x9fn+AgYKDhIWGh4iJiouMjY6PkJGSk5SVlpeYmZqbnJ2en6ChoqOkpaanqKmqq6ytrq+wsbKztLW2t7i5uru8vb6/wMHCw8TFxsfIycrLzM3Oz9DR0tPU1dbX2Nna29zd3t/g4eLj5OXm5+jp6uvs7e7v8PHy8/T19vf4+fr7/P3+/wABAgMEBQYHCAkKCwwNDg8QERITFBUWFxgZGhscHR4fICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj9AQUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVpbXF1eX2BhYmNkZWZnaGlqa2xtbm9wcXJzdHV2d3h5ent8fX5/gIGCg4SFhoeIiYqLjI2Oj5CRkpOUlZaXmJmam5ydnp+goaKjpKWmp6ipqqusra6vsLGys7S1tre4ubq7vL2+v8DBwsPExcbHyMnKy8zNzs/Q0dLT1NXW19jZ2tvc3d7f4OHi4+Tl5ufo6err7O3u7/Dx8vP09fb3+Pn6+/z9/v8="
+   },
+   "proj/data/noext": "text without an extension",
+   "proj/archive.zip": {
+    "b64": "UEsDBBQAAAAIAAAAIVDxJ/58DwAAAA0AAAAJAAAAUkVBRE1FLm1kU1bwzFMoyUhVqMos4AIAUEsDBBQAAAAIAAAAIVAGHuE8CwAAAAkAAAALAAAAc3JjL21haW4ucHkrKMrMK9Ew1OQCAFBLAwQUAAAACAAAACFQgxbcjAMAAAABAAAAGQAAAG5vZGVfbW9kdWxlcy9wa2cvaW5kZXguanOrAABQSwMEFAAAAAgAAAAhUJ/dQU1TAAAAiwAAAAoAAABuZXN0ZWQuemlwC/BmZhFhYGDgAGLFgElLEg/xAlncQMwHxJl5ealF+impqQV6JRUl3p6+ugEnzmif8/FkZQjwZmQSYcatFQYaGBkwDArwZmUDiTICoQ2QtgSrBABQSwMEFAAAAAAAAAAhUIPUBPcKAAAACgAAAAoAAABzdG9yZWQudHh0a2VwdCBhcyBpc1BLAQIUAxQAAAAIAAAAIVDxJ/58DwAAAA0AAAAJAAAAAAAAAAAAAACAAQAAAABSRUFETUUubWRQSwECFAMUAAAACAAAACFQBh7hPAsAAAAJAAAACwAAAAAAAAAAAAAAgAE2AAAAc3JjL21haW4ucHlQSwECFAMUAAAACAAAACFQgxbcjAMAAAABAAAAGQAAAAAAAAAAAAAAgAFqAAAAbm9kZV9tb2R1bGVzL3BrZy9pbmRleC5qc1BLAQIUAxQAAAAIAAAAIVCf3UFNUwAAAIsAAAAKAAAAAAAAAAAAAACAAaQAAABuZXN0ZWQuemlwUEsBAhQDFAAAAAAAAAAhUIPUBPcKAAAACgAAAAoAAAAAAAAAAAAAAIABHwEAAHN0b3JlZC50eHRQSwUGAAAAAAUABQAnAQAAUQEAAAAA"
+   },
+   "proj/link_in.md": {
+    "link": "README.md"
+   },
+   "proj/link_dir": {
+    "link": "src"
+   },
+   "proj/link_out.txt": {
+    "link": "../outside.txt"
+   },
+   "outside.txt": "outside the project",
+   "loose/a.md": "# A\n",
+   "loose/b/c.txt": "c",
+   "loose/b/d.txt": "d",
+   "loose/b/e/f.txt": "f",
+   "loose/big.txt": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  }
+ },
+ "cases": [
+  {
+   "name": "a folder",
+   "fixture": "PROJECT",
+   "input": "proj",
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "Folder proj — 23 files read, 1.4 KB\nGit: main @ 01234567 (https://github.com/o/proj.git)\nSkipped:\n- hidden: 1 folder and 4 files (.attachmentsignore, .env.example, .gitignore, .hidden/, docs/sub/.gitignore) — add [hidden: true] to include\n- .gitignore / .attachmentsignore: 2 folders and 5 files (build/, debug.log, excluded.txt, rootonly.txt, docs/private/, …) — add [ignore: \"!name\"] to include one\n- dependencies and generated files: 3 folders and 3 files (cache/, lib.min.js, node_modules/, package-lock.json, venv/, …) — add [ignore: \"!name\"] to include one\n- links leading outside the folder: 1 file (link_out.txt) — never followed\n- secrets: 3 files (server.pem, src/.env, deploy_key) — add [ignore: none] to include\n\nproj/\n├── README.md\n├── archive.zip  (4 files)\n├── keep.log\n├── link_in.md\n├── data/\n│   ├── Z.txt\n│   ├── a.txt\n│   ├── blob.bin\n│   ├── bom.txt\n│   ├── empty.txt\n│   ├── latin.txt\n│   ├── noext\n│   ├── é.txt\n│   ├── ﬀ.txt\n│   └── 😀.txt\n├── docs/\n│   ├── guide.md\n│   └── sub/\n│       ├── wanted.tmp\n│       └── y.md\n└── src/\n    ├── app.py\n    ├── rootonly.txt\n    └── util/\n        └── helpers.py",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "proj",
+       "kind": "directory",
+       "extra": {
+        "kind": "folder",
+        "root": "proj",
+        "files": 23,
+        "bytes": 1404,
+        "skipped": {
+         "hidden": {
+          "files": 4,
+          "folders": 1,
+          "examples": [
+           ".attachmentsignore",
+           ".env.example",
+           ".gitignore",
+           ".hidden/",
+           "docs/sub/.gitignore"
+          ]
+         },
+         "vcs": {
+          "files": 0,
+          "folders": 1,
+          "examples": [
+           ".git/"
+          ]
+         },
+         "ignore file": {
+          "files": 5,
+          "folders": 2,
+          "examples": [
+           "build/",
+           "debug.log",
+           "excluded.txt",
+           "rootonly.txt",
+           "docs/private/"
+          ]
+         },
+         "generated": {
+          "files": 3,
+          "folders": 3,
+          "examples": [
+           "cache/",
+           "lib.min.js",
+           "node_modules/",
+           "package-lock.json",
+           "venv/"
+          ]
+         },
+         "link outside the folder": {
+          "files": 1,
+          "folders": 0,
+          "examples": [
+           "link_out.txt"
+          ]
+         },
+         "secret": {
+          "files": 3,
+          "folders": 0,
+          "examples": [
+           "server.pem",
+           "src/.env",
+           "deploy_key"
+          ]
+         }
+        },
+        "git": {
+         "branch": "main",
+         "commit": "0123456789abcdef0123456789abcdef01234567",
+         "remote": "https://github.com/o/proj.git"
+        }
+       }
+      }
+     },
+     {
+      "text": "# Proj\n\nA small project.\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 25,
+        "filename": "README.md"
+       },
+       "source": "README.md"
+      }
+     },
+     {
+      "text": "# In the zip\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 13,
+        "filename": "archive.zip/README.md"
+       },
+       "source": "archive.zip/README.md"
+      }
+     },
+     {
+      "text": "print(1)\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 9,
+        "filename": "archive.zip/src/main.py"
+       },
+       "source": "archive.zip/src/main.py"
+      }
+     },
+     {
+      "text": "deep inside",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 11,
+        "filename": "archive.zip/nested.zip/inner/deep.txt"
+       },
+       "source": "archive.zip/nested.zip/inner/deep.txt"
+      }
+     },
+     {
+      "text": "kept as is",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 10,
+        "filename": "archive.zip/stored.txt"
+       },
+       "source": "archive.zip/stored.txt"
+      }
+     },
+     {
+      "text": "kept by a negated pattern",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 25,
+        "filename": "keep.log"
+       },
+       "source": "keep.log"
+      }
+     },
+     {
+      "text": "# Proj\n\nA small project.\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 25,
+        "filename": "link_in.md"
+       },
+       "source": "link_in.md"
+      }
+     },
+     {
+      "text": "capital",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 7,
+        "filename": "data/Z.txt"
+       },
+       "source": "data/Z.txt"
+      }
+     },
+     {
+      "text": "lower",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 5,
+        "filename": "data/a.txt"
+       },
+       "source": "data/a.txt"
+      }
+     },
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "data/blob.bin",
+       "note": "no local processor available"
+      }
+     },
+     {
+      "text": "﻿with a byte order mark",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 23,
+        "filename": "data/bom.txt"
+       },
+       "source": "data/bom.txt"
+      }
+     },
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 0,
+        "filename": "data/empty.txt"
+       },
+       "source": "data/empty.txt"
+      }
+     },
+     {
+      "text": "café crème",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "latin-1",
+        "chars": 10,
+        "filename": "data/latin.txt"
+       },
+       "source": "data/latin.txt"
+      }
+     },
+     {
+      "text": "text without an extension",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 25,
+        "filename": "data/noext"
+       },
+       "source": "data/noext"
+      }
+     },
+     {
+      "text": "e acute",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 7,
+        "filename": "data/é.txt"
+       },
+       "source": "data/é.txt"
+      }
+     },
+     {
+      "text": "ligature",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 8,
+        "filename": "data/ﬀ.txt"
+       },
+       "source": "data/ﬀ.txt"
+      }
+     },
+     {
+      "text": "emoji",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 5,
+        "filename": "data/😀.txt"
+       },
+       "source": "data/😀.txt"
+      }
+     },
+     {
+      "text": "# Guide\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 8,
+        "filename": "docs/guide.md"
+       },
+       "source": "docs/guide.md"
+      }
+     },
+     {
+      "text": "wanted",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 6,
+        "filename": "docs/sub/wanted.tmp"
+       },
+       "source": "docs/sub/wanted.tmp"
+      }
+     },
+     {
+      "text": "y",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 1,
+        "filename": "docs/sub/y.md"
+       },
+       "source": "docs/sub/y.md"
+      }
+     },
+     {
+      "text": "print('hi')\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 12,
+        "filename": "src/app.py"
+       },
+       "source": "src/app.py"
+      }
+     },
+     {
+      "text": "not anchored here",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 17,
+        "filename": "src/rootonly.txt"
+       },
+       "source": "src/rootonly.txt"
+      }
+     },
+     {
+      "text": "def helper():\n    return 1\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 27,
+        "filename": "src/util/helpers.py"
+       },
+       "source": "src/util/helpers.py"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "a folder written with a slash",
+   "fixture": "PROJECT",
+   "input": "proj/",
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "Folder proj/ — 23 files read, 1.4 KB\nGit: main @ 01234567 (https://github.com/o/proj.git)\nSkipped:\n- hidden: 1 folder and 4 files (.attachmentsignore, .env.example, .gitignore, .hidden/, docs/sub/.gitignore) — add [hidden: true] to include\n- .gitignore / .attachmentsignore: 2 folders and 5 files (build/, debug.log, excluded.txt, rootonly.txt, docs/private/, …) — add [ignore: \"!name\"] to include one\n- dependencies and generated files: 3 folders and 3 files (cache/, lib.min.js, node_modules/, package-lock.json, venv/, …) — add [ignore: \"!name\"] to include one\n- links leading outside the folder: 1 file (link_out.txt) — never followed\n- secrets: 3 files (server.pem, src/.env, deploy_key) — add [ignore: none] to include\n\nproj/\n├── README.md\n├── archive.zip  (4 files)\n├── keep.log\n├── link_in.md\n├── data/\n│   ├── Z.txt\n│   ├── a.txt\n│   ├── blob.bin\n│   ├── bom.txt\n│   ├── empty.txt\n│   ├── latin.txt\n│   ├── noext\n│   ├── é.txt\n│   ├── ﬀ.txt\n│   └── 😀.txt\n├── docs/\n│   ├── guide.md\n│   └── sub/\n│       ├── wanted.tmp\n│       └── y.md\n└── src/\n    ├── app.py\n    ├── rootonly.txt\n    └── util/\n        └── helpers.py",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "proj/",
+       "kind": "directory",
+       "extra": {
+        "kind": "folder",
+        "root": "proj",
+        "files": 23,
+        "bytes": 1404,
+        "skipped": {
+         "hidden": {
+          "files": 4,
+          "folders": 1,
+          "examples": [
+           ".attachmentsignore",
+           ".env.example",
+           ".gitignore",
+           ".hidden/",
+           "docs/sub/.gitignore"
+          ]
+         },
+         "vcs": {
+          "files": 0,
+          "folders": 1,
+          "examples": [
+           ".git/"
+          ]
+         },
+         "ignore file": {
+          "files": 5,
+          "folders": 2,
+          "examples": [
+           "build/",
+           "debug.log",
+           "excluded.txt",
+           "rootonly.txt",
+           "docs/private/"
+          ]
+         },
+         "generated": {
+          "files": 3,
+          "folders": 3,
+          "examples": [
+           "cache/",
+           "lib.min.js",
+           "node_modules/",
+           "package-lock.json",
+           "venv/"
+          ]
+         },
+         "link outside the folder": {
+          "files": 1,
+          "folders": 0,
+          "examples": [
+           "link_out.txt"
+          ]
+         },
+         "secret": {
+          "files": 3,
+          "folders": 0,
+          "examples": [
+           "server.pem",
+           "src/.env",
+           "deploy_key"
+          ]
+         }
+        },
+        "git": {
+         "branch": "main",
+         "commit": "0123456789abcdef0123456789abcdef01234567",
+         "remote": "https://github.com/o/proj.git"
+        }
+       }
+      }
+     },
+     {
+      "text": "# Proj\n\nA small project.\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 25,
+        "filename": "README.md"
+       },
+       "source": "README.md"
+      }
+     },
+     {
+      "text": "# In the zip\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 13,
+        "filename": "archive.zip/README.md"
+       },
+       "source": "archive.zip/README.md"
+      }
+     },
+     {
+      "text": "print(1)\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 9,
+        "filename": "archive.zip/src/main.py"
+       },
+       "source": "archive.zip/src/main.py"
+      }
+     },
+     {
+      "text": "deep inside",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 11,
+        "filename": "archive.zip/nested.zip/inner/deep.txt"
+       },
+       "source": "archive.zip/nested.zip/inner/deep.txt"
+      }
+     },
+     {
+      "text": "kept as is",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 10,
+        "filename": "archive.zip/stored.txt"
+       },
+       "source": "archive.zip/stored.txt"
+      }
+     },
+     {
+      "text": "kept by a negated pattern",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 25,
+        "filename": "keep.log"
+       },
+       "source": "keep.log"
+      }
+     },
+     {
+      "text": "# Proj\n\nA small project.\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 25,
+        "filename": "link_in.md"
+       },
+       "source": "link_in.md"
+      }
+     },
+     {
+      "text": "capital",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 7,
+        "filename": "data/Z.txt"
+       },
+       "source": "data/Z.txt"
+      }
+     },
+     {
+      "text": "lower",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 5,
+        "filename": "data/a.txt"
+       },
+       "source": "data/a.txt"
+      }
+     },
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "data/blob.bin",
+       "note": "no local processor available"
+      }
+     },
+     {
+      "text": "﻿with a byte order mark",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 23,
+        "filename": "data/bom.txt"
+       },
+       "source": "data/bom.txt"
+      }
+     },
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 0,
+        "filename": "data/empty.txt"
+       },
+       "source": "data/empty.txt"
+      }
+     },
+     {
+      "text": "café crème",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "latin-1",
+        "chars": 10,
+        "filename": "data/latin.txt"
+       },
+       "source": "data/latin.txt"
+      }
+     },
+     {
+      "text": "text without an extension",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 25,
+        "filename": "data/noext"
+       },
+       "source": "data/noext"
+      }
+     },
+     {
+      "text": "e acute",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 7,
+        "filename": "data/é.txt"
+       },
+       "source": "data/é.txt"
+      }
+     },
+     {
+      "text": "ligature",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 8,
+        "filename": "data/ﬀ.txt"
+       },
+       "source": "data/ﬀ.txt"
+      }
+     },
+     {
+      "text": "emoji",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 5,
+        "filename": "data/😀.txt"
+       },
+       "source": "data/😀.txt"
+      }
+     },
+     {
+      "text": "# Guide\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 8,
+        "filename": "docs/guide.md"
+       },
+       "source": "docs/guide.md"
+      }
+     },
+     {
+      "text": "wanted",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 6,
+        "filename": "docs/sub/wanted.tmp"
+       },
+       "source": "docs/sub/wanted.tmp"
+      }
+     },
+     {
+      "text": "y",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 1,
+        "filename": "docs/sub/y.md"
+       },
+       "source": "docs/sub/y.md"
+      }
+     },
+     {
+      "text": "print('hi')\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 12,
+        "filename": "src/app.py"
+       },
+       "source": "src/app.py"
+      }
+     },
+     {
+      "text": "not anchored here",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 17,
+        "filename": "src/rootonly.txt"
+       },
+       "source": "src/rootonly.txt"
+      }
+     },
+     {
+      "text": "def helper():\n    return 1\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 27,
+        "filename": "src/util/helpers.py"
+       },
+       "source": "src/util/helpers.py"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "hidden files",
+   "fixture": "PROJECT",
+   "input": "proj",
+   "options": {
+    "hidden": true
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "Folder proj — 28 files read, 1.5 KB\nGit: main @ 01234567 (https://github.com/o/proj.git)\nSkipped:\n- .gitignore / .attachmentsignore: 2 folders and 5 files (build/, debug.log, excluded.txt, rootonly.txt, docs/private/, …) — add [ignore: \"!name\"] to include one\n- dependencies and generated files: 3 folders and 3 files (cache/, lib.min.js, node_modules/, package-lock.json, venv/, …) — add [ignore: \"!name\"] to include one\n- links leading outside the folder: 1 file (link_out.txt) — never followed\n- secrets: 3 files (server.pem, src/.env, deploy_key) — add [ignore: none] to include\n\nproj/\n├── .attachmentsignore\n├── .env.example\n├── .gitignore\n├── README.md\n├── archive.zip  (4 files)\n├── keep.log\n├── link_in.md\n├── .hidden/\n│   └── notes.txt\n├── data/\n│   ├── Z.txt\n│   ├── a.txt\n│   ├── blob.bin\n│   ├── bom.txt\n│   ├── empty.txt\n│   ├── latin.txt\n│   ├── noext\n│   ├── é.txt\n│   ├── ﬀ.txt\n│   └── 😀.txt\n├── docs/\n│   ├── guide.md\n│   └── sub/\n│       ├── .gitignore\n│       ├── wanted.tmp\n│       └── y.md\n└── src/\n    ├── app.py\n    ├── rootonly.txt\n    └── util/\n        └── helpers.py",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "proj",
+       "kind": "directory",
+       "extra": {
+        "kind": "folder",
+        "root": "proj",
+        "files": 28,
+        "bytes": 1493,
+        "skipped": {
+         "vcs": {
+          "files": 0,
+          "folders": 1,
+          "examples": [
+           ".git/"
+          ]
+         },
+         "ignore file": {
+          "files": 5,
+          "folders": 2,
+          "examples": [
+           "build/",
+           "debug.log",
+           "excluded.txt",
+           "rootonly.txt",
+           "docs/private/"
+          ]
+         },
+         "generated": {
+          "files": 3,
+          "folders": 3,
+          "examples": [
+           "cache/",
+           "lib.min.js",
+           "node_modules/",
+           "package-lock.json",
+           "venv/"
+          ]
+         },
+         "link outside the folder": {
+          "files": 1,
+          "folders": 0,
+          "examples": [
+           "link_out.txt"
+          ]
+         },
+         "secret": {
+          "files": 3,
+          "folders": 0,
+          "examples": [
+           "server.pem",
+           "src/.env",
+           "deploy_key"
+          ]
+         }
+        },
+        "git": {
+         "branch": "main",
+         "commit": "0123456789abcdef0123456789abcdef01234567",
+         "remote": "https://github.com/o/proj.git"
+        }
+       }
+      }
+     },
+     {
+      "text": "docs/private/\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 14,
+        "filename": ".attachmentsignore"
+       },
+       "source": ".attachmentsignore"
+      }
+     },
+     {
+      "text": "SECRET=\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 8,
+        "filename": ".env.example"
+       },
+       "source": ".env.example"
+      }
+     },
+     {
+      "text": "*.log\nbuild/\n!keep.log\n/rootonly.txt\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 37,
+        "filename": ".gitignore"
+       },
+       "source": ".gitignore"
+      }
+     },
+     {
+      "text": "# Proj\n\nA small project.\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 25,
+        "filename": "README.md"
+       },
+       "source": "README.md"
+      }
+     },
+     {
+      "text": "# In the zip\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 13,
+        "filename": "archive.zip/README.md"
+       },
+       "source": "archive.zip/README.md"
+      }
+     },
+     {
+      "text": "print(1)\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 9,
+        "filename": "archive.zip/src/main.py"
+       },
+       "source": "archive.zip/src/main.py"
+      }
+     },
+     {
+      "text": "deep inside",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 11,
+        "filename": "archive.zip/nested.zip/inner/deep.txt"
+       },
+       "source": "archive.zip/nested.zip/inner/deep.txt"
+      }
+     },
+     {
+      "text": "kept as is",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 10,
+        "filename": "archive.zip/stored.txt"
+       },
+       "source": "archive.zip/stored.txt"
+      }
+     },
+     {
+      "text": "kept by a negated pattern",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 25,
+        "filename": "keep.log"
+       },
+       "source": "keep.log"
+      }
+     },
+     {
+      "text": "# Proj\n\nA small project.\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 25,
+        "filename": "link_in.md"
+       },
+       "source": "link_in.md"
+      }
+     },
+     {
+      "text": "hidden notes",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 12,
+        "filename": ".hidden/notes.txt"
+       },
+       "source": ".hidden/notes.txt"
+      }
+     },
+     {
+      "text": "capital",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 7,
+        "filename": "data/Z.txt"
+       },
+       "source": "data/Z.txt"
+      }
+     },
+     {
+      "text": "lower",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 5,
+        "filename": "data/a.txt"
+       },
+       "source": "data/a.txt"
+      }
+     },
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "data/blob.bin",
+       "note": "no local processor available"
+      }
+     },
+     {
+      "text": "﻿with a byte order mark",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 23,
+        "filename": "data/bom.txt"
+       },
+       "source": "data/bom.txt"
+      }
+     },
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 0,
+        "filename": "data/empty.txt"
+       },
+       "source": "data/empty.txt"
+      }
+     },
+     {
+      "text": "café crème",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "latin-1",
+        "chars": 10,
+        "filename": "data/latin.txt"
+       },
+       "source": "data/latin.txt"
+      }
+     },
+     {
+      "text": "text without an extension",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 25,
+        "filename": "data/noext"
+       },
+       "source": "data/noext"
+      }
+     },
+     {
+      "text": "e acute",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 7,
+        "filename": "data/é.txt"
+       },
+       "source": "data/é.txt"
+      }
+     },
+     {
+      "text": "ligature",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 8,
+        "filename": "data/ﬀ.txt"
+       },
+       "source": "data/ﬀ.txt"
+      }
+     },
+     {
+      "text": "emoji",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 5,
+        "filename": "data/😀.txt"
+       },
+       "source": "data/😀.txt"
+      }
+     },
+     {
+      "text": "# Guide\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 8,
+        "filename": "docs/guide.md"
+       },
+       "source": "docs/guide.md"
+      }
+     },
+     {
+      "text": "*.tmp\n!wanted.tmp\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 18,
+        "filename": "docs/sub/.gitignore"
+       },
+       "source": "docs/sub/.gitignore"
+      }
+     },
+     {
+      "text": "wanted",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 6,
+        "filename": "docs/sub/wanted.tmp"
+       },
+       "source": "docs/sub/wanted.tmp"
+      }
+     },
+     {
+      "text": "y",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 1,
+        "filename": "docs/sub/y.md"
+       },
+       "source": "docs/sub/y.md"
+      }
+     },
+     {
+      "text": "print('hi')\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 12,
+        "filename": "src/app.py"
+       },
+       "source": "src/app.py"
+      }
+     },
+     {
+      "text": "not anchored here",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 17,
+        "filename": "src/rootonly.txt"
+       },
+       "source": "src/rootonly.txt"
+      }
+     },
+     {
+      "text": "def helper():\n    return 1\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 27,
+        "filename": "src/util/helpers.py"
+       },
+       "source": "src/util/helpers.py"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "ignore: none",
+   "fixture": "PROJECT",
+   "input": "proj",
+   "options": {
+    "ignore": "none"
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "Folder proj — 46 files read, 1.8 KB\nGit: main @ 01234567 (https://github.com/o/proj.git)\nSkipped:\n- links leading outside the folder: 1 file (link_out.txt) — never followed\n\nproj/\n├── .attachmentsignore\n├── .env.example\n├── .gitignore\n├── README.md\n├── archive.zip  (5 files)\n├── debug.log\n├── deploy_key\n├── excluded.txt\n├── keep.log\n├── lib.min.js\n├── link_in.md\n├── package-lock.json\n├── rootonly.txt\n├── server.pem\n├── .hidden/\n│   └── notes.txt\n├── build/\n│   └── out.txt\n├── cache/\n│   ├── CACHEDIR.TAG\n│   └── blob.txt\n├── data/\n│   ├── Z.txt\n│   ├── a.txt\n│   ├── blob.bin\n│   ├── bom.txt\n│   ├── empty.txt\n│   ├── latin.txt\n│   ├── noext\n│   ├── é.txt\n│   ├── ﬀ.txt\n│   └── 😀.txt\n├── docs/\n│   ├── guide.md\n│   ├── private/\n│   │   └── plan.md\n│   └── sub/\n│       ├── .gitignore\n│       ├── wanted.tmp\n│       ├── x.tmp\n│       └── y.md\n├── node_modules/\n│   └── x/\n│       └── index.js\n├── src/\n│   ├── .env\n│   ├── app.py\n│   ├── rootonly.txt\n│   ├── trace.log\n│   └── util/\n│       └── helpers.py\n└── venv/\n    ├── pyvenv.cfg\n    └── lib/\n        └── site.py",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "proj",
+       "kind": "directory",
+       "extra": {
+        "kind": "folder",
+        "root": "proj",
+        "files": 46,
+        "bytes": 1815,
+        "skipped": {
+         "vcs": {
+          "files": 0,
+          "folders": 1,
+          "examples": [
+           ".git/"
+          ]
+         },
+         "link outside the folder": {
+          "files": 1,
+          "folders": 0,
+          "examples": [
+           "link_out.txt"
+          ]
+         }
+        },
+        "git": {
+         "branch": "main",
+         "commit": "0123456789abcdef0123456789abcdef01234567",
+         "remote": "https://github.com/o/proj.git"
+        }
+       }
+      }
+     },
+     {
+      "text": "docs/private/\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 14,
+        "filename": ".attachmentsignore"
+       },
+       "source": ".attachmentsignore"
+      }
+     },
+     {
+      "text": "SECRET=\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 8,
+        "filename": ".env.example"
+       },
+       "source": ".env.example"
+      }
+     },
+     {
+      "text": "*.log\nbuild/\n!keep.log\n/rootonly.txt\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 37,
+        "filename": ".gitignore"
+       },
+       "source": ".gitignore"
+      }
+     },
+     {
+      "text": "# Proj\n\nA small project.\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 25,
+        "filename": "README.md"
+       },
+       "source": "README.md"
+      }
+     },
+     {
+      "text": "# In the zip\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 13,
+        "filename": "archive.zip/README.md"
+       },
+       "source": "archive.zip/README.md"
+      }
+     },
+     {
+      "text": "print(1)\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 9,
+        "filename": "archive.zip/src/main.py"
+       },
+       "source": "archive.zip/src/main.py"
+      }
+     },
+     {
+      "text": "x",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 1,
+        "filename": "archive.zip/node_modules/pkg/index.js"
+       },
+       "source": "archive.zip/node_modules/pkg/index.js"
+      }
+     },
+     {
+      "text": "deep inside",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 11,
+        "filename": "archive.zip/nested.zip/inner/deep.txt"
+       },
+       "source": "archive.zip/nested.zip/inner/deep.txt"
+      }
+     },
+     {
+      "text": "kept as is",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 10,
+        "filename": "archive.zip/stored.txt"
+       },
+       "source": "archive.zip/stored.txt"
+      }
+     },
+     {
+      "text": "noise",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 5,
+        "filename": "debug.log"
+       },
+       "source": "debug.log"
+      }
+     },
+     {
+      "text": "-----BEGIN OPENSSH PRIVATE KEY-----\nb3BlbnNzaC1rZXktdjEAAAAA\n-----END OPENSSH PRIVATE KEY-----\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 95,
+        "filename": "deploy_key"
+       },
+       "source": "deploy_key"
+      }
+     },
+     {
+      "text": "excluded by .git/info/exclude",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 29,
+        "filename": "excluded.txt"
+       },
+       "source": "excluded.txt"
+      }
+     },
+     {
+      "text": "kept by a negated pattern",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 25,
+        "filename": "keep.log"
+       },
+       "source": "keep.log"
+      }
+     },
+     {
+      "text": "minified",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 8,
+        "filename": "lib.min.js"
+       },
+       "source": "lib.min.js"
+      }
+     },
+     {
+      "text": "# Proj\n\nA small project.\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 25,
+        "filename": "link_in.md"
+       },
+       "source": "link_in.md"
+      }
+     },
+     {
+      "text": "{}",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 2,
+        "filename": "package-lock.json"
+       },
+       "source": "package-lock.json"
+      }
+     },
+     {
+      "text": "anchored pattern",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 16,
+        "filename": "rootonly.txt"
+       },
+       "source": "rootonly.txt"
+      }
+     },
+     {
+      "text": "pem",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 3,
+        "filename": "server.pem"
+       },
+       "source": "server.pem"
+      }
+     },
+     {
+      "text": "hidden notes",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 12,
+        "filename": ".hidden/notes.txt"
+       },
+       "source": ".hidden/notes.txt"
+      }
+     },
+     {
+      "text": "built",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 5,
+        "filename": "build/out.txt"
+       },
+       "source": "build/out.txt"
+      }
+     },
+     {
+      "text": "Signature: 8a477f597d28d172789f06886806bc55\n# a cache\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 54,
+        "filename": "cache/CACHEDIR.TAG"
+       },
+       "source": "cache/CACHEDIR.TAG"
+      }
+     },
+     {
+      "text": "cached",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 6,
+        "filename": "cache/blob.txt"
+       },
+       "source": "cache/blob.txt"
+      }
+     },
+     {
+      "text": "capital",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 7,
+        "filename": "data/Z.txt"
+       },
+       "source": "data/Z.txt"
+      }
+     },
+     {
+      "text": "lower",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 5,
+        "filename": "data/a.txt"
+       },
+       "source": "data/a.txt"
+      }
+     },
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "data/blob.bin",
+       "note": "no local processor available"
+      }
+     },
+     {
+      "text": "﻿with a byte order mark",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 23,
+        "filename": "data/bom.txt"
+       },
+       "source": "data/bom.txt"
+      }
+     },
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 0,
+        "filename": "data/empty.txt"
+       },
+       "source": "data/empty.txt"
+      }
+     },
+     {
+      "text": "café crème",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "latin-1",
+        "chars": 10,
+        "filename": "data/latin.txt"
+       },
+       "source": "data/latin.txt"
+      }
+     },
+     {
+      "text": "text without an extension",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 25,
+        "filename": "data/noext"
+       },
+       "source": "data/noext"
+      }
+     },
+     {
+      "text": "e acute",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 7,
+        "filename": "data/é.txt"
+       },
+       "source": "data/é.txt"
+      }
+     },
+     {
+      "text": "ligature",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 8,
+        "filename": "data/ﬀ.txt"
+       },
+       "source": "data/ﬀ.txt"
+      }
+     },
+     {
+      "text": "emoji",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 5,
+        "filename": "data/😀.txt"
+       },
+       "source": "data/😀.txt"
+      }
+     },
+     {
+      "text": "# Guide\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 8,
+        "filename": "docs/guide.md"
+       },
+       "source": "docs/guide.md"
+      }
+     },
+     {
+      "text": "private",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 7,
+        "filename": "docs/private/plan.md"
+       },
+       "source": "docs/private/plan.md"
+      }
+     },
+     {
+      "text": "*.tmp\n!wanted.tmp\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 18,
+        "filename": "docs/sub/.gitignore"
+       },
+       "source": "docs/sub/.gitignore"
+      }
+     },
+     {
+      "text": "wanted",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 6,
+        "filename": "docs/sub/wanted.tmp"
+       },
+       "source": "docs/sub/wanted.tmp"
+      }
+     },
+     {
+      "text": "temporary",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 9,
+        "filename": "docs/sub/x.tmp"
+       },
+       "source": "docs/sub/x.tmp"
+      }
+     },
+     {
+      "text": "y",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 1,
+        "filename": "docs/sub/y.md"
+       },
+       "source": "docs/sub/y.md"
+      }
+     },
+     {
+      "text": "module.exports = 1\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 19,
+        "filename": "node_modules/x/index.js"
+       },
+       "source": "node_modules/x/index.js"
+      }
+     },
+     {
+      "text": "SECRET=1\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 9,
+        "filename": "src/.env"
+       },
+       "source": "src/.env"
+      }
+     },
+     {
+      "text": "print('hi')\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 12,
+        "filename": "src/app.py"
+       },
+       "source": "src/app.py"
+      }
+     },
+     {
+      "text": "not anchored here",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 17,
+        "filename": "src/rootonly.txt"
+       },
+       "source": "src/rootonly.txt"
+      }
+     },
+     {
+      "text": "skipped by the parent's .gitignore",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 34,
+        "filename": "src/trace.log"
+       },
+       "source": "src/trace.log"
+      }
+     },
+     {
+      "text": "def helper():\n    return 1\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 27,
+        "filename": "src/util/helpers.py"
+       },
+       "source": "src/util/helpers.py"
+      }
+     },
+     {
+      "text": "home = /usr\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 12,
+        "filename": "venv/pyvenv.cfg"
+       },
+       "source": "venv/pyvenv.cfg"
+      }
+     },
+     {
+      "text": "venv code",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 9,
+        "filename": "venv/lib/site.py"
+       },
+       "source": "venv/lib/site.py"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "ignore patterns and a negation",
+   "fixture": "PROJECT",
+   "input": "proj",
+   "options": {
+    "ignore": "*.md, !debug.log, data/"
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "Folder proj — 9 files read, 746 B\nGit: main @ 01234567 (https://github.com/o/proj.git)\nSkipped:\n- hidden: 1 folder and 4 files (.attachmentsignore, .env.example, .gitignore, .hidden/, docs/sub/.gitignore) — add [hidden: true] to include\n- your ignore patterns: 1 folder and 5 files (README.md, data/, link_in.md, docs/guide.md, docs/sub/y.md, …)\n- .gitignore / .attachmentsignore: 2 folders and 4 files (build/, excluded.txt, rootonly.txt, docs/private/, docs/sub/x.tmp, …) — add [ignore: \"!name\"] to include one\n- dependencies and generated files: 3 folders and 3 files (cache/, lib.min.js, node_modules/, package-lock.json, venv/, …) — add [ignore: \"!name\"] to include one\n- links leading outside the folder: 1 file (link_out.txt) — never followed\n- secrets: 3 files (server.pem, src/.env, deploy_key) — add [ignore: none] to include\n\nproj/\n├── archive.zip  (3 files)\n├── debug.log\n├── keep.log\n├── docs/\n│   └── sub/\n│       └── wanted.tmp\n└── src/\n    ├── app.py\n    ├── rootonly.txt\n    └── util/\n        └── helpers.py",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "proj",
+       "kind": "directory",
+       "extra": {
+        "kind": "folder",
+        "root": "proj",
+        "files": 9,
+        "bytes": 746,
+        "skipped": {
+         "hidden": {
+          "files": 4,
+          "folders": 1,
+          "examples": [
+           ".attachmentsignore",
+           ".env.example",
+           ".gitignore",
+           ".hidden/",
+           "docs/sub/.gitignore"
+          ]
+         },
+         "vcs": {
+          "files": 0,
+          "folders": 1,
+          "examples": [
+           ".git/"
+          ]
+         },
+         "ignore option": {
+          "files": 5,
+          "folders": 1,
+          "examples": [
+           "README.md",
+           "data/",
+           "link_in.md",
+           "docs/guide.md",
+           "docs/sub/y.md"
+          ]
+         },
+         "ignore file": {
+          "files": 4,
+          "folders": 2,
+          "examples": [
+           "build/",
+           "excluded.txt",
+           "rootonly.txt",
+           "docs/private/",
+           "docs/sub/x.tmp"
+          ]
+         },
+         "generated": {
+          "files": 3,
+          "folders": 3,
+          "examples": [
+           "cache/",
+           "lib.min.js",
+           "node_modules/",
+           "package-lock.json",
+           "venv/"
+          ]
+         },
+         "link outside the folder": {
+          "files": 1,
+          "folders": 0,
+          "examples": [
+           "link_out.txt"
+          ]
+         },
+         "secret": {
+          "files": 3,
+          "folders": 0,
+          "examples": [
+           "server.pem",
+           "src/.env",
+           "deploy_key"
+          ]
+         }
+        },
+        "git": {
+         "branch": "main",
+         "commit": "0123456789abcdef0123456789abcdef01234567",
+         "remote": "https://github.com/o/proj.git"
+        }
+       }
+      }
+     },
+     {
+      "text": "print(1)\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 9,
+        "filename": "archive.zip/src/main.py"
+       },
+       "source": "archive.zip/src/main.py"
+      }
+     },
+     {
+      "text": "deep inside",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 11,
+        "filename": "archive.zip/nested.zip/inner/deep.txt"
+       },
+       "source": "archive.zip/nested.zip/inner/deep.txt"
+      }
+     },
+     {
+      "text": "kept as is",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 10,
+        "filename": "archive.zip/stored.txt"
+       },
+       "source": "archive.zip/stored.txt"
+      }
+     },
+     {
+      "text": "noise",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 5,
+        "filename": "debug.log"
+       },
+       "source": "debug.log"
+      }
+     },
+     {
+      "text": "kept by a negated pattern",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 25,
+        "filename": "keep.log"
+       },
+       "source": "keep.log"
+      }
+     },
+     {
+      "text": "wanted",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 6,
+        "filename": "docs/sub/wanted.tmp"
+       },
+       "source": "docs/sub/wanted.tmp"
+      }
+     },
+     {
+      "text": "print('hi')\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 12,
+        "filename": "src/app.py"
+       },
+       "source": "src/app.py"
+      }
+     },
+     {
+      "text": "not anchored here",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 17,
+        "filename": "src/rootonly.txt"
+       },
+       "source": "src/rootonly.txt"
+      }
+     },
+     {
+      "text": "def helper():\n    return 1\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 27,
+        "filename": "src/util/helpers.py"
+       },
+       "source": "src/util/helpers.py"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "ignore: none plus a pattern",
+   "fixture": "PROJECT",
+   "input": "proj",
+   "options": {
+    "ignore": "none, node_modules/, .git/"
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "Folder proj — 44 files read, 1.8 KB\nGit: main @ 01234567 (https://github.com/o/proj.git)\nSkipped:\n- links leading outside the folder: 1 file (link_out.txt) — never followed\n- your ignore patterns: 1 folder and 1 file (node_modules/, archive.zip/node_modules/pkg/index.js)\n\nproj/\n├── .attachmentsignore\n├── .env.example\n├── .gitignore\n├── README.md\n├── archive.zip  (4 files)\n├── debug.log\n├── deploy_key\n├── excluded.txt\n├── keep.log\n├── lib.min.js\n├── link_in.md\n├── package-lock.json\n├── rootonly.txt\n├── server.pem\n├── .hidden/\n│   └── notes.txt\n├── build/\n│   └── out.txt\n├── cache/\n│   ├── CACHEDIR.TAG\n│   └── blob.txt\n├── data/\n│   ├── Z.txt\n│   ├── a.txt\n│   ├── blob.bin\n│   ├── bom.txt\n│   ├── empty.txt\n│   ├── latin.txt\n│   ├── noext\n│   ├── é.txt\n│   ├── ﬀ.txt\n│   └── 😀.txt\n├── docs/\n│   ├── guide.md\n│   ├── private/\n│   │   └── plan.md\n│   └── sub/\n│       ├── .gitignore\n│       ├── wanted.tmp\n│       ├── x.tmp\n│       └── y.md\n├── src/\n│   ├── .env\n│   ├── app.py\n│   ├── rootonly.txt\n│   ├── trace.log\n│   └── util/\n│       └── helpers.py\n└── venv/\n    ├── pyvenv.cfg\n    └── lib/\n        └── site.py",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "proj",
+       "kind": "directory",
+       "extra": {
+        "kind": "folder",
+        "root": "proj",
+        "files": 44,
+        "bytes": 1796,
+        "skipped": {
+         "vcs": {
+          "files": 0,
+          "folders": 1,
+          "examples": [
+           ".git/"
+          ]
+         },
+         "link outside the folder": {
+          "files": 1,
+          "folders": 0,
+          "examples": [
+           "link_out.txt"
+          ]
+         },
+         "ignore option": {
+          "files": 1,
+          "folders": 1,
+          "examples": [
+           "node_modules/",
+           "archive.zip/node_modules/pkg/index.js"
+          ]
+         }
+        },
+        "git": {
+         "branch": "main",
+         "commit": "0123456789abcdef0123456789abcdef01234567",
+         "remote": "https://github.com/o/proj.git"
+        }
+       }
+      }
+     },
+     {
+      "text": "docs/private/\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 14,
+        "filename": ".attachmentsignore"
+       },
+       "source": ".attachmentsignore"
+      }
+     },
+     {
+      "text": "SECRET=\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 8,
+        "filename": ".env.example"
+       },
+       "source": ".env.example"
+      }
+     },
+     {
+      "text": "*.log\nbuild/\n!keep.log\n/rootonly.txt\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 37,
+        "filename": ".gitignore"
+       },
+       "source": ".gitignore"
+      }
+     },
+     {
+      "text": "# Proj\n\nA small project.\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 25,
+        "filename": "README.md"
+       },
+       "source": "README.md"
+      }
+     },
+     {
+      "text": "# In the zip\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 13,
+        "filename": "archive.zip/README.md"
+       },
+       "source": "archive.zip/README.md"
+      }
+     },
+     {
+      "text": "print(1)\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 9,
+        "filename": "archive.zip/src/main.py"
+       },
+       "source": "archive.zip/src/main.py"
+      }
+     },
+     {
+      "text": "deep inside",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 11,
+        "filename": "archive.zip/nested.zip/inner/deep.txt"
+       },
+       "source": "archive.zip/nested.zip/inner/deep.txt"
+      }
+     },
+     {
+      "text": "kept as is",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 10,
+        "filename": "archive.zip/stored.txt"
+       },
+       "source": "archive.zip/stored.txt"
+      }
+     },
+     {
+      "text": "noise",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 5,
+        "filename": "debug.log"
+       },
+       "source": "debug.log"
+      }
+     },
+     {
+      "text": "-----BEGIN OPENSSH PRIVATE KEY-----\nb3BlbnNzaC1rZXktdjEAAAAA\n-----END OPENSSH PRIVATE KEY-----\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 95,
+        "filename": "deploy_key"
+       },
+       "source": "deploy_key"
+      }
+     },
+     {
+      "text": "excluded by .git/info/exclude",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 29,
+        "filename": "excluded.txt"
+       },
+       "source": "excluded.txt"
+      }
+     },
+     {
+      "text": "kept by a negated pattern",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 25,
+        "filename": "keep.log"
+       },
+       "source": "keep.log"
+      }
+     },
+     {
+      "text": "minified",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 8,
+        "filename": "lib.min.js"
+       },
+       "source": "lib.min.js"
+      }
+     },
+     {
+      "text": "# Proj\n\nA small project.\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 25,
+        "filename": "link_in.md"
+       },
+       "source": "link_in.md"
+      }
+     },
+     {
+      "text": "{}",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 2,
+        "filename": "package-lock.json"
+       },
+       "source": "package-lock.json"
+      }
+     },
+     {
+      "text": "anchored pattern",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 16,
+        "filename": "rootonly.txt"
+       },
+       "source": "rootonly.txt"
+      }
+     },
+     {
+      "text": "pem",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 3,
+        "filename": "server.pem"
+       },
+       "source": "server.pem"
+      }
+     },
+     {
+      "text": "hidden notes",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 12,
+        "filename": ".hidden/notes.txt"
+       },
+       "source": ".hidden/notes.txt"
+      }
+     },
+     {
+      "text": "built",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 5,
+        "filename": "build/out.txt"
+       },
+       "source": "build/out.txt"
+      }
+     },
+     {
+      "text": "Signature: 8a477f597d28d172789f06886806bc55\n# a cache\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 54,
+        "filename": "cache/CACHEDIR.TAG"
+       },
+       "source": "cache/CACHEDIR.TAG"
+      }
+     },
+     {
+      "text": "cached",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 6,
+        "filename": "cache/blob.txt"
+       },
+       "source": "cache/blob.txt"
+      }
+     },
+     {
+      "text": "capital",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 7,
+        "filename": "data/Z.txt"
+       },
+       "source": "data/Z.txt"
+      }
+     },
+     {
+      "text": "lower",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 5,
+        "filename": "data/a.txt"
+       },
+       "source": "data/a.txt"
+      }
+     },
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "data/blob.bin",
+       "note": "no local processor available"
+      }
+     },
+     {
+      "text": "﻿with a byte order mark",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 23,
+        "filename": "data/bom.txt"
+       },
+       "source": "data/bom.txt"
+      }
+     },
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 0,
+        "filename": "data/empty.txt"
+       },
+       "source": "data/empty.txt"
+      }
+     },
+     {
+      "text": "café crème",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "latin-1",
+        "chars": 10,
+        "filename": "data/latin.txt"
+       },
+       "source": "data/latin.txt"
+      }
+     },
+     {
+      "text": "text without an extension",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 25,
+        "filename": "data/noext"
+       },
+       "source": "data/noext"
+      }
+     },
+     {
+      "text": "e acute",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 7,
+        "filename": "data/é.txt"
+       },
+       "source": "data/é.txt"
+      }
+     },
+     {
+      "text": "ligature",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 8,
+        "filename": "data/ﬀ.txt"
+       },
+       "source": "data/ﬀ.txt"
+      }
+     },
+     {
+      "text": "emoji",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 5,
+        "filename": "data/😀.txt"
+       },
+       "source": "data/😀.txt"
+      }
+     },
+     {
+      "text": "# Guide\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 8,
+        "filename": "docs/guide.md"
+       },
+       "source": "docs/guide.md"
+      }
+     },
+     {
+      "text": "private",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 7,
+        "filename": "docs/private/plan.md"
+       },
+       "source": "docs/private/plan.md"
+      }
+     },
+     {
+      "text": "*.tmp\n!wanted.tmp\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 18,
+        "filename": "docs/sub/.gitignore"
+       },
+       "source": "docs/sub/.gitignore"
+      }
+     },
+     {
+      "text": "wanted",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 6,
+        "filename": "docs/sub/wanted.tmp"
+       },
+       "source": "docs/sub/wanted.tmp"
+      }
+     },
+     {
+      "text": "temporary",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 9,
+        "filename": "docs/sub/x.tmp"
+       },
+       "source": "docs/sub/x.tmp"
+      }
+     },
+     {
+      "text": "y",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 1,
+        "filename": "docs/sub/y.md"
+       },
+       "source": "docs/sub/y.md"
+      }
+     },
+     {
+      "text": "SECRET=1\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 9,
+        "filename": "src/.env"
+       },
+       "source": "src/.env"
+      }
+     },
+     {
+      "text": "print('hi')\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 12,
+        "filename": "src/app.py"
+       },
+       "source": "src/app.py"
+      }
+     },
+     {
+      "text": "not anchored here",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 17,
+        "filename": "src/rootonly.txt"
+       },
+       "source": "src/rootonly.txt"
+      }
+     },
+     {
+      "text": "skipped by the parent's .gitignore",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 34,
+        "filename": "src/trace.log"
+       },
+       "source": "src/trace.log"
+      }
+     },
+     {
+      "text": "def helper():\n    return 1\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 27,
+        "filename": "src/util/helpers.py"
+       },
+       "source": "src/util/helpers.py"
+      }
+     },
+     {
+      "text": "home = /usr\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 12,
+        "filename": "venv/pyvenv.cfg"
+       },
+       "source": "venv/pyvenv.cfg"
+      }
+     },
+     {
+      "text": "venv code",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 9,
+        "filename": "venv/lib/site.py"
+       },
+       "source": "venv/lib/site.py"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "ignore: minimal warns",
+   "fixture": "PROJECT",
+   "input": "loose",
+   "options": {
+    "ignore": "minimal"
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "Folder loose — 5 files read, 3.0 KB\n\nloose/\n├── a.md\n├── big.txt\n└── b/\n    ├── c.txt\n    ├── d.txt\n    └── e/\n        └── f.txt",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "loose",
+       "kind": "directory",
+       "extra": {
+        "kind": "folder",
+        "root": "loose",
+        "files": 5,
+        "bytes": 3007,
+        "skipped": {}
+       },
+       "warnings": [
+        "ignore: 'minimal' (from attachments 0.25) is not supported; the default rules apply"
+       ]
+      }
+     },
+     {
+      "text": "# A\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 4,
+        "filename": "a.md"
+       },
+       "source": "a.md"
+      }
+     },
+     {
+      "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 3000,
+        "filename": "big.txt"
+       },
+       "source": "big.txt"
+      }
+     },
+     {
+      "text": "c",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 1,
+        "filename": "b/c.txt"
+       },
+       "source": "b/c.txt"
+      }
+     },
+     {
+      "text": "d",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 1,
+        "filename": "b/d.txt"
+       },
+       "source": "b/d.txt"
+      }
+     },
+     {
+      "text": "f",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 1,
+        "filename": "b/e/f.txt"
+       },
+       "source": "b/e/f.txt"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "ignore words that change nothing",
+   "fixture": "PROJECT",
+   "input": "loose",
+   "options": {
+    "ignore": "standard, gitignore"
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "Folder loose — 5 files read, 3.0 KB\n\nloose/\n├── a.md\n├── big.txt\n└── b/\n    ├── c.txt\n    ├── d.txt\n    └── e/\n        └── f.txt",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "loose",
+       "kind": "directory",
+       "extra": {
+        "kind": "folder",
+        "root": "loose",
+        "files": 5,
+        "bytes": 3007,
+        "skipped": {}
+       }
+      }
+     },
+     {
+      "text": "# A\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 4,
+        "filename": "a.md"
+       },
+       "source": "a.md"
+      }
+     },
+     {
+      "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 3000,
+        "filename": "big.txt"
+       },
+       "source": "big.txt"
+      }
+     },
+     {
+      "text": "c",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 1,
+        "filename": "b/c.txt"
+       },
+       "source": "b/c.txt"
+      }
+     },
+     {
+      "text": "d",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 1,
+        "filename": "b/d.txt"
+       },
+       "source": "b/d.txt"
+      }
+     },
+     {
+      "text": "f",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 1,
+        "filename": "b/e/f.txt"
+       },
+       "source": "b/e/f.txt"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "a negated secret",
+   "fixture": "PROJECT",
+   "input": "proj",
+   "options": {
+    "ignore": "!deploy_key, !.env, !server.pem",
+    "hidden": true
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "Folder proj — 31 files read, 1.6 KB\nGit: main @ 01234567 (https://github.com/o/proj.git)\nSkipped:\n- .gitignore / .attachmentsignore: 2 folders and 5 files (build/, debug.log, excluded.txt, rootonly.txt, docs/private/, …) — add [ignore: \"!name\"] to include one\n- dependencies and generated files: 3 folders and 3 files (cache/, lib.min.js, node_modules/, package-lock.json, venv/, …) — add [ignore: \"!name\"] to include one\n- links leading outside the folder: 1 file (link_out.txt) — never followed\n\nproj/\n├── .attachmentsignore\n├── .env.example\n├── .gitignore\n├── README.md\n├── archive.zip  (4 files)\n├── deploy_key\n├── keep.log\n├── link_in.md\n├── server.pem\n├── .hidden/\n│   └── notes.txt\n├── data/\n│   ├── Z.txt\n│   ├── a.txt\n│   ├── blob.bin\n│   ├── bom.txt\n│   ├── empty.txt\n│   ├── latin.txt\n│   ├── noext\n│   ├── é.txt\n│   ├── ﬀ.txt\n│   └── 😀.txt\n├── docs/\n│   ├── guide.md\n│   └── sub/\n│       ├── .gitignore\n│       ├── wanted.tmp\n│       └── y.md\n└── src/\n    ├── .env\n    ├── app.py\n    ├── rootonly.txt\n    └── util/\n        └── helpers.py",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "proj",
+       "kind": "directory",
+       "extra": {
+        "kind": "folder",
+        "root": "proj",
+        "files": 31,
+        "bytes": 1600,
+        "skipped": {
+         "vcs": {
+          "files": 0,
+          "folders": 1,
+          "examples": [
+           ".git/"
+          ]
+         },
+         "ignore file": {
+          "files": 5,
+          "folders": 2,
+          "examples": [
+           "build/",
+           "debug.log",
+           "excluded.txt",
+           "rootonly.txt",
+           "docs/private/"
+          ]
+         },
+         "generated": {
+          "files": 3,
+          "folders": 3,
+          "examples": [
+           "cache/",
+           "lib.min.js",
+           "node_modules/",
+           "package-lock.json",
+           "venv/"
+          ]
+         },
+         "link outside the folder": {
+          "files": 1,
+          "folders": 0,
+          "examples": [
+           "link_out.txt"
+          ]
+         }
+        },
+        "git": {
+         "branch": "main",
+         "commit": "0123456789abcdef0123456789abcdef01234567",
+         "remote": "https://github.com/o/proj.git"
+        }
+       }
+      }
+     },
+     {
+      "text": "docs/private/\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 14,
+        "filename": ".attachmentsignore"
+       },
+       "source": ".attachmentsignore"
+      }
+     },
+     {
+      "text": "SECRET=\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 8,
+        "filename": ".env.example"
+       },
+       "source": ".env.example"
+      }
+     },
+     {
+      "text": "*.log\nbuild/\n!keep.log\n/rootonly.txt\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 37,
+        "filename": ".gitignore"
+       },
+       "source": ".gitignore"
+      }
+     },
+     {
+      "text": "# Proj\n\nA small project.\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 25,
+        "filename": "README.md"
+       },
+       "source": "README.md"
+      }
+     },
+     {
+      "text": "# In the zip\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 13,
+        "filename": "archive.zip/README.md"
+       },
+       "source": "archive.zip/README.md"
+      }
+     },
+     {
+      "text": "print(1)\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 9,
+        "filename": "archive.zip/src/main.py"
+       },
+       "source": "archive.zip/src/main.py"
+      }
+     },
+     {
+      "text": "deep inside",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 11,
+        "filename": "archive.zip/nested.zip/inner/deep.txt"
+       },
+       "source": "archive.zip/nested.zip/inner/deep.txt"
+      }
+     },
+     {
+      "text": "kept as is",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 10,
+        "filename": "archive.zip/stored.txt"
+       },
+       "source": "archive.zip/stored.txt"
+      }
+     },
+     {
+      "text": "-----BEGIN OPENSSH PRIVATE KEY-----\nb3BlbnNzaC1rZXktdjEAAAAA\n-----END OPENSSH PRIVATE KEY-----\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 95,
+        "filename": "deploy_key"
+       },
+       "source": "deploy_key"
+      }
+     },
+     {
+      "text": "kept by a negated pattern",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 25,
+        "filename": "keep.log"
+       },
+       "source": "keep.log"
+      }
+     },
+     {
+      "text": "# Proj\n\nA small project.\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 25,
+        "filename": "link_in.md"
+       },
+       "source": "link_in.md"
+      }
+     },
+     {
+      "text": "pem",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 3,
+        "filename": "server.pem"
+       },
+       "source": "server.pem"
+      }
+     },
+     {
+      "text": "hidden notes",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 12,
+        "filename": ".hidden/notes.txt"
+       },
+       "source": ".hidden/notes.txt"
+      }
+     },
+     {
+      "text": "capital",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 7,
+        "filename": "data/Z.txt"
+       },
+       "source": "data/Z.txt"
+      }
+     },
+     {
+      "text": "lower",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 5,
+        "filename": "data/a.txt"
+       },
+       "source": "data/a.txt"
+      }
+     },
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "data/blob.bin",
+       "note": "no local processor available"
+      }
+     },
+     {
+      "text": "﻿with a byte order mark",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 23,
+        "filename": "data/bom.txt"
+       },
+       "source": "data/bom.txt"
+      }
+     },
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 0,
+        "filename": "data/empty.txt"
+       },
+       "source": "data/empty.txt"
+      }
+     },
+     {
+      "text": "café crème",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "latin-1",
+        "chars": 10,
+        "filename": "data/latin.txt"
+       },
+       "source": "data/latin.txt"
+      }
+     },
+     {
+      "text": "text without an extension",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 25,
+        "filename": "data/noext"
+       },
+       "source": "data/noext"
+      }
+     },
+     {
+      "text": "e acute",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 7,
+        "filename": "data/é.txt"
+       },
+       "source": "data/é.txt"
+      }
+     },
+     {
+      "text": "ligature",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 8,
+        "filename": "data/ﬀ.txt"
+       },
+       "source": "data/ﬀ.txt"
+      }
+     },
+     {
+      "text": "emoji",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 5,
+        "filename": "data/😀.txt"
+       },
+       "source": "data/😀.txt"
+      }
+     },
+     {
+      "text": "# Guide\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 8,
+        "filename": "docs/guide.md"
+       },
+       "source": "docs/guide.md"
+      }
+     },
+     {
+      "text": "*.tmp\n!wanted.tmp\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 18,
+        "filename": "docs/sub/.gitignore"
+       },
+       "source": "docs/sub/.gitignore"
+      }
+     },
+     {
+      "text": "wanted",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 6,
+        "filename": "docs/sub/wanted.tmp"
+       },
+       "source": "docs/sub/wanted.tmp"
+      }
+     },
+     {
+      "text": "y",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 1,
+        "filename": "docs/sub/y.md"
+       },
+       "source": "docs/sub/y.md"
+      }
+     },
+     {
+      "text": "SECRET=1\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 9,
+        "filename": "src/.env"
+       },
+       "source": "src/.env"
+      }
+     },
+     {
+      "text": "print('hi')\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 12,
+        "filename": "src/app.py"
+       },
+       "source": "src/app.py"
+      }
+     },
+     {
+      "text": "not anchored here",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 17,
+        "filename": "src/rootonly.txt"
+       },
+       "source": "src/rootonly.txt"
+      }
+     },
+     {
+      "text": "def helper():\n    return 1\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 27,
+        "filename": "src/util/helpers.py"
+       },
+       "source": "src/util/helpers.py"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "glob",
+   "fixture": "PROJECT",
+   "input": "proj",
+   "options": {
+    "glob": "*.py"
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "Folder proj — 2 files read, 39 B\nGit: main @ 01234567 (https://github.com/o/proj.git)\nSkipped:\n- hidden: 1 folder and 4 files (.attachmentsignore, .env.example, .gitignore, .hidden/, docs/sub/.gitignore) — add [hidden: true] to include\n- not matching glob: 19 files (README.md, archive.zip, deploy_key, keep.log, link_in.md, …)\n- .gitignore / .attachmentsignore: 2 folders and 5 files (build/, debug.log, excluded.txt, rootonly.txt, docs/private/, …) — add [ignore: \"!name\"] to include one\n- dependencies and generated files: 3 folders and 2 files (cache/, lib.min.js, node_modules/, package-lock.json, venv/) — add [ignore: \"!name\"] to include one\n- links leading outside the folder: 1 file (link_out.txt) — never followed\n- secrets: 2 files (server.pem, src/.env) — add [ignore: none] to include\n\nproj/\n└── src/\n    ├── app.py\n    └── util/\n        └── helpers.py",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "proj",
+       "kind": "directory",
+       "extra": {
+        "kind": "folder",
+        "root": "proj",
+        "files": 2,
+        "bytes": 39,
+        "skipped": {
+         "hidden": {
+          "files": 4,
+          "folders": 1,
+          "examples": [
+           ".attachmentsignore",
+           ".env.example",
+           ".gitignore",
+           ".hidden/",
+           "docs/sub/.gitignore"
+          ]
+         },
+         "vcs": {
+          "files": 0,
+          "folders": 1,
+          "examples": [
+           ".git/"
+          ]
+         },
+         "not matching glob": {
+          "files": 19,
+          "folders": 0,
+          "examples": [
+           "README.md",
+           "archive.zip",
+           "deploy_key",
+           "keep.log",
+           "link_in.md"
+          ]
+         },
+         "ignore file": {
+          "files": 5,
+          "folders": 2,
+          "examples": [
+           "build/",
+           "debug.log",
+           "excluded.txt",
+           "rootonly.txt",
+           "docs/private/"
+          ]
+         },
+         "generated": {
+          "files": 2,
+          "folders": 3,
+          "examples": [
+           "cache/",
+           "lib.min.js",
+           "node_modules/",
+           "package-lock.json",
+           "venv/"
+          ]
+         },
+         "link outside the folder": {
+          "files": 1,
+          "folders": 0,
+          "examples": [
+           "link_out.txt"
+          ]
+         },
+         "secret": {
+          "files": 2,
+          "folders": 0,
+          "examples": [
+           "server.pem",
+           "src/.env"
+          ]
+         }
+        },
+        "git": {
+         "branch": "main",
+         "commit": "0123456789abcdef0123456789abcdef01234567",
+         "remote": "https://github.com/o/proj.git"
+        }
+       }
+      }
+     },
+     {
+      "text": "print('hi')\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 12,
+        "filename": "src/app.py"
+       },
+       "source": "src/app.py"
+      }
+     },
+     {
+      "text": "def helper():\n    return 1\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 27,
+        "filename": "src/util/helpers.py"
+       },
+       "source": "src/util/helpers.py"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "glob with an alias and two patterns",
+   "fixture": "PROJECT",
+   "input": "proj",
+   "options": {
+    "include": "*.md, data/*.txt"
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "Folder proj — 12 files read, 126 B\nGit: main @ 01234567 (https://github.com/o/proj.git)\nSkipped:\n- hidden: 1 folder and 4 files (.attachmentsignore, .env.example, .gitignore, .hidden/, docs/sub/.gitignore) — add [hidden: true] to include\n- not matching glob: 9 files (archive.zip, deploy_key, keep.log, data/blob.bin, data/noext, …)\n- .gitignore / .attachmentsignore: 2 folders and 5 files (build/, debug.log, excluded.txt, rootonly.txt, docs/private/, …) — add [ignore: \"!name\"] to include one\n- dependencies and generated files: 3 folders and 2 files (cache/, lib.min.js, node_modules/, package-lock.json, venv/) — add [ignore: \"!name\"] to include one\n- links leading outside the folder: 1 file (link_out.txt) — never followed\n- secrets: 2 files (server.pem, src/.env) — add [ignore: none] to include\n\nproj/\n├── README.md\n├── link_in.md\n├── data/\n│   ├── Z.txt\n│   ├── a.txt\n│   ├── bom.txt\n│   ├── empty.txt\n│   ├── latin.txt\n│   ├── é.txt\n│   ├── ﬀ.txt\n│   └── 😀.txt\n└── docs/\n    ├── guide.md\n    └── sub/\n        └── y.md",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "proj",
+       "kind": "directory",
+       "extra": {
+        "kind": "folder",
+        "root": "proj",
+        "files": 12,
+        "bytes": 126,
+        "skipped": {
+         "hidden": {
+          "files": 4,
+          "folders": 1,
+          "examples": [
+           ".attachmentsignore",
+           ".env.example",
+           ".gitignore",
+           ".hidden/",
+           "docs/sub/.gitignore"
+          ]
+         },
+         "vcs": {
+          "files": 0,
+          "folders": 1,
+          "examples": [
+           ".git/"
+          ]
+         },
+         "not matching glob": {
+          "files": 9,
+          "folders": 0,
+          "examples": [
+           "archive.zip",
+           "deploy_key",
+           "keep.log",
+           "data/blob.bin",
+           "data/noext"
+          ]
+         },
+         "ignore file": {
+          "files": 5,
+          "folders": 2,
+          "examples": [
+           "build/",
+           "debug.log",
+           "excluded.txt",
+           "rootonly.txt",
+           "docs/private/"
+          ]
+         },
+         "generated": {
+          "files": 2,
+          "folders": 3,
+          "examples": [
+           "cache/",
+           "lib.min.js",
+           "node_modules/",
+           "package-lock.json",
+           "venv/"
+          ]
+         },
+         "link outside the folder": {
+          "files": 1,
+          "folders": 0,
+          "examples": [
+           "link_out.txt"
+          ]
+         },
+         "secret": {
+          "files": 2,
+          "folders": 0,
+          "examples": [
+           "server.pem",
+           "src/.env"
+          ]
+         }
+        },
+        "git": {
+         "branch": "main",
+         "commit": "0123456789abcdef0123456789abcdef01234567",
+         "remote": "https://github.com/o/proj.git"
+        }
+       }
+      }
+     },
+     {
+      "text": "# Proj\n\nA small project.\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 25,
+        "filename": "README.md"
+       },
+       "source": "README.md"
+      }
+     },
+     {
+      "text": "# Proj\n\nA small project.\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 25,
+        "filename": "link_in.md"
+       },
+       "source": "link_in.md"
+      }
+     },
+     {
+      "text": "capital",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 7,
+        "filename": "data/Z.txt"
+       },
+       "source": "data/Z.txt"
+      }
+     },
+     {
+      "text": "lower",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 5,
+        "filename": "data/a.txt"
+       },
+       "source": "data/a.txt"
+      }
+     },
+     {
+      "text": "﻿with a byte order mark",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 23,
+        "filename": "data/bom.txt"
+       },
+       "source": "data/bom.txt"
+      }
+     },
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 0,
+        "filename": "data/empty.txt"
+       },
+       "source": "data/empty.txt"
+      }
+     },
+     {
+      "text": "café crème",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "latin-1",
+        "chars": 10,
+        "filename": "data/latin.txt"
+       },
+       "source": "data/latin.txt"
+      }
+     },
+     {
+      "text": "e acute",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 7,
+        "filename": "data/é.txt"
+       },
+       "source": "data/é.txt"
+      }
+     },
+     {
+      "text": "ligature",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 8,
+        "filename": "data/ﬀ.txt"
+       },
+       "source": "data/ﬀ.txt"
+      }
+     },
+     {
+      "text": "emoji",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 5,
+        "filename": "data/😀.txt"
+       },
+       "source": "data/😀.txt"
+      }
+     },
+     {
+      "text": "# Guide\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 8,
+        "filename": "docs/guide.md"
+       },
+       "source": "docs/guide.md"
+      }
+     },
+     {
+      "text": "y",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 1,
+        "filename": "docs/sub/y.md"
+       },
+       "source": "docs/sub/y.md"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "not recursive",
+   "fixture": "PROJECT",
+   "input": "proj",
+   "options": {
+    "recursive": false
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "Folder proj — 7 files read, 729 B\nGit: main @ 01234567 (https://github.com/o/proj.git)\nSkipped:\n- hidden: 1 folder and 3 files (.attachmentsignore, .env.example, .gitignore, .hidden/) — add [hidden: true] to include\n- .gitignore / .attachmentsignore: 1 folder and 3 files (build/, debug.log, excluded.txt, rootonly.txt) — add [ignore: \"!name\"] to include one\n- dependencies and generated files: 3 folders and 3 files (cache/, lib.min.js, node_modules/, package-lock.json, venv/, …) — add [ignore: \"!name\"] to include one\n- subfolders: 3 folders (data/, docs/, src/) — recursive: false\n- links leading outside the folder: 1 file (link_out.txt) — never followed\n- secrets: 2 files (server.pem, deploy_key) — add [ignore: none] to include\n\nproj/\n├── README.md\n├── archive.zip  (4 files)\n├── keep.log\n└── link_in.md",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "proj",
+       "kind": "directory",
+       "extra": {
+        "kind": "folder",
+        "root": "proj",
+        "files": 7,
+        "bytes": 729,
+        "skipped": {
+         "hidden": {
+          "files": 3,
+          "folders": 1,
+          "examples": [
+           ".attachmentsignore",
+           ".env.example",
+           ".gitignore",
+           ".hidden/"
+          ]
+         },
+         "vcs": {
+          "files": 0,
+          "folders": 1,
+          "examples": [
+           ".git/"
+          ]
+         },
+         "ignore file": {
+          "files": 3,
+          "folders": 1,
+          "examples": [
+           "build/",
+           "debug.log",
+           "excluded.txt",
+           "rootonly.txt"
+          ]
+         },
+         "generated": {
+          "files": 3,
+          "folders": 3,
+          "examples": [
+           "cache/",
+           "lib.min.js",
+           "node_modules/",
+           "package-lock.json",
+           "venv/"
+          ]
+         },
+         "subfolder (recursive: false)": {
+          "files": 0,
+          "folders": 3,
+          "examples": [
+           "data/",
+           "docs/",
+           "src/"
+          ]
+         },
+         "link outside the folder": {
+          "files": 1,
+          "folders": 0,
+          "examples": [
+           "link_out.txt"
+          ]
+         },
+         "secret": {
+          "files": 2,
+          "folders": 0,
+          "examples": [
+           "server.pem",
+           "deploy_key"
+          ]
+         }
+        },
+        "git": {
+         "branch": "main",
+         "commit": "0123456789abcdef0123456789abcdef01234567",
+         "remote": "https://github.com/o/proj.git"
+        }
+       }
+      }
+     },
+     {
+      "text": "# Proj\n\nA small project.\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 25,
+        "filename": "README.md"
+       },
+       "source": "README.md"
+      }
+     },
+     {
+      "text": "# In the zip\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 13,
+        "filename": "archive.zip/README.md"
+       },
+       "source": "archive.zip/README.md"
+      }
+     },
+     {
+      "text": "print(1)\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 9,
+        "filename": "archive.zip/src/main.py"
+       },
+       "source": "archive.zip/src/main.py"
+      }
+     },
+     {
+      "text": "deep inside",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 11,
+        "filename": "archive.zip/nested.zip/inner/deep.txt"
+       },
+       "source": "archive.zip/nested.zip/inner/deep.txt"
+      }
+     },
+     {
+      "text": "kept as is",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 10,
+        "filename": "archive.zip/stored.txt"
+       },
+       "source": "archive.zip/stored.txt"
+      }
+     },
+     {
+      "text": "kept by a negated pattern",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 25,
+        "filename": "keep.log"
+       },
+       "source": "keep.log"
+      }
+     },
+     {
+      "text": "# Proj\n\nA small project.\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 25,
+        "filename": "link_in.md"
+       },
+       "source": "link_in.md"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "max_files",
+   "fixture": "PROJECT",
+   "input": "proj",
+   "options": {
+    "max_files": 3
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "Folder proj — 3 files read, 679 B\nGit: main @ 01234567 (https://github.com/o/proj.git)\nStopped at max_files: 3 — 21 more files not read. Raise it with [max_files: ...] (0 = no limit).\nSkipped:\n- hidden: 1 folder and 4 files (.attachmentsignore, .env.example, .gitignore, .hidden/, docs/sub/.gitignore) — add [hidden: true] to include\n- .gitignore / .attachmentsignore: 2 folders and 5 files (build/, debug.log, excluded.txt, rootonly.txt, docs/private/, …) — add [ignore: \"!name\"] to include one\n- dependencies and generated files: 3 folders and 3 files (cache/, lib.min.js, node_modules/, package-lock.json, venv/, …) — add [ignore: \"!name\"] to include one\n- links leading outside the folder: 1 file (link_out.txt) — never followed\n- secrets: 2 files (server.pem, src/.env) — add [ignore: none] to include\n\nproj/\n├── README.md\n└── archive.zip  (2 files)",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "proj",
+       "kind": "directory",
+       "extra": {
+        "kind": "folder",
+        "root": "proj",
+        "files": 3,
+        "bytes": 679,
+        "skipped": {
+         "hidden": {
+          "files": 4,
+          "folders": 1,
+          "examples": [
+           ".attachmentsignore",
+           ".env.example",
+           ".gitignore",
+           ".hidden/",
+           "docs/sub/.gitignore"
+          ]
+         },
+         "vcs": {
+          "files": 0,
+          "folders": 1,
+          "examples": [
+           ".git/"
+          ]
+         },
+         "ignore file": {
+          "files": 5,
+          "folders": 2,
+          "examples": [
+           "build/",
+           "debug.log",
+           "excluded.txt",
+           "rootonly.txt",
+           "docs/private/"
+          ]
+         },
+         "generated": {
+          "files": 3,
+          "folders": 3,
+          "examples": [
+           "cache/",
+           "lib.min.js",
+           "node_modules/",
+           "package-lock.json",
+           "venv/"
+          ]
+         },
+         "link outside the folder": {
+          "files": 1,
+          "folders": 0,
+          "examples": [
+           "link_out.txt"
+          ]
+         },
+         "secret": {
+          "files": 2,
+          "folders": 0,
+          "examples": [
+           "server.pem",
+           "src/.env"
+          ]
+         }
+        },
+        "limit": "max_files",
+        "not_read": 21,
+        "git": {
+         "branch": "main",
+         "commit": "0123456789abcdef0123456789abcdef01234567",
+         "remote": "https://github.com/o/proj.git"
+        }
+       },
+       "warnings": [
+        "Stopped at max_files: 3 — 21 more files not read. Raise it with [max_files: ...] (0 = no limit)."
+       ]
+      }
+     },
+     {
+      "text": "# Proj\n\nA small project.\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 25,
+        "filename": "README.md"
+       },
+       "source": "README.md"
+      }
+     },
+     {
+      "text": "# In the zip\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 13,
+        "filename": "archive.zip/README.md"
+       },
+       "source": "archive.zip/README.md"
+      }
+     },
+     {
+      "text": "print(1)\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 9,
+        "filename": "archive.zip/src/main.py"
+       },
+       "source": "archive.zip/src/main.py"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "max_files 0 is no limit",
+   "fixture": "PROJECT",
+   "input": "loose",
+   "options": {
+    "max_files": 0
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "Folder loose — 5 files read, 3.0 KB\n\nloose/\n├── a.md\n├── big.txt\n└── b/\n    ├── c.txt\n    ├── d.txt\n    └── e/\n        └── f.txt",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "loose",
+       "kind": "directory",
+       "extra": {
+        "kind": "folder",
+        "root": "loose",
+        "files": 5,
+        "bytes": 3007,
+        "skipped": {}
+       }
+      }
+     },
+     {
+      "text": "# A\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 4,
+        "filename": "a.md"
+       },
+       "source": "a.md"
+      }
+     },
+     {
+      "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 3000,
+        "filename": "big.txt"
+       },
+       "source": "big.txt"
+      }
+     },
+     {
+      "text": "c",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 1,
+        "filename": "b/c.txt"
+       },
+       "source": "b/c.txt"
+      }
+     },
+     {
+      "text": "d",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 1,
+        "filename": "b/d.txt"
+       },
+       "source": "b/d.txt"
+      }
+     },
+     {
+      "text": "f",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 1,
+        "filename": "b/e/f.txt"
+       },
+       "source": "b/e/f.txt"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "max_size skips what does not fit",
+   "fixture": "PROJECT",
+   "input": "loose",
+   "options": {
+    "max_size": 10
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "Folder loose — 4 files read, 7 B\nStopped at max_size: 10 B — 1 more file not read. Raise it with [max_size: ...] (0 = no limit).\n\nloose/\n├── a.md\n└── b/\n    ├── c.txt\n    ├── d.txt\n    └── e/\n        └── f.txt",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "loose",
+       "kind": "directory",
+       "extra": {
+        "kind": "folder",
+        "root": "loose",
+        "files": 4,
+        "bytes": 7,
+        "skipped": {},
+        "limit": "max_size",
+        "not_read": 1
+       },
+       "warnings": [
+        "Stopped at max_size: 10 B — 1 more file not read. Raise it with [max_size: ...] (0 = no limit)."
+       ]
+      }
+     },
+     {
+      "text": "# A\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 4,
+        "filename": "a.md"
+       },
+       "source": "a.md"
+      }
+     },
+     {
+      "text": "c",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 1,
+        "filename": "b/c.txt"
+       },
+       "source": "b/c.txt"
+      }
+     },
+     {
+      "text": "d",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 1,
+        "filename": "b/d.txt"
+       },
+       "source": "b/d.txt"
+      }
+     },
+     {
+      "text": "f",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 1,
+        "filename": "b/e/f.txt"
+       },
+       "source": "b/e/f.txt"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "max_size as text",
+   "fixture": "PROJECT",
+   "input": "loose",
+   "options": {
+    "max_size": "3KB"
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "Folder loose — 4 files read, 7 B\nStopped at max_size: 3.0 KB — 1 more file not read. Raise it with [max_size: ...] (0 = no limit).\n\nloose/\n├── a.md\n└── b/\n    ├── c.txt\n    ├── d.txt\n    └── e/\n        └── f.txt",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "loose",
+       "kind": "directory",
+       "extra": {
+        "kind": "folder",
+        "root": "loose",
+        "files": 4,
+        "bytes": 7,
+        "skipped": {},
+        "limit": "max_size",
+        "not_read": 1
+       },
+       "warnings": [
+        "Stopped at max_size: 3.0 KB — 1 more file not read. Raise it with [max_size: ...] (0 = no limit)."
+       ]
+      }
+     },
+     {
+      "text": "# A\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 4,
+        "filename": "a.md"
+       },
+       "source": "a.md"
+      }
+     },
+     {
+      "text": "c",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 1,
+        "filename": "b/c.txt"
+       },
+       "source": "b/c.txt"
+      }
+     },
+     {
+      "text": "d",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 1,
+        "filename": "b/d.txt"
+       },
+       "source": "b/d.txt"
+      }
+     },
+     {
+      "text": "f",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 1,
+        "filename": "b/e/f.txt"
+       },
+       "source": "b/e/f.txt"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "max_size in KiB",
+   "fixture": "PROJECT",
+   "input": "loose",
+   "options": {
+    "max_size": "3 KiB"
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "Folder loose — 5 files read, 3.0 KB\n\nloose/\n├── a.md\n├── big.txt\n└── b/\n    ├── c.txt\n    ├── d.txt\n    └── e/\n        └── f.txt",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "loose",
+       "kind": "directory",
+       "extra": {
+        "kind": "folder",
+        "root": "loose",
+        "files": 5,
+        "bytes": 3007,
+        "skipped": {}
+       }
+      }
+     },
+     {
+      "text": "# A\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 4,
+        "filename": "a.md"
+       },
+       "source": "a.md"
+      }
+     },
+     {
+      "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 3000,
+        "filename": "big.txt"
+       },
+       "source": "big.txt"
+      }
+     },
+     {
+      "text": "c",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 1,
+        "filename": "b/c.txt"
+       },
+       "source": "b/c.txt"
+      }
+     },
+     {
+      "text": "d",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 1,
+        "filename": "b/d.txt"
+       },
+       "source": "b/d.txt"
+      }
+     },
+     {
+      "text": "f",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 1,
+        "filename": "b/e/f.txt"
+       },
+       "source": "b/e/f.txt"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "an invalid max_size",
+   "fixture": "PROJECT",
+   "input": "loose",
+   "options": {
+    "max_size": "lots"
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "loose",
+       "error": {
+        "code": "invalid-option"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "a negative max_files",
+   "fixture": "PROJECT",
+   "input": "loose",
+   "options": {
+    "max_files": -1
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "loose",
+       "error": {
+        "code": "invalid-option"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "files: false",
+   "fixture": "PROJECT",
+   "input": "proj",
+   "options": {
+    "files": false
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "Folder proj — 21 files, 1.5 KB (contents not read: files: false)\nGit: main @ 01234567 (https://github.com/o/proj.git)\nSkipped:\n- hidden: 1 folder and 4 files (.attachmentsignore, .env.example, .gitignore, .hidden/, docs/sub/.gitignore) — add [hidden: true] to include\n- .gitignore / .attachmentsignore: 2 folders and 5 files (build/, debug.log, excluded.txt, rootonly.txt, docs/private/, …) — add [ignore: \"!name\"] to include one\n- dependencies and generated files: 3 folders and 2 files (cache/, lib.min.js, node_modules/, package-lock.json, venv/) — add [ignore: \"!name\"] to include one\n- links leading outside the folder: 1 file (link_out.txt) — never followed\n- secrets: 2 files (server.pem, src/.env) — add [ignore: none] to include\n\nproj/\n├── README.md\n├── archive.zip\n├── deploy_key\n├── keep.log\n├── link_in.md\n├── data/\n│   ├── Z.txt\n│   ├── a.txt\n│   ├── blob.bin\n│   ├── bom.txt\n│   ├── empty.txt\n│   ├── latin.txt\n│   ├── noext\n│   ├── é.txt\n│   ├── ﬀ.txt\n│   └── 😀.txt\n├── docs/\n│   ├── guide.md\n│   └── sub/\n│       ├── wanted.tmp\n│       └── y.md\n└── src/\n    ├── app.py\n    ├── rootonly.txt\n    └── util/\n        └── helpers.py",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "proj",
+       "kind": "directory",
+       "extra": {
+        "kind": "folder",
+        "root": "proj",
+        "files": 21,
+        "bytes": 1499,
+        "skipped": {
+         "hidden": {
+          "files": 4,
+          "folders": 1,
+          "examples": [
+           ".attachmentsignore",
+           ".env.example",
+           ".gitignore",
+           ".hidden/",
+           "docs/sub/.gitignore"
+          ]
+         },
+         "vcs": {
+          "files": 0,
+          "folders": 1,
+          "examples": [
+           ".git/"
+          ]
+         },
+         "ignore file": {
+          "files": 5,
+          "folders": 2,
+          "examples": [
+           "build/",
+           "debug.log",
+           "excluded.txt",
+           "rootonly.txt",
+           "docs/private/"
+          ]
+         },
+         "generated": {
+          "files": 2,
+          "folders": 3,
+          "examples": [
+           "cache/",
+           "lib.min.js",
+           "node_modules/",
+           "package-lock.json",
+           "venv/"
+          ]
+         },
+         "link outside the folder": {
+          "files": 1,
+          "folders": 0,
+          "examples": [
+           "link_out.txt"
+          ]
+         },
+         "secret": {
+          "files": 2,
+          "folders": 0,
+          "examples": [
+           "server.pem",
+           "src/.env"
+          ]
+         }
+        },
+        "git": {
+         "branch": "main",
+         "commit": "0123456789abcdef0123456789abcdef01234567",
+         "remote": "https://github.com/o/proj.git"
+        }
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "tree: false",
+   "fixture": "PROJECT",
+   "input": "proj",
+   "options": {
+    "tree": false
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "# Proj\n\nA small project.\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 25,
+        "filename": "README.md"
+       },
+       "source": "README.md"
+      }
+     },
+     {
+      "text": "# In the zip\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 13,
+        "filename": "archive.zip/README.md"
+       },
+       "source": "archive.zip/README.md"
+      }
+     },
+     {
+      "text": "print(1)\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 9,
+        "filename": "archive.zip/src/main.py"
+       },
+       "source": "archive.zip/src/main.py"
+      }
+     },
+     {
+      "text": "deep inside",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 11,
+        "filename": "archive.zip/nested.zip/inner/deep.txt"
+       },
+       "source": "archive.zip/nested.zip/inner/deep.txt"
+      }
+     },
+     {
+      "text": "kept as is",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 10,
+        "filename": "archive.zip/stored.txt"
+       },
+       "source": "archive.zip/stored.txt"
+      }
+     },
+     {
+      "text": "kept by a negated pattern",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 25,
+        "filename": "keep.log"
+       },
+       "source": "keep.log"
+      }
+     },
+     {
+      "text": "# Proj\n\nA small project.\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 25,
+        "filename": "link_in.md"
+       },
+       "source": "link_in.md"
+      }
+     },
+     {
+      "text": "capital",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 7,
+        "filename": "data/Z.txt"
+       },
+       "source": "data/Z.txt"
+      }
+     },
+     {
+      "text": "lower",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 5,
+        "filename": "data/a.txt"
+       },
+       "source": "data/a.txt"
+      }
+     },
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "data/blob.bin",
+       "note": "no local processor available"
+      }
+     },
+     {
+      "text": "﻿with a byte order mark",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 23,
+        "filename": "data/bom.txt"
+       },
+       "source": "data/bom.txt"
+      }
+     },
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 0,
+        "filename": "data/empty.txt"
+       },
+       "source": "data/empty.txt"
+      }
+     },
+     {
+      "text": "café crème",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "latin-1",
+        "chars": 10,
+        "filename": "data/latin.txt"
+       },
+       "source": "data/latin.txt"
+      }
+     },
+     {
+      "text": "text without an extension",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 25,
+        "filename": "data/noext"
+       },
+       "source": "data/noext"
+      }
+     },
+     {
+      "text": "e acute",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 7,
+        "filename": "data/é.txt"
+       },
+       "source": "data/é.txt"
+      }
+     },
+     {
+      "text": "ligature",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 8,
+        "filename": "data/ﬀ.txt"
+       },
+       "source": "data/ﬀ.txt"
+      }
+     },
+     {
+      "text": "emoji",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 5,
+        "filename": "data/😀.txt"
+       },
+       "source": "data/😀.txt"
+      }
+     },
+     {
+      "text": "# Guide\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 8,
+        "filename": "docs/guide.md"
+       },
+       "source": "docs/guide.md"
+      }
+     },
+     {
+      "text": "wanted",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 6,
+        "filename": "docs/sub/wanted.tmp"
+       },
+       "source": "docs/sub/wanted.tmp"
+      }
+     },
+     {
+      "text": "y",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 1,
+        "filename": "docs/sub/y.md"
+       },
+       "source": "docs/sub/y.md"
+      }
+     },
+     {
+      "text": "print('hi')\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 12,
+        "filename": "src/app.py"
+       },
+       "source": "src/app.py"
+      }
+     },
+     {
+      "text": "not anchored here",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 17,
+        "filename": "src/rootonly.txt"
+       },
+       "source": "src/rootonly.txt"
+      }
+     },
+     {
+      "text": "def helper():\n    return 1\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 27,
+        "filename": "src/util/helpers.py"
+       },
+       "source": "src/util/helpers.py"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "tree: false, limit hit",
+   "fixture": "PROJECT",
+   "input": "loose",
+   "options": {
+    "tree": false,
+    "max_files": 1
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "Folder loose — 1 file read, 4 B\nStopped at max_files: 1 — 4 more files not read. Raise it with [max_files: ...] (0 = no limit).",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "loose",
+       "kind": "directory",
+       "extra": {
+        "kind": "folder",
+        "root": "loose",
+        "files": 1,
+        "bytes": 4,
+        "skipped": {},
+        "limit": "max_files",
+        "not_read": 4
+       },
+       "warnings": [
+        "Stopped at max_files: 1 — 4 more files not read. Raise it with [max_files: ...] (0 = no limit)."
+       ]
+      }
+     },
+     {
+      "text": "# A\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 4,
+        "filename": "a.md"
+       },
+       "source": "a.md"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "tree: always",
+   "fixture": "PROJECT",
+   "input": "loose",
+   "options": {
+    "tree": "always"
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "Folder loose — 5 files read, 3.0 KB\n\nloose/\n├── a.md\n├── big.txt\n└── b/\n    ├── c.txt\n    ├── d.txt\n    └── e/\n        └── f.txt",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "loose",
+       "kind": "directory",
+       "extra": {
+        "kind": "folder",
+        "root": "loose",
+        "files": 5,
+        "bytes": 3007,
+        "skipped": {}
+       }
+      }
+     },
+     {
+      "text": "# A\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 4,
+        "filename": "a.md"
+       },
+       "source": "a.md"
+      }
+     },
+     {
+      "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 3000,
+        "filename": "big.txt"
+       },
+       "source": "big.txt"
+      }
+     },
+     {
+      "text": "c",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 1,
+        "filename": "b/c.txt"
+       },
+       "source": "b/c.txt"
+      }
+     },
+     {
+      "text": "d",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 1,
+        "filename": "b/d.txt"
+       },
+       "source": "b/d.txt"
+      }
+     },
+     {
+      "text": "f",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 1,
+        "filename": "b/e/f.txt"
+       },
+       "source": "b/e/f.txt"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "a subfolder of a repository",
+   "fixture": "PROJECT",
+   "input": "proj/src",
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "Folder proj/src — 3 files read, 56 B\nGit: main @ 01234567 (https://github.com/o/proj.git)\nSkipped:\n- secrets: 1 file (.env) — add [ignore: none] to include\n- .gitignore / .attachmentsignore: 1 file (trace.log) — add [ignore: \"!name\"] to include one\n\nsrc/\n├── app.py\n├── rootonly.txt\n└── util/\n    └── helpers.py",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "proj/src",
+       "kind": "directory",
+       "extra": {
+        "kind": "folder",
+        "root": "src",
+        "files": 3,
+        "bytes": 56,
+        "skipped": {
+         "secret": {
+          "files": 1,
+          "folders": 0,
+          "examples": [
+           ".env"
+          ]
+         },
+         "ignore file": {
+          "files": 1,
+          "folders": 0,
+          "examples": [
+           "trace.log"
+          ]
+         }
+        },
+        "git": {
+         "branch": "main",
+         "commit": "0123456789abcdef0123456789abcdef01234567",
+         "remote": "https://github.com/o/proj.git"
+        }
+       }
+      }
+     },
+     {
+      "text": "print('hi')\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 12,
+        "filename": "app.py"
+       },
+       "source": "app.py"
+      }
+     },
+     {
+      "text": "not anchored here",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 17,
+        "filename": "rootonly.txt"
+       },
+       "source": "rootonly.txt"
+      }
+     },
+     {
+      "text": "def helper():\n    return 1\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 27,
+        "filename": "util/helpers.py"
+       },
+       "source": "util/helpers.py"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "a subfolder two levels down",
+   "fixture": "PROJECT",
+   "input": "proj/docs/sub",
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "Folder proj/docs/sub — 2 files read, 7 B\nGit: main @ 01234567 (https://github.com/o/proj.git)\nSkipped:\n- hidden: 1 file (.gitignore) — add [hidden: true] to include\n- .gitignore / .attachmentsignore: 1 file (x.tmp) — add [ignore: \"!name\"] to include one\n\nsub/\n├── wanted.tmp\n└── y.md",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "proj/docs/sub",
+       "kind": "directory",
+       "extra": {
+        "kind": "folder",
+        "root": "sub",
+        "files": 2,
+        "bytes": 7,
+        "skipped": {
+         "hidden": {
+          "files": 1,
+          "folders": 0,
+          "examples": [
+           ".gitignore"
+          ]
+         },
+         "ignore file": {
+          "files": 1,
+          "folders": 0,
+          "examples": [
+           "x.tmp"
+          ]
+         }
+        },
+        "git": {
+         "branch": "main",
+         "commit": "0123456789abcdef0123456789abcdef01234567",
+         "remote": "https://github.com/o/proj.git"
+        }
+       }
+      }
+     },
+     {
+      "text": "wanted",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 6,
+        "filename": "wanted.tmp"
+       },
+       "source": "wanted.tmp"
+      }
+     },
+     {
+      "text": "y",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 1,
+        "filename": "y.md"
+       },
+       "source": "y.md"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "a folder outside any repository",
+   "fixture": "PROJECT",
+   "input": "loose",
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "Folder loose — 5 files read, 3.0 KB\n\nloose/\n├── a.md\n├── big.txt\n└── b/\n    ├── c.txt\n    ├── d.txt\n    └── e/\n        └── f.txt",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "loose",
+       "kind": "directory",
+       "extra": {
+        "kind": "folder",
+        "root": "loose",
+        "files": 5,
+        "bytes": 3007,
+        "skipped": {}
+       }
+      }
+     },
+     {
+      "text": "# A\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 4,
+        "filename": "a.md"
+       },
+       "source": "a.md"
+      }
+     },
+     {
+      "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 3000,
+        "filename": "big.txt"
+       },
+       "source": "big.txt"
+      }
+     },
+     {
+      "text": "c",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 1,
+        "filename": "b/c.txt"
+       },
+       "source": "b/c.txt"
+      }
+     },
+     {
+      "text": "d",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 1,
+        "filename": "b/d.txt"
+       },
+       "source": "b/d.txt"
+      }
+     },
+     {
+      "text": "f",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 1,
+        "filename": "b/e/f.txt"
+       },
+       "source": "b/e/f.txt"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "options in the string",
+   "fixture": "PROJECT",
+   "input": "loose[max_files: 2, tree: false]",
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "Folder loose — 2 files read, 3.0 KB\nStopped at max_files: 2 — 3 more files not read. Raise it with [max_files: ...] (0 = no limit).",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "loose",
+       "kind": "directory",
+       "extra": {
+        "kind": "folder",
+        "root": "loose",
+        "files": 2,
+        "bytes": 3004,
+        "skipped": {},
+        "limit": "max_files",
+        "not_read": 3
+       },
+       "warnings": [
+        "Stopped at max_files: 2 — 3 more files not read. Raise it with [max_files: ...] (0 = no limit)."
+       ]
+      }
+     },
+     {
+      "text": "# A\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 4,
+        "filename": "a.md"
+       },
+       "source": "a.md"
+      }
+     },
+     {
+      "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 3000,
+        "filename": "big.txt"
+       },
+       "source": "big.txt"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "a pattern",
+   "fixture": "PROJECT",
+   "input": "proj/**/*.py",
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "print('hi')\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 12,
+        "filename": "src/app.py"
+       },
+       "source": "src/app.py"
+      }
+     },
+     {
+      "text": "def helper():\n    return 1\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 27,
+        "filename": "src/util/helpers.py"
+       },
+       "source": "src/util/helpers.py"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "a pattern one level",
+   "fixture": "PROJECT",
+   "input": "proj/*.md",
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "# Proj\n\nA small project.\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 25,
+        "filename": "README.md"
+       },
+       "source": "README.md"
+      }
+     },
+     {
+      "text": "# Proj\n\nA small project.\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 25,
+        "filename": "link_in.md"
+       },
+       "source": "link_in.md"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "a pattern in a subfolder",
+   "fixture": "PROJECT",
+   "input": "proj/src/*.py",
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "print('hi')\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 12,
+        "filename": "app.py"
+       },
+       "source": "app.py"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "a pattern through a wildcard folder",
+   "fixture": "PROJECT",
+   "input": "proj/*/*.md",
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "# Guide\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 8,
+        "filename": "docs/guide.md"
+       },
+       "source": "docs/guide.md"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "a pattern with a class",
+   "fixture": "PROJECT",
+   "input": "proj/data/[aZ].txt",
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "capital",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 7,
+        "filename": "Z.txt"
+       },
+       "source": "Z.txt"
+      }
+     },
+     {
+      "text": "lower",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 5,
+        "filename": "a.txt"
+       },
+       "source": "a.txt"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "a pattern with a negated class",
+   "fixture": "PROJECT",
+   "input": "proj/data/[!aZ].txt",
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "e acute",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 7,
+        "filename": "é.txt"
+       },
+       "source": "é.txt"
+      }
+     },
+     {
+      "text": "ligature",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 8,
+        "filename": "ﬀ.txt"
+       },
+       "source": "ﬀ.txt"
+      }
+     },
+     {
+      "text": "emoji",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 5,
+        "filename": "😀.txt"
+       },
+       "source": "😀.txt"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "a pattern and hidden files",
+   "fixture": "PROJECT",
+   "input": "proj/**/*.txt",
+   "options": {
+    "hidden": true
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "hidden notes",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 12,
+        "filename": ".hidden/notes.txt"
+       },
+       "source": ".hidden/notes.txt"
+      }
+     },
+     {
+      "text": "capital",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 7,
+        "filename": "data/Z.txt"
+       },
+       "source": "data/Z.txt"
+      }
+     },
+     {
+      "text": "lower",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 5,
+        "filename": "data/a.txt"
+       },
+       "source": "data/a.txt"
+      }
+     },
+     {
+      "text": "﻿with a byte order mark",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 23,
+        "filename": "data/bom.txt"
+       },
+       "source": "data/bom.txt"
+      }
+     },
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 0,
+        "filename": "data/empty.txt"
+       },
+       "source": "data/empty.txt"
+      }
+     },
+     {
+      "text": "café crème",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "latin-1",
+        "chars": 10,
+        "filename": "data/latin.txt"
+       },
+       "source": "data/latin.txt"
+      }
+     },
+     {
+      "text": "e acute",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 7,
+        "filename": "data/é.txt"
+       },
+       "source": "data/é.txt"
+      }
+     },
+     {
+      "text": "ligature",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 8,
+        "filename": "data/ﬀ.txt"
+       },
+       "source": "data/ﬀ.txt"
+      }
+     },
+     {
+      "text": "emoji",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 5,
+        "filename": "data/😀.txt"
+       },
+       "source": "data/😀.txt"
+      }
+     },
+     {
+      "text": "not anchored here",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 17,
+        "filename": "src/rootonly.txt"
+       },
+       "source": "src/rootonly.txt"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "a pattern that names a hidden folder",
+   "fixture": "PROJECT",
+   "input": "proj/.hidden/*.txt",
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "hidden notes",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 12,
+        "filename": "notes.txt"
+       },
+       "source": "notes.txt"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "a pattern with tree: true",
+   "fixture": "PROJECT",
+   "input": "loose/**/*.txt",
+   "options": {
+    "tree": true
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "Files matching loose/**/*.txt — 4 files read, 3.0 KB\n\nloose/\n├── big.txt\n└── b/\n    ├── c.txt\n    ├── d.txt\n    └── e/\n        └── f.txt",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "loose/**/*.txt",
+       "kind": "directory",
+       "extra": {
+        "kind": "pattern",
+        "root": "loose",
+        "files": 4,
+        "bytes": 3003,
+        "skipped": {}
+       }
+      }
+     },
+     {
+      "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 3000,
+        "filename": "big.txt"
+       },
+       "source": "big.txt"
+      }
+     },
+     {
+      "text": "c",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 1,
+        "filename": "b/c.txt"
+       },
+       "source": "b/c.txt"
+      }
+     },
+     {
+      "text": "d",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 1,
+        "filename": "b/d.txt"
+       },
+       "source": "b/d.txt"
+      }
+     },
+     {
+      "text": "f",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 1,
+        "filename": "b/e/f.txt"
+       },
+       "source": "b/e/f.txt"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "a pattern with no match",
+   "fixture": "PROJECT",
+   "input": "proj/*.nothing",
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "proj/*.nothing",
+       "error": {
+        "code": "unpack-error"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "a pattern whose matches are all skipped",
+   "fixture": "PROJECT",
+   "input": "proj/*.log",
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "kept by a negated pattern",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 25,
+        "filename": "keep.log"
+       },
+       "source": "keep.log"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "a pattern whose matches are skipped, ignore: none",
+   "fixture": "PROJECT",
+   "input": "proj/*.log",
+   "options": {
+    "ignore": "none"
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "noise",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 5,
+        "filename": "debug.log"
+       },
+       "source": "debug.log"
+      }
+     },
+     {
+      "text": "kept by a negated pattern",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 25,
+        "filename": "keep.log"
+       },
+       "source": "keep.log"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "a file",
+   "fixture": "PROJECT",
+   "input": "proj/README.md",
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "# Proj\n\nA small project.\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 25,
+        "filename": "README.md"
+       },
+       "source": "README.md"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "a file the rules would skip, named",
+   "fixture": "PROJECT",
+   "input": "proj/debug.log",
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "noise",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 5,
+        "filename": "debug.log"
+       },
+       "source": "debug.log"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "a secret, named",
+   "fixture": "PROJECT",
+   "input": "proj/src/.env",
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "SECRET=1\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 9,
+        "filename": ".env"
+       },
+       "source": ".env"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "a file with folder options",
+   "fixture": "PROJECT",
+   "input": "proj/README.md",
+   "options": {
+    "max_files": 3,
+    "hidden": true
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "# Proj\n\nA small project.\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 25,
+        "filename": "README.md"
+       },
+       "source": "README.md",
+       "warnings": [
+        "Folder options (hidden, max_files) apply to folders, patterns, repositories and archives; ignored for a single file."
+       ]
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "a file with folder options in the string",
+   "fixture": "PROJECT",
+   "input": "proj/README.md[max_files: 3]",
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "# Proj\n\nA small project.\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 25,
+        "filename": "README.md"
+       },
+       "source": "README.md",
+       "warnings": [
+        "Folder options (max_files) apply to folders, patterns, repositories and archives; ignored for a single file."
+       ]
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "a latin-1 file",
+   "fixture": "PROJECT",
+   "input": "proj/data/latin.txt",
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "café crème",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "latin-1",
+        "chars": 10,
+        "filename": "latin.txt"
+       },
+       "source": "latin.txt"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "a file with a byte order mark",
+   "fixture": "PROJECT",
+   "input": "proj/data/bom.txt",
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "﻿with a byte order mark",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 23,
+        "filename": "bom.txt"
+       },
+       "source": "bom.txt"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "an empty file",
+   "fixture": "PROJECT",
+   "input": "proj/data/empty.txt",
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 0,
+        "filename": "empty.txt"
+       },
+       "source": "empty.txt"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "a binary file",
+   "fixture": "PROJECT",
+   "input": "proj/data/blob.bin",
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "blob.bin",
+       "note": "no local processor available"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "a file without an extension",
+   "fixture": "PROJECT",
+   "input": "proj/data/noext",
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "text without an extension",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 25,
+        "filename": "noext"
+       },
+       "source": "noext"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "a missing file",
+   "fixture": "PROJECT",
+   "input": "proj/missing.txt",
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "proj/missing.txt",
+       "error": {
+        "code": "unpack-error"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "a file named with brackets",
+   "fixture": "PROJECT",
+   "input": "loose/a.md[]",
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "# A\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 4,
+        "filename": "a.md"
+       },
+       "source": "a.md"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "an archive",
+   "fixture": "PROJECT",
+   "input": "proj/archive.zip",
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "# In the zip\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 13,
+        "filename": "archive.zip/README.md"
+       },
+       "source": "archive.zip/README.md"
+      }
+     },
+     {
+      "text": "print(1)\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 9,
+        "filename": "archive.zip/src/main.py"
+       },
+       "source": "archive.zip/src/main.py"
+      }
+     },
+     {
+      "text": "deep inside",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 11,
+        "filename": "archive.zip/nested.zip/inner/deep.txt"
+       },
+       "source": "archive.zip/nested.zip/inner/deep.txt"
+      }
+     },
+     {
+      "text": "kept as is",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 10,
+        "filename": "archive.zip/stored.txt"
+       },
+       "source": "archive.zip/stored.txt"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "an archive with its tree",
+   "fixture": "PROJECT",
+   "input": "proj/archive.zip",
+   "options": {
+    "tree": true
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "Archive proj/archive.zip — 4 files read, 43 B\nSkipped:\n- dependencies and generated files: 1 file (archive.zip/node_modules/pkg/index.js) — add [ignore: \"!name\"] to include one\n\narchive.zip/\n├── README.md\n├── src/\n│   └── main.py\n├── nested.zip/\n│   └── inner/\n│       └── deep.txt\n└── stored.txt",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "proj/archive.zip",
+       "kind": "directory",
+       "extra": {
+        "kind": "archive",
+        "root": "archive.zip",
+        "files": 4,
+        "bytes": 43,
+        "skipped": {
+         "generated": {
+          "files": 1,
+          "folders": 0,
+          "examples": [
+           "archive.zip/node_modules/pkg/index.js"
+          ]
+         }
+        }
+       }
+      }
+     },
+     {
+      "text": "# In the zip\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 13,
+        "filename": "archive.zip/README.md"
+       },
+       "source": "archive.zip/README.md"
+      }
+     },
+     {
+      "text": "print(1)\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 9,
+        "filename": "archive.zip/src/main.py"
+       },
+       "source": "archive.zip/src/main.py"
+      }
+     },
+     {
+      "text": "deep inside",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 11,
+        "filename": "archive.zip/nested.zip/inner/deep.txt"
+       },
+       "source": "archive.zip/nested.zip/inner/deep.txt"
+      }
+     },
+     {
+      "text": "kept as is",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 10,
+        "filename": "archive.zip/stored.txt"
+       },
+       "source": "archive.zip/stored.txt"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "an archive, files: false",
+   "fixture": "PROJECT",
+   "input": "proj/archive.zip",
+   "options": {
+    "files": false
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "Archive proj/archive.zip — 4 files, 43 B (contents not read: files: false)\nSkipped:\n- dependencies and generated files: 1 file (node_modules/pkg/index.js) — add [ignore: \"!name\"] to include one\n\narchive.zip/\n├── README.md\n├── src/\n│   └── main.py\n├── nested.zip/\n│   └── inner/\n│       └── deep.txt\n└── stored.txt",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "proj/archive.zip",
+       "kind": "directory",
+       "extra": {
+        "kind": "archive",
+        "root": "archive.zip",
+        "files": 4,
+        "bytes": 43,
+        "skipped": {
+         "generated": {
+          "files": 1,
+          "folders": 0,
+          "examples": [
+           "node_modules/pkg/index.js"
+          ]
+         }
+        }
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "an archive, ignore: none",
+   "fixture": "PROJECT",
+   "input": "proj/archive.zip",
+   "options": {
+    "ignore": "none"
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "# In the zip\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 13,
+        "filename": "archive.zip/README.md"
+       },
+       "source": "archive.zip/README.md"
+      }
+     },
+     {
+      "text": "print(1)\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 9,
+        "filename": "archive.zip/src/main.py"
+       },
+       "source": "archive.zip/src/main.py"
+      }
+     },
+     {
+      "text": "x",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 1,
+        "filename": "archive.zip/node_modules/pkg/index.js"
+       },
+       "source": "archive.zip/node_modules/pkg/index.js"
+      }
+     },
+     {
+      "text": "deep inside",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 11,
+        "filename": "archive.zip/nested.zip/inner/deep.txt"
+       },
+       "source": "archive.zip/nested.zip/inner/deep.txt"
+      }
+     },
+     {
+      "text": "kept as is",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 10,
+        "filename": "archive.zip/stored.txt"
+       },
+       "source": "archive.zip/stored.txt"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "an archive, max_files",
+   "fixture": "PROJECT",
+   "input": "proj/archive.zip",
+   "options": {
+    "max_files": 2
+   },
+   "expect": {
+    "artifacts": [
+     {
+      "text": "Archive proj/archive.zip — 2 files read, 22 B\nStopped at max_files: 2 — 2 more files not read. Raise it with [max_files: ...] (0 = no limit).\nSkipped:\n- dependencies and generated files: 1 file (archive.zip/node_modules/pkg/index.js) — add [ignore: \"!name\"] to include one",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "proj/archive.zip",
+       "kind": "directory",
+       "extra": {
+        "kind": "archive",
+        "root": "archive.zip",
+        "files": 2,
+        "bytes": 22,
+        "skipped": {
+         "generated": {
+          "files": 1,
+          "folders": 0,
+          "examples": [
+           "archive.zip/node_modules/pkg/index.js"
+          ]
+         }
+        },
+        "limit": "max_files",
+        "not_read": 2
+       },
+       "warnings": [
+        "Stopped at max_files: 2 — 2 more files not read. Raise it with [max_files: ...] (0 = no limit)."
+       ]
+      }
+     },
+     {
+      "text": "# In the zip\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 13,
+        "filename": "archive.zip/README.md"
+       },
+       "source": "archive.zip/README.md"
+      }
+     },
+     {
+      "text": "print(1)\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 9,
+        "filename": "archive.zip/src/main.py"
+       },
+       "source": "archive.zip/src/main.py"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "an unknown option on a text file",
+   "fixture": "PROJECT",
+   "input": "loose/a.md[pagez: 3]",
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "# A\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 4,
+        "filename": "a.md"
+       },
+       "warnings": [
+        "Unknown option 'pagez' for .md"
+       ],
+       "source": "a.md"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "a list of inputs",
+   "fixture": "PROJECT",
+   "input": [
+    "loose/a.md",
+    "proj/data/a.txt",
+    "proj/missing.txt"
+   ],
+   "options": {},
+   "expect": {
+    "artifacts": [
+     {
+      "text": "# A\n",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 4,
+        "filename": "a.md"
+       },
+       "source": "a.md"
+      }
+     },
+     {
+      "text": "lower",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "kind": "text",
+       "extra": {
+        "encoding": "utf-8",
+        "chars": 5,
+        "filename": "a.txt"
+       },
+       "source": "a.txt"
+      }
+     },
+     {
+      "text": "",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "proj/missing.txt",
+       "error": {
+        "code": "unpack-error"
+       }
+      }
+     }
+    ]
+   }
+  }
+ ]
+}

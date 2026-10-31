@@ -15,6 +15,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `contract/cases/` holds 951 cases Python passes
   (`tests/test_contract_cases.py`). The TypeScript package (`ts/`) passes
   the same cases.
+- **`att()` reads open files**: `att(open("x.pdf", "rb"))`, an upload, or
+  `io.BytesIO` with a `name`, read as a file of that name (archives
+  expanded); without a name it is called `file` and recognized by its
+  content. Bare `bytes` are still refused, now saying how to name them.
+- **`contract/reading.md` and `contract/server.md`**: how inputs become
+  files, how a file is routed between local readers and the service, and
+  the server's API, with cases for each (`contract/cases/`).
+- `contract/reading-data.json`: the skip rules' pattern lists and the
+  other tables every implementation copies, written by
+  `scripts/gen_dsl_assets.py`.
 
 ### Fixed
 
@@ -29,6 +39,22 @@ Found by writing the contract's cases:
   no pictures (it was refused only when a picture needed it).
 - A page selection accepts only the digits 0 to 9 (other scripts' digits,
   such as `٣`, were read as numbers).
+- **Options of type text keep their spelling from the string**:
+  `[password: 007]` is `"007"` (it was `"7"`), `[ref: 1.10]` is `"1.10"`
+  (it was the tag `1.1`), locally and sent to the service.
+- **A crash of a local reader is final in the default mode**, as
+  documented: only a missing dependency sends the file to the service.
+  Before, a crash uploaded the file when an API key was set (and not when
+  only a service address was).
+- `att()` no longer raises when the service answers something that is not
+  JSON (a proxy's error page): it is a `service-error` artifact. A broken
+  `/unpack` answer is a service error too.
+- A GitHub `ref` reaches the clone as written (`v1.0+build` became
+  `v1.0 build`).
+- `att.from_prompt` no longer takes a quoted option value
+  (`table.xlsx[sheet: 'S 1']`) for a file name and loses the file, and no
+  longer cuts a long extension (`a.verylongextension`) or an e-mail
+  (`a.b@c.org`) into a mention.
 
 ## [1.1.0] - 2026-10-31
 

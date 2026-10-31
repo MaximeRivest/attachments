@@ -23,14 +23,27 @@ export function warn(message: string, type: WarningType): void {
   emit(message, type);
 }
 
-/** Collect warnings instead of emitting them while `fn` runs (tests). */
+/**
+ * Collect warnings instead of emitting them while `fn` runs, and until
+ * the promise it returns settles (tests; not safe with other work running
+ * at the same time).
+ */
 export function captureWarnings<T>(fn: () => T): { value: T; warnings: { message: string; type: WarningType }[] } {
   const caught: { message: string; type: WarningType }[] = [];
   const previous = emit;
   emit = (message, type) => caught.push({ message, type });
+  let value: T;
   try {
-    return { value: fn(), warnings: caught };
-  } finally {
+    value = fn();
+  } catch (err) {
     emit = previous;
+    throw err;
   }
+  if (value instanceof Promise) {
+    const restore = (): void => {
+      emit = previous;
+    };
+    value.then(restore, restore);
+  } else emit = previous;
+  return { value, warnings: caught };
 }

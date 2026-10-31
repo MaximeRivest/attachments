@@ -1,0 +1,476 @@
+{
+ "area": "text",
+ "review": "draft",
+ "cases": [
+  {
+   "name": "decode: ascii",
+   "call": "text",
+   "bytes_b64": "aGVsbG8=",
+   "expect": {
+    "value": {
+     "text": "hello",
+     "meta": {
+      "kind": "text",
+      "extra": {
+       "encoding": "utf-8",
+       "chars": 5,
+       "filename": "t.txt"
+      }
+     }
+    }
+   }
+  },
+  {
+   "name": "decode: utf-8",
+   "call": "text",
+   "bytes_b64": "bmHDr3ZlIPCfmIA=",
+   "expect": {
+    "value": {
+     "text": "naïve 😀",
+     "meta": {
+      "kind": "text",
+      "extra": {
+       "encoding": "utf-8",
+       "chars": 7,
+       "filename": "t.txt"
+      }
+     }
+    }
+   }
+  },
+  {
+   "name": "decode: a byte order mark is kept",
+   "call": "text",
+   "bytes_b64": "77u/Ym9t",
+   "expect": {
+    "value": {
+     "text": "﻿bom",
+     "meta": {
+      "kind": "text",
+      "extra": {
+       "encoding": "utf-8",
+       "chars": 4,
+       "filename": "t.txt"
+      }
+     }
+    }
+   }
+  },
+  {
+   "name": "decode: latin-1",
+   "call": "text",
+   "bytes_b64": "Y2Fm6Q==",
+   "expect": {
+    "value": {
+     "text": "café",
+     "meta": {
+      "kind": "text",
+      "extra": {
+       "encoding": "latin-1",
+       "chars": 4,
+       "filename": "t.txt"
+      }
+     }
+    }
+   }
+  },
+  {
+   "name": "decode: cp1252 quotes read as latin-1",
+   "call": "text",
+   "bytes_b64": "k3F1b3RlZJQ=",
+   "expect": {
+    "value": {
+     "text": "quoted",
+     "meta": {
+      "kind": "text",
+      "extra": {
+       "encoding": "latin-1",
+       "chars": 8,
+       "filename": "t.txt"
+      }
+     }
+    }
+   }
+  },
+  {
+   "name": "decode: invalid utf-8 in the middle",
+   "call": "text",
+   "bytes_b64": "b2sg//4gdGhlbg==",
+   "expect": {
+    "value": {
+     "text": "ok ÿþ then",
+     "meta": {
+      "kind": "text",
+      "extra": {
+       "encoding": "latin-1",
+       "chars": 10,
+       "filename": "t.txt"
+      }
+     }
+    }
+   }
+  },
+  {
+   "name": "decode: a lone surrogate encoded",
+   "call": "text",
+   "bytes_b64": "7aCAeA==",
+   "expect": {
+    "value": {
+     "text": "í x",
+     "meta": {
+      "kind": "text",
+      "extra": {
+       "encoding": "latin-1",
+       "chars": 4,
+       "filename": "t.txt"
+      }
+     }
+    }
+   }
+  },
+  {
+   "name": "decode: overlong encoding",
+   "call": "text",
+   "bytes_b64": "wK8=",
+   "expect": {
+    "value": {
+     "text": "À¯",
+     "meta": {
+      "kind": "text",
+      "extra": {
+       "encoding": "latin-1",
+       "chars": 2,
+       "filename": "t.txt"
+      }
+     }
+    }
+   }
+  },
+  {
+   "name": "decode: empty",
+   "call": "text",
+   "bytes_b64": "",
+   "expect": {
+    "value": {
+     "text": "",
+     "meta": {
+      "kind": "text",
+      "extra": {
+       "encoding": "utf-8",
+       "chars": 0,
+       "filename": "t.txt"
+      }
+     }
+    }
+   }
+  },
+  {
+   "name": "decode: crlf",
+   "call": "text",
+   "bytes_b64": "YQ0KYg0K",
+   "expect": {
+    "value": {
+     "text": "a\r\nb\r\n",
+     "meta": {
+      "kind": "text",
+      "extra": {
+       "encoding": "utf-8",
+       "chars": 6,
+       "filename": "t.txt"
+      }
+     }
+    }
+   }
+  },
+  {
+   "name": "decode: nul inside",
+   "call": "text",
+   "bytes_b64": "YQBi",
+   "expect": {
+    "value": {
+     "text": "a\u0000b",
+     "meta": {
+      "kind": "text",
+      "extra": {
+       "encoding": "utf-8",
+       "chars": 3,
+       "filename": "t.txt"
+      }
+     }
+    }
+   }
+  },
+  {
+   "name": "sniff: pdf",
+   "call": "sniff",
+   "bytes_b64": "JVBERi0xLjcgLi4u",
+   "expect": {
+    "value": ".pdf"
+   }
+  },
+  {
+   "name": "sniff: png",
+   "call": "sniff",
+   "bytes_b64": "iVBORw0KGgouLi4=",
+   "expect": {
+    "value": ".png"
+   }
+  },
+  {
+   "name": "sniff: jpeg",
+   "call": "sniff",
+   "bytes_b64": "/9j/4AAQSkZJRg==",
+   "expect": {
+    "value": ".jpg"
+   }
+  },
+  {
+   "name": "sniff: gif87",
+   "call": "sniff",
+   "bytes_b64": "R0lGODdhLi4u",
+   "expect": {
+    "value": ".gif"
+   }
+  },
+  {
+   "name": "sniff: gif89",
+   "call": "sniff",
+   "bytes_b64": "R0lGODlhLi4u",
+   "expect": {
+    "value": ".gif"
+   }
+  },
+  {
+   "name": "sniff: webp",
+   "call": "sniff",
+   "bytes_b64": "UklGRhIAAABXRUJQVlA4IA==",
+   "expect": {
+    "value": ".webp"
+   }
+  },
+  {
+   "name": "sniff: bmp, size 0",
+   "call": "sniff",
+   "bytes_b64": "Qk0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+   "expect": {
+    "value": ".bmp"
+   }
+  },
+  {
+   "name": "sniff: bmp, size matches",
+   "call": "sniff",
+   "bytes_b64": "Qk0eAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+   "expect": {
+    "value": ".bmp"
+   }
+  },
+  {
+   "name": "sniff: bmp, size wrong",
+   "call": "sniff",
+   "bytes_b64": "Qk0fAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+   "expect": {
+    "value": null
+   }
+  },
+  {
+   "name": "sniff: bmp, too short",
+   "call": "sniff",
+   "bytes_b64": "Qk0AAA==",
+   "expect": {
+    "value": null
+   }
+  },
+  {
+   "name": "sniff: text starting BM",
+   "call": "sniff",
+   "bytes_b64": "Qk1XIGlzIGEgY2FyIG1ha2VyLCBub3QgYSBiaXRtYXA=",
+   "expect": {
+    "value": null
+   }
+  },
+  {
+   "name": "sniff: docx",
+   "call": "sniff",
+   "bytes_b64": "UEsDBBQAAAAIAAAAIVDHHBc8CgAAAAgAAAATAAAAW0NvbnRlbnRfVHlwZXNdLnhtbLMJqSxILda3AwBQSwMEFAAAAAgAAAAhUCuEJhIGAAAABAAAAAoAAAB3b3JkL3gueG1ss6nQtwMAUEsBAhQDFAAAAAgAAAAhUMccFzwKAAAACAAAABMAAAAAAAAAAAAAAIABAAAAAFtDb250ZW50X1R5cGVzXS54bWxQSwECFAMUAAAACAAAACFQK4QmEgYAAAAEAAAACgAAAAAAAAAAAAAAgAE7AAAAd29yZC94LnhtbFBLBQYAAAAAAgACAHkAAABpAAAAAAA=",
+   "expect": {
+    "value": ".docx"
+   }
+  },
+  {
+   "name": "sniff: xlsx",
+   "call": "sniff",
+   "bytes_b64": "UEsDBBQAAAAIAAAAIVDHHBc8CgAAAAgAAAATAAAAW0NvbnRlbnRfVHlwZXNdLnhtbLMJqSxILda3AwBQSwMEFAAAAAgAAAAhUCuEJhIGAAAABAAAAAgAAAB4bC94LnhtbLOp0LcDAFBLAQIUAxQAAAAIAAAAIVDHHBc8CgAAAAgAAAATAAAAAAAAAAAAAACAAQAAAABbQ29udGVudF9UeXBlc10ueG1sUEsBAhQDFAAAAAgAAAAhUCuEJhIGAAAABAAAAAgAAAAAAAAAAAAAAIABOwAAAHhsL3gueG1sUEsFBgAAAAACAAIAdwAAAGcAAAAAAA==",
+   "expect": {
+    "value": ".xlsx"
+   }
+  },
+  {
+   "name": "sniff: pptx",
+   "call": "sniff",
+   "bytes_b64": "UEsDBBQAAAAIAAAAIVDHHBc8CgAAAAgAAAATAAAAW0NvbnRlbnRfVHlwZXNdLnhtbLMJqSxILda3AwBQSwMEFAAAAAgAAAAhUCuEJhIGAAAABAAAAAkAAABwcHQveC54bWyzqdC3AwBQSwECFAMUAAAACAAAACFQxxwXPAoAAAAIAAAAEwAAAAAAAAAAAAAAgAEAAAAAW0NvbnRlbnRfVHlwZXNdLnhtbFBLAQIUAxQAAAAIAAAAIVArhCYSBgAAAAQAAAAJAAAAAAAAAAAAAACAATsAAABwcHQveC54bWxQSwUGAAAAAAIAAgB4AAAAaAAAAAAA",
+   "expect": {
+    "value": ".pptx"
+   }
+  },
+  {
+   "name": "sniff: plain zip",
+   "call": "sniff",
+   "bytes_b64": "UEsDBBQAAAAIAAAAIVCDFtyMAwAAAAEAAAAJAAAAaGVsbG8udHh0qwAAUEsBAhQDFAAAAAgAAAAhUIMW3IwDAAAAAQAAAAkAAAAAAAAAAAAAAIABAAAAAGhlbGxvLnR4dFBLBQYAAAAAAQABADcAAAAqAAAAAAA=",
+   "expect": {
+    "value": null
+   }
+  },
+  {
+   "name": "sniff: zip without types",
+   "call": "sniff",
+   "bytes_b64": "UEsDBBQAAAAIAAAAIVCDFtyMAwAAAAEAAAAKAAAAd29yZC94LnhtbKsAAFBLAQIUAxQAAAAIAAAAIVCDFtyMAwAAAAEAAAAKAAAAAAAAAAAAAACAAQAAAAB3b3JkL3gueG1sUEsFBgAAAAABAAEAOAAAACsAAAAAAA==",
+   "expect": {
+    "value": null
+   }
+  },
+  {
+   "name": "sniff: broken zip",
+   "call": "sniff",
+   "bytes_b64": "UEsDBCBub3Bl",
+   "expect": {
+    "value": null
+   }
+  },
+  {
+   "name": "sniff: html doctype",
+   "call": "sniff",
+   "bytes_b64": "ICAKCTwhRE9DVFlQRSBIVE1MPjxodG1sPjwvaHRtbD4=",
+   "expect": {
+    "value": ".html"
+   }
+  },
+  {
+   "name": "sniff: html with bom",
+   "call": "sniff",
+   "bytes_b64": "77u/PGh0bWwgbGFuZz0nZW4nPg==",
+   "expect": {
+    "value": ".html"
+   }
+  },
+  {
+   "name": "sniff: html upper",
+   "call": "sniff",
+   "bytes_b64": "PEhUTUw+PGJvZHkvPjwvSFRNTD4=",
+   "expect": {
+    "value": ".html"
+   }
+  },
+  {
+   "name": "sniff: xml",
+   "call": "sniff",
+   "bytes_b64": "PHhtbD5ub3QgaHRtbDwveG1sPg==",
+   "expect": {
+    "value": null
+   }
+  },
+  {
+   "name": "sniff: empty",
+   "call": "sniff",
+   "bytes_b64": "",
+   "expect": {
+    "value": null
+   }
+  },
+  {
+   "name": "sniff: plain",
+   "call": "sniff",
+   "bytes_b64": "cGxhaW4gdGV4dCBjb250ZW50",
+   "expect": {
+    "value": null
+   }
+  },
+  {
+   "name": "sniff: all bytes",
+   "call": "sniff",
+   "bytes_b64": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0+P0BBQkNERUZHSElKS0xNTk9QUVJTVFVWV1hZWltcXV5fYGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6e3x9fn+AgYKDhIWGh4iJiouMjY6PkJGSk5SVlpeYmZqbnJ2en6ChoqOkpaanqKmqq6ytrq+wsbKztLW2t7i5uru8vb6/wMHCw8TFxsfIycrLzM3Oz9DR0tPU1dbX2Nna29zd3t/g4eLj5OXm5+jp6uvs7e7v8PHy8/T19vf4+fr7/P3+/w==",
+   "expect": {
+    "value": null
+   }
+  },
+  {
+   "name": "sniff: html after 300 spaces",
+   "call": "sniff",
+   "bytes_b64": "ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPGh0bWw+",
+   "expect": {
+    "value": ".html"
+   }
+  },
+  {
+   "name": "looks like text: empty",
+   "call": "is_text",
+   "bytes_b64": "",
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "looks like text: ascii",
+   "call": "is_text",
+   "bytes_b64": "aGVsbG8K",
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "looks like text: nul",
+   "call": "is_text",
+   "bytes_b64": "aGVsbG8A",
+   "expect": {
+    "value": false
+   }
+  },
+  {
+   "name": "looks like text: latin-1",
+   "call": "is_text",
+   "bytes_b64": "Y2Fm6Q==",
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "looks like text: 4% control",
+   "call": "is_text",
+   "bytes_b64": "YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhAQEBAQ==",
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "looks like text: 5% control",
+   "call": "is_text",
+   "bytes_b64": "YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWEBAQEBAQ==",
+   "expect": {
+    "value": false
+   }
+  },
+  {
+   "name": "looks like text: escape and bell",
+   "call": "is_text",
+   "bytes_b64": "G1swbQc=",
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "name": "looks like text: all bytes",
+   "call": "is_text",
+   "bytes_b64": "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyAhIiMkJSYnKCkqKywtLi8wMTIzNDU2Nzg5Ojs8PT4/QEFCQ0RFRkdISUpLTE1OT1BRUlNUVVZXWFlaW1xdXl9gYWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXp7fH1+f4CBgoOEhYaHiImKi4yNjo+QkZKTlJWWl5iZmpucnZ6foKGio6SlpqeoqaqrrK2ur7CxsrO0tba3uLm6u7y9vr/AwcLDxMXGx8jJysvMzc7P0NHS09TV1tfY2drb3N3e3+Dh4uPk5ebn6Onq6+zt7u/w8fLz9PX29/j5+vv8/f7/",
+   "expect": {
+    "value": false
+   }
+  },
+  {
+   "name": "looks like text: del",
+   "call": "is_text",
+   "bytes_b64": "f39/f39/f39/fw==",
+   "expect": {
+    "value": true
+   }
+  }
+ ]
+}

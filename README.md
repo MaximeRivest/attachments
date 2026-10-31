@@ -54,6 +54,7 @@ artifacts = att(["a.pdf", Path("b.csv")])   # Several inputs (str, Path, ~, file
 artifacts = att("archive.zip")              # Archives (recursive)
 artifacts = att("github://owner/repo")      # GitHub repo
 artifacts = att("https://example.com/f.pdf") # URL
+artifacts = att(upload)                      # An open binary file: named by its .name
 
 # Inline options with DSL syntax
 artifacts = att("report.pdf[pages: 1-4]")

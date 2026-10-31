@@ -261,6 +261,32 @@ def resolve(
     raise ValueError(f"Unsupported or non-existent input: {input}")
 
 
+def resolve_bytes(
+    name: str,
+    data: bytes,
+    *,
+    options: dict[str, Any] | TreeOptions | None = None,
+) -> Resolution:
+    """Named bytes, read as a local file of that name would be.
+
+    An archive by name is expanded (folder options apply); anything else
+    is one file. The skip rules do not apply: the caller chose this file.
+
+    Examples:
+        >>> resolve_bytes("a.txt", b"hi").files
+        [('a.txt', b'hi')]
+    """
+    if isinstance(options, TreeOptions):
+        opts, warnings = options, []
+    else:
+        opts, warnings = TreeOptions.from_options(options)
+    if _is_raw_archive_name(name):
+        files, report = read_archive(name, data, opts, label=name)
+        report.warnings.extend(warnings)
+        return Resolution(list(files), [report])
+    return Resolution([(name, data)])
+
+
 def unpack(
     input: str,
     extra_handlers: dict[str, Callable[[str], list[tuple[str, bytes]]]] | None = None,
@@ -317,6 +343,7 @@ __all__ = [
     "Resolution",
     "SourceFile",
     "resolve",
+    "resolve_bytes",
     "unpack",
     "register_unpack_handler",
     "source",

@@ -151,7 +151,8 @@ class TestInputs:
 
     def test_bytes_explain_themselves(self):
         [a] = att(b"%PDF-1.4")
-        assert "not file contents" in a["meta"]["error"]["message"]
+        assert "not bare bytes" in a["meta"]["error"]["message"]
+        assert "f.name = " in a["meta"]["error"]["message"]  # says how to name them
 
     def test_empty_list(self):
         assert len(att([])) == 0

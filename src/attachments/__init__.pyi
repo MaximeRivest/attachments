@@ -3,7 +3,7 @@
 
 import os
 from collections.abc import Iterable
-from typing import Any, Literal
+from typing import Any, BinaryIO, Literal
 
 from ._artifacts import Artifacts as Artifacts
 from ._limits import RequestLimitWarning as RequestLimitWarning
@@ -127,7 +127,10 @@ __version__: str
 class _Att:
     def __call__(
         self,
-        input: str | os.PathLike[str] | Iterable[str | os.PathLike[str]],
+        input: str
+        | os.PathLike[str]
+        | BinaryIO
+        | Iterable[str | os.PathLike[str] | BinaryIO],
         *,
         api_key: str | None = ...,
         prefer: Literal["local", "service", "local-only", "service-only"] | None = ...,

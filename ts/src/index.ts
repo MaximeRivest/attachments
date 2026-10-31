@@ -9,7 +9,10 @@
  * @packageDocumentation
  */
 
+export { att, type Att, type AttOptions, type FromPromptOptions, type Input, type OptionCatalog, type PendingArtifacts } from "./att.ts";
 export { AttachmentsError, Artifacts } from "./artifacts.ts";
+export { configure, type Prefer, type Settings } from "./config.ts";
+export { checkDeps } from "./deps.ts";
 export type { ChunkOptions, PresentOptions } from "./present.ts";
 export type { Options } from "./generated/options.ts";
 export type {

@@ -143,3 +143,10 @@ def test_skill_options_in_sync(generator: ModuleType) -> None:
     expected = generator.render_skill_options(dsl_schema())
     on_disk = SKILL_OPTIONS_PATH.read_text(encoding="utf-8")
     assert on_disk == expected, f"src/attachments/skill/options.md {REGEN_HINT}"
+
+
+def test_reading_data_in_sync(generator: ModuleType) -> None:
+    """contract/reading-data.json must match the tables in the code."""
+    expected = json.dumps(generator.reading_data(), indent=2, ensure_ascii=False) + "\n"
+    on_disk = (REPO_ROOT / "contract" / "reading-data.json").read_text(encoding="utf-8")
+    assert on_disk == expected, f"contract/reading-data.json is {REGEN_HINT}"

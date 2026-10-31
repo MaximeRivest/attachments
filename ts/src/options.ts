@@ -7,10 +7,10 @@
  */
 
 import { closeMatch } from "./difflib.ts";
-import type { DslValue } from "./dsl.ts";
+import { type DslValue, Written } from "./dsl.ts";
 import { PROCESSOR_OPTIONS, SOURCE_OPTIONS } from "./generated/schema.ts";
 import { PageSelection, PageSelectionError, parsePages } from "./pages.ts";
-import { strip } from "./text.ts";
+import { pyRepr, strip } from "./text.ts";
 
 export type OptionType = "str" | "int" | "float" | "bool" | "pages" | "bool_or_auto" | "str_or_int";
 
@@ -84,12 +84,7 @@ function coerce(decl: OptionDecl, value: unknown): OptionValue {
 }
 
 function show(value: unknown): string {
-  if (value instanceof PageSelection) return String(value);
-  try {
-    return JSON.stringify(value) ?? String(value);
-  } catch {
-    return String(value);
-  }
+  return value instanceof PageSelection ? String(value) : pyRepr(value);
 }
 
 /** The result of resolving raw options against declarations. */
@@ -122,8 +117,9 @@ export function resolveOptions(
 
   const options: Record<string, OptionValue> = {};
   const warnings: string[] = [];
-  for (const [key, value] of Object.entries(raw)) {
+  for (const [key, given] of Object.entries(raw)) {
     const decl = lookup.get(key);
+    const value = decl ? writtenValue(decl, given) : given;
     if (decl === undefined) {
       let message = `Unknown option '${key}' for ${context}`;
       const close = closeMatch(key, suggestible);
@@ -147,10 +143,48 @@ export function resolveOptions(
   return { options, warnings };
 }
 
+/** The value an option takes from a {@link Written}: `str` the text, other types the value. */
+export function writtenValue(decl: OptionDecl, value: unknown): unknown {
+  if (value instanceof Written) return decl.type === "str" ? value.text : value.value;
+  return value;
+}
+
+/** Raw options for the service: written values unwrapped by their declaration (unknown keys typed). */
+export function plainOptions(decls: readonly OptionDecl[], raw: Readonly<Record<string, unknown>>): Record<string, unknown> {
+  const lookup = new Map<string, OptionDecl>();
+  for (const d of decls) for (const n of [d.name, ...d.aliases, d.param]) if (n && !lookup.has(n)) lookup.set(n, d);
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(raw)) {
+    const d = lookup.get(k);
+    out[k] = v instanceof Written ? (d ? writtenValue(d, v) : v.value) : v;
+  }
+  return out;
+}
+
+const registered = new Map<string, readonly OptionDecl[]>();
+
+/** Declare the options of a processor key or source prefix (processors of your own). @internal */
+export function registerOptions(key: string, decls: readonly OptionDecl[]): void {
+  registered.set(normalizeOptionKey(key), decls);
+}
+
+function normalizeOptionKey(key: string): string {
+  let k = strip(key);
+  if (k.includes("://") || k.startsWith("__")) return k;
+  if (!k.startsWith(".")) k = `.${k}`;
+  return k.toLowerCase();
+}
+
+/** Every declared option, by key: the contract's, then those registered here. */
+export function allDeclared(): { processors: Record<string, readonly OptionDecl[]>; sources: Record<string, readonly OptionDecl[]> } {
+  const processors: Record<string, readonly OptionDecl[]> = { ...PROCESSOR_OPTIONS };
+  const sources: Record<string, readonly OptionDecl[]> = { ...SOURCE_OPTIONS };
+  for (const [k, v] of registered) (k.includes("://") ? sources : processors)[k] = v;
+  return { processors, sources };
+}
+
 /** The declared options of a processor key (`.pdf`, `pdf`) or a source prefix (`github://`). */
 export function declaredOptions(key: string): readonly OptionDecl[] {
-  let k = strip(key);
-  if (k.includes("://")) return SOURCE_OPTIONS[k] ?? [];
-  if (!k.startsWith("__")) k = (k.startsWith(".") ? k : `.${k}`).toLowerCase();
-  return PROCESSOR_OPTIONS[k] ?? [];
+  const k = normalizeOptionKey(key);
+  return registered.get(k) ?? (k.includes("://") ? SOURCE_OPTIONS[k] : PROCESSOR_OPTIONS[k]) ?? [];
 }

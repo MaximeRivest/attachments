@@ -322,6 +322,56 @@ def _coerce(option: Option, value: Any) -> Any:
     raise _CoercionError(f"a value of type {option.type!r}")  # pragma: no cover
 
 
+def written_value(option: Option, value: Any) -> Any:
+    """The value an option takes from a :class:`~attachments.dsl.Written`.
+
+    An option of type ``str`` takes the text as written (``007``, ``1.10``);
+    every other type the typed value. Other values pass through.
+
+    Examples:
+        >>> from attachments.dsl import Written
+        >>> written_value(Option("password", "str"), Written(7, "007"))
+        '007'
+        >>> written_value(Option("dpi", "int"), Written(300, "300"))
+        300
+    """
+    from .dsl import Written
+
+    if isinstance(value, Written):
+        return value.text if option.type == "str" else value.value
+    return value
+
+
+def plain_options(schema: tuple[Option, ...], raw: dict[str, Any]) -> dict[str, Any]:
+    """*raw* with every :class:`~attachments.dsl.Written` value unwrapped.
+
+    For the service, which receives options as JSON: a ``str`` option is
+    sent as written, other values typed; keys no declaration knows, typed.
+
+    Examples:
+        >>> from attachments.dsl import Written
+        >>> plain_options(
+        ...     (Option("password", "str", aliases=("pw",)),),
+        ...     {"pw": Written(7, "007"), "dpi": Written(300, "300"), "x": 1},
+        ... )
+        {'pw': '007', 'dpi': 300, 'x': 1}
+    """
+    from .dsl import Written
+
+    lookup: dict[str, Option] = {}
+    for option in schema:
+        for name in (option.name, *option.aliases, option.param):
+            if name:
+                lookup.setdefault(name, option)
+    out: dict[str, Any] = {}
+    for key, value in raw.items():
+        if isinstance(value, Written):
+            option = lookup.get(key)
+            value = written_value(option, value) if option else value.value
+        out[key] = value
+    return out
+
+
 def resolve_options(
     schema: tuple[Option, ...],
     raw: dict[str, Any],
@@ -385,6 +435,8 @@ def resolve_options(
     warnings: list[str] = []
     for key, value in raw.items():
         option = lookup.get(key)
+        if option is not None:
+            value = written_value(option, value)
         if option is None:
             message = f"Unknown option '{key}' for {context}"
             close = difflib.get_close_matches(key, suggestible, n=1)

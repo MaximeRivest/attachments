@@ -35,7 +35,7 @@ import sys
 from typing import Any
 
 from . import att
-from .dsl import parse_dsl
+from .dsl import parse_dsl_written
 from .types import artifact_to_wire
 
 _CONTROL_KEYS = {
@@ -273,7 +273,7 @@ def main(argv: list[str] | None = None) -> int:
         for path in paths:
             # Options inside the path ("doc.pdf[pages: 1-2]") and flags
             # ("--images true") merge into one set; flags win on collision.
-            clean, embedded = parse_dsl(_resolve_path(path))
+            clean, embedded = parse_dsl_written(_resolve_path(path))
             all_artifacts.extend(
                 att(
                     clean,

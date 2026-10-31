@@ -13,27 +13,31 @@ import difflib
 import logging
 import os
 from collections.abc import Iterable, Mapping
-from typing import Any
+from typing import Any, BinaryIO
+from urllib.parse import quote
 
 from ._artifacts import Artifacts
 from ._options import (
     Option,
     get_options,
+    plain_options,
     resolve_options,
     source_option_schemas,
     warn_option,
+    written_value,
 )
 from ._processors import STANDARD, NamedProcessor, get_named, processors
 from ._sources import (
     InvalidSourceOption,
     extra_unpack_handlers,
     resolve,
+    resolve_bytes,
 )
 from ._sources.archives import RAW_ARCHIVE_SUFFIXES
 from ._sources.local import TREE_OPTIONS
 from ._watermark import WATERMARK, apply_watermark
 from .config import get_api_key, get_prefer, service_configured
-from .dsl import parse_dsl
+from .dsl import Written, parse_dsl_written
 from .types import (
     ERROR_INVALID_OPTION,
     ERROR_MISSING_DEPENDENCY,
@@ -318,6 +322,8 @@ def _process_single(
     ext = os.path.splitext(filename)[1].lower()
     table = (get_named(ext) if ext else {}) or get_named(proc_key)
     requested = options.pop(PROCESSOR_KEY, None)
+    if isinstance(requested, Written):
+        requested = requested.text
     choice_warnings: list[str] = []
     named = None
     if table:
@@ -361,6 +367,8 @@ def _process_single(
     if WATERMARK in schema:
         watermark = resolved.pop(WATERMARK.name, None)
         options = {k: v for k, v in options.items() if k != WATERMARK.name}
+    # The service gets JSON: text options as written, the others typed.
+    options = plain_options(schema, options)
 
     if named is not None:
         result = _run_named(
@@ -524,22 +532,20 @@ def _run_standard(
         if proc is not None:
             try:
                 result = _run_local()
-                # Typed check: only a result lacking a dependency (nothing
-                # read, or pictures not made) plus a configured service may
-                # trigger the fallback. Other errors are final.
-                if not svc or not lacks_dependency(result):
-                    return result
-                if not is_missing_dependency(result):
-                    partial = result
-                log.info("local dep error for %s, falling back to service", filename)
             except Exception as e:
-                if not key:
-                    return _artifact_from_exception(filename, e, "local")
-                log.info(
-                    "local exception for %s, falling back to service: %s",
-                    filename,
-                    e,
-                )
+                # A crash is the artifact it stands for: a missing module is a
+                # missing dependency (the service may have it), anything else
+                # a processing error, final: the file is not uploaded for it.
+                log.error("local processing failed for %s: %s", filename, e)
+                result = _artifact_from_exception(filename, e, "local")
+            # Typed check: only a result lacking a dependency (nothing
+            # read, or pictures not made) plus a configured service may
+            # trigger the fallback. Other errors are final.
+            if not svc or not lacks_dependency(result):
+                return result
+            if not is_missing_dependency(result):
+                partial = result
+            log.info("local dep error for %s, falling back to service", filename)
 
         # No local processor or local failed - try service if configured
         if svc:
@@ -688,7 +694,9 @@ def _apply_source_options(input: str, options: dict) -> str:
         if option.param:
             names.add(option.param)
         for key in [k for k in options if k in names]:
-            consumed[option.param or option.name] = options.pop(key)
+            consumed[option.param or option.name] = written_value(
+                option, options.pop(key)
+            )
 
     # Generic delivery: append every consumed option as a query parameter
     # on the input string; the matching handler parses it from the URL
@@ -698,13 +706,17 @@ def _apply_source_options(input: str, options: dict) -> str:
         if not value:
             continue
         separator = "&" if "?" in input else "?"
-        input = f"{input}{separator}{key}={value}"
+        # Encoded, so a value with "+", "&" or "#" reaches the source intact.
+        input = f"{input}{separator}{key}={quote(str(value), safe='')}"
 
     return input
 
 
 def att(
-    input: str | os.PathLike[str] | Iterable[str | os.PathLike[str]],
+    input: str
+    | os.PathLike[str]
+    | BinaryIO
+    | Iterable[str | os.PathLike[str] | BinaryIO],
     *,
     api_key: str | None = None,
     prefer: str | None = None,
@@ -715,9 +727,11 @@ def att(
     This is the main entry point for the attachments library.
 
     Args:
-        input: Source to process — a string, a ``pathlib.Path``, or a list
-            (any iterable) of them, read in order (``**options`` apply to
-            each). Strings support inline options via DSL:
+        input: Source to process — a string, a ``pathlib.Path``, an open
+            binary file (``open(p, "rb")``, an upload, ``io.BytesIO`` with a
+            ``name``: read as a file of that name), or a list (any iterable)
+            of them, read in order (``**options`` apply to each). Strings
+            support inline options via DSL:
             - Local file: "document.pdf" ("~/..." and "file:///..." too)
             - With options: "document.pdf[pages: 1-4]"
             - Directory: "docs/" (an overview first, then the files; secrets,
@@ -796,9 +810,73 @@ def att(
     for item in _input_items(input):
         if isinstance(item, dict):  # an input that is not a path: an error artifact
             out.append(item)
+        elif isinstance(item, _NamedBytes):
+            out.extend(
+                _att_one(
+                    item.name,
+                    api_key=api_key,
+                    prefer=prefer,
+                    options=options,
+                    dsl=False,
+                    data=item.data,
+                )
+            )
         else:
             out.extend(_att_one(item, api_key=api_key, prefer=prefer, options=options))
     return out
+
+
+class _NamedBytes:
+    """A file in hand (an open binary file): its name and its bytes."""
+
+    __slots__ = ("name", "data")
+
+    def __init__(self, name: str, data: bytes) -> None:
+        self.name = name
+        self.data = data
+
+
+#: The name of bytes that came without one.
+UNNAMED = "file"
+
+
+def _named_bytes(value: Any) -> _NamedBytes | dict:
+    """Read a binary file object; an error artifact if it gives no bytes.
+
+    Its name is the last path segment of its ``name`` (``UNNAMED`` when it
+    has none: a ``BytesIO``, a temporary file).
+
+    Examples:
+        >>> import io
+        >>> f = io.BytesIO(b"hi")
+        >>> f.name = "notes/a.txt"
+        >>> nb = _named_bytes(f)
+        >>> nb.name, nb.data
+        ('a.txt', b'hi')
+        >>> _named_bytes(io.BytesIO(b"x")).name
+        'file'
+        >>> _named_bytes(io.StringIO("x"))["meta"]["error"]["code"]
+        'unpack-error'
+    """
+    raw_name = getattr(value, "name", None)
+    name = UNNAMED
+    if isinstance(raw_name, str | bytes) and raw_name:
+        text = os.fsdecode(raw_name)
+        name = text.replace("\\", "/").rstrip("/").rsplit("/", 1)[-1] or UNNAMED
+    try:
+        data = value.read()
+    except Exception as e:  # noqa: BLE001 - att() never raises for an input
+        return error_artifact(name, ERROR_UNPACK, f"could not read the file: {e}")
+    if isinstance(data, bytearray | memoryview):
+        data = bytes(data)
+    if not isinstance(data, bytes):
+        return error_artifact(
+            name,
+            ERROR_UNPACK,
+            "att() reads binary files: open it with 'rb' "
+            f"(read() gave {type(data).__name__}, not bytes)",
+        )
+    return _NamedBytes(name, data)
 
 
 def _input_items(value: Any) -> list[Any]:
@@ -827,11 +905,13 @@ def _input_items(value: Any) -> list[Any]:
             error_artifact(
                 "<bytes>",
                 ERROR_UNPACK,
-                "att() takes paths and URLs, not file contents. To read bytes, "
-                "save them to a file, or call a processor directly: "
-                "attachments.processors['.pdf'](data, filename='x.pdf').",
+                "att() takes paths, URLs and open files, not bare bytes: without "
+                "a name their format is a guess. Give them one: "
+                "f = io.BytesIO(data); f.name = 'report.pdf'; att(f)",
             )
         ]
+    if hasattr(value, "read") and callable(value.read):
+        return [_named_bytes(value)]
     if isinstance(value, Mapping) or not isinstance(value, Iterable):
         return [
             error_artifact(
@@ -863,14 +943,16 @@ def _att_one(
     prefer: str | None,
     options: dict[str, Any],
     dsl: bool = True,
+    data: bytes | None = None,
 ) -> Artifacts:
     """``att()`` for one input string.
 
     ``dsl=False`` takes *input* literally (the server's ``/process`` with a
     ``url``: options arrive separately, and a URL is never parsed for them).
+    With *data*, *input* is the name of those bytes (a file in hand).
     """
     # Parse DSL options from input string
-    input, dsl_options = parse_dsl(input) if dsl else (input, {})
+    input, dsl_options = parse_dsl_written(input) if dsl else (input, {})
 
     # Merge options: explicit kwargs override DSL options
     merged_options = {**dsl_options, **options}
@@ -888,7 +970,10 @@ def _att_one(
     # Handle unpack with potential service fallback
     reports: list[Any] = []
     try:
-        resolution = resolve(input, options=tree_options)
+        if data is not None:
+            resolution = resolve_bytes(input, data, options=tree_options)
+        else:
+            resolution = resolve(input, options=tree_options)
         pairs: list[tuple[str, bytes]] = resolution.files
         reports = resolution.reports
     except InvalidSourceOption as e:
@@ -898,7 +983,8 @@ def _att_one(
         key = get_api_key(api_key)
         mode = get_prefer(prefer)
 
-        if service_configured(api_key) and mode not in ("local-only",):
+        # The service unpacks addresses; bytes in hand have none.
+        if data is None and service_configured(api_key) and mode != "local-only":
             try:
                 from .service import ServiceError, unpack_via_service
 
