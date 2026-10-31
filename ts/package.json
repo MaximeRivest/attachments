@@ -1,0 +1,47 @@
+{
+  "name": "attachments-dev",
+  "version": "0.1.0",
+  "description": "Turn any file, folder or web page into text and pictures a language model can read, in one line. The TypeScript implementation of the Attachments contract.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Maxime Rivest <maxime.rivest@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MaximeRivest/attachments.git",
+    "directory": "ts"
+  },
+  "homepage": "https://attachments.dev",
+  "keywords": ["llm", "pdf", "documents", "claude", "openai", "lm15", "rag", "context"],
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "attachments-source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./extend": {
+      "attachments-source": "./src/extend.ts",
+      "types": "./dist/extend.d.ts",
+      "default": "./dist/extend.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": ["dist", "src", "README.md", "LICENSE", "CHANGELOG.md"],
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "check": "tsc --noEmit",
+    "generate": "node tools/generate.ts",
+    "test": "node --conditions=attachments-source --test --test-reporter=dot tests/*.test.ts",
+    "prepublishOnly": "npm run check && npm test && npm run build"
+  },
+  "devDependencies": {
+    "@anthropic-ai/sdk": "^1.3.0",
+    "@lm15/lm15": "^1.0.0",
+    "@types/node": "^22",
+    "openai": "^7.47.0",
+    "typescript": "^5.9"
+  }
+}
