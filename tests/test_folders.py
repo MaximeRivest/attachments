@@ -182,7 +182,7 @@ def test_overview_conforms_to_the_artifact_schema(project: Path):
     import json
 
     jsonschema = pytest.importorskip("jsonschema")
-    schema_path = Path(__file__).parent.parent / "spec" / "artifact.schema.json"
+    schema_path = Path(__file__).parent.parent / "contract" / "artifact.schema.json"
     schema = json.loads(schema_path.read_text())
     for artifact in att(str(project), max_files=1).to_wire():
         jsonschema.validate(artifact, schema)

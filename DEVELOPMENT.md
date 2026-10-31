@@ -407,7 +407,7 @@ Checklist (symmetric to [Building New Processors](#building-new-processors)):
       respects the guards in `_sources/_guards.py` (size caps, SSRF guard
       for anything fetched over HTTP)
 - [ ] **Run `uv run python scripts/gen_dsl_assets.py`** if you added an
-      option schema (regenerates `__init__.pyi`, `spec/dsl-schema.json`,
+      option schema (regenerates `__init__.pyi`, `contract/dsl-schema.json`,
       `docs/dsl-options.md`)
 
 ### Quick Start (Decorator Pattern)
@@ -900,13 +900,13 @@ def my_processor(data: bytes, **options) -> dict:
 Other error codes (`parse-error`, `password-required`, ...) are final: a
 file that could not be parsed locally is not retried on the service in the
 default `prefer="local"` mode. String-matching error messages is forbidden
-by the IR contract (`spec/IR-CONTRACT.md`).
+by the IR contract (`contract/IR-CONTRACT.md`).
 
 ---
 
 ## Artifact Structure
 
-All processors must return this structure (see `spec/IR-CONTRACT.md` for the
+All processors must return this structure (see `contract/IR-CONTRACT.md` for the
 binding contract; build it with `attachments.make_artifact`):
 
 ```python

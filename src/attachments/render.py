@@ -1,7 +1,7 @@
 """Last-mile consumers of artifact lists (VISION Epic A4).
 
 ``att()`` returns ``list[Artifact]`` (plain dicts — see
-``spec/IR-CONTRACT.md``). This module turns that list into things you can
+``contract/IR-CONTRACT.md``). This module turns that list into things you can
 hand to an LLM right away:
 
 * :func:`render_text` — assemble one prompt string with ``## <source>``
@@ -171,7 +171,7 @@ def render_text(artifacts: list[dict], *, sources: bool = True) -> str:
     ``[image]``.
 
     Args:
-        artifacts: List of artifact dicts (see ``spec/IR-CONTRACT.md``).
+        artifacts: List of artifact dicts (see ``contract/IR-CONTRACT.md``).
         sources: Show file names — ``## <source>`` headers and the names
             in ``[image: <name>]`` notes (default True).
 

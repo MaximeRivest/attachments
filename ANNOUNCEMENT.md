@@ -71,7 +71,7 @@ self-hosted server with all deps can process for zero-dep clients.
 
 **The part I care about most** is what's underneath: the artifact shape, the
 typed `meta` envelope and error codes, and the DSL grammar are frozen in a
-one-page spec ([spec/](spec/)) with a JSON Schema and shared parser test
+one-page spec ([contract/](contract/)) with a JSON Schema and shared parser test
 vectors, enforced by a conformance suite in CI. That makes contributing a
 format one pure function — `(bytes, options) -> artifact` plus a declared
 option schema — and makes ports to other languages a parsing exercise, not

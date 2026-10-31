@@ -1,5 +1,5 @@
 {
-  "$comment": "Normative test vectors for the attachments DSL parser (spec/dsl-grammar.md). Each vector: input string -> expected source + options. Ranges are two-element integer arrays; a conforming Python parser maps them to tuples. Every implementation must pass all vectors.",
+  "$comment": "Normative test vectors for the attachments DSL parser (contract/dsl-grammar.md). Each vector: input string -> expected source + options. Ranges are two-element integer arrays; a conforming Python parser maps them to tuples. Every implementation must pass all vectors.",
   "version": 1,
   "vectors": [
     { "name": "no options", "input": "file.pdf", "source": "file.pdf", "options": {} },

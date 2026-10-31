@@ -1,7 +1,7 @@
 """The :class:`Artifacts` container returned by ``att()``.
 
 ``att()`` returns :class:`Artifacts` — a ``list`` subclass whose elements
-remain plain Artifact dicts (see ``spec/IR-CONTRACT.md``). Everything here
+remain plain Artifact dicts (see ``contract/IR-CONTRACT.md``). Everything here
 is sugar AROUND the frozen IR, never a change to it: iteration, indexing,
 and every existing consumer of ``list[Artifact]`` keep working unchanged.
 Each shortcut is one call to a plain function in ``attachments.render`` or
@@ -241,14 +241,14 @@ class Artifacts(list):
     line shows) is a one-line summary instead, and NEVER dumps text or
     image bytes.
 
-    Elements are plain dicts per ``spec/IR-CONTRACT.md`` — this class adds
+    Elements are plain dicts per ``contract/IR-CONTRACT.md`` — this class adds
     behavior, never state: slicing and concatenation return ``Artifacts``,
     and a single index returns the dict as-is.
 
     **JSON:** images hold raw ``bytes``, which JSON cannot carry, so
     ``json.dumps(a)`` fails as soon as there is an image. Use
     ``json.dumps(a.to_wire())`` (images as base64 ``bytes_b64``, valid
-    against ``spec/artifact.schema.json``) and
+    against ``contract/artifact.schema.json``) and
     ``Artifacts.from_wire(json.loads(s))`` to get them back.
 
     Examples:
@@ -670,14 +670,14 @@ class Artifacts(list):
         """
         return _chunk(self, **kwargs)
 
-    # -- JSON wire form (spec/IR-CONTRACT.md, "Wire format") -------------------
+    # -- JSON wire form (contract/IR-CONTRACT.md, "Wire format") -------------------
 
     def to_wire(self) -> list[dict[str, Any]]:
         """JSON-ready copy: a plain list of artifact dicts, images as base64.
 
         Each image's raw ``bytes`` become ``bytes_b64`` (standard base64),
         the format the server already sends; every item validates against
-        ``spec/artifact.schema.json``. Returns new dicts — ``self`` is
+        ``contract/artifact.schema.json``. Returns new dicts — ``self`` is
         never modified. The result is data, not a string: pass it to
         ``json.dumps`` / ``json.dump``.
 

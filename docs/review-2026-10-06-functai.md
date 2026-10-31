@@ -36,7 +36,7 @@ in FunctAI: nothing here should import lmcc or FunctAI.
 Ordered by importance. Each is small, public and provider-neutral.
 
 1. **The wire form as public API, both ways.** `Artifacts.to_json()` (images
-   as `bytes_b64`, exactly the schema in `spec/artifact.schema.json`) and
+   as `bytes_b64`, exactly the schema in `contract/artifact.schema.json`) and
    `Artifacts.from_json(data)`. Today only `server.py` (privately) and
    `service.py` (decoding) do it. FunctAI must write every input as JSON
    (its log, cache key, replay, saved programs), and rebuild it on replay.

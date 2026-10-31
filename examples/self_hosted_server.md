@@ -407,7 +407,7 @@ curl -X POST http://server:8000/process \
 ```
 
 The response body is exactly an Artifact (images carry `bytes_b64` on the
-wire — see `spec/IR-CONTRACT.md`):
+wire — see `contract/IR-CONTRACT.md`):
 
 ```json
 {

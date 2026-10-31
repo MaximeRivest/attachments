@@ -5,7 +5,7 @@ NOT installed, which made their "deps missing" tests structurally
 unrunnable (mutually exclusive skip conditions). These tests instead
 simulate the absence of the optional dependencies regardless of what is
 installed, and assert each processor returns the typed missing-dependency
-artifact required by spec/IR-CONTRACT.md — never raising, and always
+artifact required by contract/IR-CONTRACT.md — never raising, and always
 including the pip install remedy in the error message.
 
 The simulation masks the relevant modules in ``sys.modules``: a ``None``

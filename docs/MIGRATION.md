@@ -49,7 +49,7 @@ whose extra is missing comes back as an error artifact with the exact
 | `str(ctx)` / `f"{ctx}"` | `str(a)` / `print(a)` / `a.text` |
 | `ctx.images` (base64 data-URL strings) | `a.images` — dicts `{name, mimetype, bytes, page}`; raw base64: `base64.b64encode(img["bytes"]).decode()` |
 | `ctx.metadata` | each artifact's `meta`: `a[0]["meta"]` (`kind`, `segments`, `extra`, `warnings`, `error`) |
-| `ctx[0]` (an `Attachment` object) | `a[0]` — a plain dict ([spec/IR-CONTRACT.md](../spec/IR-CONTRACT.md)) |
+| `ctx[0]` (an `Attachment` object) | `a[0]` — a plain dict ([contract/IR-CONTRACT.md](../contract/IR-CONTRACT.md)) |
 | `ctx.claude("prompt")` | `a.claude("prompt")` |
 | `ctx.openai_chat("prompt")` / `ctx.openai(...)` | `a.openai("prompt")` (Chat Completions) |
 | `ctx.openai_responses("prompt")` | map `a.parts()` — [example below](#openai-responses-api) |

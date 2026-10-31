@@ -1,5 +1,5 @@
 """
-Tests for the DSL parser (spec/dsl-grammar.md).
+Tests for the DSL parser (contract/dsl-grammar.md).
 
 =============================================================================
 TEST GUIDELINES FOR DSL
@@ -17,7 +17,7 @@ BAD tests for DSL:
       the parser returns RAW typed options, no aliases, no validation)
     - Testing actual file processing (that's test_core.py)
     - Duplicating the normative vectors (tests/test_dsl_vectors.py runs all
-      of spec/dsl-test-vectors.json)
+      of contract/dsl-test-vectors.json)
 
 =============================================================================
 """

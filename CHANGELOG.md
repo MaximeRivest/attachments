@@ -609,8 +609,8 @@ See [VISION.md](VISION.md) for the reasoning.
   `warnings`, `segments`, `extra`) and typed error codes
   (`missing-dependency`, `password-required`, `parse-error`, `unpack-error`,
   `service-error`, `invalid-option`, `processing-error`). Errors never raise
-  out of `att()`. Contract: [spec/IR-CONTRACT.md](spec/IR-CONTRACT.md), JSON
-  Schema: [spec/artifact.schema.json](spec/artifact.schema.json).
+  out of `att()`. Contract: [spec/IR-CONTRACT.md](contract/IR-CONTRACT.md), JSON
+  Schema: [spec/artifact.schema.json](contract/artifact.schema.json).
 - **Two open registries**: processors (*WHAT is it?* — `@processor(".myf")` /
   `register_processor`) and unpack handlers (*WHERE does it come from?* —
   `@source("myproto://")` / `register_unpack_handler`). Source × format
@@ -621,7 +621,7 @@ See [VISION.md](VISION.md) for the reasoning.
   help, example)`). Unknown keys never fail silently — they warn with
   "did you mean ...?" in `meta.warnings`. Every DSL option has a
   keyword-argument twin; explicit kwargs win. Grammar + shared parser test
-  vectors: [spec/dsl-grammar.md](spec/dsl-grammar.md).
+  vectors: [spec/dsl-grammar.md](contract/dsl-grammar.md).
 - **Runtime option discovery**: `att.options(".pdf")` /
   `attachments.options()` / `dsl_schema()`, plus `att --options` on the CLI,
   `GET /options` on the server, and the generated cheatsheet in

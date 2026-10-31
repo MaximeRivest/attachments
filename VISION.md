@@ -248,7 +248,7 @@ platform only when pulled by demand.
 **This repo IS attachments 1.0.0** — the next major version of the
 [`attachments`](https://pypi.org/project/attachments/) PyPI package. Epics
 A–D are substantially complete: the IR is frozen and CI-enforced by a
-conformance suite (`spec/` + `tests/test_conformance.py`), processors declare
+conformance suite (`contract/` + `tests/test_conformance.py`), processors declare
 option schemas with `att.options()` runtime discovery and "did you mean"
 errors, the v1 corpus is ported through pptx and images with magic-byte
 routing, and the server plus the render/adapt/chunk last mile ship. The 0.x

@@ -22,7 +22,7 @@ from attachments.types import (
 
 
 class TestErrorCodes:
-    """Error code constants are frozen by spec/IR-CONTRACT.md."""
+    """Error code constants are frozen by contract/IR-CONTRACT.md."""
 
     def test_values(self):
         assert ERROR_MISSING_DEPENDENCY == "missing-dependency"

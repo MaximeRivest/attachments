@@ -75,7 +75,7 @@ Tests
 - Every processor needs both a missing-dep test (graceful error artifact) and
   an installed-path test (skipped when the dep is absent).
 - The conformance suite validates every registered processor's output against
-  `spec/artifact.schema.json` automatically — add a sample-file generator for
+  `contract/artifact.schema.json` automatically — add a sample-file generator for
   your extension in `tests/test_conformance.py` to opt in to content checks.
 
 Branches, commits, and PRs

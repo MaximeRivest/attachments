@@ -35,7 +35,7 @@ def test_att_help_prints_one_screen_and_returns_none(capsys):
     assert "github://" in out
     assert "att.options('.pdf')" in out
     assert "docs/dsl-options.md" in out
-    assert "spec/" in out
+    assert "contract/" in out
     # One screen, give or take
     assert len(out.splitlines()) <= 30
 

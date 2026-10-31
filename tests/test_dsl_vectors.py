@@ -1,4 +1,4 @@
-"""Run the normative DSL test vectors (spec/dsl-test-vectors.json).
+"""Run the normative DSL test vectors (contract/dsl-test-vectors.json).
 
 Every implementation of the DSL parser, in any language, must pass all
 vectors byte-for-byte. Ranges are two-element integer arrays in JSON;
@@ -16,7 +16,7 @@ import pytest
 from attachments.dsl import parse_dsl
 
 _VECTORS_PATH = (
-    Path(__file__).resolve().parent.parent / "spec" / "dsl-test-vectors.json"
+    Path(__file__).resolve().parent.parent / "contract" / "dsl-test-vectors.json"
 )
 _SPEC = json.loads(_VECTORS_PATH.read_text(encoding="utf-8"))
 

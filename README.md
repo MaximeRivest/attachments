@@ -141,7 +141,7 @@ when the task is "which animal is this?". `sources=False` works everywhere
 **Saving results.** Images hold raw bytes, which JSON cannot carry, so
 `json.dumps(a)` fails as soon as there is an image. `a.to_wire()` returns the
 wire form the server uses (images as base64 `bytes_b64`, valid against
-[spec/artifact.schema.json](https://github.com/maximerivest/attachments/blob/main/spec/artifact.schema.json)), and never modifies
+[contract/artifact.schema.json](https://github.com/maximerivest/attachments/blob/main/contract/artifact.schema.json)), and never modifies
 `a`:
 
 ```python
@@ -278,8 +278,8 @@ A file type with no processor is not an error (an empty artifact with a
 The error codes (`missing-dependency`, `password-required`, `parse-error`,
 `unpack-error`, `service-error`, `invalid-option`, `processing-error`) are
 constants in `attachments.types`. The full binding contract — shape, meta
-envelope, wire format — is one page: [spec/IR-CONTRACT.md](https://github.com/maximerivest/attachments/blob/main/spec/IR-CONTRACT.md)
-(JSON Schema in [spec/artifact.schema.json](https://github.com/maximerivest/attachments/blob/main/spec/artifact.schema.json)),
+envelope, wire format — is one page: [contract/IR-CONTRACT.md](https://github.com/maximerivest/attachments/blob/main/contract/IR-CONTRACT.md)
+(JSON Schema in [contract/artifact.schema.json](https://github.com/maximerivest/attachments/blob/main/contract/artifact.schema.json)),
 enforced by a conformance suite that validates every processor and server
 response in CI.
 
@@ -361,7 +361,7 @@ author should not pick what your server fetches).
 
 **Values:** numbers, booleans (`true`/`false`), ranges (`1-4`), bare or quoted
 strings. The whole grammar (with shared parser test vectors every
-implementation must pass) lives in [spec/dsl-grammar.md](https://github.com/maximerivest/attachments/blob/main/spec/dsl-grammar.md).
+implementation must pass) lives in [contract/dsl-grammar.md](https://github.com/maximerivest/attachments/blob/main/contract/dsl-grammar.md).
 
 **Keys belong to processors:** each processor declares its option schema
 (with aliases like `page` → `pages`, `pw` → `password`, `branch` → `ref`),
@@ -687,7 +687,7 @@ service client, self-hosted server, and CLI.
 The last mile ships too: `render_text` / `to_claude_messages` /
 `to_openai_messages` / `chunk` turn artifact lists straight into prompts,
 API messages, or RAG chunks. The IR contract and DSL grammar are frozen in
-[spec/](https://github.com/maximerivest/attachments/tree/main/spec/) and enforced by a conformance suite; the generated option
+[contract/](https://github.com/maximerivest/attachments/tree/main/contract/) and enforced by a conformance suite; the generated option
 cheatsheet lives in [docs/dsl-options.md](https://github.com/maximerivest/attachments/blob/main/docs/dsl-options.md).
 
 Everything else (EPS, video, `s3://`,

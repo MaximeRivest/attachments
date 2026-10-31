@@ -1,6 +1,6 @@
 """Type definitions and artifact helpers for the attachments library.
 
-This module implements the frozen IR contract (see ``spec/IR-CONTRACT.md``):
+This module implements the frozen IR contract (see ``contract/IR-CONTRACT.md``):
 every processor returns an :class:`Artifact`-shaped dict with a typed
 ``meta`` envelope, and failures are expressed as machine-readable error
 codes — never as free-form strings that consumers must pattern-match.
@@ -35,7 +35,7 @@ import copy
 from typing import Any, NotRequired, Protocol, TypedDict
 
 # ---------------------------------------------------------------------------
-# Error codes (spec/IR-CONTRACT.md — frozen, do not rename)
+# Error codes (contract/IR-CONTRACT.md — frozen, do not rename)
 # ---------------------------------------------------------------------------
 
 #: Optional dependency not installed — DRIVES SERVICE FALLBACK.
@@ -175,7 +175,7 @@ class Artifact(TypedDict):
 
 
 class Processor(Protocol):
-    """The processor contract, as frozen in ``spec/IR-CONTRACT.md``.
+    """The processor contract, as frozen in ``contract/IR-CONTRACT.md``.
 
     A processor is a pure function
     ``(data: bytes, *, filename=None, **options) -> Artifact``. The core
@@ -432,7 +432,7 @@ def normalize_artifact(artifact: dict, source: str) -> Artifact:
 
 
 # ---------------------------------------------------------------------------
-# Wire form (spec/IR-CONTRACT.md, "Wire format")
+# Wire form (contract/IR-CONTRACT.md, "Wire format")
 # ---------------------------------------------------------------------------
 
 
@@ -465,7 +465,7 @@ def artifact_to_wire(artifact: dict) -> dict:
     Each image's raw ``bytes`` become standard base64 in ``bytes_b64``;
     everything else is deep-copied as-is. The result is what the server
     sends, what ``json.dumps`` accepts, and what
-    ``spec/artifact.schema.json`` validates.
+    ``contract/artifact.schema.json`` validates.
 
     Examples:
         >>> art = make_artifact(
@@ -505,7 +505,7 @@ def artifact_from_wire(data: dict) -> Artifact:
     empty values; ``meta.source`` is never invented (a caller that knows
     the file name sets it, as ``att()`` does). This is a structural check,
     not full JSON Schema validation (that would need a dependency;
-    ``spec/artifact.schema.json`` is the reference).
+    ``contract/artifact.schema.json`` is the reference).
 
     Examples:
         >>> art = artifact_from_wire(

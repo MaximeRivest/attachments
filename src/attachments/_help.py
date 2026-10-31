@@ -91,6 +91,6 @@ def att_help() -> None:
         "  att.options('.pdf')   options for one processor (att.options() = all)",
         "  att --skill --install teach Claude Code, Pi and Codex to use attachments",
         "  docs/dsl-options.md   generated cheatsheet",
-        "  spec/                 the binding IR contract & DSL grammar",
+        "  contract/             the binding IR contract & DSL grammar",
     ]
     print("\n".join(lines))

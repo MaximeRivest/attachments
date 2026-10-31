@@ -6,7 +6,7 @@ TEST GUIDELINES FOR GENERATED ASSETS
 =============================================================================
 
 GOOD tests:
-    - spec/dsl-schema.json on disk == the live dsl_schema() serialization
+    - contract/dsl-schema.json on disk == the live dsl_schema() serialization
       (CI fails when option declarations change without regenerating)
     - docs/dsl-options.md on disk == the regenerated cheatsheet
     - src/attachments/skill/options.md on disk == the regenerated tables
@@ -42,7 +42,7 @@ from attachments import dsl_schema
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 GENERATOR_PATH = REPO_ROOT / "scripts" / "gen_dsl_assets.py"
-SCHEMA_PATH = REPO_ROOT / "spec" / "dsl-schema.json"
+SCHEMA_PATH = REPO_ROOT / "contract" / "dsl-schema.json"
 DOCS_PATH = REPO_ROOT / "docs" / "dsl-options.md"
 STUB_PATH = REPO_ROOT / "src" / "attachments" / "__init__.pyi"
 SKILL_OPTIONS_PATH = REPO_ROOT / "src" / "attachments" / "skill" / "options.md"
@@ -61,10 +61,10 @@ def generator() -> ModuleType:
 
 
 def test_schema_json_in_sync(generator: ModuleType) -> None:
-    """spec/dsl-schema.json must match the live dsl_schema() serialization."""
+    """contract/dsl-schema.json must match the live dsl_schema() serialization."""
     expected = generator.render_schema_json(dsl_schema())
     on_disk = SCHEMA_PATH.read_text(encoding="utf-8")
-    assert on_disk == expected, f"spec/dsl-schema.json is {REGEN_HINT}"
+    assert on_disk == expected, f"contract/dsl-schema.json is {REGEN_HINT}"
 
 
 def test_docs_markdown_in_sync(generator: ModuleType) -> None:

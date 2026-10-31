@@ -4,7 +4,7 @@
 > READMEs — long before it lives on a website. This document versions
 > alongside the code it describes. PRs that touch user-facing words (errors,
 > hints, README copy, site copy) should be checked against it the same way
-> code is checked against `spec/IR-CONTRACT.md`.
+> code is checked against `contract/IR-CONTRACT.md`.
 
 ---
 
@@ -71,7 +71,7 @@ Three traits, one rejection. Every word we ship is tested against these.
 
 | Trait | What it means | Where it already lives |
 |---|---|---|
-| **Precise** | Frozen one-page contract, typed errors, conformance suite. We say exactly what happens and never more. | `spec/IR-CONTRACT.md`, error codes in `types.py`, `~N tokens` honesty ("a fast chars/4 approximation, not a real tokenizer") |
+| **Precise** | Frozen one-page contract, typed errors, conformance suite. We say exactly what happens and never more. | `contract/IR-CONTRACT.md`, error codes in `types.py`, `~N tokens` honesty ("a fast chars/4 approximation, not a real tokenizer") |
 | **Generous** | Zero required deps, errors that teach, free hosted tier, MIT including the server. We leave the user better off than we found them, especially when something fails. | `"did you mean 'sheet'?"`, the scanned-PDF hint, keyless servers |
 | **Honest** | Anti-lock-in as identity. The exit path is documented next to the entrance. | "You can leave at any time", self-host one-liner, "no telemetry, ever" |
 

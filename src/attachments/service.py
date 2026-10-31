@@ -102,7 +102,7 @@ def process_via_service(
     # survives the multipart form encoding: the server decodes each field
     # with json.loads, and the DSL guarantee that a quoted value stays a
     # string ('3' vs 3, 'null' vs null) must hold over the wire exactly as
-    # it does locally (spec/dsl-grammar.md, normalization rule 1).
+    # it does locally (contract/dsl-grammar.md, normalization rule 1).
     files = {"file": (filename, data)}
     form_data = {
         k: json.dumps(v, default=str)

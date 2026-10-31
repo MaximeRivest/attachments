@@ -2,7 +2,7 @@
 
 Every artifact this library produces — happy path, error path, unpacked
 archives, and the wire format served over HTTP — must validate against the
-frozen JSON Schema in ``spec/artifact.schema.json``.
+frozen JSON Schema in ``contract/artifact.schema.json``.
 
 The suite is DYNAMIC: it iterates over the live processor registry, so
 processors added later (pptx, images, ...) are picked up automatically as
@@ -33,7 +33,7 @@ from attachments.types import (
     normalize_artifact,
 )
 
-SPEC_DIR = Path(__file__).resolve().parent.parent / "spec"
+SPEC_DIR = Path(__file__).resolve().parent.parent / "contract"
 SCHEMA_PATH = SPEC_DIR / "artifact.schema.json"
 VECTORS_PATH = SPEC_DIR / "dsl-test-vectors.json"
 

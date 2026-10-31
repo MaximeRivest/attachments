@@ -5,7 +5,7 @@ client and the CLI share.
 Covers:
     - Round trip through real JSON text gives back an equal Artifacts
     - to_wire never modifies its input (the server's old encoder did)
-    - Output validates against spec/artifact.schema.json
+    - Output validates against contract/artifact.schema.json
     - Bad data fails loudly (invalid base64, wrong types, non-list)
     - CLI --json emits the wire form (bytes_b64), not raw base64 under "bytes"
     - The service client turns an invalid response into ServiceError
@@ -35,7 +35,7 @@ from attachments.types import error_artifact, make_artifact
 
 SCHEMA = json.loads(
     (
-        Path(__file__).resolve().parent.parent / "spec" / "artifact.schema.json"
+        Path(__file__).resolve().parent.parent / "contract" / "artifact.schema.json"
     ).read_text()
 )
 VALIDATOR = jsonschema.Draft202012Validator(SCHEMA)

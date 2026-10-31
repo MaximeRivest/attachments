@@ -3,7 +3,7 @@
 
 Writes three files from ``attachments.dsl_schema()``:
 
-- ``spec/dsl-schema.json`` — the machine-readable schema export consumed
+- ``contract/dsl-schema.json`` — the machine-readable schema export consumed
   by editor tooling (deterministic: sorted keys, trailing newline).
 - ``docs/dsl-options.md`` — a human-readable cheatsheet with one table per
   group of extensions that share a schema (e.g. all image extensions).
@@ -34,7 +34,7 @@ from typing import Any
 from attachments import dsl_schema
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-SCHEMA_PATH = REPO_ROOT / "spec" / "dsl-schema.json"
+SCHEMA_PATH = REPO_ROOT / "contract" / "dsl-schema.json"
 DOCS_PATH = REPO_ROOT / "docs" / "dsl-options.md"
 INIT_PATH = REPO_ROOT / "src" / "attachments" / "__init__.py"
 STUB_PATH = REPO_ROOT / "src" / "attachments" / "__init__.pyi"

@@ -2,7 +2,7 @@
 
 This is the frozen intermediate representation every processor produces, every
 consumer accepts, and the server transports. Code and tests must conform.
-(Epic B of VISION.md. JSON Schema lives in spec/artifact.schema.json.)
+(Epic B of VISION.md. JSON Schema lives in contract/artifact.schema.json.)
 
 ## Shape
 

@@ -1,4 +1,4 @@
-"""DSL parser for inline options in input strings (spec/dsl-grammar.md).
+"""DSL parser for inline options in input strings (contract/dsl-grammar.md).
 
 The DSL embeds processing options in the input string::
 
@@ -10,7 +10,7 @@ typed options. Mapping keys to processor parameters, alias handling, and
 "did you mean" warnings are the router's job, driven by each processor's
 declared option schema (see ``attachments._options``).
 
-The normative test vectors live in ``spec/dsl-test-vectors.json``; every
+The normative test vectors live in ``contract/dsl-test-vectors.json``; every
 implementation, in any language, must pass all of them.
 
 Value typing (in order):
