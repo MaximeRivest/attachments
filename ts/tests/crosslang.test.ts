@@ -17,7 +17,7 @@ import { fileURLToPath } from "node:url";
 import { att } from "attachments-dev";
 
 const repo = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
-const python = join(repo, ".venv", "bin", "python");
+const python = process.env["ATT_PYTHON"] ?? join(repo, ".venv", "bin", "python");
 const files = join(repo, "tests", "extras", "files");
 const skip = !existsSync(python) ? "no ../.venv (run uv sync in the repository)" : false;
 
@@ -42,9 +42,9 @@ print(json.dumps(out))`;
 }
 
 /** Python's reading of files given as `{ name, b64 }`, error messages left out. */
-function pythonReadsBytes(files: { name: string; b64: string }[]): unknown[] {
+function pythonReadsBytes(files: { name: string; b64: string }[]): { expat: number[]; out: unknown[] } {
   const script = `
-import base64, io, json, sys, warnings, logging
+import base64, io, json, sys, warnings, logging, pyexpat
 logging.disable(logging.CRITICAL)
 warnings.simplefilter("ignore")
 from attachments import att
@@ -56,7 +56,8 @@ for f in json.load(sys.stdin):
         if "error" in a["meta"]: a["meta"]["error"] = {"code": a["meta"]["error"]["code"]}
     out.append(wire)
 # NaN is not JSON: written as null, as JSON.stringify writes it.
-print(json.dumps(json.loads(json.dumps(out), parse_constant=lambda c: None)))`;
+print(json.dumps({"expat": pyexpat.version_info,
+                  "out": json.loads(json.dumps(out), parse_constant=lambda c: None)}))`;
   const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith("ATTACHMENTS_")));
   return JSON.parse(execFileSync(python, ["-c", script], { env, input: JSON.stringify(files), maxBuffer: 256 * 1024 * 1024 }).toString());
 }
@@ -73,7 +74,7 @@ function random(seed: number): () => number {
 }
 
 describe("TypeScript and Python read the same bytes the same way", { skip }, () => {
-  test("random CSV and mutated SVG and notebooks", async () => {
+  test("random CSV and mutated SVG and notebooks", async (t) => {
     const rnd = random(Number(process.env["ATT_FUZZ_SEED"] ?? 2026));
     const pick = <T>(list: readonly T[]): T => list[Math.floor(rnd() * list.length)]!;
     const files: { name: string; data: Uint8Array }[] = [];
@@ -125,10 +126,14 @@ describe("TypeScript and Python read the same bytes the same way", { skip }, () 
       }
       files.push({ name: "n.ipynb", data: new TextEncoder().encode(text) });
     }
-    const expected = pythonReadsBytes(files.map((f) => ({ name: f.name, b64: Buffer.from(f.data).toString("base64") })));
+    const { expat, out: expected } = pythonReadsBytes(files.map((f) => ({ name: f.name, b64: Buffer.from(f.data).toString("base64") })));
+    // expat before 2.7 accepts more XML declarations than the standard
+    // (contract/processors.md); against it, those files are not compared.
+    const oldExpat = expat[0]! < 2 || (expat[0] === 2 && expat[1]! < 7);
     const local = att.with({ prefer: "local-only" });
     let differ = 0;
     for (const [i, f] of files.entries()) {
+      if (oldExpat && f.name.endsWith(".svg") && new TextDecoder().decode(f.data.subarray(0, 5)) === "<?xml") continue;
       const got = JSON.parse(JSON.stringify(await local(new File([f.data as BlobPart], f.name)))).map((a: any) => {
         if (a.meta.error) a.meta.error = { code: a.meta.error.code };
         return a;
@@ -137,7 +142,7 @@ describe("TypeScript and Python read the same bytes the same way", { skip }, () 
         assert.deepEqual(got, expected[i]);
       } catch (err) {
         differ++;
-        if (differ <= 5) console.error(f.name, JSON.stringify(new TextDecoder().decode(f.data)), (err as Error).message.slice(0, 1500));
+        if (differ <= 5) t.diagnostic(`${f.name} ${JSON.stringify(new TextDecoder().decode(f.data))} ${(err as Error).message.slice(0, 1500)}`);
       }
     }
     assert.equal(differ, 0, `${differ} of ${files.length} files read differently`);
