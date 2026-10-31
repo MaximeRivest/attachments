@@ -47,10 +47,10 @@ BLOCK_PRIVATE_URLS_DEFAULT = os.environ.get(
     "ATT_BLOCK_PRIVATE_URLS", ""
 ).strip().lower() in ("1", "true", "yes", "on")
 
-#: Per-request override of BLOCK_PRIVATE_URLS_DEFAULT for fetches that happen
-#: while PROCESSING (not unpacking) — today the html processor's browser
+#: Per-request override of BLOCK_PRIVATE_URLS_DEFAULT: downloads made without
+#: an explicit ``block_private_urls`` and the html processor's browser
 #: screenshots. The server sets it around each request (``private_url_guard``)
-#: so a page it renders cannot reach internal addresses.
+#: so nothing it fetches or renders can reach internal addresses.
 _PRIVATE_URL_GUARD: ContextVar[bool | None] = ContextVar(
     "attachments_private_url_guard", default=None
 )
@@ -73,12 +73,48 @@ def private_urls_blocked() -> bool:
 
 @contextmanager
 def private_url_guard(enabled: bool) -> Iterator[None]:
-    """Block (or allow) private addresses for processing in this context."""
+    """Block (or allow) private addresses for fetches in this context.
+
+    Covers downloads (``http.py``, when the caller passes no explicit
+    ``block_private_urls``) and the html processor's browser alike.
+    """
     token = _PRIVATE_URL_GUARD.set(enabled)
     try:
         yield
     finally:
         _PRIVATE_URL_GUARD.reset(token)
+
+
+#: Per-request cap on one download, below ``MAX_HTTP_DOWNLOAD_BYTES``. The
+#: server sets it to its upload cap (``download_cap``): a file it fetches
+#: must not be bigger than one it would accept as an upload.
+_DOWNLOAD_CAP: ContextVar[int | None] = ContextVar(
+    "attachments_download_cap", default=None
+)
+
+
+def max_download_bytes() -> int:
+    """The largest download allowed in this context.
+
+    Examples:
+        >>> with download_cap(1000):
+        ...     max_download_bytes()
+        1000
+        >>> max_download_bytes() == MAX_HTTP_DOWNLOAD_BYTES
+        True
+    """
+    cap = _DOWNLOAD_CAP.get()
+    return MAX_HTTP_DOWNLOAD_BYTES if cap is None else min(cap, MAX_HTTP_DOWNLOAD_BYTES)
+
+
+@contextmanager
+def download_cap(max_bytes: int) -> Iterator[None]:
+    """Cap the size of every download made in this context."""
+    token = _DOWNLOAD_CAP.set(max_bytes)
+    try:
+        yield
+    finally:
+        _DOWNLOAD_CAP.reset(token)
 
 
 def _sanitize_member_name(name: str) -> str:

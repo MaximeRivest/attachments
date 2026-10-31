@@ -8,9 +8,10 @@ Checks: health and version; a Word file, an old Word 97 file (LibreOffice) and a
 PowerPoint file read by the service; a 10-page scan read by OCR (time, words read
 correctly against the text the scan was made from, and the engine: LightOnOCR, or
 RapidOCR while the model is not running); that the service refuses to fetch
-a private address; the browser (CORS) answer for the website; the website itself. It
-does not test the rate limit, which would lock this machine out for a minute. Needs
-this repository's .venv (attachments, PyMuPDF).
+a private address or read its own files, and reads a web address; the browser
+(CORS) answer for the website; the website itself. It does not test the rate
+limit, which would lock this machine out for a minute. Needs this repository's
+.venv (attachments, PyMuPDF).
 """
 
 from __future__ import annotations
@@ -148,6 +149,30 @@ def main() -> int:
         {**headers, "Content-Type": "application/json"},
     )
     check("refuses a private address", status == 400, f"{status} {body[:90]!r}")
+
+    status, _, body = http(
+        "POST",
+        f"{API}/unpack",
+        json.dumps({"url": "/app/wsgi.py"}).encode(),
+        {**headers, "Content-Type": "application/json"},
+    )
+    check("refuses its own files", status == 400, f"{status} {body[:90]!r}")
+
+    status, _, body = http(
+        "POST",
+        f"{API}/process",
+        json.dumps({"url": "https://example.com/"}).encode(),
+        {**headers, "Content-Type": "application/json"},
+    )
+    try:
+        page = json.loads(body)
+    except ValueError:
+        page = {}
+    check(
+        "reads a web address",
+        status == 200 and "Example Domain" in page.get("text", ""),
+        f"{status} {page.get('meta', {}).get('source')!r} {body[:60]!r}",
+    )
 
     status, h, _ = http(
         "OPTIONS",

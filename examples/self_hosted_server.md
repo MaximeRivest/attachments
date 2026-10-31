@@ -88,7 +88,7 @@ You'll see:
 ║  Auth: enabled                                              ║
 ╠══════════════════════════════════════════════════════════════╣
 ║  Endpoints:                                                  ║
-║    POST /process  - Process a file                           ║
+║    POST /process  - Process a file or a web address          ║
 ║    POST /unpack   - Unpack a URL                             ║
 ║    GET  /health   - Health check                             ║
 ║    GET  /formats  - List supported formats                   ║
@@ -430,6 +430,26 @@ wire — see `spec/IR-CONTRACT.md`):
 With `images: true`, each rendered page appears as
 `{"name": "document.pdf-page-1.png", "mimetype": "image/png", "bytes_b64": "iVBORw0KGgo...", "page": 1}`.
 
+### Process a Web Address
+
+Send JSON instead of a file: the server fetches the address and answers
+exactly what `att(url, **options)` gives on a client — a web page read with
+its own address (links resolve; `meta.source` is the final address after
+redirects), any other file read by its type:
+
+```bash
+curl -X POST http://server:8000/process \
+  -H "Authorization: Bearer your-secret" \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://arxiv.org/pdf/1706.03762", "options": {"pages": "1-2"}}'
+```
+
+The response is one Artifact, as for an upload. A download that fails
+(not found, a private address, bigger than `ATTACHMENTS_MAX_UPLOAD`) is an
+Artifact with `meta.error` (`unpack-error`), as `att()` gives. HTTP 400 for
+a malformed request, for anything that is not an `http(s)://` address, and
+for an address holding many files (a repository, a zip): use `/unpack`.
+
 ### Unpack URL
 
 ```bash
@@ -514,8 +534,9 @@ export ATTACHMENTS_MAX_UPLOAD=1073741824  # 1GB
 {"error": "Blocked URL 'http://10.0.0.5/x': host '10.0.0.5' resolves to non-public address 10.0.0.5"}
 ```
 
-`/unpack` refuses URLs that resolve to private/internal addresses by
-default (SSRF guard). If the server should fetch internal URLs:
+The server refuses URLs that resolve to private/internal addresses by
+default (SSRF guard), in `/unpack` and `/process` alike. If the server should
+fetch internal URLs:
 
 ```bash
 export ATTACHMENTS_ALLOW_PRIVATE_URLS=1

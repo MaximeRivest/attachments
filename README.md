@@ -584,7 +584,8 @@ configure(service_url="http://server:8000", api_key="team-secret")
 att("document.pdf")  # Processed on server!
 ```
 
-Endpoints: `POST /process`, `POST /unpack`, `GET /health`, `GET /formats`,
+Endpoints: `POST /process` (a file, or a web address as JSON
+`{"url": …, "options": {…}}`), `POST /unpack`, `GET /health`, `GET /formats`,
 `GET /options`. See [examples/self_hosted_server.md](https://github.com/maximerivest/attachments/blob/main/examples/self_hosted_server.md)
 for Docker, systemd, CI/CD, and the API reference.
 

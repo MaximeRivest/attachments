@@ -16,8 +16,10 @@ Usage:
     artifacts = att("document.pdf")  # Processed on server
 
 The server provides:
-    POST /process  - Process a file
-    POST /unpack   - Unpack a URL/path (JSON) or uploaded archive bytes
+    POST /process  - Process an uploaded file (multipart/form-data with a
+                     "file" field) or a web address (JSON: {"url": ...,
+                     "options": {...}})
+    POST /unpack   - Unpack a URL (JSON) or uploaded archive bytes
                      (multipart/form-data with a "file" field)
     GET  /health   - Health check with available processors
     GET  /formats  - List supported formats
@@ -32,7 +34,7 @@ import logging
 import os
 from typing import Any
 
-from ._sources._guards import private_url_guard
+from ._sources._guards import download_cap, private_url_guard
 from .types import artifact_to_wire
 
 # Server deps are optional
@@ -56,6 +58,136 @@ def _allow_private_urls() -> bool:
     """
     flag = os.environ.get("ATTACHMENTS_ALLOW_PRIVATE_URLS", "")
     return flag.strip().lower() in ("1", "true", "yes", "on")
+
+
+_WEB_SCHEMES = ("http://", "https://")
+_EXPECTED_PROCESS_BODY = (
+    "Expected multipart/form-data (a file) or application/json (a url)"
+)
+
+
+def _remote_input(value: Any, *, single: bool) -> str:
+    """Check an address a request asks the server to fetch.
+
+    The server reads the web, never its own disk: a path, a ``file://``
+    URI or a wildcard would hand any caller the server's files. Allowed:
+    ``http(s)://`` addresses, and for ``/unpack`` (``single=False``) also
+    ``github://`` and the prefixes this server registered
+    (``register_unpack_handler``: its operator's choice). ``/process``
+    (``single=True``) answers with one Artifact, so it refuses a
+    repository, which is many files, before cloning it.
+
+    Raises ``ValueError`` (HTTP 400) with a message safe to show.
+
+    Examples:
+        >>> _remote_input("HTTPS://example.com/a.pdf", single=True)
+        'https://example.com/a.pdf'
+        >>> _remote_input("/etc/passwd", single=False)  # doctest: +ELLIPSIS
+        Traceback (most recent call last):
+        ...
+        ValueError: The server fetches web addresses only (...), got '/etc/passwd'
+        >>> _remote_input("https://github.com/org/repo", single=True)
+        ... # doctest: +ELLIPSIS
+        Traceback (most recent call last):
+        ...
+        ValueError: https://github.com/org/repo is a repository (many files); ...
+    """
+    from urllib.parse import urlsplit
+
+    from ._sources import extra_unpack_handlers
+    from ._sources.github import _is_github_repo_root_url
+
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError("Missing 'url' in request body")
+    url = value.strip()
+    scheme, sep, rest = url.partition("://")
+    if sep and f"{scheme.lower()}://" in _WEB_SCHEMES:
+        url = f"{scheme.lower()}://{rest}"  # the sources match schemes exactly
+        if not urlsplit(url).hostname:
+            raise ValueError(f"Not a web address (no host): {url!r}")
+        if single and _is_github_repo_root_url(url):
+            raise ValueError(
+                f"{url} is a repository (many files); /process answers with "
+                "one file: use /unpack"
+            )
+        return url
+    if not single and (
+        url.startswith("github://")
+        or any(url.startswith(p) for p in extra_unpack_handlers)
+    ):
+        return url
+    allowed = "http:// or https://" if single else "http://, https:// or github://"
+    raise ValueError(f"The server fetches web addresses only ({allowed}), got {url!r}")
+
+
+def _process_url_request(data: Any, max_bytes: int) -> tuple[int, dict]:
+    """``POST /process`` with ``{"url": ..., "options": {...}}``.
+
+    Runs exactly what ``att(url, **options)`` runs on a client — download,
+    the page's own address for its links and screenshot, ``meta.source``
+    set to the final address — behind the server's guards: no private
+    addresses, no download bigger than an upload may be. Returns
+    ``(status, body)``: an Artifact, as for an uploaded file. A download
+    that fails is an Artifact too (``meta.error``, ``unpack-error``), like
+    ``att()`` gives; a malformed request raises ``ValueError`` (400).
+    """
+    from .core import _att_one
+
+    if not isinstance(data, dict):
+        raise ValueError('Expected a JSON object: {"url": ..., "options": {...}}')
+    unknown = sorted(set(data) - {"url", "options"})
+    if unknown:
+        raise ValueError(
+            f"Unknown field(s) {', '.join(unknown)}: options go inside "
+            '"options", e.g. {"url": ..., "options": {"pages": "1-2"}}'
+        )
+    url = _remote_input(data.get("url"), single=True)
+    options = data.get("options") or {}
+    if not isinstance(options, dict):
+        raise ValueError("'options' must be a JSON object")
+    log.debug("process url: %s", url)
+
+    with private_url_guard(not _allow_private_urls()), download_cap(max_bytes):
+        artifacts = list(
+            _att_one(
+                url, api_key=None, prefer="local-only", options=dict(options), dsl=False
+            )
+        )
+    if len(artifacts) != 1:
+        raise ValueError(
+            f"{url} holds several files (an archive); /process answers with "
+            "one file: use /unpack"
+        )
+    return 200, artifact_to_wire(artifacts[0])
+
+
+def _json_body(body: bytes) -> Any:
+    """Parse a JSON request body; ``ValueError`` (400) if it is not JSON."""
+    try:
+        return json.loads(body)
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        raise ValueError("Invalid JSON") from None
+
+
+def _unpack_url_request(data: Any, max_bytes: int) -> dict:
+    """``POST /unpack`` with ``{"url": ...}``: the files at that address."""
+    from ._sources import unpack
+
+    if not isinstance(data, dict):
+        raise ValueError('Expected a JSON object: {"url": ...}')
+    url = _remote_input(data.get("url"), single=False)
+    blocked = not _allow_private_urls()
+    with private_url_guard(blocked), download_cap(max_bytes):
+        files = unpack(url, block_private_urls=blocked)
+    return {
+        "files": [
+            {
+                "filename": fname,
+                "data_b64": base64.b64encode(fdata).decode("ascii"),
+            }
+            for fname, fdata in files
+        ]
+    }
 
 
 def _unpack_bytes_response(file_data: bytes, filename: str) -> dict:
@@ -134,7 +266,7 @@ def _make_handler():
             """Parse multipart form data. Returns (file_bytes, filename, fields)."""
             content_type = self.headers.get("Content-Type", "")
             if "multipart/form-data" not in content_type:
-                raise ValueError("Expected multipart/form-data")
+                raise ValueError(_EXPECTED_PROCESS_BODY)
 
             # Extract boundary
             boundary = None
@@ -259,6 +391,13 @@ def _make_handler():
                     )
                     return
 
+                content_type = self.headers.get("Content-Type", "")
+                if "application/json" in content_type:
+                    data = _json_body(self.rfile.read(content_length))
+                    status, payload = _process_url_request(data, self.MAX_UPLOAD_SIZE)
+                    self._send_json(payload, status)
+                    return
+
                 file_data, filename, fields = self._parse_multipart()
                 log.debug("process request: %s (%d bytes)", filename, len(file_data))
 
@@ -328,33 +467,9 @@ def _make_handler():
                     self._send_json(_unpack_bytes_response(file_data, filename))
                     return
 
-                body = self.rfile.read(content_length)
-                data = json.loads(body)
+                data = _json_body(self.rfile.read(content_length))
+                self._send_json(_unpack_url_request(data, self.MAX_UPLOAD_SIZE))
 
-                url = data.get("url")
-                if not url:
-                    self._send_error("Missing 'url' in request body")
-                    return
-
-                from ._sources import unpack
-
-                files = unpack(url, block_private_urls=not _allow_private_urls())
-
-                # Encode file contents as base64
-                result = {
-                    "files": [
-                        {
-                            "filename": fname,
-                            "data_b64": base64.b64encode(fdata).decode("ascii"),
-                        }
-                        for fname, fdata in files
-                    ]
-                }
-
-                self._send_json(result)
-
-            except json.JSONDecodeError:
-                self._send_error("Invalid JSON", 400)
             except ValueError as e:
                 # Client-input errors (unsupported input, blocked URL,
                 # size limits) are safe to echo back.
@@ -481,8 +596,22 @@ def create_app():
         # --- POST /process ---
         if path == "/process":
             content_type = environ.get("CONTENT_TYPE", "")
+            if "application/json" in content_type:
+                try:
+                    status, payload = _process_url_request(
+                        _json_body(body), handler_cls.MAX_UPLOAD_SIZE
+                    )
+                except ValueError as exc:
+                    # Malformed request, refused address: safe to echo back.
+                    return _error(str(exc), 400)
+                except Exception:
+                    # Never leak internal exception details to the client;
+                    # the full traceback stays in the server log.
+                    log.exception("processing failed for a url")
+                    return _error("Internal error", 500)
+                return _json_response(payload, status)
             if "multipart/form-data" not in content_type:
-                return _error("Expected multipart/form-data")
+                return _error(_EXPECTED_PROCESS_BODY)
 
             # Reuse the handler's multipart parser via a shim
             try:
@@ -547,18 +676,9 @@ def create_app():
                     return _error("Internal error", 500)
 
             try:
-                data = json.loads(body)
-            except json.JSONDecodeError:
-                return _error("Invalid JSON")
-
-            url = data.get("url")
-            if not url:
-                return _error("Missing 'url' in request body")
-
-            from ._sources import unpack as _unpack
-
-            try:
-                files = _unpack(url, block_private_urls=not _allow_private_urls())
+                result = _unpack_url_request(
+                    _json_body(body), handler_cls.MAX_UPLOAD_SIZE
+                )
             except ValueError as exc:
                 # Client-input errors (unsupported input, blocked URL,
                 # size limits) are safe to echo back.
@@ -568,16 +688,6 @@ def create_app():
                 # the full traceback stays in the server log.
                 log.exception("unpack failed")
                 return _error("Internal error", 500)
-
-            result = {
-                "files": [
-                    {
-                        "filename": fname,
-                        "data_b64": base64.b64encode(fdata).decode("ascii"),
-                    }
-                    for fname, fdata in files
-                ]
-            }
             return _json_response(result)
 
         return _error("Not found", 404)
@@ -678,7 +788,7 @@ def run_server(host: str = "0.0.0.0", port: int = 8000):
 ║  Auth: {auth_status:<52} ║
 ╠══════════════════════════════════════════════════════════════╣
 ║  Endpoints:                                                  ║
-║    POST /process  - Process a file                           ║
+║    POST /process  - Process a file or a web address          ║
 ║    POST /unpack   - Unpack a URL                             ║
 ║    GET  /health   - Health check                             ║
 ║    GET  /formats  - List supported formats                   ║

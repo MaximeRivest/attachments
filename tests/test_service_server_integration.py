@@ -69,6 +69,69 @@ def live_server(monkeypatch):
         thread.join(timeout=3)
 
 
+class _Web:
+    """A local web server for URL tests; ``url(path)`` is its address."""
+
+    PAGES: dict[str, tuple[str, bytes]] = {
+        "/notes.txt": ("text/plain", b"plain notes"),
+        "/docs/page": (
+            "text/html; charset=utf-8",
+            b"<html><head><title>Guide</title></head><body><main>"
+            b"<h1>Guide</h1><p>Read the <a href='../faq'>FAQ</a> first.</p>"
+            b"</main></body></html>",
+        ),
+        "/old": ("redirect", b"/docs/page"),
+        "/big.txt": ("text/plain", b"x" * 4096),
+    }
+
+    def __init__(self, base: str, extra: dict[str, tuple[str, bytes]]):
+        self.base = base
+        self.pages = {**self.PAGES, **extra}
+
+    def url(self, path: str) -> str:
+        return self.base + path
+
+
+@pytest.fixture
+def web():
+    from http.server import BaseHTTPRequestHandler
+
+    extra: dict[str, tuple[str, bytes]] = {}
+    site = _Web("", extra)
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            kind, data = site.pages.get(self.path, ("missing", b""))
+            if kind == "redirect":
+                self.send_response(302)
+                self.send_header("Location", data.decode())
+                self.end_headers()
+                return
+            if kind == "missing":
+                self.send_error(404)
+                return
+            self.send_response(200)
+            self.send_header("Content-Type", kind)
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+
+        def log_message(self, *args):
+            pass
+
+    httpd = HTTPServer(("127.0.0.1", 0), Handler)
+    host, port = httpd.server_address
+    site.base = f"http://{host}:{port}"
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    try:
+        yield site
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+        thread.join(timeout=3)
+
+
 def _request_json(
     host: str,
     port: int,
@@ -137,12 +200,33 @@ class TestServerEndpoints:
         assert payload["meta"]["source"] == "note.txt"
         assert payload["meta"]["extra"]["filename"] == "note.txt"
 
-    def test_unpack_success(self, live_server, tmp_path: Path):
+    def test_unpack_refuses_server_paths(self, live_server, tmp_path: Path):
+        """The server reads the web, never its own disk: a path is refused."""
         host, port = live_server
         p = tmp_path / "hello.txt"
-        p.write_bytes(b"hello")
+        p.write_bytes(b"server secret")
 
-        body = json.dumps({"url": str(p)}).encode("utf-8")
+        for url in (str(p), f"file://{p}", str(tmp_path / "*.txt"), str(tmp_path)):
+            body = json.dumps({"url": url}).encode("utf-8")
+            status, payload = _request_json(
+                host,
+                port,
+                "POST",
+                "/unpack",
+                body=body,
+                headers={
+                    "Content-Type": "application/json",
+                    "Content-Length": str(len(body)),
+                },
+            )
+            assert status == 400, url
+            assert "web addresses only" in payload["error"]
+            assert "server secret" not in json.dumps(payload)
+
+    def test_unpack_url_success(self, live_server, web, monkeypatch):
+        monkeypatch.setenv("ATTACHMENTS_ALLOW_PRIVATE_URLS", "1")  # web is local
+        host, port = live_server
+        body = json.dumps({"url": web.url("/notes.txt")}).encode("utf-8")
         status, payload = _request_json(
             host,
             port,
@@ -156,8 +240,38 @@ class TestServerEndpoints:
         )
 
         assert status == 200
-        assert payload["files"][0]["filename"] == "hello.txt"
-        assert base64.b64decode(payload["files"][0]["data_b64"]) == b"hello"
+        assert payload["files"][0]["filename"] == "notes.txt"
+        assert base64.b64decode(payload["files"][0]["data_b64"]) == b"plain notes"
+
+    def test_process_url_stdlib_handler(self, live_server, web, monkeypatch):
+        monkeypatch.setenv("ATTACHMENTS_ALLOW_PRIVATE_URLS", "1")  # web is local
+        host, port = live_server
+        body = json.dumps({"url": web.url("/notes.txt")}).encode("utf-8")
+        status, payload = _request_json(
+            host,
+            port,
+            "POST",
+            "/v1/process",
+            body=body,
+            headers={
+                "Content-Type": "application/json",
+                "Content-Length": str(len(body)),
+            },
+        )
+        assert status == 200
+        assert payload["text"].strip() == "plain notes"
+        assert payload["meta"]["source"] == web.url("/notes.txt")
+
+        status, payload = _request_json(
+            host,
+            port,
+            "POST",
+            "/process",
+            body=b"{",
+            headers={"Content-Type": "application/json", "Content-Length": "1"},
+        )
+        assert status == 400
+        assert payload["error"] == "Invalid JSON"
 
     def test_unpack_invalid_json(self, live_server):
         host, port = live_server
@@ -440,7 +554,7 @@ class TestWsgiApp:
         assert status.startswith("200")
         assert "hi" in body["text"]
 
-    def test_unpack(self, app, tmp_path):
+    def test_unpack_refuses_server_paths(self, app, tmp_path):
         p = tmp_path / "wsgi.txt"
         p.write_bytes(b"wsgi-unpack")
         raw = json.dumps({"url": str(p)}).encode()
@@ -451,8 +565,21 @@ class TestWsgiApp:
             body=raw,
             headers={"Content-Type": "application/json"},
         )
+        assert status.startswith("400")
+        assert "web addresses only" in body["error"]
+
+    def test_unpack_url(self, app, web, monkeypatch):
+        monkeypatch.setenv("ATTACHMENTS_ALLOW_PRIVATE_URLS", "1")  # web is local
+        raw = json.dumps({"url": web.url("/notes.txt")}).encode()
+        status, body = self._call(
+            app,
+            "POST",
+            "/unpack",
+            body=raw,
+            headers={"Content-Type": "application/json"},
+        )
         assert status.startswith("200")
-        assert body["files"][0]["filename"] == "wsgi.txt"
+        assert body["files"][0]["filename"] == "notes.txt"
 
     def test_not_found(self, app):
         status, body = self._call(app, "GET", "/nope")
@@ -742,3 +869,130 @@ class TestVersionPrefixedRoutes:
         assert client.get("/v1/options").status_code == 200
         # Only the literal /v1 prefix is stripped
         assert client.get("/v123/health").status_code == 404
+
+
+class TestProcessUrl:
+    """POST /process with {"url": ..., "options": {...}}: att(url) on the server."""
+
+    @staticmethod
+    def _client(monkeypatch, *, allow_private=True, max_upload=None):
+        import httpx
+
+        monkeypatch.delenv("ATTACHMENTS_SERVER_KEY", raising=False)
+        if allow_private:  # the test web server is local
+            monkeypatch.setenv("ATTACHMENTS_ALLOW_PRIVATE_URLS", "1")
+        else:
+            monkeypatch.delenv("ATTACHMENTS_ALLOW_PRIVATE_URLS", raising=False)
+        if max_upload is None:
+            monkeypatch.delenv("ATTACHMENTS_MAX_UPLOAD", raising=False)
+        else:
+            monkeypatch.setenv("ATTACHMENTS_MAX_UPLOAD", str(max_upload))
+        return httpx.Client(
+            transport=httpx.WSGITransport(app=create_app()),
+            base_url="http://testserver",
+        )
+
+    def test_page_matches_att(self, web, monkeypatch):
+        """Same answer as att(url) locally: text, final address, links."""
+        from attachments import att
+
+        client = self._client(monkeypatch)
+        r = client.post(
+            "/v1/process", json={"url": web.url("/old"), "options": {"links": True}}
+        )
+        assert r.status_code == 200
+        body = r.json()
+        # Redirected: known by its final address, links resolved against it.
+        assert body["meta"]["source"] == web.url("/docs/page")
+        assert f"[FAQ]({web.url('/faq')})" in body["text"]
+
+        local = att(web.url("/old"), links=True)[0]
+        assert body["text"] == local["text"]
+        assert body["meta"]["source"] == local["meta"]["source"]
+
+    def test_options_reach_the_processor(self, web, monkeypatch):
+        client = self._client(monkeypatch)
+        r = client.post(
+            "/process", json={"url": web.url("/docs/page"), "options": {"nonsense": 1}}
+        )
+        assert r.status_code == 200
+        assert any("nonsense" in w for w in r.json()["meta"]["warnings"])
+
+    @pytest.mark.parametrize(
+        "url",
+        ["/etc/passwd", "file:///etc/passwd", "/etc/*", "github://org/repo", "", None],
+    )
+    def test_refuses_what_is_not_a_web_address(self, monkeypatch, url):
+        client = self._client(monkeypatch)
+        r = client.post("/process", json={"url": url})
+        assert r.status_code == 400
+        error = r.json()["error"]
+        assert "web addresses only" in error or "Missing 'url'" in error
+        assert "root:" not in r.text
+
+    def test_refuses_a_repository_before_cloning(self, monkeypatch):
+        import attachments._sources as sources
+
+        def no_clone(spec):
+            raise AssertionError("must not clone")
+
+        monkeypatch.setattr(sources, "_clone_github_to_temp", no_clone)
+        client = self._client(monkeypatch)
+        r = client.post("/process", json={"url": "https://github.com/org/repo"})
+        assert r.status_code == 400
+        assert "/unpack" in r.json()["error"]
+
+    def test_refuses_an_archive(self, web, monkeypatch):
+        import io
+        import zipfile
+
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w") as zf:
+            zf.writestr("a.txt", "alpha")
+            zf.writestr("b.txt", "beta")
+        web.pages["/two.zip"] = ("application/zip", buf.getvalue())
+        client = self._client(monkeypatch)
+        r = client.post("/process", json={"url": web.url("/two.zip")})
+        assert r.status_code == 400
+        assert "/unpack" in r.json()["error"]
+
+    @pytest.mark.parametrize(
+        "payload, message",
+        [
+            ({"url": "https://example.com", "pages": "1"}, "Unknown field"),
+            ({"url": "https://example.com", "options": [1]}, "must be a JSON object"),
+            (["https://example.com"], "Expected a JSON object"),
+        ],
+    )
+    def test_malformed_requests(self, monkeypatch, payload, message):
+        client = self._client(monkeypatch)
+        r = client.post("/process", json=payload)
+        assert r.status_code == 400
+        assert message in r.json()["error"]
+
+    def test_private_addresses_blocked_by_default(self, web, monkeypatch):
+        """SSRF guard: the download is refused; the answer says why."""
+        client = self._client(monkeypatch, allow_private=False)
+        r = client.post("/process", json={"url": web.url("/notes.txt")})
+        assert r.status_code == 200
+        meta = r.json()["meta"]
+        assert meta["error"]["code"] == "unpack-error"
+        assert "non-public address" in meta["error"]["message"]
+        assert "plain notes" not in r.text
+
+    def test_download_no_bigger_than_an_upload(self, web, monkeypatch):
+        client = self._client(monkeypatch, max_upload=1024)
+        r = client.post("/process", json={"url": web.url("/big.txt")})
+        assert r.status_code == 200
+        assert "exceeds max size" in r.json()["meta"]["error"]["message"]
+
+        r = client.post("/unpack", json={"url": web.url("/big.txt")})
+        assert r.status_code == 400
+        assert "exceeds max size" in r.json()["error"]
+
+    def test_wrong_content_type_names_both_forms(self, monkeypatch):
+        client = self._client(monkeypatch)
+        headers = {"Content-Type": "text/plain"}
+        r = client.post("/process", content=b"x", headers=headers)
+        assert r.status_code == 400
+        assert "application/json" in r.json()["error"]

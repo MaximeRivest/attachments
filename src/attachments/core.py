@@ -862,10 +862,15 @@ def _att_one(
     api_key: str | None,
     prefer: str | None,
     options: dict[str, Any],
+    dsl: bool = True,
 ) -> Artifacts:
-    """``att()`` for one input string."""
+    """``att()`` for one input string.
+
+    ``dsl=False`` takes *input* literally (the server's ``/process`` with a
+    ``url``: options arrive separately, and a URL is never parsed for them).
+    """
     # Parse DSL options from input string
-    input, dsl_options = parse_dsl(input)
+    input, dsl_options = parse_dsl(input) if dsl else (input, {})
 
     # Merge options: explicit kwargs override DSL options
     merged_options = {**dsl_options, **options}

@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **The server reads web addresses**: `POST /process` with JSON
+  `{"url": "https://…", "options": {…}}` answers exactly what
+  `att(url, **options)` gives on a client — the page read with its own
+  address (links resolve, `meta.source` is the final address), any other
+  file by its type — behind the server's guards. One Artifact, as for an
+  upload; an address holding many files (a repository, a zip) is HTTP 400,
+  pointing to `/unpack`. The attachments.dev playground uses it.
+
+### Security
+
+- **The server no longer reads its own disk.** `POST /unpack` with
+  `{"url": …}` accepted any input `att()` accepts, local paths included: a
+  caller could read the server's files (`/etc/passwd`, `/proc/self/environ`,
+  folders, wildcards). It now takes `http(s)://` addresses, `github://`,
+  and the prefixes the server itself registered (`register_unpack_handler`);
+  anything else is HTTP 400. A client whose own input fails to resolve no
+  longer has the server try it as a path of its own.
+- **Server downloads are no bigger than an upload may be**
+  (`ATTACHMENTS_MAX_UPLOAD`, 256 MB by default; 25 MB on the hosted tier),
+  refused from the `Content-Length` before reading when it says so.
+- Downloads now follow the server's per-request private-address guard
+  (`private_url_guard`) when not told otherwise, as the html processor's
+  browser already did.
+
 ## [1.0.1] - 2026-10-13
 
 ### Fixed

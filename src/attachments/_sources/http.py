@@ -2,11 +2,12 @@
 
 Handles downloading one resource over http(s) — redirects followed,
 filename taken from Content-Disposition or the URL path and made to agree
-with the declared Content-Type, size capped at
-``MAX_HTTP_DOWNLOAD_BYTES``. The result is a ``SourceFile`` carrying the
-final URL, which core passes on (``meta.source``, the html ``url``
-option). With ``block_private_urls`` enabled, the URL and every redirect
-target must pass the SSRF guard in ``_guards.py``. Archive expansion (by
+with the declared Content-Type, size capped at ``max_download_bytes()``
+(``MAX_HTTP_DOWNLOAD_BYTES``, or less on the server). The result is a
+``SourceFile`` carrying the final URL, which core passes on
+(``meta.source``, the html ``url`` option). With ``block_private_urls``
+enabled, the URL and every redirect target must pass the SSRF guard in
+``_guards.py``. Archive expansion (by
 extension) happens in the ``unpack()`` dispatch (see ``__init__.py``).
 
 Contributor note: to add a new source, add one module in this package,
@@ -23,12 +24,12 @@ import re
 
 from ._file import SourceFile
 from ._guards import (
-    BLOCK_PRIVATE_URLS_DEFAULT,
     HTTP_USER_AGENT,
-    MAX_HTTP_DOWNLOAD_BYTES,
     _assert_public_http_url,
     _sanitize_member_name,
     _ValidatingRedirectHandler,
+    max_download_bytes,
+    private_urls_blocked,
 )
 
 
@@ -176,15 +177,17 @@ def _download_http_or_https(
     segment of the final URL (``index`` for a bare ``/``), then agrees
     with the declared Content-Type (see ``_name_for_content_type``).
 
-    With ``block_private_urls`` (default: ``BLOCK_PRIVATE_URLS_DEFAULT``,
-    i.e. the ``ATT_BLOCK_PRIVATE_URLS`` env var), the URL — and every
-    redirect target — must resolve to a public address (SSRF guard).
+    With ``block_private_urls`` (default: ``private_urls_blocked()``: the
+    server's per-request guard, else the ``ATT_BLOCK_PRIVATE_URLS`` env
+    var), the URL — and every redirect target — must resolve to a public
+    address (SSRF guard). The size is capped at ``max_download_bytes()``.
     """
     from urllib.parse import unquote, urlparse
     from urllib.request import Request, build_opener, urlopen
 
     if block_private_urls is None:
-        block_private_urls = BLOCK_PRIVATE_URLS_DEFAULT
+        block_private_urls = private_urls_blocked()
+    limit = max_download_bytes()
 
     req = Request(url, headers={"User-Agent": HTTP_USER_AGENT})
 
@@ -216,7 +219,12 @@ def _download_http_or_https(
         filename = _sanitize_member_name(filename) or "download"
         filename, warning = _name_for_content_type(filename, content_type, final_url)
 
-        # Stream with size guard
+        # Stream with size guard. A declared length over the cap fails
+        # before anything is read; the count still guards a lying header.
+        too_big = f"Remote file exceeds max size ({limit // (1024 * 1024)} MB): {url}"
+        declared = resp.headers.get("Content-Length")
+        if declared and declared.isdigit() and int(declared) > limit:
+            raise ValueError(too_big)
         buf = io.BytesIO()
         total = 0
         chunk_size = 1024 * 1024  # 1 MiB
@@ -225,9 +233,8 @@ def _download_http_or_https(
             if not chunk:
                 break
             total += len(chunk)
-            if total > MAX_HTTP_DOWNLOAD_BYTES:
-                max_mb = MAX_HTTP_DOWNLOAD_BYTES // (1024 * 1024)
-                raise ValueError(f"Remote file exceeds max size ({max_mb} MB): {url}")
+            if total > limit:
+                raise ValueError(too_big)
             buf.write(chunk)
 
     return SourceFile(
