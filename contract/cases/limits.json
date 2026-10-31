@@ -1,0 +1,996 @@
+{
+ "area": "limits",
+ "review": "draft",
+ "cases": [
+  {
+   "name": "fits",
+   "provider": "claude",
+   "parts": [
+    {
+     "type": "text",
+     "text": "é\"\\\n\u0001😀é\"\\\n\u0001😀é\"\\\n\u0001😀"
+    }
+   ],
+   "expect": {
+    "value": []
+   }
+  },
+  {
+   "name": "too big a request and picture",
+   "provider": "claude",
+   "parts": [
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": {
+      "repeat": "A",
+      "times": 33000000
+     }
+    }
+   ],
+   "expect": {
+    "value": [
+     "the request is 33.0 MB; Claude accepts 32.0 MB (Bedrock: 20 MB, Google Cloud: 30 MB)",
+     "a picture is 33.0 MB (base64); Claude accepts 10.0 MB (5 MB on Bedrock and Google Cloud)",
+     "Fix: image_format: jpeg (scans and photos several times smaller); max_dim: 1568 (Claude's standard models see no more)"
+    ]
+   }
+  },
+  {
+   "name": "two big jpegs",
+   "provider": "claude",
+   "parts": [
+    {
+     "type": "image",
+     "media_type": "image/jpeg",
+     "data": {
+      "repeat": "A",
+      "times": 11000000
+     }
+    },
+    {
+     "type": "image",
+     "media_type": "image/jpeg",
+     "data": {
+      "repeat": "A",
+      "times": 11000000
+     }
+    },
+    {
+     "type": "text",
+     "text": "é\"\\\n\u0001😀é\"\\\n\u0001😀é\"\\\n\u0001😀"
+    }
+   ],
+   "expect": {
+    "value": [
+     "2 pictures are up to 11.0 MB (base64); Claude accepts 10.0 MB (5 MB on Bedrock and Google Cloud)",
+     "Fix: max_dim: 1568 (Claude's standard models see no more); fewer pages per request, e.g. pages: 1"
+    ]
+   }
+  },
+  {
+   "name": "an odd type",
+   "provider": "openai",
+   "parts": [
+    {
+     "type": "image",
+     "media_type": "image/bmp",
+     "data": "Qk0="
+    }
+   ],
+   "expect": {
+    "value": [
+     "a picture is image/bmp; OpenAI accepts gif, jpeg, png, webp",
+     "Fix: image_format: png (converts the picture)"
+    ]
+   }
+  },
+  {
+   "name": "an odd type, Claude",
+   "provider": "claude",
+   "parts": [
+    {
+     "type": "image",
+     "media_type": "image/tiff",
+     "data": "AAAA"
+    },
+    {
+     "type": "image",
+     "media_type": "image/bmp",
+     "data": "Qk0="
+    }
+   ],
+   "expect": {
+    "value": [
+     "a picture is image/bmp, image/tiff; Claude accepts gif, jpeg, png, webp",
+     "Fix: image_format: png (converts the picture)"
+    ]
+   }
+  },
+  {
+   "name": "too many pictures",
+   "provider": "claude",
+   "parts": [
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAAAfFcSJ"
+    }
+   ],
+   "expect": {
+    "value": [
+     "it has 101 pictures; Claude accepts 100 (100 for models with a 200k-token context, 600 for others)",
+     "Fix: fewer pages per request, e.g. pages: 1-50"
+    ]
+   }
+  },
+  {
+   "name": "a side too long",
+   "provider": "claude",
+   "parts": [
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAIygAAABkCAYAAAAfFcSJ"
+    }
+   ],
+   "expect": {
+    "value": [
+     "1 picture(s) up to 9000x100 px; Claude accepts 8000 px a side",
+     "Fix: image_format: jpeg (scans and photos several times smaller); max_dim: 1568 (Claude's standard models see no more)"
+    ]
+   }
+  },
+  {
+   "name": "sides when there are many pictures",
+   "provider": "claude",
+   "parts": [
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAACcQAAAnECAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAACcQAAAnECAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAACcQAAAnECAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAACcQAAAnECAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAACcQAAAnECAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAACcQAAAnECAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAACcQAAAnECAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAACcQAAAnECAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAACcQAAAnECAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAACcQAAAnECAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAACcQAAAnECAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAACcQAAAnECAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAACcQAAAnECAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAACcQAAAnECAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAACcQAAAnECAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAACcQAAAnECAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAACcQAAAnECAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAACcQAAAnECAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAACcQAAAnECAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAACcQAAAnECAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAACcQAAAnECAYAAAAfFcSJ"
+    }
+   ],
+   "expect": {
+    "value": [
+     "21 picture(s) up to 2500x2500 px; Claude accepts 2000 px a side when a request has more than 20 pictures",
+     "Fix: image_format: jpeg (scans and photos several times smaller); max_dim: 1568 (Claude's standard models see no more); fewer pages per request, e.g. pages: 1-10"
+    ]
+   }
+  },
+  {
+   "name": "sides when there are few pictures",
+   "provider": "claude",
+   "parts": [
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAACcQAAAnECAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAACcQAAAnECAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAACcQAAAnECAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAACcQAAAnECAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAACcQAAAnECAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAACcQAAAnECAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAACcQAAAnECAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAACcQAAAnECAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAACcQAAAnECAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAACcQAAAnECAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAACcQAAAnECAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAACcQAAAnECAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAACcQAAAnECAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAACcQAAAnECAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAACcQAAAnECAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAACcQAAAnECAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAACcQAAAnECAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAACcQAAAnECAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAACcQAAAnECAYAAAAfFcSJ"
+    },
+    {
+     "type": "image",
+     "media_type": "image/png",
+     "data": "iVBORw0KGgoAAAANSUhEUgAACcQAAAnECAYAAAAfFcSJ"
+    }
+   ],
+   "expect": {
+    "value": []
+   }
+  },
+  {
+   "name": "the text's JSON size counts",
+   "provider": "claude",
+   "parts": [
+    {
+     "type": "text",
+     "text": {
+      "repeat": "é",
+      "times": 5400000
+     }
+    }
+   ],
+   "expect": {
+    "value": [
+     "the request is 32.4 MB; Claude accepts 32.0 MB (Bedrock: 20 MB, Google Cloud: 30 MB)",
+     "Fix: fewer files or pages per request"
+    ]
+   }
+  },
+  {
+   "name": "exactly at the limit",
+   "provider": "claude",
+   "parts": [
+    {
+     "type": "image",
+     "media_type": "image/jpeg",
+     "data": {
+      "repeat": "A",
+      "times": 10000000
+     }
+    },
+    {
+     "type": "image",
+     "media_type": "image/jpeg",
+     "data": {
+      "repeat": "A",
+      "times": 10000000
+     }
+    },
+    {
+     "type": "image",
+     "media_type": "image/jpeg",
+     "data": {
+      "repeat": "A",
+      "times": 10000000
+     }
+    },
+    {
+     "type": "image",
+     "media_type": "image/jpeg",
+     "data": {
+      "repeat": "A",
+      "times": 1999400
+     }
+    }
+   ],
+   "expect": {
+    "value": []
+   }
+  },
+  {
+   "name": "one byte over",
+   "provider": "claude",
+   "parts": [
+    {
+     "type": "image",
+     "media_type": "image/jpeg",
+     "data": {
+      "repeat": "A",
+      "times": 10000000
+     }
+    },
+    {
+     "type": "image",
+     "media_type": "image/jpeg",
+     "data": {
+      "repeat": "A",
+      "times": 10000000
+     }
+    },
+    {
+     "type": "image",
+     "media_type": "image/jpeg",
+     "data": {
+      "repeat": "A",
+      "times": 10000000
+     }
+    },
+    {
+     "type": "image",
+     "media_type": "image/jpeg",
+     "data": {
+      "repeat": "A",
+      "times": 1999401
+     }
+    }
+   ],
+   "expect": {
+    "value": [
+     "the request is 32.0 MB; Claude accepts 32.0 MB (Bedrock: 20 MB, Google Cloud: 30 MB)",
+     "Fix: max_dim: 1568 (Claude's standard models see no more); fewer pages per request, e.g. pages: 1-2"
+    ]
+   }
+  },
+  {
+   "name": "a size that rounds to even",
+   "provider": "claude",
+   "parts": [
+    {
+     "type": "image",
+     "media_type": "image/jpeg",
+     "data": {
+      "repeat": "A",
+      "times": 32249700
+     }
+    }
+   ],
+   "expect": {
+    "value": [
+     "the request is 32.2 MB; Claude accepts 32.0 MB (Bedrock: 20 MB, Google Cloud: 30 MB)",
+     "a picture is 32.2 MB (base64); Claude accepts 10.0 MB (5 MB on Bedrock and Google Cloud)",
+     "Fix: max_dim: 1568 (Claude's standard models see no more)"
+    ]
+   }
+  }
+ ]
+}

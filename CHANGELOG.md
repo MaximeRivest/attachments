@@ -17,6 +17,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   upload; an address holding many files (a repository, a zip) is HTTP 400,
   pointing to `/unpack`. The attachments.dev playground uses it.
 
+- **A contract every implementation answers to** (`contract/`, renamed
+  from `spec/`): `presenting.md` writes down how artifacts become text,
+  parts, messages, chunks, token estimates and the printed summary, and
+  `contract/cases/` holds 951 cases Python passes
+  (`tests/test_contract_cases.py`). The TypeScript package (`ts/`) passes
+  the same cases.
+
+### Fixed
+
+Found by writing the contract's cases:
+
+- An option that takes text no longer turns `select: 1-4` into the text
+  `(1, 4)`; it stays `1-4`.
+- The request-limit warning no longer suggests `max_dim` and fewer pages
+  when only the text is too big (it suggests fewer files or pages), and
+  says `pages: 1` instead of `pages: 1-1`.
+- `estimate_tokens(tier=...)` refuses an unknown tier even when there are
+  no pictures (it was refused only when a picture needed it).
+- A page selection accepts only the digits 0 to 9 (other scripts' digits,
+  such as `٣`, were read as numbers).
+
 ### Security
 
 - **The server no longer reads its own disk.** `POST /unpack` with

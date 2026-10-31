@@ -1,0 +1,469 @@
+{
+ "area": "wire",
+ "review": "draft",
+ "cases": [
+  {
+   "name": "a round trip keeps everything",
+   "call": "from_wire",
+   "input": [
+    {
+     "text": "hi",
+     "images": [
+      {
+       "name": "p.png",
+       "mimetype": "image/png",
+       "bytes_b64": "iVBORw0KGgoAAAANSUhEUgAAACgAAAAeCAYAAAAfFcSJ",
+       "page": 1
+      }
+     ],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "a.pdf",
+      "kind": "pdf",
+      "extra": {
+       "n": [
+        1,
+        {
+         "x": null
+        }
+       ]
+      }
+     }
+    }
+   ],
+   "expect": {
+    "value": [
+     {
+      "text": "hi",
+      "images": [
+       {
+        "name": "p.png",
+        "mimetype": "image/png",
+        "bytes_b64": "iVBORw0KGgoAAAANSUhEUgAAACgAAAAeCAYAAAAfFcSJ",
+        "page": 1
+       }
+      ],
+      "audio": [],
+      "video": [],
+      "meta": {
+       "source": "a.pdf",
+       "kind": "pdf",
+       "extra": {
+        "n": [
+         1,
+         {
+          "x": null
+         }
+        ]
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "missing keys are filled, source is not invented",
+   "call": "from_wire",
+   "input": [
+    {
+     "text": "x"
+    },
+    {}
+   ],
+   "expect": {
+    "value": [
+     {
+      "text": "x",
+      "images": [],
+      "audio": [],
+      "video": [],
+      "meta": {}
+     },
+     {
+      "images": [],
+      "text": "",
+      "audio": [],
+      "video": [],
+      "meta": {}
+     }
+    ]
+   }
+  },
+  {
+   "name": "not a list",
+   "call": "from_wire",
+   "input": {
+    "text": "hi"
+   },
+   "expect": {
+    "throws": true
+   }
+  },
+  {
+   "name": "an item that is not an object",
+   "call": "from_wire",
+   "input": [
+    "hi"
+   ],
+   "expect": {
+    "throws": true
+   }
+  },
+  {
+   "name": "text that is not a string",
+   "call": "artifact_from_wire",
+   "input": {
+    "text": 3
+   },
+   "expect": {
+    "throws": true
+   }
+  },
+  {
+   "name": "images that are not a list",
+   "call": "artifact_from_wire",
+   "input": {
+    "images": {}
+   },
+   "expect": {
+    "throws": true
+   }
+  },
+  {
+   "name": "an image that is not an object",
+   "call": "artifact_from_wire",
+   "input": {
+    "images": [
+     1
+    ]
+   },
+   "expect": {
+    "throws": true
+   }
+  },
+  {
+   "name": "meta that is not an object",
+   "call": "artifact_from_wire",
+   "input": {
+    "meta": []
+   },
+   "expect": {
+    "throws": true
+   }
+  },
+  {
+   "name": "bytes_b64 that is not a string",
+   "call": "artifact_from_wire",
+   "input": {
+    "images": [
+     {
+      "name": "x",
+      "bytes_b64": 5
+     }
+    ]
+   },
+   "expect": {
+    "throws": true
+   }
+  },
+  {
+   "name": "an image with no data stays without",
+   "call": "artifact_from_wire",
+   "input": {
+    "images": [
+     {
+      "name": "x",
+      "mimetype": "image/png"
+     }
+    ]
+   },
+   "expect": {
+    "value": {
+     "images": [
+      {
+       "name": "x",
+       "mimetype": "image/png"
+      }
+     ],
+     "text": "",
+     "audio": [],
+     "video": [],
+     "meta": {}
+    }
+   }
+  },
+  {
+   "name": "base64: padded",
+   "call": "artifact_from_wire",
+   "input": {
+    "images": [
+     {
+      "name": "x",
+      "mimetype": "image/png",
+      "bytes_b64": "aGk="
+     }
+    ]
+   },
+   "expect": {
+    "value": {
+     "images": [
+      {
+       "name": "x",
+       "mimetype": "image/png",
+       "bytes_b64": "aGk="
+      }
+     ],
+     "text": "",
+     "audio": [],
+     "video": [],
+     "meta": {}
+    }
+   }
+  },
+  {
+   "name": "base64: empty",
+   "call": "artifact_from_wire",
+   "input": {
+    "images": [
+     {
+      "name": "x",
+      "mimetype": "image/png",
+      "bytes_b64": ""
+     }
+    ]
+   },
+   "expect": {
+    "value": {
+     "images": [
+      {
+       "name": "x",
+       "mimetype": "image/png",
+       "bytes_b64": ""
+      }
+     ],
+     "text": "",
+     "audio": [],
+     "video": [],
+     "meta": {}
+    }
+   }
+  },
+  {
+   "name": "base64: spare bits",
+   "call": "artifact_from_wire",
+   "input": {
+    "images": [
+     {
+      "name": "x",
+      "mimetype": "image/png",
+      "bytes_b64": "aGl="
+     }
+    ]
+   },
+   "expect": {
+    "value": {
+     "images": [
+      {
+       "name": "x",
+       "mimetype": "image/png",
+       "bytes_b64": "aGk="
+      }
+     ],
+     "text": "",
+     "audio": [],
+     "video": [],
+     "meta": {}
+    }
+   }
+  },
+  {
+   "name": "base64: two pads",
+   "call": "artifact_from_wire",
+   "input": {
+    "images": [
+     {
+      "name": "x",
+      "mimetype": "image/png",
+      "bytes_b64": "ab=="
+     }
+    ]
+   },
+   "expect": {
+    "value": {
+     "images": [
+      {
+       "name": "x",
+       "mimetype": "image/png",
+       "bytes_b64": "aQ=="
+      }
+     ],
+     "text": "",
+     "audio": [],
+     "video": [],
+     "meta": {}
+    }
+   }
+  },
+  {
+   "name": "base64: missing padding",
+   "call": "artifact_from_wire",
+   "input": {
+    "images": [
+     {
+      "name": "x",
+      "mimetype": "image/png",
+      "bytes_b64": "aGk"
+     }
+    ]
+   },
+   "expect": {
+    "throws": true
+   }
+  },
+  {
+   "name": "base64: too much padding",
+   "call": "artifact_from_wire",
+   "input": {
+    "images": [
+     {
+      "name": "x",
+      "mimetype": "image/png",
+      "bytes_b64": "aGk=="
+     }
+    ]
+   },
+   "expect": {
+    "throws": true
+   }
+  },
+  {
+   "name": "base64: only padding",
+   "call": "artifact_from_wire",
+   "input": {
+    "images": [
+     {
+      "name": "x",
+      "mimetype": "image/png",
+      "bytes_b64": "="
+     }
+    ]
+   },
+   "expect": {
+    "throws": true
+   }
+  },
+  {
+   "name": "base64: one character",
+   "call": "artifact_from_wire",
+   "input": {
+    "images": [
+     {
+      "name": "x",
+      "mimetype": "image/png",
+      "bytes_b64": "a"
+     }
+    ]
+   },
+   "expect": {
+    "throws": true
+   }
+  },
+  {
+   "name": "base64: padding inside",
+   "call": "artifact_from_wire",
+   "input": {
+    "images": [
+     {
+      "name": "x",
+      "mimetype": "image/png",
+      "bytes_b64": "aG=k"
+     }
+    ]
+   },
+   "expect": {
+    "throws": true
+   }
+  },
+  {
+   "name": "base64: a newline",
+   "call": "artifact_from_wire",
+   "input": {
+    "images": [
+     {
+      "name": "x",
+      "mimetype": "image/png",
+      "bytes_b64": "aGk=\n"
+     }
+    ]
+   },
+   "expect": {
+    "throws": true
+   }
+  },
+  {
+   "name": "base64: a space",
+   "call": "artifact_from_wire",
+   "input": {
+    "images": [
+     {
+      "name": "x",
+      "mimetype": "image/png",
+      "bytes_b64": " aGk="
+     }
+    ]
+   },
+   "expect": {
+    "throws": true
+   }
+  },
+  {
+   "name": "base64: two pieces",
+   "call": "artifact_from_wire",
+   "input": {
+    "images": [
+     {
+      "name": "x",
+      "mimetype": "image/png",
+      "bytes_b64": "aGk=aGk="
+     }
+    ]
+   },
+   "expect": {
+    "throws": true
+   }
+  },
+  {
+   "name": "base64: url-safe alphabet",
+   "call": "artifact_from_wire",
+   "input": {
+    "images": [
+     {
+      "name": "x",
+      "mimetype": "image/png",
+      "bytes_b64": "aG-k"
+     }
+    ]
+   },
+   "expect": {
+    "throws": true
+   }
+  },
+  {
+   "name": "base64: three pads",
+   "call": "artifact_from_wire",
+   "input": {
+    "images": [
+     {
+      "name": "x",
+      "mimetype": "image/png",
+      "bytes_b64": "YQ==="
+     }
+    ]
+   },
+   "expect": {
+    "throws": true
+   }
+  }
+ ]
+}

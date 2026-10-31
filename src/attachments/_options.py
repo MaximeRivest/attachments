@@ -248,13 +248,35 @@ def _coerce_pages(value: Any) -> PageSelection:
         ) from exc
 
 
+def _is_range(value: Any) -> bool:
+    """A DSL range: two integers, a tuple (parsed) or a list (from JSON).
+
+    Examples:
+        >>> _is_range((1, 4)), _is_range([1, 4]), _is_range([1, True]), _is_range("1-4")
+        (True, True, False, False)
+    """
+    return (
+        isinstance(value, tuple | list)
+        and len(value) == 2
+        and all(isinstance(v, int) and not isinstance(v, bool) for v in value)
+    )
+
+
 def _coerce(option: Option, value: Any) -> Any:
-    """Coerce *value* to the option's declared type, or raise."""
+    """Coerce *value* to the option's declared type, or raise.
+
+    Examples:
+        >>> _coerce(Option("select", "str"), (1, 4))  # `select: 1-4` stays text
+        '1-4'
+    """
     if option.type == "pages":
         return _coerce_pages(value)
     if option.type == "str":
         if isinstance(value, bool):
             return "true" if value else "false"
+        if _is_range(value):
+            # The DSL read `select: 1-4` as a range; the text is what was meant.
+            return f"{value[0]}-{value[1]}"
         return value if isinstance(value, str) else str(value)
     if option.type == "int":
         if isinstance(value, bool):

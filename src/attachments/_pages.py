@@ -26,7 +26,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
-_ITEM = re.compile(r"^(-?\d+)(?:\s*-\s*(-?\d+)?)?$")
+_ITEM = re.compile(r"^(-?[0-9]+)(?:\s*-\s*(-?[0-9]+)?)?$")  # ASCII digits only
 
 
 class PageSelectionError(ValueError):

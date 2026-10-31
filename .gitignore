@@ -41,3 +41,7 @@ evals/bench/runs/
 
 # Personal agent settings
 .claude/settings.local.json
+
+# TypeScript
+ts/node_modules/
+ts/dist/

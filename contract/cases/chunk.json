@@ -1,0 +1,2257 @@
+{
+ "area": "chunk",
+ "review": "draft",
+ "cases": [
+  {
+   "name": "prose, max_chars=None, overlap=0",
+   "artifacts": [
+    {
+     "text": "Para one is here.\n\nPara two follows it, a bit longer.\nA new line.\n\nThe third paragraph ends it all with many words.",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "p.txt"
+     }
+    }
+   ],
+   "args": {
+    "overlap": 0
+   },
+   "expect": {
+    "value": [
+     "## p.txt\nPara one is here.\n\nPara two follows it, a bit longer.\nA new line.\n\nThe third paragraph ends it all with many words."
+    ]
+   }
+  },
+  {
+   "name": "pages, max_chars=None, overlap=0",
+   "artifacts": [
+    {
+     "text": "Page one text.\n\nPage two is longer than one.\n\nThree.",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "d.pdf",
+      "segments": [
+       {
+        "kind": "page",
+        "label": "page 1",
+        "start": 0,
+        "end": 14,
+        "page": 1
+       },
+       {
+        "kind": "page",
+        "label": "page 2",
+        "start": 16,
+        "end": 44,
+        "page": 2
+       },
+       {
+        "kind": "page",
+        "label": "page 3",
+        "start": 46,
+        "end": 52,
+        "page": 3
+       }
+      ]
+     }
+    }
+   ],
+   "args": {
+    "overlap": 0
+   },
+   "expect": {
+    "value": [
+     "## d.pdf\nPage one text.\n\nPage two is longer than one.\n\nThree."
+    ]
+   }
+  },
+  {
+   "name": "astral, max_chars=None, overlap=0",
+   "artifacts": [
+    {
+     "text": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "e.txt"
+     }
+    }
+   ],
+   "args": {
+    "overlap": 0
+   },
+   "expect": {
+    "value": [
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡"
+    ]
+   }
+  },
+  {
+   "name": "prose, max_chars=None, overlap=5",
+   "artifacts": [
+    {
+     "text": "Para one is here.\n\nPara two follows it, a bit longer.\nA new line.\n\nThe third paragraph ends it all with many words.",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "p.txt"
+     }
+    }
+   ],
+   "args": {
+    "overlap": 5
+   },
+   "expect": {
+    "value": [
+     "## p.txt\nPara one is here.\n\nPara two follows it, a bit longer.\nA new line.\n\nThe third paragraph ends it all with many words."
+    ]
+   }
+  },
+  {
+   "name": "pages, max_chars=None, overlap=5",
+   "artifacts": [
+    {
+     "text": "Page one text.\n\nPage two is longer than one.\n\nThree.",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "d.pdf",
+      "segments": [
+       {
+        "kind": "page",
+        "label": "page 1",
+        "start": 0,
+        "end": 14,
+        "page": 1
+       },
+       {
+        "kind": "page",
+        "label": "page 2",
+        "start": 16,
+        "end": 44,
+        "page": 2
+       },
+       {
+        "kind": "page",
+        "label": "page 3",
+        "start": 46,
+        "end": 52,
+        "page": 3
+       }
+      ]
+     }
+    }
+   ],
+   "args": {
+    "overlap": 5
+   },
+   "expect": {
+    "value": [
+     "## d.pdf\nPage one text.\n\nPage two is longer than one.\n\nThree."
+    ]
+   }
+  },
+  {
+   "name": "astral, max_chars=None, overlap=5",
+   "artifacts": [
+    {
+     "text": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "e.txt"
+     }
+    }
+   ],
+   "args": {
+    "overlap": 5
+   },
+   "expect": {
+    "value": [
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡"
+    ]
+   }
+  },
+  {
+   "name": "prose, max_chars=None, overlap=200",
+   "artifacts": [
+    {
+     "text": "Para one is here.\n\nPara two follows it, a bit longer.\nA new line.\n\nThe third paragraph ends it all with many words.",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "p.txt"
+     }
+    }
+   ],
+   "args": {
+    "overlap": 200
+   },
+   "expect": {
+    "value": [
+     "## p.txt\nPara one is here.\n\nPara two follows it, a bit longer.\nA new line.\n\nThe third paragraph ends it all with many words."
+    ]
+   }
+  },
+  {
+   "name": "pages, max_chars=None, overlap=200",
+   "artifacts": [
+    {
+     "text": "Page one text.\n\nPage two is longer than one.\n\nThree.",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "d.pdf",
+      "segments": [
+       {
+        "kind": "page",
+        "label": "page 1",
+        "start": 0,
+        "end": 14,
+        "page": 1
+       },
+       {
+        "kind": "page",
+        "label": "page 2",
+        "start": 16,
+        "end": 44,
+        "page": 2
+       },
+       {
+        "kind": "page",
+        "label": "page 3",
+        "start": 46,
+        "end": 52,
+        "page": 3
+       }
+      ]
+     }
+    }
+   ],
+   "args": {
+    "overlap": 200
+   },
+   "expect": {
+    "value": [
+     "## d.pdf\nPage one text.\n\nPage two is longer than one.\n\nThree."
+    ]
+   }
+  },
+  {
+   "name": "astral, max_chars=None, overlap=200",
+   "artifacts": [
+    {
+     "text": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "e.txt"
+     }
+    }
+   ],
+   "args": {
+    "overlap": 200
+   },
+   "expect": {
+    "value": [
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡"
+    ]
+   }
+  },
+  {
+   "name": "prose, max_chars=10, overlap=0",
+   "artifacts": [
+    {
+     "text": "Para one is here.\n\nPara two follows it, a bit longer.\nA new line.\n\nThe third paragraph ends it all with many words.",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "p.txt"
+     }
+    }
+   ],
+   "args": {
+    "overlap": 0,
+    "max_chars": 10
+   },
+   "expect": {
+    "value": [
+     "## p.txt\nPara one ",
+     "## p.txt\nis here.\n\n",
+     "## p.txt\nPara two ",
+     "## p.txt\nfollows it",
+     "## p.txt\n, a bit lo",
+     "## p.txt\nnger.\nA ne",
+     "## p.txt\nw line.\n\n",
+     "## p.txt\nThe third ",
+     "## p.txt\nparagraph ",
+     "## p.txt\nends it al",
+     "## p.txt\nl with man",
+     "## p.txt\ny words."
+    ]
+   }
+  },
+  {
+   "name": "pages, max_chars=10, overlap=0",
+   "artifacts": [
+    {
+     "text": "Page one text.\n\nPage two is longer than one.\n\nThree.",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "d.pdf",
+      "segments": [
+       {
+        "kind": "page",
+        "label": "page 1",
+        "start": 0,
+        "end": 14,
+        "page": 1
+       },
+       {
+        "kind": "page",
+        "label": "page 2",
+        "start": 16,
+        "end": 44,
+        "page": 2
+       },
+       {
+        "kind": "page",
+        "label": "page 3",
+        "start": 46,
+        "end": 52,
+        "page": 3
+       }
+      ]
+     }
+    }
+   ],
+   "args": {
+    "overlap": 0,
+    "max_chars": 10
+   },
+   "expect": {
+    "value": [
+     "## d.pdf\nPage one ",
+     "## d.pdf\ntext.",
+     "## d.pdf\nPage two ",
+     "## d.pdf\nis longer ",
+     "## d.pdf\nthan one.",
+     "## d.pdf\nThree."
+    ]
+   }
+  },
+  {
+   "name": "astral, max_chars=10, overlap=0",
+   "artifacts": [
+    {
+     "text": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "e.txt"
+     }
+    }
+   ],
+   "args": {
+    "overlap": 0,
+    "max_chars": 10
+   },
+   "expect": {
+    "value": [
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀",
+     "## e.txt\n 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n𝔡"
+    ]
+   }
+  },
+  {
+   "name": "prose, max_chars=10, overlap=5",
+   "artifacts": [
+    {
+     "text": "Para one is here.\n\nPara two follows it, a bit longer.\nA new line.\n\nThe third paragraph ends it all with many words.",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "p.txt"
+     }
+    }
+   ],
+   "args": {
+    "overlap": 5,
+    "max_chars": 10
+   },
+   "expect": {
+    "value": [
+     "## p.txt\nPara one ",
+     "## p.txt\n one is he",
+     "## p.txt\nis here.\n\n",
+     "## p.txt\nre.\n\nPara ",
+     "## p.txt\nPara two ",
+     "## p.txt\n two follo",
+     "## p.txt\nfollows it",
+     "## p.txt\nws it, a ",
+     "## p.txt\nt, a bit ",
+     "## p.txt\n bit longe",
+     "## p.txt\nlonger.\nA ",
+     "## p.txt\nr.\nA new ",
+     "## p.txt\n new line.",
+     "## p.txt\nline.\n\nThe",
+     "## p.txt\n\n\nThe thir",
+     "## p.txt\n third par",
+     "## p.txt\nd paragrap",
+     "## p.txt\nagraph end",
+     "## p.txt\nh ends it ",
+     "## p.txt\ns it all ",
+     "## p.txt\n all with ",
+     "## p.txt\nwith many ",
+     "## p.txt\nmany words",
+     "## p.txt\nwords."
+    ]
+   }
+  },
+  {
+   "name": "pages, max_chars=10, overlap=5",
+   "artifacts": [
+    {
+     "text": "Page one text.\n\nPage two is longer than one.\n\nThree.",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "d.pdf",
+      "segments": [
+       {
+        "kind": "page",
+        "label": "page 1",
+        "start": 0,
+        "end": 14,
+        "page": 1
+       },
+       {
+        "kind": "page",
+        "label": "page 2",
+        "start": 16,
+        "end": 44,
+        "page": 2
+       },
+       {
+        "kind": "page",
+        "label": "page 3",
+        "start": 46,
+        "end": 52,
+        "page": 3
+       }
+      ]
+     }
+    }
+   ],
+   "args": {
+    "overlap": 5,
+    "max_chars": 10
+   },
+   "expect": {
+    "value": [
+     "## d.pdf\nPage one ",
+     "## d.pdf\n one text.",
+     "## d.pdf\nPage two ",
+     "## d.pdf\n two is lo",
+     "## d.pdf\nis longer ",
+     "## d.pdf\nnger than ",
+     "## d.pdf\nthan one.",
+     "## d.pdf\nThree."
+    ]
+   }
+  },
+  {
+   "name": "astral, max_chars=10, overlap=5",
+   "artifacts": [
+    {
+     "text": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "e.txt"
+     }
+    }
+   ],
+   "args": {
+    "overlap": 5,
+    "max_chars": 10
+   },
+   "expect": {
+    "value": [
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀",
+     "## e.txt\n😀😀😀😀😀 𝔡𝔡𝔡𝔡",
+     "## e.txt\n 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n𝔡𝔡𝔡𝔡𝔡𝔡"
+    ]
+   }
+  },
+  {
+   "name": "prose, max_chars=10, overlap=200",
+   "artifacts": [
+    {
+     "text": "Para one is here.\n\nPara two follows it, a bit longer.\nA new line.\n\nThe third paragraph ends it all with many words.",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "p.txt"
+     }
+    }
+   ],
+   "args": {
+    "overlap": 200,
+    "max_chars": 10
+   },
+   "expect": {
+    "value": [
+     "## p.txt\nPara one ",
+     "## p.txt\nara one is",
+     "## p.txt\nra one is ",
+     "## p.txt\na one is ",
+     "## p.txt\n one is he",
+     "## p.txt\none is her",
+     "## p.txt\nne is here",
+     "## p.txt\ne is here.",
+     "## p.txt\n is here.\n",
+     "## p.txt\nis here.\n\n",
+     "## p.txt\ns here.\n\n",
+     "## p.txt\n here.\n\nPa",
+     "## p.txt\nhere.\n\nPar",
+     "## p.txt\nere.\n\nPara",
+     "## p.txt\nre.\n\nPara ",
+     "## p.txt\ne.\n\nPara ",
+     "## p.txt\n.\n\nPara tw",
+     "## p.txt\n\n\nPara two",
+     "## p.txt\n\nPara two ",
+     "## p.txt\nPara two ",
+     "## p.txt\nara two fo",
+     "## p.txt\nra two fol",
+     "## p.txt\na two foll",
+     "## p.txt\n two follo",
+     "## p.txt\ntwo follow",
+     "## p.txt\nwo follows",
+     "## p.txt\no follows ",
+     "## p.txt\n follows ",
+     "## p.txt\nfollows it",
+     "## p.txt\nollows it,",
+     "## p.txt\nllows it, ",
+     "## p.txt\nlows it, ",
+     "## p.txt\nows it, a ",
+     "## p.txt\nws it, a ",
+     "## p.txt\ns it, a bi",
+     "## p.txt\n it, a bit",
+     "## p.txt\nit, a bit ",
+     "## p.txt\nt, a bit ",
+     "## p.txt\n, a bit lo",
+     "## p.txt\n a bit lon",
+     "## p.txt\na bit long",
+     "## p.txt\n bit longe",
+     "## p.txt\nbit longer",
+     "## p.txt\nit longer.",
+     "## p.txt\nt longer.\n",
+     "## p.txt\n longer.\n",
+     "## p.txt\nlonger.\nA ",
+     "## p.txt\nonger.\nA ",
+     "## p.txt\nnger.\nA ne",
+     "## p.txt\nger.\nA new",
+     "## p.txt\ner.\nA new ",
+     "## p.txt\nr.\nA new ",
+     "## p.txt\n.\nA new li",
+     "## p.txt\n\nA new lin",
+     "## p.txt\nA new line",
+     "## p.txt\n new line.",
+     "## p.txt\nnew line.\n",
+     "## p.txt\new line.\n\n",
+     "## p.txt\nw line.\n\n",
+     "## p.txt\n line.\n\nTh",
+     "## p.txt\nline.\n\nThe",
+     "## p.txt\nine.\n\nThe ",
+     "## p.txt\nne.\n\nThe ",
+     "## p.txt\ne.\n\nThe th",
+     "## p.txt\n.\n\nThe thi",
+     "## p.txt\n\n\nThe thir",
+     "## p.txt\n\nThe third",
+     "## p.txt\nThe third ",
+     "## p.txt\nhe third ",
+     "## p.txt\ne third pa",
+     "## p.txt\n third par",
+     "## p.txt\nthird para",
+     "## p.txt\nhird parag",
+     "## p.txt\nird paragr",
+     "## p.txt\nrd paragra",
+     "## p.txt\nd paragrap",
+     "## p.txt\n paragraph",
+     "## p.txt\nparagraph ",
+     "## p.txt\naragraph ",
+     "## p.txt\nragraph en",
+     "## p.txt\nagraph end",
+     "## p.txt\ngraph ends",
+     "## p.txt\nraph ends ",
+     "## p.txt\naph ends ",
+     "## p.txt\nph ends it",
+     "## p.txt\nh ends it ",
+     "## p.txt\n ends it ",
+     "## p.txt\nends it al",
+     "## p.txt\nnds it all",
+     "## p.txt\nds it all ",
+     "## p.txt\ns it all ",
+     "## p.txt\n it all wi",
+     "## p.txt\nit all wit",
+     "## p.txt\nt all with",
+     "## p.txt\n all with ",
+     "## p.txt\nall with ",
+     "## p.txt\nll with ma",
+     "## p.txt\nl with man",
+     "## p.txt\n with many",
+     "## p.txt\nwith many ",
+     "## p.txt\nith many ",
+     "## p.txt\nth many wo",
+     "## p.txt\nh many wor",
+     "## p.txt\n many word",
+     "## p.txt\nmany words",
+     "## p.txt\nany words."
+    ]
+   }
+  },
+  {
+   "name": "pages, max_chars=10, overlap=200",
+   "artifacts": [
+    {
+     "text": "Page one text.\n\nPage two is longer than one.\n\nThree.",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "d.pdf",
+      "segments": [
+       {
+        "kind": "page",
+        "label": "page 1",
+        "start": 0,
+        "end": 14,
+        "page": 1
+       },
+       {
+        "kind": "page",
+        "label": "page 2",
+        "start": 16,
+        "end": 44,
+        "page": 2
+       },
+       {
+        "kind": "page",
+        "label": "page 3",
+        "start": 46,
+        "end": 52,
+        "page": 3
+       }
+      ]
+     }
+    }
+   ],
+   "args": {
+    "overlap": 200,
+    "max_chars": 10
+   },
+   "expect": {
+    "value": [
+     "## d.pdf\nPage one ",
+     "## d.pdf\nage one te",
+     "## d.pdf\nge one tex",
+     "## d.pdf\ne one text",
+     "## d.pdf\n one text.",
+     "## d.pdf\nPage two ",
+     "## d.pdf\nage two is",
+     "## d.pdf\nge two is ",
+     "## d.pdf\ne two is ",
+     "## d.pdf\n two is lo",
+     "## d.pdf\ntwo is lon",
+     "## d.pdf\nwo is long",
+     "## d.pdf\no is longe",
+     "## d.pdf\n is longer",
+     "## d.pdf\nis longer ",
+     "## d.pdf\ns longer ",
+     "## d.pdf\n longer th",
+     "## d.pdf\nlonger tha",
+     "## d.pdf\nonger than",
+     "## d.pdf\nnger than ",
+     "## d.pdf\nger than ",
+     "## d.pdf\ner than on",
+     "## d.pdf\nr than one",
+     "## d.pdf\n than one.",
+     "## d.pdf\nThree."
+    ]
+   }
+  },
+  {
+   "name": "astral, max_chars=10, overlap=200",
+   "artifacts": [
+    {
+     "text": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "e.txt"
+     }
+    }
+   ],
+   "args": {
+    "overlap": 200,
+    "max_chars": 10
+   },
+   "expect": {
+    "value": [
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀 ",
+     "## e.txt\n😀😀😀😀😀😀😀😀 ",
+     "## e.txt\n😀😀😀😀😀😀😀 𝔡𝔡",
+     "## e.txt\n😀😀😀😀😀😀 𝔡𝔡𝔡",
+     "## e.txt\n😀😀😀😀😀 𝔡𝔡𝔡𝔡",
+     "## e.txt\n😀😀😀😀 𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡"
+    ]
+   }
+  },
+  {
+   "name": "prose, max_chars=25, overlap=0",
+   "artifacts": [
+    {
+     "text": "Para one is here.\n\nPara two follows it, a bit longer.\nA new line.\n\nThe third paragraph ends it all with many words.",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "p.txt"
+     }
+    }
+   ],
+   "args": {
+    "overlap": 0,
+    "max_chars": 25
+   },
+   "expect": {
+    "value": [
+     "## p.txt\nPara one is here.\n\nPara ",
+     "## p.txt\ntwo follows it, a bit ",
+     "## p.txt\nlonger.\nA new line.\n\n",
+     "## p.txt\nThe third paragraph ends ",
+     "## p.txt\nit all with many words."
+    ]
+   }
+  },
+  {
+   "name": "pages, max_chars=25, overlap=0",
+   "artifacts": [
+    {
+     "text": "Page one text.\n\nPage two is longer than one.\n\nThree.",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "d.pdf",
+      "segments": [
+       {
+        "kind": "page",
+        "label": "page 1",
+        "start": 0,
+        "end": 14,
+        "page": 1
+       },
+       {
+        "kind": "page",
+        "label": "page 2",
+        "start": 16,
+        "end": 44,
+        "page": 2
+       },
+       {
+        "kind": "page",
+        "label": "page 3",
+        "start": 46,
+        "end": 52,
+        "page": 3
+       }
+      ]
+     }
+    }
+   ],
+   "args": {
+    "overlap": 0,
+    "max_chars": 25
+   },
+   "expect": {
+    "value": [
+     "## d.pdf\nPage one text.",
+     "## d.pdf\nPage two is longer than ",
+     "## d.pdf\none.",
+     "## d.pdf\nThree."
+    ]
+   }
+  },
+  {
+   "name": "astral, max_chars=25, overlap=0",
+   "artifacts": [
+    {
+     "text": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "e.txt"
+     }
+    }
+   ],
+   "args": {
+    "overlap": 0,
+    "max_chars": 25
+   },
+   "expect": {
+    "value": [
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+     "## e.txt\n😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡"
+    ]
+   }
+  },
+  {
+   "name": "prose, max_chars=25, overlap=5",
+   "artifacts": [
+    {
+     "text": "Para one is here.\n\nPara two follows it, a bit longer.\nA new line.\n\nThe third paragraph ends it all with many words.",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "p.txt"
+     }
+    }
+   ],
+   "args": {
+    "overlap": 5,
+    "max_chars": 25
+   },
+   "expect": {
+    "value": [
+     "## p.txt\nPara one is here.\n\nPara ",
+     "## p.txt\nPara two follows it, a ",
+     "## p.txt\nt, a bit longer.\nA new ",
+     "## p.txt\n new line.\n\nThe third ",
+     "## p.txt\nhird paragraph ends it ",
+     "## p.txt\ns it all with many words."
+    ]
+   }
+  },
+  {
+   "name": "pages, max_chars=25, overlap=5",
+   "artifacts": [
+    {
+     "text": "Page one text.\n\nPage two is longer than one.\n\nThree.",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "d.pdf",
+      "segments": [
+       {
+        "kind": "page",
+        "label": "page 1",
+        "start": 0,
+        "end": 14,
+        "page": 1
+       },
+       {
+        "kind": "page",
+        "label": "page 2",
+        "start": 16,
+        "end": 44,
+        "page": 2
+       },
+       {
+        "kind": "page",
+        "label": "page 3",
+        "start": 46,
+        "end": 52,
+        "page": 3
+       }
+      ]
+     }
+    }
+   ],
+   "args": {
+    "overlap": 5,
+    "max_chars": 25
+   },
+   "expect": {
+    "value": [
+     "## d.pdf\nPage one text.",
+     "## d.pdf\nPage two is longer than ",
+     "## d.pdf\nthan one.",
+     "## d.pdf\nThree."
+    ]
+   }
+  },
+  {
+   "name": "astral, max_chars=25, overlap=5",
+   "artifacts": [
+    {
+     "text": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "e.txt"
+     }
+    }
+   ],
+   "args": {
+    "overlap": 5,
+    "max_chars": 25
+   },
+   "expect": {
+    "value": [
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡"
+    ]
+   }
+  },
+  {
+   "name": "prose, max_chars=25, overlap=200",
+   "artifacts": [
+    {
+     "text": "Para one is here.\n\nPara two follows it, a bit longer.\nA new line.\n\nThe third paragraph ends it all with many words.",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "p.txt"
+     }
+    }
+   ],
+   "args": {
+    "overlap": 200,
+    "max_chars": 25
+   },
+   "expect": {
+    "value": [
+     "## p.txt\nPara one is here.\n\nPara ",
+     "## p.txt\nara one is here.\n\nPara ",
+     "## p.txt\nra one is here.\n\nPara ",
+     "## p.txt\na one is here.\n\nPara two ",
+     "## p.txt\n one is here.\n\nPara two ",
+     "## p.txt\none is here.\n\nPara two ",
+     "## p.txt\nne is here.\n\nPara two ",
+     "## p.txt\ne is here.\n\nPara two ",
+     "## p.txt\n is here.\n\nPara two follo",
+     "## p.txt\nis here.\n\nPara two follow",
+     "## p.txt\ns here.\n\nPara two follows",
+     "## p.txt\n here.\n\nPara two follows ",
+     "## p.txt\nhere.\n\nPara two follows ",
+     "## p.txt\nere.\n\nPara two follows ",
+     "## p.txt\nre.\n\nPara two follows ",
+     "## p.txt\ne.\n\nPara two follows it, ",
+     "## p.txt\n.\n\nPara two follows it, ",
+     "## p.txt\n\n\nPara two follows it, a ",
+     "## p.txt\n\nPara two follows it, a ",
+     "## p.txt\nPara two follows it, a ",
+     "## p.txt\nara two follows it, a ",
+     "## p.txt\nra two follows it, a bit ",
+     "## p.txt\na two follows it, a bit ",
+     "## p.txt\n two follows it, a bit ",
+     "## p.txt\ntwo follows it, a bit ",
+     "## p.txt\nwo follows it, a bit ",
+     "## p.txt\no follows it, a bit longe",
+     "## p.txt\n follows it, a bit longer",
+     "## p.txt\nfollows it, a bit longer.",
+     "## p.txt\nollows it, a bit longer.\n",
+     "## p.txt\nllows it, a bit longer.\n",
+     "## p.txt\nlows it, a bit longer.\n",
+     "## p.txt\nows it, a bit longer.\n",
+     "## p.txt\nws it, a bit longer.\n",
+     "## p.txt\ns it, a bit longer.\nA ",
+     "## p.txt\n it, a bit longer.\nA new ",
+     "## p.txt\nit, a bit longer.\nA new ",
+     "## p.txt\nt, a bit longer.\nA new ",
+     "## p.txt\n, a bit longer.\nA new ",
+     "## p.txt\n a bit longer.\nA new ",
+     "## p.txt\na bit longer.\nA new line.",
+     "## p.txt\n bit longer.\nA new line.\n",
+     "## p.txt\nbit longer.\nA new line.\n\n",
+     "## p.txt\nit longer.\nA new line.\n\n",
+     "## p.txt\nt longer.\nA new line.\n\n",
+     "## p.txt\n longer.\nA new line.\n\n",
+     "## p.txt\nlonger.\nA new line.\n\n",
+     "## p.txt\nonger.\nA new line.\n\nThe ",
+     "## p.txt\nnger.\nA new line.\n\nThe ",
+     "## p.txt\nger.\nA new line.\n\nThe ",
+     "## p.txt\ner.\nA new line.\n\nThe ",
+     "## p.txt\nr.\nA new line.\n\nThe third",
+     "## p.txt\n.\nA new line.\n\nThe third ",
+     "## p.txt\n\nA new line.\n\nThe third ",
+     "## p.txt\nA new line.\n\nThe third ",
+     "## p.txt\n new line.\n\nThe third ",
+     "## p.txt\nnew line.\n\nThe third ",
+     "## p.txt\new line.\n\nThe third parag",
+     "## p.txt\nw line.\n\nThe third paragr",
+     "## p.txt\n line.\n\nThe third paragra",
+     "## p.txt\nline.\n\nThe third paragrap",
+     "## p.txt\nine.\n\nThe third paragraph",
+     "## p.txt\nne.\n\nThe third paragraph ",
+     "## p.txt\ne.\n\nThe third paragraph ",
+     "## p.txt\n.\n\nThe third paragraph ",
+     "## p.txt\n\n\nThe third paragraph ",
+     "## p.txt\n\nThe third paragraph ",
+     "## p.txt\nThe third paragraph ends ",
+     "## p.txt\nhe third paragraph ends ",
+     "## p.txt\ne third paragraph ends ",
+     "## p.txt\n third paragraph ends it ",
+     "## p.txt\nthird paragraph ends it ",
+     "## p.txt\nhird paragraph ends it ",
+     "## p.txt\nird paragraph ends it ",
+     "## p.txt\nrd paragraph ends it all ",
+     "## p.txt\nd paragraph ends it all ",
+     "## p.txt\n paragraph ends it all ",
+     "## p.txt\nparagraph ends it all ",
+     "## p.txt\naragraph ends it all ",
+     "## p.txt\nragraph ends it all with ",
+     "## p.txt\nagraph ends it all with ",
+     "## p.txt\ngraph ends it all with ",
+     "## p.txt\nraph ends it all with ",
+     "## p.txt\naph ends it all with ",
+     "## p.txt\nph ends it all with many ",
+     "## p.txt\nh ends it all with many ",
+     "## p.txt\n ends it all with many ",
+     "## p.txt\nends it all with many ",
+     "## p.txt\nnds it all with many ",
+     "## p.txt\nds it all with many words",
+     "## p.txt\ns it all with many words."
+    ]
+   }
+  },
+  {
+   "name": "pages, max_chars=25, overlap=200",
+   "artifacts": [
+    {
+     "text": "Page one text.\n\nPage two is longer than one.\n\nThree.",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "d.pdf",
+      "segments": [
+       {
+        "kind": "page",
+        "label": "page 1",
+        "start": 0,
+        "end": 14,
+        "page": 1
+       },
+       {
+        "kind": "page",
+        "label": "page 2",
+        "start": 16,
+        "end": 44,
+        "page": 2
+       },
+       {
+        "kind": "page",
+        "label": "page 3",
+        "start": 46,
+        "end": 52,
+        "page": 3
+       }
+      ]
+     }
+    }
+   ],
+   "args": {
+    "overlap": 200,
+    "max_chars": 25
+   },
+   "expect": {
+    "value": [
+     "## d.pdf\nPage one text.",
+     "## d.pdf\nPage two is longer than ",
+     "## d.pdf\nage two is longer than ",
+     "## d.pdf\nge two is longer than ",
+     "## d.pdf\ne two is longer than one.",
+     "## d.pdf\nThree."
+    ]
+   }
+  },
+  {
+   "name": "astral, max_chars=25, overlap=200",
+   "artifacts": [
+    {
+     "text": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "e.txt"
+     }
+    }
+   ],
+   "args": {
+    "overlap": 200,
+    "max_chars": 25
+   },
+   "expect": {
+    "value": [
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀 ",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀 ",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀 ",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀 ",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀 ",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡"
+    ]
+   }
+  },
+  {
+   "name": "prose, max_chars=40, overlap=0",
+   "artifacts": [
+    {
+     "text": "Para one is here.\n\nPara two follows it, a bit longer.\nA new line.\n\nThe third paragraph ends it all with many words.",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "p.txt"
+     }
+    }
+   ],
+   "args": {
+    "overlap": 0,
+    "max_chars": 40
+   },
+   "expect": {
+    "value": [
+     "## p.txt\nPara one is here.\n\nPara two follows it, ",
+     "## p.txt\na bit longer.\nA new line.\n\nThe third ",
+     "## p.txt\nparagraph ends it all with many words."
+    ]
+   }
+  },
+  {
+   "name": "pages, max_chars=40, overlap=0",
+   "artifacts": [
+    {
+     "text": "Page one text.\n\nPage two is longer than one.\n\nThree.",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "d.pdf",
+      "segments": [
+       {
+        "kind": "page",
+        "label": "page 1",
+        "start": 0,
+        "end": 14,
+        "page": 1
+       },
+       {
+        "kind": "page",
+        "label": "page 2",
+        "start": 16,
+        "end": 44,
+        "page": 2
+       },
+       {
+        "kind": "page",
+        "label": "page 3",
+        "start": 46,
+        "end": 52,
+        "page": 3
+       }
+      ]
+     }
+    }
+   ],
+   "args": {
+    "overlap": 0,
+    "max_chars": 40
+   },
+   "expect": {
+    "value": [
+     "## d.pdf\nPage one text.",
+     "## d.pdf\nPage two is longer than one.\n\nThree."
+    ]
+   }
+  },
+  {
+   "name": "astral, max_chars=40, overlap=0",
+   "artifacts": [
+    {
+     "text": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "e.txt"
+     }
+    }
+   ],
+   "args": {
+    "overlap": 0,
+    "max_chars": 40
+   },
+   "expect": {
+    "value": [
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡"
+    ]
+   }
+  },
+  {
+   "name": "prose, max_chars=40, overlap=5",
+   "artifacts": [
+    {
+     "text": "Para one is here.\n\nPara two follows it, a bit longer.\nA new line.\n\nThe third paragraph ends it all with many words.",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "p.txt"
+     }
+    }
+   ],
+   "args": {
+    "overlap": 5,
+    "max_chars": 40
+   },
+   "expect": {
+    "value": [
+     "## p.txt\nPara one is here.\n\nPara two follows it, ",
+     "## p.txt\n it, a bit longer.\nA new line.\n\nThe ",
+     "## p.txt\n\nThe third paragraph ends it all with ",
+     "## p.txt\nwith many words."
+    ]
+   }
+  },
+  {
+   "name": "pages, max_chars=40, overlap=5",
+   "artifacts": [
+    {
+     "text": "Page one text.\n\nPage two is longer than one.\n\nThree.",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "d.pdf",
+      "segments": [
+       {
+        "kind": "page",
+        "label": "page 1",
+        "start": 0,
+        "end": 14,
+        "page": 1
+       },
+       {
+        "kind": "page",
+        "label": "page 2",
+        "start": 16,
+        "end": 44,
+        "page": 2
+       },
+       {
+        "kind": "page",
+        "label": "page 3",
+        "start": 46,
+        "end": 52,
+        "page": 3
+       }
+      ]
+     }
+    }
+   ],
+   "args": {
+    "overlap": 5,
+    "max_chars": 40
+   },
+   "expect": {
+    "value": [
+     "## d.pdf\nPage one text.",
+     "## d.pdf\nPage two is longer than one.\n\nThree."
+    ]
+   }
+  },
+  {
+   "name": "astral, max_chars=40, overlap=5",
+   "artifacts": [
+    {
+     "text": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "e.txt"
+     }
+    }
+   ],
+   "args": {
+    "overlap": 5,
+    "max_chars": 40
+   },
+   "expect": {
+    "value": [
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡"
+    ]
+   }
+  },
+  {
+   "name": "prose, max_chars=40, overlap=200",
+   "artifacts": [
+    {
+     "text": "Para one is here.\n\nPara two follows it, a bit longer.\nA new line.\n\nThe third paragraph ends it all with many words.",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "p.txt"
+     }
+    }
+   ],
+   "args": {
+    "overlap": 200,
+    "max_chars": 40
+   },
+   "expect": {
+    "value": [
+     "## p.txt\nPara one is here.\n\nPara two follows it, ",
+     "## p.txt\nara one is here.\n\nPara two follows it, ",
+     "## p.txt\nra one is here.\n\nPara two follows it, a ",
+     "## p.txt\na one is here.\n\nPara two follows it, a ",
+     "## p.txt\n one is here.\n\nPara two follows it, a ",
+     "## p.txt\none is here.\n\nPara two follows it, a ",
+     "## p.txt\nne is here.\n\nPara two follows it, a bit ",
+     "## p.txt\ne is here.\n\nPara two follows it, a bit ",
+     "## p.txt\n is here.\n\nPara two follows it, a bit ",
+     "## p.txt\nis here.\n\nPara two follows it, a bit ",
+     "## p.txt\ns here.\n\nPara two follows it, a bit ",
+     "## p.txt\n here.\n\nPara two follows it, a bit ",
+     "## p.txt\nhere.\n\nPara two follows it, a bit ",
+     "## p.txt\nere.\n\nPara two follows it, a bit ",
+     "## p.txt\nre.\n\nPara two follows it, a bit longer.\n",
+     "## p.txt\ne.\n\nPara two follows it, a bit longer.\n",
+     "## p.txt\n.\n\nPara two follows it, a bit longer.\n",
+     "## p.txt\n\n\nPara two follows it, a bit longer.\n",
+     "## p.txt\n\nPara two follows it, a bit longer.\n",
+     "## p.txt\nPara two follows it, a bit longer.\n",
+     "## p.txt\nara two follows it, a bit longer.\n",
+     "## p.txt\nra two follows it, a bit longer.\n",
+     "## p.txt\na two follows it, a bit longer.\nA new ",
+     "## p.txt\n two follows it, a bit longer.\nA new ",
+     "## p.txt\ntwo follows it, a bit longer.\nA new ",
+     "## p.txt\nwo follows it, a bit longer.\nA new ",
+     "## p.txt\no follows it, a bit longer.\nA new line.\n",
+     "## p.txt\n follows it, a bit longer.\nA new line.\n\n",
+     "## p.txt\nfollows it, a bit longer.\nA new line.\n\n",
+     "## p.txt\nollows it, a bit longer.\nA new line.\n\n",
+     "## p.txt\nllows it, a bit longer.\nA new line.\n\n",
+     "## p.txt\nlows it, a bit longer.\nA new line.\n\n",
+     "## p.txt\nows it, a bit longer.\nA new line.\n\n",
+     "## p.txt\nws it, a bit longer.\nA new line.\n\n",
+     "## p.txt\ns it, a bit longer.\nA new line.\n\n",
+     "## p.txt\n it, a bit longer.\nA new line.\n\nThe ",
+     "## p.txt\nit, a bit longer.\nA new line.\n\nThe ",
+     "## p.txt\nt, a bit longer.\nA new line.\n\nThe third ",
+     "## p.txt\n, a bit longer.\nA new line.\n\nThe third ",
+     "## p.txt\n a bit longer.\nA new line.\n\nThe third ",
+     "## p.txt\na bit longer.\nA new line.\n\nThe third ",
+     "## p.txt\n bit longer.\nA new line.\n\nThe third ",
+     "## p.txt\nbit longer.\nA new line.\n\nThe third ",
+     "## p.txt\nit longer.\nA new line.\n\nThe third ",
+     "## p.txt\nt longer.\nA new line.\n\nThe third ",
+     "## p.txt\n longer.\nA new line.\n\nThe third paragrap",
+     "## p.txt\nlonger.\nA new line.\n\nThe third paragraph",
+     "## p.txt\nonger.\nA new line.\n\nThe third paragraph ",
+     "## p.txt\nnger.\nA new line.\n\nThe third paragraph ",
+     "## p.txt\nger.\nA new line.\n\nThe third paragraph ",
+     "## p.txt\ner.\nA new line.\n\nThe third paragraph ",
+     "## p.txt\nr.\nA new line.\n\nThe third paragraph ",
+     "## p.txt\n.\nA new line.\n\nThe third paragraph ends ",
+     "## p.txt\n\nA new line.\n\nThe third paragraph ends ",
+     "## p.txt\nA new line.\n\nThe third paragraph ends ",
+     "## p.txt\n new line.\n\nThe third paragraph ends it ",
+     "## p.txt\nnew line.\n\nThe third paragraph ends it ",
+     "## p.txt\new line.\n\nThe third paragraph ends it ",
+     "## p.txt\nw line.\n\nThe third paragraph ends it ",
+     "## p.txt\n line.\n\nThe third paragraph ends it all ",
+     "## p.txt\nline.\n\nThe third paragraph ends it all ",
+     "## p.txt\nine.\n\nThe third paragraph ends it all ",
+     "## p.txt\nne.\n\nThe third paragraph ends it all ",
+     "## p.txt\ne.\n\nThe third paragraph ends it all ",
+     "## p.txt\n.\n\nThe third paragraph ends it all with ",
+     "## p.txt\n\n\nThe third paragraph ends it all with ",
+     "## p.txt\n\nThe third paragraph ends it all with ",
+     "## p.txt\nThe third paragraph ends it all with ",
+     "## p.txt\nhe third paragraph ends it all with ",
+     "## p.txt\ne third paragraph ends it all with many ",
+     "## p.txt\n third paragraph ends it all with many ",
+     "## p.txt\nthird paragraph ends it all with many ",
+     "## p.txt\nhird paragraph ends it all with many ",
+     "## p.txt\nird paragraph ends it all with many ",
+     "## p.txt\nrd paragraph ends it all with many ",
+     "## p.txt\nd paragraph ends it all with many words."
+    ]
+   }
+  },
+  {
+   "name": "pages, max_chars=40, overlap=200",
+   "artifacts": [
+    {
+     "text": "Page one text.\n\nPage two is longer than one.\n\nThree.",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "d.pdf",
+      "segments": [
+       {
+        "kind": "page",
+        "label": "page 1",
+        "start": 0,
+        "end": 14,
+        "page": 1
+       },
+       {
+        "kind": "page",
+        "label": "page 2",
+        "start": 16,
+        "end": 44,
+        "page": 2
+       },
+       {
+        "kind": "page",
+        "label": "page 3",
+        "start": 46,
+        "end": 52,
+        "page": 3
+       }
+      ]
+     }
+    }
+   ],
+   "args": {
+    "overlap": 200,
+    "max_chars": 40
+   },
+   "expect": {
+    "value": [
+     "## d.pdf\nPage one text.",
+     "## d.pdf\nPage two is longer than one.\n\nThree."
+    ]
+   }
+  },
+  {
+   "name": "astral, max_chars=40, overlap=200",
+   "artifacts": [
+    {
+     "text": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "e.txt"
+     }
+    }
+   ],
+   "args": {
+    "overlap": 200,
+    "max_chars": 40
+   },
+   "expect": {
+    "value": [
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "## e.txt\n😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡"
+    ]
+   }
+  },
+  {
+   "name": "prose, max_chars=1000, overlap=0",
+   "artifacts": [
+    {
+     "text": "Para one is here.\n\nPara two follows it, a bit longer.\nA new line.\n\nThe third paragraph ends it all with many words.",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "p.txt"
+     }
+    }
+   ],
+   "args": {
+    "overlap": 0,
+    "max_chars": 1000
+   },
+   "expect": {
+    "value": [
+     "## p.txt\nPara one is here.\n\nPara two follows it, a bit longer.\nA new line.\n\nThe third paragraph ends it all with many words."
+    ]
+   }
+  },
+  {
+   "name": "pages, max_chars=1000, overlap=0",
+   "artifacts": [
+    {
+     "text": "Page one text.\n\nPage two is longer than one.\n\nThree.",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "d.pdf",
+      "segments": [
+       {
+        "kind": "page",
+        "label": "page 1",
+        "start": 0,
+        "end": 14,
+        "page": 1
+       },
+       {
+        "kind": "page",
+        "label": "page 2",
+        "start": 16,
+        "end": 44,
+        "page": 2
+       },
+       {
+        "kind": "page",
+        "label": "page 3",
+        "start": 46,
+        "end": 52,
+        "page": 3
+       }
+      ]
+     }
+    }
+   ],
+   "args": {
+    "overlap": 0,
+    "max_chars": 1000
+   },
+   "expect": {
+    "value": [
+     "## d.pdf\nPage one text.\n\nPage two is longer than one.\n\nThree."
+    ]
+   }
+  },
+  {
+   "name": "astral, max_chars=1000, overlap=0",
+   "artifacts": [
+    {
+     "text": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "e.txt"
+     }
+    }
+   ],
+   "args": {
+    "overlap": 0,
+    "max_chars": 1000
+   },
+   "expect": {
+    "value": [
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡"
+    ]
+   }
+  },
+  {
+   "name": "prose, max_chars=1000, overlap=5",
+   "artifacts": [
+    {
+     "text": "Para one is here.\n\nPara two follows it, a bit longer.\nA new line.\n\nThe third paragraph ends it all with many words.",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "p.txt"
+     }
+    }
+   ],
+   "args": {
+    "overlap": 5,
+    "max_chars": 1000
+   },
+   "expect": {
+    "value": [
+     "## p.txt\nPara one is here.\n\nPara two follows it, a bit longer.\nA new line.\n\nThe third paragraph ends it all with many words."
+    ]
+   }
+  },
+  {
+   "name": "pages, max_chars=1000, overlap=5",
+   "artifacts": [
+    {
+     "text": "Page one text.\n\nPage two is longer than one.\n\nThree.",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "d.pdf",
+      "segments": [
+       {
+        "kind": "page",
+        "label": "page 1",
+        "start": 0,
+        "end": 14,
+        "page": 1
+       },
+       {
+        "kind": "page",
+        "label": "page 2",
+        "start": 16,
+        "end": 44,
+        "page": 2
+       },
+       {
+        "kind": "page",
+        "label": "page 3",
+        "start": 46,
+        "end": 52,
+        "page": 3
+       }
+      ]
+     }
+    }
+   ],
+   "args": {
+    "overlap": 5,
+    "max_chars": 1000
+   },
+   "expect": {
+    "value": [
+     "## d.pdf\nPage one text.\n\nPage two is longer than one.\n\nThree."
+    ]
+   }
+  },
+  {
+   "name": "astral, max_chars=1000, overlap=5",
+   "artifacts": [
+    {
+     "text": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "e.txt"
+     }
+    }
+   ],
+   "args": {
+    "overlap": 5,
+    "max_chars": 1000
+   },
+   "expect": {
+    "value": [
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡"
+    ]
+   }
+  },
+  {
+   "name": "prose, max_chars=1000, overlap=200",
+   "artifacts": [
+    {
+     "text": "Para one is here.\n\nPara two follows it, a bit longer.\nA new line.\n\nThe third paragraph ends it all with many words.",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "p.txt"
+     }
+    }
+   ],
+   "args": {
+    "overlap": 200,
+    "max_chars": 1000
+   },
+   "expect": {
+    "value": [
+     "## p.txt\nPara one is here.\n\nPara two follows it, a bit longer.\nA new line.\n\nThe third paragraph ends it all with many words."
+    ]
+   }
+  },
+  {
+   "name": "pages, max_chars=1000, overlap=200",
+   "artifacts": [
+    {
+     "text": "Page one text.\n\nPage two is longer than one.\n\nThree.",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "d.pdf",
+      "segments": [
+       {
+        "kind": "page",
+        "label": "page 1",
+        "start": 0,
+        "end": 14,
+        "page": 1
+       },
+       {
+        "kind": "page",
+        "label": "page 2",
+        "start": 16,
+        "end": 44,
+        "page": 2
+       },
+       {
+        "kind": "page",
+        "label": "page 3",
+        "start": 46,
+        "end": 52,
+        "page": 3
+       }
+      ]
+     }
+    }
+   ],
+   "args": {
+    "overlap": 200,
+    "max_chars": 1000
+   },
+   "expect": {
+    "value": [
+     "## d.pdf\nPage one text.\n\nPage two is longer than one.\n\nThree."
+    ]
+   }
+  },
+  {
+   "name": "astral, max_chars=1000, overlap=200",
+   "artifacts": [
+    {
+     "text": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "e.txt"
+     }
+    }
+   ],
+   "args": {
+    "overlap": 200,
+    "max_chars": 1000
+   },
+   "expect": {
+    "value": [
+     "## e.txt\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀 𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡𝔡"
+    ]
+   }
+  },
+  {
+   "name": "a hard cut when no separator fits",
+   "artifacts": [
+    {
+     "text": "xxxxxxxxxxxxxxxxxxxxxxx",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "x.txt"
+     }
+    }
+   ],
+   "args": {
+    "max_chars": 10,
+    "overlap": 3
+   },
+   "expect": {
+    "value": [
+     "## x.txt\nxxxxxxxxxx",
+     "## x.txt\nxxxxxxxxxx",
+     "## x.txt\nxxxxxxxxx"
+    ]
+   }
+  },
+  {
+   "name": "max_tokens is four characters a token",
+   "artifacts": [
+    {
+     "text": "Para one is here.\n\nPara two follows it, a bit longer.\nA new line.\n\nThe third paragraph ends it all with many words.",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "p.txt"
+     }
+    }
+   ],
+   "args": {
+    "max_tokens": 5,
+    "overlap": 0
+   },
+   "expect": {
+    "value": [
+     "## p.txt\nPara one is here.\n\n",
+     "## p.txt\nPara two follows ",
+     "## p.txt\nit, a bit longer.\n",
+     "## p.txt\nA new line.\n\nThe ",
+     "## p.txt\nthird paragraph ends",
+     "## p.txt\n it all with many ",
+     "## p.txt\nwords."
+    ]
+   }
+  },
+  {
+   "name": "the smaller of max_chars and max_tokens wins",
+   "artifacts": [
+    {
+     "text": "Para one is here.\n\nPara two follows it, a bit longer.\nA new line.\n\nThe third paragraph ends it all with many words.",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "p.txt"
+     }
+    }
+   ],
+   "args": {
+    "max_chars": 30,
+    "max_tokens": 5,
+    "overlap": 0
+   },
+   "expect": {
+    "value": [
+     "## p.txt\nPara one is here.\n\n",
+     "## p.txt\nPara two follows ",
+     "## p.txt\nit, a bit longer.\n",
+     "## p.txt\nA new line.\n\nThe ",
+     "## p.txt\nthird paragraph ends",
+     "## p.txt\n it all with many ",
+     "## p.txt\nwords."
+    ]
+   }
+  },
+  {
+   "name": "no names",
+   "artifacts": [
+    {
+     "text": "Page one text.\n\nPage two is longer than one.\n\nThree.",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "d.pdf",
+      "segments": [
+       {
+        "kind": "page",
+        "label": "page 1",
+        "start": 0,
+        "end": 14,
+        "page": 1
+       },
+       {
+        "kind": "page",
+        "label": "page 2",
+        "start": 16,
+        "end": 44,
+        "page": 2
+       },
+       {
+        "kind": "page",
+        "label": "page 3",
+        "start": 46,
+        "end": 52,
+        "page": 3
+       }
+      ]
+     }
+    },
+    {
+     "text": "Para one is here.\n\nPara two follows it, a bit longer.\nA new line.\n\nThe third paragraph ends it all with many words.",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "p.txt"
+     }
+    }
+   ],
+   "args": {
+    "max_chars": 30,
+    "overlap": 0,
+    "sources": false
+   },
+   "expect": {
+    "value": [
+     "Page one text.",
+     "Page two is longer than one.",
+     "Three.",
+     "Para one is here.\n\nPara two ",
+     "follows it, a bit longer.\n",
+     "A new line.\n\nThe third paragra",
+     "ph ends it all with many ",
+     "words."
+    ]
+   }
+  },
+  {
+   "name": "a folder overview is a chunk only with names",
+   "artifacts": [
+    {
+     "text": "docs/\n└── a.txt",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "docs/",
+      "kind": "directory"
+     }
+    },
+    {
+     "text": "hello",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "docs/a.txt"
+     }
+    }
+   ],
+   "args": {
+    "sources": false
+   },
+   "expect": {
+    "value": [
+     "hello"
+    ]
+   }
+  },
+  {
+   "name": "white space only is nothing",
+   "artifacts": [
+    {
+     "text": " \n\t ",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "w.txt"
+     }
+    }
+   ],
+   "args": {},
+   "expect": {
+    "value": []
+   }
+  },
+  {
+   "name": "segments out of range are clamped",
+   "artifacts": [
+    {
+     "text": "abcdefghij",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "c.txt",
+      "segments": [
+       {
+        "kind": "page",
+        "label": "page 1",
+        "start": -5,
+        "end": 4,
+        "page": 1
+       },
+       {
+        "kind": "page",
+        "label": "page 2",
+        "start": 4,
+        "end": 99,
+        "page": 2
+       },
+       {
+        "kind": "page",
+        "label": "page 3",
+        "start": 7,
+        "end": 3,
+        "page": 3
+       }
+      ]
+     }
+    }
+   ],
+   "args": {
+    "max_chars": 6,
+    "overlap": 0
+   },
+   "expect": {
+    "value": [
+     "## c.txt\nabcd",
+     "## c.txt\nefghij"
+    ]
+   }
+  },
+  {
+   "name": "a segment larger than the cap is windowed",
+   "artifacts": [
+    {
+     "text": "aaaa bbbb cccc dddd",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "c.txt",
+      "segments": [
+       {
+        "kind": "page",
+        "label": "page 1",
+        "start": 0,
+        "end": 19,
+        "page": 1
+       }
+      ]
+     }
+    }
+   ],
+   "args": {
+    "max_chars": 8,
+    "overlap": 2
+   },
+   "expect": {
+    "value": [
+     "## c.txt\naaaa bbb",
+     "## c.txt\nbbb cccc",
+     "## c.txt\ncc dddd"
+    ]
+   }
+  },
+  {
+   "name": "max_chars 0 is refused",
+   "artifacts": [
+    {
+     "text": "x",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "x"
+     }
+    }
+   ],
+   "args": {
+    "max_chars": 0
+   },
+   "expect": {
+    "throws": true
+   }
+  },
+  {
+   "name": "max_tokens 0 is refused",
+   "artifacts": [
+    {
+     "text": "x",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "x"
+     }
+    }
+   ],
+   "args": {
+    "max_tokens": 0
+   },
+   "expect": {
+    "throws": true
+   }
+  },
+  {
+   "name": "overlap is clamped below the cap",
+   "artifacts": [
+    {
+     "text": "abcdefghijkl",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "x"
+     }
+    }
+   ],
+   "args": {
+    "max_chars": 5,
+    "overlap": 50
+   },
+   "expect": {
+    "value": [
+     "## x\nabcde",
+     "## x\nbcdef",
+     "## x\ncdefg",
+     "## x\ndefgh",
+     "## x\nefghi",
+     "## x\nfghij",
+     "## x\nghijk",
+     "## x\nhijkl"
+    ]
+   }
+  },
+  {
+   "name": "negative overlap is none",
+   "artifacts": [
+    {
+     "text": "abcdefghijkl",
+     "images": [],
+     "audio": [],
+     "video": [],
+     "meta": {
+      "source": "x"
+     }
+    }
+   ],
+   "args": {
+    "max_chars": 5,
+    "overlap": -3
+   },
+   "expect": {
+    "value": [
+     "## x\nabcde",
+     "## x\nfghij",
+     "## x\nkl"
+    ]
+   }
+  },
+  {
+   "name": "nothing",
+   "artifacts": [],
+   "args": {},
+   "expect": {
+    "value": []
+   }
+  }
+ ]
+}

@@ -1,0 +1,168 @@
+{
+ "area": "dsl",
+ "review": "draft",
+ "cases": [
+  {
+   "name": "format file.pdf {}",
+   "call": "format",
+   "source": "file.pdf",
+   "options": {},
+   "expect": {
+    "value": "file.pdf",
+    "reparsed": {
+     "source": "file.pdf",
+     "options": {}
+    }
+   }
+  },
+  {
+   "name": "format file.pdf {'pages': [1, 4], 'images': True}",
+   "call": "format",
+   "source": "file.pdf",
+   "options": {
+    "pages": [
+     1,
+     4
+    ],
+    "images": true
+   },
+   "expect": {
+    "value": "file.pdf[pages: 1-4, images: true]",
+    "reparsed": {
+     "source": "file.pdf",
+     "options": {
+      "pages": [
+       1,
+       4
+      ],
+      "images": true
+     }
+    }
+   }
+  },
+  {
+   "name": "format f.csv {'name': 'a, b', 'id': '42'}",
+   "call": "format",
+   "source": "f.csv",
+   "options": {
+    "name": "a, b",
+    "id": "42"
+   },
+   "expect": {
+    "value": "f.csv[name: \"a, b\", id: \"42\"]",
+    "reparsed": {
+     "source": "f.csv",
+     "options": {
+      "name": "a, b",
+      "id": "42"
+     }
+    }
+   }
+  },
+  {
+   "name": "format f.csv {'q': 'say \"hi\"', 'w': \"it's\"}",
+   "call": "format",
+   "source": "f.csv",
+   "options": {
+    "q": "say \"hi\"",
+    "w": "it's"
+   },
+   "expect": {
+    "value": "f.csv[q: 'say \"hi\"', w: \"it's\"]",
+    "reparsed": {
+     "source": "f.csv",
+     "options": {
+      "q": "say \"hi\"",
+      "w": "it's"
+     }
+    }
+   }
+  },
+  {
+   "name": "format x {'t': 'true', 'n': '-3', 'f': '1.5', 'r': '2-3', 's': ' pad ', 'e': ''}",
+   "call": "format",
+   "source": "x",
+   "options": {
+    "t": "true",
+    "n": "-3",
+    "f": "1.5",
+    "r": "2-3",
+    "s": " pad ",
+    "e": ""
+   },
+   "expect": {
+    "value": "x[t: \"true\", n: \"-3\", f: \"1.5\", r: \"2-3\", s: \" pad \", e: \"\"]",
+    "reparsed": {
+     "source": "x",
+     "options": {
+      "t": "true",
+      "n": "-3",
+      "f": "1.5",
+      "r": "2-3",
+      "s": " pad ",
+      "e": ""
+     }
+    }
+   }
+  },
+  {
+   "name": "format x {'b': False, 'i': -7, 'z': 0, 'fl': 2.5}",
+   "call": "format",
+   "source": "x",
+   "options": {
+    "b": false,
+    "i": -7,
+    "z": 0,
+    "fl": 2.5
+   },
+   "expect": {
+    "value": "x[b: false, i: -7, z: 0, fl: 2.5]",
+    "reparsed": {
+     "source": "x",
+     "options": {
+      "b": false,
+      "i": -7,
+      "z": 0,
+      "fl": 2.5
+     }
+    }
+   }
+  },
+  {
+   "name": "format x {'br': 'a]b', 'bl': 'a[b', 'c': 'a:b'}",
+   "call": "format",
+   "source": "x",
+   "options": {
+    "br": "a]b",
+    "bl": "a[b",
+    "c": "a:b"
+   },
+   "expect": {
+    "value": "x[br: \"a]b\", bl: \"a[b\", c: a:b]",
+    "reparsed": {
+     "source": "x[br: \"a]b\", bl: \"a[b\", c: a:b]",
+     "options": {}
+    }
+   }
+  },
+  {
+   "name": "format x {'u': 'π 😀', 'k': 'Sales'}",
+   "call": "format",
+   "source": "x",
+   "options": {
+    "u": "π 😀",
+    "k": "Sales"
+   },
+   "expect": {
+    "value": "x[u: π 😀, k: Sales]",
+    "reparsed": {
+     "source": "x",
+     "options": {
+      "u": "π 😀",
+      "k": "Sales"
+     }
+    }
+   }
+  }
+ ]
+}

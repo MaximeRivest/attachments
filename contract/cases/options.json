@@ -1,0 +1,333 @@
+{
+ "area": "options",
+ "review": "draft",
+ "cases": [
+  {
+   "name": ".pdf {'pages': [1, 4], 'images': True, 'dpi': 150}",
+   "key": ".pdf",
+   "raw": {
+    "pages": [
+     1,
+     4
+    ],
+    "images": true,
+    "dpi": 150
+   },
+   "expect": {
+    "resolved": {
+     "pages": "1-4",
+     "images": true,
+     "dpi": 150
+    },
+    "unknown": [],
+    "invalid": []
+   }
+  },
+  {
+   "name": ".pdf {'page': '1,3,-1', 'pw': 'secret', 'max_dim': '1568'}",
+   "key": ".pdf",
+   "raw": {
+    "page": "1,3,-1",
+    "pw": "secret",
+    "max_dim": "1568"
+   },
+   "expect": {
+    "resolved": {
+     "pages": "1,3,-1",
+     "password": "secret",
+     "max_dim": 1568
+    },
+    "unknown": [],
+    "invalid": []
+   }
+  },
+  {
+   "name": ".pdf {'pagez': 1, 'imagez': True, 'zzzzzz': 1}",
+   "key": ".pdf",
+   "raw": {
+    "pagez": 1,
+    "imagez": true,
+    "zzzzzz": 1
+   },
+   "expect": {
+    "resolved": {},
+    "unknown": [
+     {
+      "key": "pagez",
+      "suggest": "pages"
+     },
+     {
+      "key": "imagez",
+      "suggest": "images"
+     },
+     {
+      "key": "zzzzzz",
+      "suggest": null
+     }
+    ],
+    "invalid": []
+   }
+  },
+  {
+   "name": ".pdf {'images': 'auto', 'ocr': 'always', 'tables': 'yes'}",
+   "key": ".pdf",
+   "raw": {
+    "images": "auto",
+    "ocr": "always",
+    "tables": "yes"
+   },
+   "expect": {
+    "resolved": {
+     "images": "auto",
+     "ocr": "always",
+     "tables": true
+    },
+    "unknown": [],
+    "invalid": []
+   }
+  },
+  {
+   "name": ".pdf {'images': 'maybe', 'dpi': 'high', 'dpi_': 3, 'pages': 0}",
+   "key": ".pdf",
+   "raw": {
+    "images": "maybe",
+    "dpi": "high",
+    "dpi_": 3,
+    "pages": 0
+   },
+   "expect": {
+    "resolved": {},
+    "unknown": [
+     {
+      "key": "dpi_",
+      "suggest": "dpi"
+     }
+    ],
+    "invalid": [
+     "images",
+     "dpi",
+     "pages"
+    ]
+   }
+  },
+  {
+   "name": ".pdf {'dpi': True, 'max_pages': 2.5, 'password': 1234}",
+   "key": ".pdf",
+   "raw": {
+    "dpi": true,
+    "max_pages": 2.5,
+    "password": 1234
+   },
+   "expect": {
+    "resolved": {
+     "password": "1234"
+    },
+    "unknown": [],
+    "invalid": [
+     "dpi",
+     "max_pages"
+    ]
+   }
+  },
+  {
+   "name": ".xlsx {'sheet': 2, 'rows': '50', 'max_rows': 10}",
+   "key": ".xlsx",
+   "raw": {
+    "sheet": 2,
+    "rows": "50",
+    "max_rows": 10
+   },
+   "expect": {
+    "resolved": {
+     "sheet": 2,
+     "rows": 10
+    },
+    "unknown": [],
+    "invalid": []
+   }
+  },
+  {
+   "name": ".xlsx {'sheet': True, 'limit': '-5'}",
+   "key": ".xlsx",
+   "raw": {
+    "sheet": true,
+    "limit": "-5"
+   },
+   "expect": {
+    "resolved": {},
+    "unknown": [
+     {
+      "key": "limit",
+      "suggest": null
+     }
+    ],
+    "invalid": [
+     "sheet"
+    ]
+   }
+  },
+  {
+   "name": ".csv {'sep': ';', 'delimiter': ',', 'rows': 3}",
+   "key": ".csv",
+   "raw": {
+    "sep": ";",
+    "delimiter": ",",
+    "rows": 3
+   },
+   "expect": {
+    "resolved": {
+     "delimiter": ",",
+     "rows": 3
+    },
+    "unknown": [],
+    "invalid": []
+   }
+  },
+  {
+   "name": ".html {'select': [1, 4], 'css': 'h1, p', 'links': 'off'}",
+   "key": ".html",
+   "raw": {
+    "select": [
+     1,
+     4
+    ],
+    "css": "h1, p",
+    "links": "off"
+   },
+   "expect": {
+    "resolved": {
+     "select": "h1, p",
+     "links": false
+    },
+    "unknown": [],
+    "invalid": []
+   }
+  },
+  {
+   "name": ".html {'select': [1, 4]}",
+   "key": ".html",
+   "raw": {
+    "select": [
+     1,
+     4
+    ]
+   },
+   "expect": {
+    "resolved": {
+     "select": "1-4"
+    },
+    "unknown": [],
+    "invalid": []
+   }
+  },
+  {
+   "name": ".pdf {'password': [3, 4], 'ocr_engine': False}",
+   "key": ".pdf",
+   "raw": {
+    "password": [
+     3,
+     4
+    ],
+    "ocr_engine": false
+   },
+   "expect": {
+    "resolved": {
+     "password": "3-4",
+     "ocr_engine": "false"
+    },
+    "unknown": [],
+    "invalid": []
+   }
+  },
+  {
+   "name": ".pptx {'slides': '2-', 'images': False}",
+   "key": ".pptx",
+   "raw": {
+    "slides": "2-",
+    "images": false
+   },
+   "expect": {
+    "resolved": {
+     "pages": "2-",
+     "images": false
+    },
+    "unknown": [],
+    "invalid": []
+   }
+  },
+  {
+   "name": "file:// {'glob': '*.py', 'ignore': 'tests/', 'max_size': '2MB', 'tree': 'auto'}",
+   "key": "file://",
+   "raw": {
+    "glob": "*.py",
+    "ignore": "tests/",
+    "max_size": "2MB",
+    "tree": "auto"
+   },
+   "expect": {
+    "resolved": {
+     "glob": "*.py",
+     "ignore": "tests/",
+     "max_size": "2MB",
+     "tree": "auto"
+    },
+    "unknown": [],
+    "invalid": []
+   }
+  },
+  {
+   "name": "file:// {'include': '*.md', 'max_files': 3, 'hidden': 'on', 'files': 'nope'}",
+   "key": "file://",
+   "raw": {
+    "include": "*.md",
+    "max_files": 3,
+    "hidden": "on",
+    "files": "nope"
+   },
+   "expect": {
+    "resolved": {
+     "glob": "*.md",
+     "max_files": 3,
+     "hidden": true
+    },
+    "unknown": [],
+    "invalid": [
+     "files"
+    ]
+   }
+  },
+  {
+   "name": "github:// {'branch': 'dev', 'tag': 'v1', 'ref': 'main'}",
+   "key": "github://",
+   "raw": {
+    "branch": "dev",
+    "tag": "v1",
+    "ref": "main"
+   },
+   "expect": {
+    "resolved": {
+     "ref": "main"
+    },
+    "unknown": [],
+    "invalid": []
+   }
+  },
+  {
+   "name": ".unknown-ext {'anything': 1}",
+   "key": ".unknown-ext",
+   "raw": {
+    "anything": 1
+   },
+   "expect": {
+    "resolved": {},
+    "unknown": [
+     {
+      "key": "anything",
+      "suggest": null
+     }
+    ],
+    "invalid": []
+   }
+  }
+ ]
+}

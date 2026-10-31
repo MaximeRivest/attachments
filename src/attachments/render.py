@@ -1005,6 +1005,8 @@ def estimate_tokens(artifacts: list[dict], *, tier: str = "high") -> dict[str, i
         >>> estimate_tokens([])
         {'text': 0, 'images': 0, 'total': 0}
     """
+    if tier not in _TIERS:
+        raise ValueError(f"tier must be one of {sorted(_TIERS)}, got {tier!r}")
     chars = sum(len(artifact.get("text") or "") for artifact in artifacts)
     text = -(-chars // _CHARS_PER_TOKEN)
     images = sum(

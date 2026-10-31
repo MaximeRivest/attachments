@@ -119,13 +119,16 @@ def request_problems(parts: list[dict[str, Any]], limits: Limits) -> list[str]:
     total += 100 * len(parts) + 200
 
     problems: list[str] = []
+    size_problem = False  # too many bytes or too many pixels: smaller pictures help
     note = f" ({limits.request_note})" if limits.request_note else ""
     if total > limits.request_bytes:
+        size_problem = True
         problems.append(
             f"the request is {_mb(total)}; {limits.provider} accepts "
             f"{_mb(limits.request_bytes)}{note}"
         )
-    if len(images) > limits.images:
+    count_problem = len(images) > limits.images
+    if count_problem:
         note = f" ({limits.images_note})" if limits.images_note else ""
         problems.append(
             f"it has {len(images)} pictures; {limits.provider} accepts "
@@ -136,6 +139,7 @@ def request_problems(parts: list[dict[str, Any]], limits: Limits) -> list[str]:
             p for p in images if len(p.get("data") or "") > limits.image_b64_bytes
         ]
         if too_big:
+            size_problem = True
             largest = max(len(p["data"]) for p in too_big)
             note = f" ({limits.image_note})" if limits.image_note else ""
             what = (
@@ -159,6 +163,7 @@ def request_problems(parts: list[dict[str, Any]], limits: Limits) -> list[str]:
         sizes = [s for p in images if (s := _size(p.get("data") or ""))]
         over = [s for s in sizes if max(s) > side]
         if over:
+            size_problem = True
             biggest = max(over, key=max)
             why = (
                 f" when a request has more than {limits.many_images} pictures"
@@ -172,20 +177,18 @@ def request_problems(parts: list[dict[str, Any]], limits: Limits) -> list[str]:
     if not problems:
         return []
 
-    size_problem = any(
-        p.startswith(("the request is", "a picture is ", "pictures are")) and "MB" in p
-        for p in problems
-    ) or any(" px; " in p for p in problems)
-    count_problem = len(images) > limits.images
     fixes = []
-    if size_problem:
+    if size_problem and images:
         png = sum(len(p["data"]) for p in images if p.get("media_type") == "image/png")
         if png > picture_bytes / 2:
             fixes.append("image_format: jpeg (scans and photos several times smaller)")
         fixes.append("max_dim: 1568 (Claude's standard models see no more)")
     if count_problem or (size_problem and len(images) > 1):
         half = max(1, min(len(images), limits.images) // 2)
-        fixes.append(f"fewer pages per request, e.g. pages: 1-{half}")
+        example = "1" if half == 1 else f"1-{half}"
+        fixes.append(f"fewer pages per request, e.g. pages: {example}")
+    elif size_problem and not images:
+        fixes.append("fewer files or pages per request")
     if odd:
         fixes.append("image_format: png (converts the picture)")
     if fixes:

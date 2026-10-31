@@ -47,6 +47,32 @@ jobs:
         run: uv run --with "mcp>=1.17,<2" pytest -q -o addopts="" tests/test_mcp_server.py
 
 
+  # TypeScript (ts/) against the same contract cases as Python; and the
+  # cases themselves must be what contract/cases/make.py writes.
+  typescript:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Install uv and set Python
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+      - name: The cases are what make.py writes
+        run: |
+          uv sync --locked
+          uv run python contract/cases/make.py
+          git diff --exit-code contract/cases
+      - name: Types and tests
+        working-directory: ts
+        run: |
+          npm ci --no-audit --no-fund
+          npx tsc --noEmit
+          npm test
+
+
   # Each extra alone, the way people install them. The suite above has every
   # extra at once, so it cannot see an extra that is not enough for its own
   # format: 1.0.0 shipped attachments[pdf] failing every scanned PDF (Pillow
