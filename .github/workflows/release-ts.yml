@@ -1,0 +1,64 @@
+name: release-ts
+
+# Publish ts/ to npm (attachments-dev) when a GitHub Release tagged
+# ts-v<version> is published. npm trusted publishing (OIDC): no token is
+# stored anywhere, no key touch per release, and npm records which commit
+# and workflow built the package (provenance). ts/RELEASING.md has the
+# procedure, including the one-time setup.
+
+on:
+  release:
+    types: [published]
+
+permissions: {}
+
+jobs:
+  verify:
+    if: startsWith(github.ref_name, 'ts-v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+      - name: Tag matches ts/package.json
+        working-directory: ts
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          [ "$GITHUB_REF_NAME" = "ts-v$VERSION" ] || { echo "::error::tag $GITHUB_REF_NAME does not match version $VERSION"; exit 1; }
+      - name: Types, tests, build
+        working-directory: ts
+        run: |
+          npm ci --no-audit --no-fund
+          npx tsc --noEmit
+          npm test
+          npm run build
+
+  publish:
+    needs: verify
+    runs-on: ubuntu-latest
+    environment:
+      name: npm
+      url: https://www.npmjs.com/package/attachments-dev
+    permissions:
+      contents: read
+      id-token: write # npm trusted publishing and provenance
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+          registry-url: https://registry.npmjs.org
+      - name: npm with trusted publishing (11.5.1 or later)
+        run: npm install -g npm@11
+      - name: Publish
+        working-directory: ts
+        # prepublishOnly runs types, tests and the build again on this checkout.
+        run: |
+          npm ci --no-audit --no-fund
+          VERSION=$(node -p "require('./package.json').version")
+          TAG=latest
+          if [[ "$VERSION" == *-* ]]; then TAG=next; fi
+          npm publish --provenance --access public --tag "$TAG"
